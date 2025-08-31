@@ -36,21 +36,29 @@ target_include_directories(cfx
 
 add_library(cfx::cfx ALIAS cfx)
 
-# Examples
+# ---------------- Examples
 if(CFX_BUILD_EXAMPLES)
   add_executable(cfx_demo examples/demo.c)
   target_link_libraries(cfx_demo PRIVATE cfx::cfx)
 endif()
 
-# Tests (CTest)
+# ---------------- Tests (CTest)
 include(CTest)
+
 if(CFX_BUILD_TESTS)
-  add_executable(test_combinatorics tests/test_combinatorics.c)
-  target_link_libraries(test_combinatorics PRIVATE cfx::cfx)
-  add_test(NAME cfx.tests COMMAND test_combinatorics)
+  set(TEST_SOURCES
+    test_cfx
+    test_big
+  )
+
+  foreach(test_name IN LISTS TEST_SOURCES)
+    add_executable(${test_name} tests/${test_name}.c)
+    target_link_libraries(${test_name} PRIVATE cfx::cfx)
+    add_test(NAME ${test_name} COMMAND ${test_name})
+  endforeach()
 endif()
 
-# Install
+# ---------------- Install
 include(GNUInstallDirs)
 install(TARGETS cfx
   EXPORT cfxTargets

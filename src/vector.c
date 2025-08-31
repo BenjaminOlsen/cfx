@@ -25,6 +25,7 @@ int cfx_vec_reserve(cfx_vec_t* v, size_t need) {
 
     v->data = (uint32_t*)p;
     v->cap = new_cap;
+    printf("reserved cap %zu\n", new_cap);
     return 0;
 }
 

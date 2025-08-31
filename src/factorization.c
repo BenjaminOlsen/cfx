@@ -6,11 +6,11 @@
 #include <assert.h>
 #include <stdio.h>
 
-void fac_print(cfx_factorization_t* f) {
+void cfx_fac_print(cfx_factorization_t* f) {
     printf("f: %p, cap: %zu, len: %zu\n", f, f->cap, f->len);
     for (size_t k = 0; k < f->len-1; ++k) {
         cfx_pf_t* pf = &f->data[k];
-        printf("%u^%u + ", pf->p, pf->e);
+        printf("%u^%u * ", pf->p, pf->e);
     }
     cfx_pf_t* pf = &f->data[f->len-1];
     printf("%u^%u\n", pf->p, pf->e);

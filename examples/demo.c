@@ -6,6 +6,7 @@
 
 #include "cfx/factorization.h"
 #include "cfx/big.h"
+#include "cfx/primes.h"
 
 
 /* ---------- Demo: compute C(n,k) ---------- */
@@ -23,7 +24,7 @@ static void print_binom(uint32_t n, uint32_t k){
 }
 
 int main(int argc, char* argv[]) {
-    uint32_t n, k;
+    uint32_t n, k, p;
     if (argc == 2) {
         n = (uint32_t)strtol(argv[1], NULL, 10);
         for (int i = 1; i <= n; ++i) {
@@ -36,6 +37,18 @@ int main(int argc, char* argv[]) {
         n = (uint32_t)strtol(argv[1], NULL, 10);
         k = (uint32_t)strtol(argv[2], NULL, 10);
         print_binom(n, k);
+    } else if (argc == 4) {
+        n = (uint32_t)strtol(argv[1], NULL, 10);
+        k = (uint32_t)strtol(argv[2], NULL, 10);
+        p = (uint32_t)strtol(argv[3], NULL, 10);
+
+        printf("primes until %u:\n", p);
+        cfx_vec_t primes = cfx_sieve_primes(p);
+        cfx_vec_print(&primes);
+
+        printf("-------------- factorization of %u!:\n", n);
+        cfx_factorization_t f4 = cfx_fac_factorial(n, &primes);
+        cfx_fac_print(&f4);
     }
 /*
     cfx_factorization_t f1, f2;
