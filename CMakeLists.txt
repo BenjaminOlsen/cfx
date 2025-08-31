@@ -1,0 +1,84 @@
+cmake_minimum_required(VERSION 3.16)
+project(cfx LANGUAGES C VERSION 0.1.0)
+
+option(CFX_BUILD_SHARED "Build shared library" ON)
+option(CFX_BUILD_TESTS  "Build tests" ON)
+option(CFX_BUILD_EXAMPLES "Build examples" ON)
+
+set(CFX_HEADERS
+    include/cfx/big.h
+    include/cfx/factorization.h
+    include/cfx/primes.h
+    include/cfx/vector.h
+    include/cfx/version.h
+)
+
+set(CFX_SOURCES
+    src/big.c
+    src/factorization.c
+    src/primes.c
+    src/vector.c
+)
+
+add_library(cfx ${CFX_SOURCES})
+if(CFX_BUILD_SHARED)
+  set_target_properties(cfx PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
+  )
+endif()
+
+target_include_directories(cfx
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+add_library(cfx::cfx ALIAS cfx)
+
+# Examples
+if(CFX_BUILD_EXAMPLES)
+  add_executable(cfx_demo examples/demo.c)
+  target_link_libraries(cfx_demo PRIVATE cfx::cfx)
+endif()
+
+# Tests (CTest)
+include(CTest)
+if(CFX_BUILD_TESTS)
+  add_executable(test_combinatorics tests/test_combinatorics.c)
+  target_link_libraries(test_combinatorics PRIVATE cfx::cfx)
+  add_test(NAME cfx.tests COMMAND test_combinatorics)
+endif()
+
+# Install
+include(GNUInstallDirs)
+install(TARGETS cfx
+  EXPORT cfxTargets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(FILES ${CFX_HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cfx)
+
+# Package config (find_package)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+  cmake/cfxConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/cfxConfig.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cfx
+)
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/cfxConfigVersion.cmake
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion
+)
+
+install(EXPORT cfxTargets
+  NAMESPACE cfx::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cfx
+)
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/cfxConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/cfxConfigVersion.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cfx
+)

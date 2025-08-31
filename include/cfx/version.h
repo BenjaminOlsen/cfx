@@ -1,0 +1,7 @@
+#ifndef CFX_VERSION_H
+#define CFX_VERSION_H
+#define CFX_VERSION_MAJOR 0
+#define CFX_VERSION_MINOR 0
+#define CFX_VERSION_PATCH 0
+#define CFX_VERSION_STRING "0.0.0"
+#endif
