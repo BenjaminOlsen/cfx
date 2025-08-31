@@ -2,8 +2,8 @@
 #include <stdlib.h>
 
 /* find all primes up to n using sieve of eratosthenes */
-cfx_vec_u32 cfx_sieve_primes(uint32_t n) {
-    cfx_vec_u32 primes = {0};
+cfx_vec_t cfx_sieve_primes(uint32_t n) {
+    cfx_vec_t primes = {0};
     if (n < 2) return primes;
 
     /* mark all composites, multiples of i until sqrt(n) */

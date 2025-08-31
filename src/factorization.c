@@ -140,7 +140,7 @@ void cfx_fac_sub(cfx_factorization_t* dst, cfx_factorization_t* src) {
 
 /* calculate the factorization of n.
 we pass in a list of primes to not have to calculate it on every call of this function */
-cfx_factorization_t cfx_fac_factorial(uint32_t n, const cfx_vec_u32 *primes) {
+cfx_factorization_t cfx_fac_factorial(uint32_t n, const cfx_vec_t *primes) {
     cfx_factorization_t f;
     cfx_fac_init(&f);
     for (size_t i = 0; i < primes->size; ++i) {
@@ -160,12 +160,12 @@ cfx_factorization_t cfx_fac_binom(uint32_t n, uint32_t k){
         return z; 
     }
     if (k > n-k) k = n-k;
-    cfx_vec_u32 primes = cfx_sieve_primes(n);
+    cfx_vec_t primes = cfx_sieve_primes(n);
     cfx_factorization_t fn = cfx_fac_factorial(n, &primes);
     cfx_factorization_t fk = cfx_fac_factorial(k, &primes);
     cfx_factorization_t fnk = cfx_fac_factorial(n-k, &primes);
     cfx_fac_sub(&fn, &fk);
     cfx_fac_sub(&fn, &fnk);
-    cfx_vec_u32_free(&primes);
+    cfx_vec_free(&primes);
     return fn; /* sorted, coalesced */
 }

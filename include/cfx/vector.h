@@ -8,13 +8,24 @@
 extern "C" {
 #endif
 
+#define CFX_VEC_MIN_CAP 16
+
 typedef struct {
     uint32_t* data;
     size_t size;
-} cfx_vec_u32;
+    size_t cap;
+} cfx_vec_t;
 
-void cfx_vec_u32_free(cfx_vec_u32* v);
-void cfx_vec_u32_print(cfx_vec_u32* v);
+void cfx_vec_init(cfx_vec_t *v);
+
+int  cfx_vec_reserve(cfx_vec_t *v, size_t need);
+int  cfx_vec_resize(cfx_vec_t *v, size_t sz, uint32_t fill);
+int  cfx_vec_push(cfx_vec_t *v, uint32_t value);
+
+void cfx_vec_clear(cfx_vec_t *v);
+void cfx_vec_free(cfx_vec_t *v);
+
+void cfx_vec_print(const cfx_vec_t *v);
 
 #ifdef __cplusplus
 }

@@ -39,7 +39,7 @@ void cfx_fac_add(cfx_factorization_t* dst, cfx_factorization_t* src);
 void cfx_fac_sub(cfx_factorization_t* dst, cfx_factorization_t* src) ;
 /* calculate the factorization of n.
 we pass in a list of primes to not have to calculate it on every call of this function */
-cfx_factorization_t cfx_fac_factorial(uint32_t n, const cfx_vec_u32 *primes);
+cfx_factorization_t cfx_fac_factorial(uint32_t n, const cfx_vec_t *primes);
 /* Factorization of C(n,k) = n! / (k! (n-k)!) */
 cfx_factorization_t cfx_fac_binom(uint32_t n, uint32_t k);
 

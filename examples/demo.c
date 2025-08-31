@@ -71,8 +71,8 @@ int main(int argc, char* argv[]) {
     cfx_fac_print(&f3);
 
     printf("primes until %u:\n", n);
-    cfx_vec_u32 primes = cfx_sieve_primes(n);
-    cfx_vec_u32_print(&primes);
+    cfx_vec_t primes = cfx_sieve_primes(n);
+    cfx_vec_print(&primes);
 
     printf("-------------- \n");
     cfx_factorization_t f4 = cfx_fac_factorial(n, &primes);
