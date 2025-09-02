@@ -9,10 +9,10 @@ extern "C" {
 #endif
 
 /* find all primes up to n using sieve of eratosthenes */
-cfx_vec_t cfx_sieve_primes(uint32_t n);
+cfx_vec_t cfx_sieve_primes(uint64_t n);
 
 /* uses legendre's formula to give th power of p that divides n! */
-uint32_t cfx_legendre(uint32_t n, uint32_t p);
+uint64_t cfx_legendre(uint64_t n, uint64_t p);
 
 #ifdef __cplusplus
 }

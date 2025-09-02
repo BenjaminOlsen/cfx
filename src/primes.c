@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 /* find all primes up to n using sieve of eratosthenes */
-cfx_vec_t cfx_sieve_primes(uint32_t n) {
+cfx_vec_t cfx_sieve_primes(uint64_t n) {
     cfx_vec_t primes = {0};
     if (n < 2) return primes;
 
@@ -10,9 +10,9 @@ cfx_vec_t cfx_sieve_primes(uint32_t n) {
     /* mark[x] == 0: x prime, mark[x] == 1: x composite */
     uint8_t* mark = (uint8_t*)calloc(n + 1, 1);
 
-    for (uint32_t i = 2; (i * i) <= n; ++i) {
+    for (uint64_t i = 2; (i * i) <= n; ++i) {
         if (!mark[i]) {
-            for (uint32_t j = i*i; j <= n; j += i) {
+            for (uint64_t j = i*i; j <= n; j += i) {
                 // printf("marking %u composite\n", j);
                 mark[j] = 1;
             }
@@ -20,15 +20,15 @@ cfx_vec_t cfx_sieve_primes(uint32_t n) {
     }
     
     size_t p_cnt = 0;
-    for (uint32_t i = 2; i < n + 1; ++i) {
+    for (uint64_t i = 2; i < n + 1; ++i) {
         if (!mark[i]) ++p_cnt;
     }
 
-    primes.data = (uint32_t*)malloc(p_cnt * sizeof(uint32_t));
+    primes.data = (uint64_t*)malloc(p_cnt * sizeof(uint64_t));
     primes.size = p_cnt;
 
     size_t k = 0;
-    for (uint32_t i = 2; i <= n; ++i) {
+    for (uint64_t i = 2; i <= n; ++i) {
         if (!mark[i]) {
             primes.data[k] = i;
             ++k;
@@ -40,8 +40,8 @@ cfx_vec_t cfx_sieve_primes(uint32_t n) {
 }
 
 /* uses legendre's formula to give th power of p that divides n! */
-uint32_t cfx_legendre(uint32_t n, uint32_t p) {
-    uint32_t e = 0;
+uint64_t cfx_legendre(uint64_t n, uint64_t p) {
+    uint64_t e = 0;
     while (n) {
         n /= p;
         e += n;

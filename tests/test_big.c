@@ -1,5 +1,9 @@
 #include "cfx/big.h"
+
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 static void test_cfx_big_init(void) {
     cfx_big_t b;
@@ -22,8 +26,94 @@ static void test_cfx_big_reserve() {
     assert(b.cap == rcap1);
 }
 
+static void big_init_from_limbs(cfx_big_t *b, const uint64_t *limbs, size_t n) {
+    cfx_big_init(b);
+    if (n == 0) return;
+    b->limb = (uint64_t*)malloc(n * sizeof(uint64_t));
+    memcpy(b->limb, limbs, n * sizeof(uint64_t));
+    b->n = n;
+    b->cap = n;
+}
+
+/* helper to run one test */
+static void check(const char *label, const uint64_t *limbs, size_t n, const char *expect) {
+    cfx_big_t b;
+    big_init_from_limbs(&b, limbs, n);
+    size_t len = 0;
+    char *s = cfx_big_to_string(&b, &len);
+    // string content
+    assert(strcmp(s, expect) == 0);
+    // length matches
+    assert(len == strlen(expect));
+    // null-terminated
+    assert(s[len] == '\0');
+    printf("[ok] %s -> %s\n", label, s);
+    free(s);
+    cfx_big_free(&b);
+}
+
+
+// Single small limb
+void test_limb1(void) {
+    uint64_t L[] = { 123456789u };
+    check("single limb", L, 1, "123456789"); 
+}
+
+// -->) Single 0 limb but n>0 (should normally be normalized away; if you allow it, behavior is “000…000”?)
+// Prefer: represent zero as n==0. You can skip this if you enforce normalization.
+
+// Two limbs with inner zero-padding needed:
+// value = limb[1]*1e9 + limb[0] = 42*1e9 + 123456789
+void test_limb2(void) {
+    uint64_t L[] = { 123456789u, 4200u };
+    check("two limbs pad", L, 2, "4200123456789");
+}
+
+// Inner limb exact zero-padding boundary: limb[0] has fewer than 9 digits
+void test_limb3(void) {
+    uint64_t L[] = { 1u, 1u };
+    check("two limbs tiny low", L, 2, "1000000001");
+}
+
+// Max limb values
+void test_limb4(void) {
+    uint64_t L[] = { 999999999u, 999999999u };
+    check("two limbs max", L, 2, "999999999999999999");
+}
+
+// Four limbs mixed
+// value = 1*1e27 + 7*1e18 + 42*1e9 + 5 → "1 000000007 000000042 000000005"
+void test_limb5(void) {
+    uint64_t L[] = { 5u, 42u, 7u, 1u };
+    check("four limbs pad", L, 4, "1000000007000000042000000005");
+}
+
+// Large ndigits sanity: build via mul to exercise carry
+void test_limb6(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_set_val(&b, 1);
+    for (int i = 0; i < 10; ++i) cfx_big_mul(&b, 1000000000u - 1u); // (1e9-1)^10
+    char *s = cfx_big_to_string(&b, NULL);
+    // spot checks: starts with '9' and length >= 9
+    printf("%s\n", s);
+    assert(s[0] == '9');
+    assert(strlen(s) >= 9);
+    char* expect = "999999990000000044999999880000000209999999"
+        "748000000209999999880000000044999999990000000001";
+    assert(strcmp(s, expect) == 0);
+    free(s);
+    cfx_big_free(&b);
+}
+
 int main(void) {
     test_cfx_big_init();
     test_cfx_big_reserve();
+    test_limb1();
+    test_limb2();
+    test_limb3();
+    test_limb4();
+    test_limb5();
+    test_limb6();
     return 0;
 }

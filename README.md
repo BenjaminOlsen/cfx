@@ -6,8 +6,8 @@ CFX is a C library for performing a host of arithmetic, combinatorial computatio
 
 **cfx** is a small C library for fast and exact combinatorics using prime-factor exponents, among other arithmetic things
 
-It provides:
-- Factorization type (`cfx_factorization_t`) that stores integers as prime–exponent maps
+It has:
+- Factorization type (`cfx_fac_t`) that stores integers as prime–exponent maps
 - Utilities for factorials, binomial coefficients, gcd/lcm, etc. without overflow
 - A minimal big-integer type (`cfx_big_t`) to materialize results
 - prime generation (sieve of Eratosthenes)

@@ -1,4 +1,4 @@
-#include "cfx/factorization.h"
+#include "cfx/fac.h"
 #include "cfx/vector.h"
 #include "cfx/primes.h"
 
@@ -6,28 +6,28 @@
 #include <assert.h>
 #include <stdio.h>
 
-void cfx_fac_print(cfx_factorization_t* f) {
+void cfx_fac_print(cfx_fac_t* f) {
     printf("f: %p, cap: %zu, len: %zu\n", f, f->cap, f->len);
     for (size_t k = 0; k < f->len-1; ++k) {
         cfx_pf_t* pf = &f->data[k];
-        printf("%u^%u * ", pf->p, pf->e);
+        printf("%llu^%llu * ", pf->p, pf->e);
     }
     cfx_pf_t* pf = &f->data[f->len-1];
-    printf("%u^%u\n", pf->p, pf->e);
+    printf("%llu^%llu\n", pf->p, pf->e);
 }
 
-void cfx_fac_init(cfx_factorization_t* f) {
+void cfx_fac_init(cfx_fac_t* f) {
     f->data = NULL;
     f->len = 0;
     f->cap = 0;
 }
 
-void cfx_fac_free(cfx_factorization_t* f) {
+void cfx_fac_free(cfx_fac_t* f) {
     free(f->data);
     cfx_fac_init(f);
 }
 
-void cfx_fac_reserve(cfx_factorization_t* f, size_t req_cap) {
+void cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
     if (req_cap <= f->cap) {
         return;
     }
@@ -40,7 +40,7 @@ void cfx_fac_reserve(cfx_factorization_t* f, size_t req_cap) {
     f->cap = new_cap;
 }
 
-void cfx_fac_push(cfx_factorization_t* f, uint32_t p, uint32_t e) {
+void cfx_fac_push(cfx_fac_t* f, uint64_t p, uint64_t e) {
     if (e == 0) return;
     cfx_fac_reserve(f, f->len + 1);
     ++f->len;
@@ -51,7 +51,7 @@ void cfx_fac_push(cfx_factorization_t* f, uint32_t p, uint32_t e) {
 }
 
 /* Deep copy: dst becomes a copy of src, using cfx_fac_push for each element. */
-void cfx_fac_copy(cfx_factorization_t *dst, const cfx_factorization_t *src) {
+void cfx_fac_copy(cfx_fac_t *dst, const cfx_fac_t *src) {
     if (dst == src) return;  
     cfx_fac_free(dst);
     cfx_fac_init(dst);
@@ -63,8 +63,8 @@ void cfx_fac_copy(cfx_factorization_t *dst, const cfx_factorization_t *src) {
 }
 
 // dst += src
-void cfx_fac_add(cfx_factorization_t* dst, cfx_factorization_t* src) {
-    cfx_factorization_t out;
+void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src) {
+    cfx_fac_t out;
     cfx_fac_init(&out);
     cfx_fac_reserve(&out, src->len + dst->len);
 
@@ -86,8 +86,8 @@ void cfx_fac_add(cfx_factorization_t* dst, cfx_factorization_t* src) {
             ++j;
         } else {
             // p is in src and dst
-            uint32_t p = pf1->p;
-            uint32_t e = pf1->e + pf2->e;
+            uint64_t p = pf1->p;
+            uint64_t e = pf1->e + pf2->e;
             if (e) cfx_fac_push(&out, p, e);
             ++i; 
             ++j;
@@ -98,8 +98,8 @@ void cfx_fac_add(cfx_factorization_t* dst, cfx_factorization_t* src) {
 }
 
 /* dst -= src */
-void cfx_fac_sub(cfx_factorization_t* dst, cfx_factorization_t* src) {
-    cfx_factorization_t out;
+void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
+    cfx_fac_t out;
     
     cfx_fac_init(&out);
     cfx_fac_reserve(&out, dst->len);
@@ -121,8 +121,8 @@ void cfx_fac_sub(cfx_factorization_t* dst, cfx_factorization_t* src) {
             j++;
         } else {
             // p is in both src and dst:
-            uint32_t p = pf1->p;
-            uint32_t e;
+            uint64_t p = pf1->p;
+            uint64_t e;
             if (pf1->e > pf2->e) { // dst divides src
                 e = pf1->e - pf2->e;
                 cfx_fac_push(&out, p, e);
@@ -140,30 +140,30 @@ void cfx_fac_sub(cfx_factorization_t* dst, cfx_factorization_t* src) {
 
 /* calculate the factorization of n.
 we pass in a list of primes to not have to calculate it on every call of this function */
-cfx_factorization_t cfx_fac_factorial(uint32_t n, const cfx_vec_t *primes) {
-    cfx_factorization_t f;
+cfx_fac_t cfx_fac_factorial(uint64_t n, const cfx_vec_t *primes) {
+    cfx_fac_t f;
     cfx_fac_init(&f);
     for (size_t i = 0; i < primes->size; ++i) {
-        uint32_t p = primes->data[i];
+        uint64_t p = primes->data[i];
         if (p > n) break;
-        uint32_t e = cfx_legendre(n, p);
+        uint64_t e = cfx_legendre(n, p);
         if (e) cfx_fac_push(&f, p, e);
     }
     return f;
 }
 
 /* Factorization of C(n,k) = n! / (k! (n-k)!) */
-cfx_factorization_t cfx_fac_binom(uint32_t n, uint32_t k){
+cfx_fac_t cfx_fac_binom(uint64_t n, uint64_t k){
     if (k > n) { 
-        cfx_factorization_t z;
+        cfx_fac_t z;
         cfx_fac_init(&z);
         return z; 
     }
     if (k > n-k) k = n-k;
     cfx_vec_t primes = cfx_sieve_primes(n);
-    cfx_factorization_t fn = cfx_fac_factorial(n, &primes);
-    cfx_factorization_t fk = cfx_fac_factorial(k, &primes);
-    cfx_factorization_t fnk = cfx_fac_factorial(n-k, &primes);
+    cfx_fac_t fn = cfx_fac_factorial(n, &primes);
+    cfx_fac_t fk = cfx_fac_factorial(k, &primes);
+    cfx_fac_t fnk = cfx_fac_factorial(n-k, &primes);
     cfx_fac_sub(&fn, &fk);
     cfx_fac_sub(&fn, &fnk);
     cfx_vec_free(&primes);

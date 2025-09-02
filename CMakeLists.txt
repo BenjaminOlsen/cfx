@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
-project(cfx LANGUAGES C VERSION 0.1.0)
+project(cfx LANGUAGES C VERSION 0.0.0)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
 
 option(CFX_BUILD_SHARED "Build shared library" ON)
 option(CFX_BUILD_TESTS  "Build tests" ON)
@@ -7,7 +13,7 @@ option(CFX_BUILD_EXAMPLES "Build examples" ON)
 
 set(CFX_HEADERS
     include/cfx/big.h
-    include/cfx/factorization.h
+    include/cfx/fac.h
     include/cfx/primes.h
     include/cfx/vector.h
     include/cfx/version.h
@@ -15,7 +21,7 @@ set(CFX_HEADERS
 
 set(CFX_SOURCES
     src/big.c
-    src/factorization.c
+    src/fac.c
     src/primes.c
     src/vector.c
 )
@@ -38,20 +44,28 @@ add_library(cfx::cfx ALIAS cfx)
 
 # ---------------- Examples
 if(CFX_BUILD_EXAMPLES)
-  add_executable(cfx_demo examples/demo.c)
-  target_link_libraries(cfx_demo PRIVATE cfx::cfx)
+
+  set(EXAMPLE_NAMES
+    choose
+    factorial
+    primes
+  )
+  foreach(example_name IN LISTS EXAMPLE_NAMES)
+    add_executable(${example_name} examples/${example_name}.c)
+    target_link_libraries(${example_name} PRIVATE cfx::cfx)
+  endforeach()
 endif()
 
 # ---------------- Tests (CTest)
 include(CTest)
 
 if(CFX_BUILD_TESTS)
-  set(TEST_SOURCES
+  set(TEST_NAMES
     test_cfx
     test_big
   )
 
-  foreach(test_name IN LISTS TEST_SOURCES)
+  foreach(test_name IN LISTS TEST_NAMES)
     add_executable(${test_name} tests/${test_name}.c)
     target_link_libraries(${test_name} PRIVATE cfx::cfx)
     add_test(NAME ${test_name} COMMAND ${test_name})
