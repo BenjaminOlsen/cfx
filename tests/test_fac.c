@@ -7,6 +7,27 @@
 #include <string.h>
 #include <stdio.h>
 
+static void test_init(void) {
+    cfx_fac_t f;
+    cfx_fac_init(&f);
+    assert(f.data == NULL);
+    assert(f.cap == 0);
+    assert(f.len == 0);
+}
+
+static void test_reserve(void) {
+    cfx_fac_t f;
+    cfx_fac_init(&f);
+    const size_t cap1 = 123;
+    cfx_fac_reserve(&f, cap1);
+    assert(f.len == 0);
+    assert(f.cap == cap1);
+    const size_t cap2 = cap1 / 2;
+    cfx_fac_reserve(&f, cap2);
+    assert(f.cap == cap);
+
+}
+
 char* F[] = {
     "1",
     "1",
@@ -110,7 +131,7 @@ char* F[] = {
     "933262154439441526816992388562667004907159682643816214685929638952175999932299156089414639761565182862536979208272237582511852109168640000000000000000000000"
     };
 
-static void test_factorial_to_100(void) {
+static void test_factorial_to_100(int quiet) {
     int aok = 1;
     for (size_t n = 0; n < 100; ++n) {
         cfx_vec_t primes = cfx_sieve_primes(n);
@@ -121,13 +142,17 @@ static void test_factorial_to_100(void) {
         size_t sz = 0;
         char* s = cfx_big_to_string(&b, &sz);
         int ok = (strcmp(s, F[n]) == 0);
-        printf("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
+        if (!quiet) printf("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
         aok &= ok;
     }
     assert(aok);
 }
 
-int main() {
-    test_factorial_to_100();
+int main(int argc, char* argv[]) {
+    int quiet = 0;
+    if (argc == 2) quiet = 1;
+    test_init();
+    test_reserve();
+    test_factorial_to_100(quiet);
     return 0;
 }

@@ -63,6 +63,7 @@ if(CFX_BUILD_TESTS)
   set(TEST_NAMES
     test_cfx
     test_big
+    test_fac
   )
 
   foreach(test_name IN LISTS TEST_NAMES)
