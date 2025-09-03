@@ -16,9 +16,9 @@ int main(int argc, char* argv[]) {
     cfx_fac_t fac = cfx_fac_factorial(n, &primes);
     cfx_big_t b;
     cfx_big_init(&b);
-    cfx_big_from_factorization(&b, &fac);
+    cfx_big_from_fac(&b, &fac);
     size_t sz = 0;
-    char* s = cfx_big_to_string(&b, &sz);
+    char* s = cfx_big_to_str(&b, &sz);
     printf("%llu! = %s\nlen: %zu\n", n, s, sz);
     free(s);
     cfx_big_free(&b);

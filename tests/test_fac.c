@@ -22,10 +22,27 @@ static void test_reserve(void) {
     cfx_fac_reserve(&f, cap1);
     assert(f.len == 0);
     assert(f.cap == cap1);
+    assert(f.data != NULL);
     const size_t cap2 = cap1 / 2;
     cfx_fac_reserve(&f, cap2);
-    assert(f.cap == cap);
+    assert(f.cap == cap1);  /* shouldn't have changed */
+    cfx_fac_free(&f);
+}
 
+static void test_push(void) {
+    cfx_fac_t f;
+    cfx_fac_init(&f);
+    assert(f.cap == 0);
+    cfx_fac_push(&f, 2, 1);
+    assert(f.len == 1);
+    assert(f.cap != 0);
+    cfx_fac_push(&f, 3, 30);
+    assert(f.len == 2);
+    cfx_fac_push(&f, 5, 10000);
+    assert(f.len == 3);
+    cfx_fac_push(&f, 5, 800);
+    assert(f.len == 4);
+    cfx_fac_free(&f);
 }
 
 char* F[] = {
@@ -129,7 +146,7 @@ char* F[] = {
     "96192759682482119853328425949563698712343813919172976158104477319333745612481875498805879175589072651261284189679678167647067832320000000000000000000000",
     "9426890448883247745626185743057242473809693764078951663494238777294707070023223798882976159207729119823605850588608460429412647567360000000000000000000000",
     "933262154439441526816992388562667004907159682643816214685929638952175999932299156089414639761565182862536979208272237582511852109168640000000000000000000000"
-    };
+};
 
 static void test_factorial_to_100(int quiet) {
     int aok = 1;
@@ -138,12 +155,13 @@ static void test_factorial_to_100(int quiet) {
         cfx_fac_t f = cfx_fac_factorial(n, &primes);
         cfx_big_t b;
         cfx_big_init(&b);
-        cfx_big_from_factorization(&b, &f);
+        cfx_big_from_fac(&b, &f);
         size_t sz = 0;
-        char* s = cfx_big_to_string(&b, &sz);
+        char* s = cfx_big_to_str(&b, &sz);
         int ok = (strcmp(s, F[n]) == 0);
         if (!quiet) printf("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
         aok &= ok;
+        cfx_fac_free(&f);
     }
     assert(aok);
 }
@@ -153,6 +171,7 @@ int main(int argc, char* argv[]) {
     if (argc == 2) quiet = 1;
     test_init();
     test_reserve();
+    test_push();
     test_factorial_to_100(quiet);
     return 0;
 }

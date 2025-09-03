@@ -15,8 +15,8 @@ static void print_binom(uint64_t n, uint64_t k){
     cfx_fac_t f = cfx_fac_binom(n,k);
     cfx_big_t B;
     cfx_big_init(&B);
-    cfx_big_from_factorization(&B, &f);
-    char *s = cfx_big_to_string(&B, NULL);
+    cfx_big_from_fac(&B, &f);
+    char *s = cfx_big_to_str(&B, NULL);
     size_t sz = strlen(s);
     printf("C(%llu, %llu) = %s\nlen: %zu\n", n, k, s, sz);
     free(s);

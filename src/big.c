@@ -27,14 +27,30 @@ void cfx_big_reserve(cfx_big_t* b, size_t need) {
     b->cap = new_cap;
 }
 
+static void _cfx_big_trim_leading_zeros(cfx_big_t* b) {
+    if (b->n == 0) return;
+    size_t i = b->n - 1;
+    while (i >= 0 && b->limb[i] == 0 && b->n > 0) {
+        --b->n;
+        --i;
+    }
+}
+
 void cfx_big_set_val(cfx_big_t* b, uint64_t v) {
     cfx_big_reserve(b, 1);
     b->n = v ? 1:0;
     if (v) b->limb[0] = v;
 }
 
-void cfx_big_mul(cfx_big_t* b, uint64_t m) {
+void cfx_big_mul_u64(cfx_big_t* b, uint64_t m) {
     if (m == 1) return;
+
+    // if (m == 0) {
+    //     cfx_big_init(b);
+    //     cfx_big_set_val(b, 0);
+    //     return;
+    // }
+    
     if (b->n == 0) {
         cfx_big_set_val(b, 0);
         return;
@@ -52,17 +68,17 @@ void cfx_big_mul(cfx_big_t* b, uint64_t m) {
         b->n++;
         carry /= CFX_BIG_BASE;
     }
-
+    _cfx_big_trim_leading_zeros(b);
 }
 
 /* Multiply by p^e by repeated squaring using small chunks to avoid u32 overflow */
-void cfx_big_powmul_prime(cfx_big_t *b, uint64_t p, uint64_t e) {
+void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
     /* Simple robust version: multiply by p, e times, but group in powers that fit in 32-bit. */
-    /* Find largest t so that p^t fits in uint64_t */
+    /* Find largest t so that p^t fits in 32 bits */
     uint64_t t = 1;
     uint64_t acc = p;
     const uint64_t lim = 0xFFFFFFFFllu;
-    // printf("multiplying py %llu ^ %llu\n", p, e);
+    printf("multiplying py %llu ^ %llu\n", p, e);
     while (acc <= lim / acc) {
         acc *= acc;
         t *= 2u;
@@ -87,7 +103,7 @@ void cfx_big_powmul_prime(cfx_big_t *b, uint64_t p, uint64_t e) {
     uint64_t q = e / t;
     uint64_t r = e % t;
 
-    for (uint64_t i = 0; i < q; i++) cfx_big_mul(b, pow_t);
+    for (uint64_t i = 0; i < q; i++) cfx_big_mul_u64(b, pow_t);
 
     /* multiply remainder by binary exponentiation (still fits u32) */
     uint64_t rempow = 1;
@@ -99,23 +115,25 @@ void cfx_big_powmul_prime(cfx_big_t *b, uint64_t p, uint64_t e) {
         rr >>= 1u;
         acc = acc*acc;
     }
-    if (rempow != 1) cfx_big_mul(b, rempow);
+    if (rempow != 1) cfx_big_mul_u64(b, rempow);
 }
 
 /* Materialize factorization into cfx_big_t */
-void cfx_big_from_factorization(cfx_big_t *b, const cfx_fac_t *f){
+void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t *f) {
     cfx_big_set_val(b, 1);
     for (size_t i = 0; i < f->len; i++){
         cfx_big_powmul_prime(b, f->data[i].p, f->data[i].e);
     }
 }
 
+
 /* Convert cfx_big_t to decimal string */
-char* cfx_big_to_string(const cfx_big_t *b, size_t* sz_out){
+char* cfx_big_to_str(const cfx_big_t* b, size_t* sz_out) {
     if (b->n == 0) {
         char *s = (char*)malloc(2);
         s[0]='0';
         s[1]='\0';
+        if (sz_out) *sz_out = 1;
         return s;
     }
 

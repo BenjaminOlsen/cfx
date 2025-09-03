@@ -26,12 +26,16 @@ void cfx_big_free(cfx_big_t* b);
 void cfx_big_reserve(cfx_big_t* b, size_t need);
 void cfx_big_set_val(cfx_big_t* b, uint64_t v);
 
-void cfx_big_mul(cfx_big_t* b, uint64_t m);
+void cfx_big_mul_u64(cfx_big_t* b, uint64_t m);
+
 /* Multiply by p^e by repeated squaring using small chunks to avoid u32 overflow */
-void cfx_big_powmul_prime(cfx_big_t *b, uint64_t p, uint64_t e);
+void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e);
+
 /* Materialize factorization into cfx_big_t */
-void cfx_big_from_factorization(cfx_big_t *b, const cfx_fac_t *f);
-char* cfx_big_to_string(const cfx_big_t *b, size_t *sz_out);
+void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t* f);
+void cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b);
+char* cfx_big_to_str(const cfx_big_t* b, size_t *sz_out);
+
 
 #ifdef __cplusplus
 }

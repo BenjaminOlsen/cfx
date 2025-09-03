@@ -26,13 +26,30 @@ static void test_cfx_big_reserve() {
     assert(b.cap == rcap1);
 }
 
-static void big_init_from_limbs(cfx_big_t *b, const uint64_t *limbs, size_t n) {
+static void big_init_from_limbs(cfx_big_t* b, const uint64_t *limbs, size_t n) {
     cfx_big_init(b);
     if (n == 0) return;
-    b->limb = (uint64_t*)malloc(n * sizeof(uint64_t));
+    b->limb = (uint64_t*)realloc(b->limb, n * sizeof(uint64_t));
     memcpy(b->limb, limbs, n * sizeof(uint64_t));
     b->n = n;
     b->cap = n;
+}
+
+static void test_mul_by_zero(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_set_val(&b, 123);
+    cfx_big_mul_u64(&b, 2838);
+    cfx_big_mul_u64(&b, 1928);
+    cfx_big_mul_u64(&b, 9);
+    cfx_big_mul_u64(&b, 123765);
+    cfx_big_mul_u64(&b, 0);
+    size_t sz = 0;
+    char* s = cfx_big_to_str(&b, &sz);
+    printf("s: %s, sz: %zu\n", s, sz);
+    assert(sz == 1);
+    assert(strcmp(s, "0") == 0);
+    free(s);
 }
 
 /* helper to run one test */
@@ -40,7 +57,7 @@ static void check(const char *label, const uint64_t *limbs, size_t n, const char
     cfx_big_t b;
     big_init_from_limbs(&b, limbs, n);
     size_t len = 0;
-    char *s = cfx_big_to_string(&b, &len);
+    char *s = cfx_big_to_str(&b, &len);
     // string content
     assert(strcmp(s, expect) == 0);
     // length matches
@@ -88,13 +105,17 @@ void test_limb5(void) {
     check("four limbs pad", L, 4, "1000000007000000042000000005");
 }
 
-// Large ndigits sanity: build via mul to exercise carry
 void test_limb6(void) {
+    uint64_t L[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+}
+
+// Large ndigits sanity: build via mul to exercise carry
+void test_limb7(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_set_val(&b, 1);
-    for (int i = 0; i < 10; ++i) cfx_big_mul(&b, 1000000000u - 1u); // (1e9-1)^10
-    char *s = cfx_big_to_string(&b, NULL);
+    for (int i = 0; i < 10; ++i) cfx_big_mul_u64(&b, 1000000000u - 1u); // (1e9-1)^10
+    char *s = cfx_big_to_str(&b, NULL);
     // spot checks: starts with '9' and length >= 9
     printf("%s\n", s);
     assert(s[0] == '9');
@@ -109,6 +130,7 @@ void test_limb6(void) {
 int main(void) {
     test_cfx_big_init();
     test_cfx_big_reserve();
+    test_mul_by_zero();
     test_limb1();
     test_limb2();
     test_limb3();
