@@ -75,6 +75,16 @@ endif()
 
 # ---------------- Install
 include(GNUInstallDirs)
+
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX
+      "${CMAKE_BINARY_DIR}/install"
+      CACHE PATH "Install prefix" FORCE)
+  message(STATUS "Install prefix set to default: ${CMAKE_INSTALL_PREFIX}")
+else()
+  message(STATUS "Install prefix set to: ${CMAKE_INSTALL_PREFIX}")
+endif()
+
 install(TARGETS cfx
   EXPORT cfxTargets
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
