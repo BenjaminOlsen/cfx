@@ -52,6 +52,31 @@ static void test_mul_by_zero(void) {
     free(s);
 }
 
+static void test_add_sm(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    char *s = cfx_big_to_str(&b, NULL);
+    
+    printf("init: %s\n", s);
+    cfx_big_set_val(&b, 123);
+    s = cfx_big_to_str(&b, NULL);
+    printf("after setting val: %s\n", s);
+    cfx_big_add_sm(&b, 321);
+    s = cfx_big_to_str(&b, NULL);
+    printf("after add: %s\n",s);
+    assert(b.limb[0] == 444);
+    cfx_big_set_val(&b, CFX_BIG_BASE-1);
+    s = cfx_big_to_str(&b, NULL);
+    printf("after set: %s\n", s);
+    free(s);
+    assert(b.limb[0] == CFX_BIG_BASE-1);
+    cfx_big_add_sm(&b, 1);
+    assert(b.limb[0] == 0);
+    assert(b.limb[1] == 1);
+    s = cfx_big_to_str(&b, NULL);
+    printf("after carry: %s\n", s);
+    free(s);
+}
 
 
 /* helper to run one test */
@@ -165,5 +190,6 @@ int main(void) {
     test_limb6();
     test_str1();
     test_str2();
+    test_add_sm();
     return 0;
 }
