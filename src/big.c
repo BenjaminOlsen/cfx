@@ -7,6 +7,14 @@
 #include <stdio.h>
 #include <assert.h>
 
+#if defined(__SIZEOF_INT128__)
+#define acc_t __uint128_t
+#define MAX_ACC 0xFFFFFFFFFFFFFFFFllu
+#else
+#define acc_t __uint128_t
+#define MAX_ACC 0xFFFFFFFFllu
+#endif
+
 void cfx_big_init(cfx_big_t* b) {
     b->limb = NULL;
     b->n = 0;
@@ -20,12 +28,13 @@ void cfx_big_free(cfx_big_t* b) {
 
 void cfx_big_reserve(cfx_big_t* b, size_t need) {
     if (need < b->cap) return;
-    size_t new_cap = b->cap ? 2*b->cap : 16;
+    size_t new_cap = b->cap ? 2*b->cap : 32;
     if (new_cap < need) {
         new_cap = need;
     }
     b->limb = (uint64_t*)realloc(b->limb, new_cap*sizeof(uint64_t));
     b->cap = new_cap;
+    printf("realloc new cap: %zu\n", new_cap);
 }
 
 static void _cfx_big_trim_leading_zeros(cfx_big_t* b) {
@@ -43,22 +52,16 @@ void cfx_big_set_val(cfx_big_t* b, uint64_t v) {
     if (v) b->limb[0] = v;
 }
 
-void cfx_big_mul_u64(cfx_big_t* b, uint64_t m) {
-    if (m == 1) return;
 
-    // if (m == 0) {
-    //     cfx_big_init(b);
-    //     cfx_big_set_val(b, 0);
-    //     return;
-    // }
     
-    if (b->n == 0) {
-        cfx_big_set_val(b, 0);
-        return;
-    }
+static void cfx_big_mul_u64_fast(cfx_big_t* b, uint64_t m) {
+
     uint64_t carry = 0;
+    acc_t t;
     for (size_t i = 0; i < b->n; ++i) {
-        uint64_t t = b->limb[i] * m + carry;
+        t = b->limb[i];
+        t *= m;
+        t += carry;
         b->limb[i] = (uint64_t)(t % CFX_BIG_BASE);
         carry = t / CFX_BIG_BASE;
     }
@@ -69,23 +72,23 @@ void cfx_big_mul_u64(cfx_big_t* b, uint64_t m) {
         b->n++;
         carry /= CFX_BIG_BASE;
     }
-    _cfx_big_trim_leading_zeros(b);
+    // _cfx_big_trim_leading_zeros(b);
 }
 
 /* Multiply by p^e by repeated squaring using small chunks to avoid u32 overflow */
 void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
-    /* Simple robust version: multiply by p, e times, but group in powers that fit in 32-bit. */
-    /* Find largest t so that p^t fits in 32 bits */
+    
+    /* Find largest t so that p^t fits in 32 bits -> p^2t fits in 64 */
     uint64_t t = 1;
-    uint64_t acc = p;
-    const uint64_t lim = 0xFFFFFFFFllu;
+    acc_t acc = p;
+    const acc_t lim = MAX_ACC;
     
     while (acc <= lim / acc) {
         acc *= acc;
         t *= 2u;
     }
     /* now t is the largest s.t. p^t <= lim */
-    printf("multiplying by %llu ^ %llu by breaking it into (%llu^%llu)^(%llu/%llu) \n", p, e, p,t,e,t);
+    printf("multiplying by %llu^%llu by breaking it into (%llu^%llu)^(%llu/%llu) \n", p, e, p, t, e, t);
 
     /* Now multiply by (p^t)^(e/t) and then the remainder */
     /* Compute p^t */
@@ -105,7 +108,7 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
     uint64_t q = e / t;
     uint64_t r = e % t;
 
-    for (uint64_t i = 0; i < q; i++) cfx_big_mul_u64(b, pow_t);
+    for (uint64_t i = 0; i < q; i++) cfx_big_mul_u64_fast(b, pow_t);
 
     /* multiply remainder by binary exponentiation (still fits u32) */
     uint64_t rempow = 1;
@@ -117,7 +120,17 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
         rr >>= 1u;
         acc = acc*acc;
     }
-    if (rempow != 1) cfx_big_mul_u64(b, rempow);
+    if (rempow != 1) cfx_big_mul_u64_fast(b, rempow);
+}
+
+void cfx_big_mul_u64(cfx_big_t* b, uint64_t m) {
+    if (m == 1) return;
+    if (m == 0 || b->n == 0) {
+        cfx_big_init(b);
+        cfx_big_set_val(b, 0);
+        return;
+    }
+    cfx_big_mul_u64_fast(b, m);
 }
 
 /* Materialize factorization into cfx_big_t */
