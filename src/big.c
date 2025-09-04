@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <ctype.h>
 
 #if defined(__SIZEOF_INT128__)
 #define acc_t __uint128_t
@@ -32,7 +33,9 @@ void cfx_big_reserve(cfx_big_t* b, size_t need) {
     if (new_cap < need) {
         new_cap = need;
     }
+    size_t old_cap = b->cap;
     b->limb = (uint64_t*)realloc(b->limb, new_cap*sizeof(uint64_t));
+    memset(b->limb + old_cap, 0, (new_cap - old_cap) * sizeof(uint64_t));
     b->cap = new_cap;
     printf("realloc new cap: %zu\n", new_cap);
 }
@@ -54,8 +57,7 @@ void cfx_big_set_val(cfx_big_t* b, uint64_t v) {
 
 
     
-static void cfx_big_mul_u64_fast(cfx_big_t* b, uint64_t m) {
-
+static void cfx_big_mul_sm_fast(cfx_big_t* b, uint64_t m) {
     uint64_t carry = 0;
     acc_t t;
     for (size_t i = 0; i < b->n; ++i) {
@@ -96,7 +98,7 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
     uint64_t pow_t = p;
     uint64_t rem_t = t;
     /* fast power to get pow_t = p^t by using binary expansion of t:
-    p^t = p^(b_i*2^i) * p^(b_(i-1)*2^(i-1)*/
+    p^t = p^(b_i*2^i) * p^(b_(i-1)*2^(i-1) * ... */
     pow_t = 1;
     acc = p;
     uint64_t tt = t;
@@ -108,7 +110,7 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
     uint64_t q = e / t;
     uint64_t r = e % t;
 
-    for (uint64_t i = 0; i < q; i++) cfx_big_mul_u64_fast(b, pow_t);
+    for (uint64_t i = 0; i < q; i++) cfx_big_mul_sm_fast(b, pow_t);
 
     /* multiply remainder by binary exponentiation (still fits u32) */
     uint64_t rempow = 1;
@@ -120,17 +122,36 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
         rr >>= 1u;
         acc = acc*acc;
     }
-    if (rempow != 1) cfx_big_mul_u64_fast(b, rempow);
+    if (rempow != 1) cfx_big_mul_sm_fast(b, rempow);
 }
 
-void cfx_big_mul_u64(cfx_big_t* b, uint64_t m) {
+void cfx_big_add_sm(cfx_big_t* b, uint64_t n) {
+    if (n == 0) return;
+    if (b->n == 0) {
+        cfx_big_init(b);
+        cfx_big_set_val(b, n);
+        return;
+    }
+
+    size_t i = 0;
+    while (n) {
+        cfx_big_reserve(b, b->n + 1); // doesn't do anything if b->n + 1 < b->cap
+        uint64_t s = b->limb[i] + n; // sum
+        b->limb[i] = s % CFX_BIG_BASE;
+        n = s / CFX_BIG_BASE; // use n as the carry
+        ++i;
+    }
+    if (i > b->n) b->n = i;
+}
+
+void cfx_big_mul_sm(cfx_big_t* b, uint64_t m) {
     if (m == 1) return;
     if (m == 0 || b->n == 0) {
         cfx_big_init(b);
         cfx_big_set_val(b, 0);
         return;
     }
-    cfx_big_mul_u64_fast(b, m);
+    cfx_big_mul_sm_fast(b, m);
 }
 
 /* Materialize factorization into cfx_big_t */
@@ -196,4 +217,19 @@ char* cfx_big_to_str(const cfx_big_t* b, size_t* sz_out) {
     memmove(buf, p, len + 1);
     if (sz_out) *sz_out = len;
     return buf;
+}
+
+int cfx_big_from_str(cfx_big_t* out, const char* s) {
+    cfx_big_init(out);
+    cfx_big_set_val(out, 0);
+
+    while (isspace((unsigned char)*s)) s++;
+
+    for (; *s; s++) {
+        if (!isdigit((unsigned char)*s)) return -1;
+        uint32_t digit = (uint32_t)(*s - '0');
+        cfx_big_mul_sm(out, 10); // out = out * 10
+        cfx_big_add_sm(out, digit); // out = out + digit
+    }
+    return 0;
 }

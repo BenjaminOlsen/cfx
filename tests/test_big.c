@@ -39,11 +39,11 @@ static void test_mul_by_zero(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_set_val(&b, 123);
-    cfx_big_mul_u64(&b, 2838);
-    cfx_big_mul_u64(&b, 1928);
-    cfx_big_mul_u64(&b, 9);
-    cfx_big_mul_u64(&b, 123765);
-    cfx_big_mul_u64(&b, 0);
+    cfx_big_mul_sm(&b, 2838);
+    cfx_big_mul_sm(&b, 1928);
+    cfx_big_mul_sm(&b, 9);
+    cfx_big_mul_sm(&b, 123765);
+    cfx_big_mul_sm(&b, 0);
     size_t sz = 0;
     char* s = cfx_big_to_str(&b, &sz);
     printf("s: %s, sz: %zu\n", s, sz);
@@ -51,6 +51,8 @@ static void test_mul_by_zero(void) {
     assert(strcmp(s, "0") == 0);
     free(s);
 }
+
+
 
 /* helper to run one test */
 static void check(const char *label, const uint64_t *limbs, size_t n, const char *expect) {
@@ -71,7 +73,7 @@ static void check(const char *label, const uint64_t *limbs, size_t n, const char
 
 
 // Single small limb
-void test_limb1(void) {
+static void test_limb1(void) {
     uint64_t L[] = { 123456789u };
     check("single limb", L, 1, "123456789"); 
 }
@@ -81,40 +83,40 @@ void test_limb1(void) {
 
 // Two limbs with inner zero-padding needed:
 // value = limb[1]*1e9 + limb[0] = 42*1e9 + 123456789
-void test_limb2(void) {
+static void test_limb2(void) {
     uint64_t L[] = { 123456789u, 4200u };
     check("two limbs pad", L, 2, "4200123456789");
 }
 
 // Inner limb exact zero-padding boundary: limb[0] has fewer than 9 digits
-void test_limb3(void) {
+static void test_limb3(void) {
     uint64_t L[] = { 1u, 1u };
     check("two limbs tiny low", L, 2, "1000000001");
 }
 
 // Max limb values
-void test_limb4(void) {
+static void test_limb4(void) {
     uint64_t L[] = { 999999999u, 999999999u };
     check("two limbs max", L, 2, "999999999999999999");
 }
 
 // Four limbs mixed
 // value = 1*1e27 + 7*1e18 + 42*1e9 + 5 → "1 000000007 000000042 000000005"
-void test_limb5(void) {
+static void test_limb5(void) {
     uint64_t L[] = { 5u, 42u, 7u, 1u };
     check("four limbs pad", L, 4, "1000000007000000042000000005");
 }
 
-void test_limb6(void) {
+static void test_limb6(void) {
     uint64_t L[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
 }
 
 // Large ndigits sanity: build via mul to exercise carry
-void test_limb7(void) {
+static void test_limb7(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_set_val(&b, 1);
-    for (int i = 0; i < 10; ++i) cfx_big_mul_u64(&b, 1000000000u - 1u); // (1e9-1)^10
+    for (int i = 0; i < 10; ++i) cfx_big_mul_sm(&b, 1000000000u - 1u); // (1e9-1)^10
     char *s = cfx_big_to_str(&b, NULL);
     // spot checks: starts with '9' and length >= 9
     printf("%s\n", s);
@@ -127,6 +129,30 @@ void test_limb7(void) {
     cfx_big_free(&b);
 }
 
+static void test_str1(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    const char *sin = "99911231231238761239876981273469128374169283476129384716293847612503891726034598126304986723123871238791238719248719238719248169723";
+    cfx_big_from_str(&b, sin);
+    char *sout = cfx_big_to_str(&b, NULL);
+    int ok = (strcmp(sin, sout) == 0); 
+    printf("test str: in:\n%s \n%s\nout.. %s\n", sin, sout,
+        ok ? "ok":"NOT ok");
+    assert(ok);
+}
+
+static void test_str2(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    const char *sin = "9218";
+    cfx_big_from_str(&b, sin);
+    char *sout = cfx_big_to_str(&b, NULL);
+    int ok = (strcmp(sin, sout) == 0); 
+    printf("test str: in:\n%s \n%s\nout.. %s\n", sin, sout,
+        ok ? "ok":"NOT ok");
+    assert(ok);
+}
+
 int main(void) {
     test_cfx_big_init();
     test_cfx_big_reserve();
@@ -137,5 +163,7 @@ int main(void) {
     test_limb4();
     test_limb5();
     test_limb6();
+    test_str1();
+    test_str2();
     return 0;
 }
