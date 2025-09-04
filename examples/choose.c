@@ -21,7 +21,7 @@ static void print_binom(uint64_t n, uint64_t k){
     printf("C(%llu, %llu) = %s\nlen: %zu\n", n, k, s, sz);
     free(s);
     cfx_big_free(&B);
-    cfx_fac_free(&f);
+    cfx_fac_clear(&f);
 }
 
 int main(int argc, char* argv[]) {

@@ -1,10 +1,11 @@
 #ifndef CFX_BIG_H
 #define CFX_BIG_H
 
+#include "cfx/fac.h"
+#include "cfx/types.h"
+
 #include <stdint.h>
 #include <stddef.h>
-
-#include "fac.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,9 +18,7 @@ typedef struct {
     size_t cap;
 } cfx_big_t;
 
-/* 1e9 */
-#define CFX_BIG_BASE 1000000000u
-#define CFX_DIGITS_PER_LIMB 9
+
 
 void cfx_big_init(cfx_big_t* b);
 void cfx_big_free(cfx_big_t* b);
@@ -34,6 +33,7 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e);
 /* Materialize factorization into cfx_big_t */
 void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t* f);
 void cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b);
+
 char* cfx_big_to_str(const cfx_big_t* b, size_t *sz_out);
 
 

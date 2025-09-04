@@ -17,6 +17,7 @@ set(CFX_HEADERS
     include/cfx/primes.h
     include/cfx/vector.h
     include/cfx/version.h
+    include/cfx/error.h
 )
 
 set(CFX_SOURCES
@@ -24,6 +25,7 @@ set(CFX_SOURCES
     src/fac.c
     src/primes.c
     src/vector.c
+    src/error.c
 )
 
 add_library(cfx ${CFX_SOURCES})

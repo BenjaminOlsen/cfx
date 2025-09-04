@@ -1,5 +1,6 @@
 #include "cfx/big.h"
 #include "cfx/fac.h"
+#include "cfx/types.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -78,12 +79,13 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
     uint64_t t = 1;
     uint64_t acc = p;
     const uint64_t lim = 0xFFFFFFFFllu;
-    printf("multiplying py %llu ^ %llu\n", p, e);
+    
     while (acc <= lim / acc) {
         acc *= acc;
         t *= 2u;
     }
-    // printf("t: %llu\n", t); /* t is the largest s.t. p^t <= lim */
+    /* now t is the largest s.t. p^t <= lim */
+    printf("multiplying by %llu ^ %llu by breaking it into (%llu^%llu)^(%llu/%llu) \n", p, e, p,t,e,t);
 
     /* Now multiply by (p^t)^(e/t) and then the remainder */
     /* Compute p^t */

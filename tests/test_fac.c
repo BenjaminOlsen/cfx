@@ -2,6 +2,7 @@
 #include "cfx/vector.h"
 #include "cfx/primes.h"
 #include "cfx/big.h"
+#include "cfx/error.h"
 
 #include <assert.h>
 #include <string.h>
@@ -19,14 +20,14 @@ static void test_reserve(void) {
     cfx_fac_t f;
     cfx_fac_init(&f);
     const size_t cap1 = 123;
-    cfx_fac_reserve(&f, cap1);
+    assert(cfx_fac_reserve(&f, cap1) == CFX_OK);
     assert(f.len == 0);
     assert(f.cap == cap1);
     assert(f.data != NULL);
     const size_t cap2 = cap1 / 2;
     cfx_fac_reserve(&f, cap2);
     assert(f.cap == cap1);  /* shouldn't have changed */
-    cfx_fac_free(&f);
+    cfx_fac_clear(&f);
 }
 
 static void test_push(void) {
@@ -42,7 +43,7 @@ static void test_push(void) {
     assert(f.len == 3);
     cfx_fac_push(&f, 5, 800);
     assert(f.len == 4);
-    cfx_fac_free(&f);
+    cfx_fac_clear(&f);
 }
 
 char* F[] = {
@@ -152,7 +153,9 @@ static void test_factorial_to_100(int quiet) {
     int aok = 1;
     for (size_t n = 0; n < 100; ++n) {
         cfx_vec_t primes = cfx_sieve_primes(n);
-        cfx_fac_t f = cfx_fac_factorial(n, &primes);
+        cfx_fac_t f;
+        cfx_fac_init(&f);
+        cfx_fac_factorial(&f, n, &primes);
         cfx_big_t b;
         cfx_big_init(&b);
         cfx_big_from_fac(&b, &f);
@@ -161,7 +164,7 @@ static void test_factorial_to_100(int quiet) {
         int ok = (strcmp(s, F[n]) == 0);
         if (!quiet) printf("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
         aok &= ok;
-        cfx_fac_free(&f);
+        cfx_fac_clear(&f);
     }
     assert(aok);
 }

@@ -13,7 +13,10 @@ int main(int argc, char* argv[]) {
     printf("%llu\n", n);
     cfx_vec_t primes = cfx_sieve_primes(n);
     printf("found %zu primes to %llu\n", primes.size, n);
-    cfx_fac_t fac = cfx_fac_factorial(n, &primes);
+    cfx_fac_t fac;
+    cfx_fac_init(&fac);
+    int ok = cfx_fac_factorial(&fac, n, &primes);
+
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_from_fac(&b, &fac);
@@ -22,7 +25,7 @@ int main(int argc, char* argv[]) {
     printf("%llu! = %s\nlen: %zu\n", n, s, sz);
     free(s);
     cfx_big_free(&b);
-    cfx_fac_free(&fac);
+    cfx_fac_clear(&fac);
 
     return 0;
 }
