@@ -27,13 +27,13 @@ static void test_cfx_big_reserve() {
     assert(b.cap == rcap1);
 }
 
-static void big_init_from_limbs(cfx_big_t* b, const uint64_t *limbs, size_t n) {
+static void big_init_from_limbs_base_1e9(cfx_big_t* b, const uint64_t *limbs, size_t n) {
     cfx_big_init(b);
     if (n == 0) return;
-    b->limb = (uint64_t*)realloc(b->limb, n * sizeof(uint64_t));
-    memcpy(b->limb, limbs, n * sizeof(uint64_t));
-    b->n = n;
-    b->cap = n;
+    for (ssize_t i = n - 1; i >= 0; --i) {
+        cfx_big_mul_sm(b, 1000000000ull);
+        cfx_big_add_sm(b, limbs[i]);
+    }
 }
 
 static void test_mul_by_zero(void) {
@@ -56,28 +56,22 @@ static void test_mul_by_zero(void) {
 static void test_add_sm(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    char *s = cfx_big_to_str(&b, NULL);
-    CFX_PRINT_DBG("init: %s\n", s);
+    CFX_BIG_PRINTF(&b, "init: b.n:%ld; ", b.n);
     
     cfx_big_set_val(&b, 123);
-    s = cfx_big_to_str(&b, NULL);
-    CFX_PRINT_DBG("after setting val: %s\n", s);
+    CFX_BIG_PRINTF(&b, "after setting val: ");
 
     cfx_big_add_sm(&b, 321);
-    s = cfx_big_to_str(&b, NULL);
-    CFX_PRINT_DBG("after add: %s\n",s);
+    CFX_BIG_PRINTF(&b, "after add: ");
     assert(b.limb[0] == 444);
-    cfx_big_set_val(&b, CFX_BIG_BASE-1);
-    s = cfx_big_to_str(&b, NULL);
-    CFX_PRINT_DBG("after set: %s\n", s);
-    free(s);
-    assert(b.limb[0] == CFX_BIG_BASE-1);
+    cfx_big_set_val(&b, UINT64_MAX);
+    CFX_BIG_PRINTF(&b, "after set:");
+    
+    assert(b.limb[0] == UINT64_MAX);
     cfx_big_add_sm(&b, 1);
+    CFX_BIG_PRINTF(&b, "after carry: ");
     assert(b.limb[0] == 0);
     assert(b.limb[1] == 1);
-    s = cfx_big_to_str(&b, NULL);
-    CFX_PRINT_DBG("after carry: %s\n", s);
-    free(s);
 }
 
 
@@ -91,38 +85,46 @@ static void test_sub_sm(void) {
     assert(b.limb[0] == 0);
     cfx_big_sub_sm(&b, 1);
     assert(b.limb[0] == 0);
-    cfx_big_set_val(&b, CFX_BIG_BASE-1);
-    CFX_BIG_PRINTF(&b, "set to CFX_BIG_BASE-1: ");
+    
+    cfx_big_set_val(&b, UINT64_MAX);
+    CFX_BIG_PRINTF(&b, "set to UINT64_MAX: ");
+    assert(b.limb[0] == UINT64_MAX);
     cfx_big_add_sm(&b, 1);
     CFX_BIG_PRINTF(&b, "add 1: ");
-    cfx_big_sub_sm(&b, 1);
-    CFX_BIG_PRINTF(&b, "sub 1: ");
-    cfx_big_sub_sm(&b, 1);
-    CFX_BIG_PRINTF(&b, "sub 1: ");
-    cfx_big_sub_sm(&b, 1);
-    CFX_BIG_PRINTF(&b, "sub 1: ");
-    cfx_big_sub_sm(&b, 1);
-    CFX_BIG_PRINTF(&b, "sub 1: ");
-    
-    cfx_big_add_sm(&b, 100);
-    CFX_BIG_PRINTF(&b, "add 100: ");
-    cfx_big_sub_sm(&b, 100);
-    CFX_BIG_PRINTF(&b, "sub 100: ");
-    cfx_big_add_sm(&b, 100);
-    CFX_BIG_PRINTF(&b, "add 100: ");
-    cfx_big_sub_sm(&b, 100);
-    CFX_BIG_PRINTF(&b, "sub 100: ");
-    cfx_big_add_sm(&b, 100);
-    CFX_BIG_PRINTF(&b, "add 100: ");
-    cfx_big_sub_sm(&b, 100);
-    CFX_BIG_PRINTF(&b, "sub 100: ");
+    assert(b.limb[0] == 0);
+    assert(b.limb[1] == 1);
 
+    cfx_big_sub_sm(&b, 1);
+    CFX_BIG_PRINTF(&b, "sub 1: ");
+    assert(b.limb[0] == UINT64_MAX);
+    assert(b.n == 1);
+
+    const uint64_t N = 12;
+    for (uint64_t n = 0; n < N; ++n) {
+        cfx_big_sub_sm(&b, 1);
+        CFX_BIG_PRINTF(&b, "sub 1: ");
+    }
+    assert(b.limb[0] == UINT64_MAX - N);
+
+    uint64_t q = 100;
+    uint64_t orig = b.limb[0];
+    for (uint64_t n = 0; n < 2; ++n) {
+        __uint128_t s = (__uint128_t)b.limb[0] + q;
+        cfx_big_add_sm(&b, q);
+        CFX_BIG_PRINTF(&b, "add %llu: ", q);
+        assert(b.limb[0] == (uint64_t)s);
+        assert(b.n > 1);
+        assert(b.limb[1] == (uint64_t)(s >> 64));
+        cfx_big_sub_sm(&b, q);
+        CFX_BIG_PRINTF(&b, "sub %llu: ", q);
+        assert(b.limb[0] == orig);
+    }
 }
 
-/* helper to run one test */
+/* helper to run one limb test */
 static void check(const char *label, const uint64_t *limbs, size_t n, const char *expect) {
     cfx_big_t b;
-    big_init_from_limbs(&b, limbs, n);
+    big_init_from_limbs_base_1e9(&b, limbs, n);
     size_t len = 0;
     char *s = cfx_big_to_str(&b, &len);
     // CFX_BIG_PRINTF(&b, "str is:\n");
@@ -207,7 +209,10 @@ static void test_limb7(void) {
 static void test_str1(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    const char *sin = "99911231231238761239876981273469128374169283476129384716293847612503891726034598126304986723123871238791238719248719238719248169723";
+    const char *sin =   "99911231231238761239876981273469128374169283476129"
+                        "38471629384761250389172603459812630498672312387123"
+                        "87123981723918273912891238719248719238719248169723"
+                        "00091203901290909090911100091231283761000101023882";
     cfx_big_from_str(&b, sin);
     char *sout = cfx_big_to_str(&b, NULL);
     int ok = (strcmp(sin, sout) == 0); 

@@ -7,8 +7,6 @@
 extern "C" {
 #endif
 
-#define CFX_BIG_BASE 1000000000u
-#define CFX_DIGITS_PER_LIMB 9
 
 typedef struct {
     uint64_t hi, lo;

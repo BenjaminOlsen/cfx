@@ -19,7 +19,6 @@ typedef struct {
 } cfx_big_t;
 
 
-
 void cfx_big_init(cfx_big_t* b);
 void cfx_big_free(cfx_big_t* b);
 void cfx_big_reserve(cfx_big_t* b, size_t need);

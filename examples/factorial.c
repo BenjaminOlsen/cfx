@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 int main(int argc, char* argv[]) {
     if (argc < 2) return 1;
     uint64_t n = (uint64_t)strtol(argv[1], NULL, 10);
