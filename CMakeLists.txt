@@ -18,6 +18,7 @@ set(CFX_HEADERS
     include/cfx/vector.h
     include/cfx/version.h
     include/cfx/error.h
+    include/cfx/macros.h
 )
 
 set(CFX_SOURCES
@@ -41,6 +42,8 @@ target_include_directories(cfx
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+
+include(cmake/CfxCompileFlags.cmake)
 
 add_library(cfx::cfx ALIAS cfx)
 

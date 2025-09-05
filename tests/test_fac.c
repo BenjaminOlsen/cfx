@@ -3,6 +3,7 @@
 #include "cfx/primes.h"
 #include "cfx/big.h"
 #include "cfx/error.h"
+#include "cfx/macros.h"
 
 #include <assert.h>
 #include <string.h>
@@ -162,16 +163,16 @@ static void test_factorial_to_100(int quiet) {
         size_t sz = 0;
         char* s = cfx_big_to_str(&b, &sz);
         int ok = (strcmp(s, F[n]) == 0);
-        if (!quiet) printf("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
+        if (!quiet) PRINT_DBG("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
         aok &= ok;
         cfx_fac_clear(&f);
     }
     assert(aok);
 }
 
-int main(int argc, char* argv[]) {
+int main() {
     int quiet = 0;
-    if (argc == 2) quiet = 1;
+    
     test_init();
     test_reserve();
     test_push();

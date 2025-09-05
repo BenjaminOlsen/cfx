@@ -52,4 +52,4 @@ cfx_fac_t cfx_fac_binom(uint64_t n, uint64_t k);
 #ifdef __cplusplus
 }
 #endif
-#endif 
+#endif

@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
     printf("found %zu primes to %llu\n", primes.size, n);
     cfx_fac_t fac;
     cfx_fac_init(&fac);
-    int ok = cfx_fac_factorial(&fac, n, &primes);
+    cfx_fac_factorial(&fac, n, &primes);
 
     cfx_big_t b;
     cfx_big_init(&b);

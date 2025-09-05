@@ -25,11 +25,11 @@ static void print_binom(uint64_t n, uint64_t k){
 }
 
 int main(int argc, char* argv[]) {
-    uint64_t n, k, p;
+    uint64_t n, k;
     if (argc == 2) {
         n = (uint64_t)strtol(argv[1], NULL, 10);
-        for (int i = 1; i <= n; ++i) {
-            for (int j = 0; j <= i; ++j) {
+        for (uint64_t i = 1; i <= n; ++i) {
+            for (uint64_t j = 0; j <= i; ++j) {
                 print_binom(i, j);
             }
             printf(".....\n");

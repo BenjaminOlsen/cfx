@@ -1,4 +1,6 @@
 #include "cfx/vector.h"
+#include "cfx/macros.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -25,7 +27,7 @@ int cfx_vec_reserve(cfx_vec_t* v, size_t need) {
 
     v->data = (uint64_t*)p;
     v->cap = new_cap;
-    printf("reserved cap %zu\n", new_cap);
+    PRINT_DBG("reserved cap %zu\n", new_cap);
     return 0;
 }
 
@@ -63,9 +65,9 @@ void cfx_vec_clear(cfx_vec_t* v) {
 }
 
 void cfx_vec_print(const cfx_vec_t* v) {
-    printf("v: %p, size: %zu\n", v, v->size);
+    PRINT_DBG("v: %p, size: %zu\n", (void*)v, v->size);
     for (size_t i = 0; i < v->size; ++i) {
-        printf("%llu ", v->data[i]);
+        PRINT_DBG("%llu ", v->data[i]);
     }
-    printf("\n");
+    PRINT_DBG("\n");
 }

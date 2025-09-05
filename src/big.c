@@ -1,6 +1,7 @@
 #include "cfx/big.h"
 #include "cfx/fac.h"
 #include "cfx/types.h"
+#include "cfx/macros.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -37,7 +38,7 @@ void cfx_big_reserve(cfx_big_t* b, size_t need) {
     b->limb = (uint64_t*)realloc(b->limb, new_cap*sizeof(uint64_t));
     memset(b->limb + old_cap, 0, (new_cap - old_cap) * sizeof(uint64_t));
     b->cap = new_cap;
-    printf("realloc new cap: %zu\n", new_cap);
+    PRINT_DBG("realloc new cap: %zu\n", new_cap);
 }
 
 static void _cfx_big_trim_leading_zeros(cfx_big_t* b) {
@@ -90,13 +91,13 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
         t *= 2u;
     }
     /* now t is the largest s.t. p^t <= lim */
-    printf("multiplying by %llu^%llu by breaking it into (%llu^%llu)^(%llu/%llu) \n", p, e, p, t, e, t);
+    PRINT_DBG("multiplying by %llu^%llu by breaking it into (%llu^%llu)^(%llu/%llu) \n", p, e, p, t, e, t);
 
     /* Now multiply by (p^t)^(e/t) and then the remainder */
     /* Compute p^t */
     /* compute power safely */
     uint64_t pow_t = p;
-    uint64_t rem_t = t;
+    
     /* fast power to get pow_t = p^t by using binary expansion of t:
     p^t = p^(b_i*2^i) * p^(b_(i-1)*2^(i-1) * ... */
     pow_t = 1;
@@ -142,6 +143,23 @@ void cfx_big_add_sm(cfx_big_t* b, uint64_t n) {
         ++i;
     }
     if (i > b->n) b->n = i;
+}
+
+void cfx_big_sub_sm(cfx_big_t* b, uint64_t n) {
+    if (n == 0 || b->n == 0) return;
+    if (b->limb[0] < n) {
+        if (b->n == 1) {
+            /* underflow */
+            return;
+        } else {
+            b->limb[1] -= 1;
+            b->limb[0] += (CFX_BIG_BASE - n);
+            b->limb[0] %= CFX_BIG_BASE;
+        }
+    } else {
+        b->limb[0] -= n;
+    }
+    _cfx_big_trim_leading_zeros(b);
 }
 
 void cfx_big_mul_sm(cfx_big_t* b, uint64_t m) {
@@ -200,7 +218,7 @@ char* cfx_big_to_str(const cfx_big_t* b, size_t* sz_out) {
 
         /* debug */        
         // for (char* pt = p+CFX_DIGITS_PER_LIMB-1; pt >= p; --pt) {
-        //     printf("printed ls: %c (ord: 0x%x)\n", *pt, *pt);
+        //     PRINT_DBG("printed ls: %c (ord: 0x%x)\n", *pt, *pt);
         // }
     }
     
@@ -208,7 +226,7 @@ char* cfx_big_to_str(const cfx_big_t* b, size_t* sz_out) {
     uint64_t ms = b->limb[b->n-1];
     do {
         /* debug */
-        // printf("printed ms: %c\n", (char)('0' + (ms % 10)));
+        // PRINT_DBG("printed ms: %c\n", (char)('0' + (ms % 10)));
         *(--p) = (char)('0' + (ms % 10));
         ms /= 10;
     } while (ms);
