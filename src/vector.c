@@ -27,7 +27,7 @@ int cfx_vec_reserve(cfx_vec_t* v, size_t need) {
 
     v->data = (uint64_t*)p;
     v->cap = new_cap;
-    PRINT_DBG("reserved cap %zu\n", new_cap);
+    CFX_PRINT_DBG("reserved cap %zu\n", new_cap);
     return 0;
 }
 
@@ -65,9 +65,9 @@ void cfx_vec_clear(cfx_vec_t* v) {
 }
 
 void cfx_vec_print(const cfx_vec_t* v) {
-    PRINT_DBG("v: %p, size: %zu\n", (void*)v, v->size);
+    CFX_PRINT_DBG("v: %p, size: %zu\n", (void*)v, v->size);
     for (size_t i = 0; i < v->size; ++i) {
-        PRINT_DBG("%llu ", v->data[i]);
+        CFX_PRINT_DBG("%llu ", v->data[i]);
     }
-    PRINT_DBG("\n");
+    CFX_PRINT_DBG("\n");
 }

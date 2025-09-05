@@ -163,7 +163,7 @@ static void test_factorial_to_100(int quiet) {
         size_t sz = 0;
         char* s = cfx_big_to_str(&b, &sz);
         int ok = (strcmp(s, F[n]) == 0);
-        if (!quiet) PRINT_DBG("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
+        if (!quiet) CFX_PRINT_DBG("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
         aok &= ok;
         cfx_fac_clear(&f);
     }

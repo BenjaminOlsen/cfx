@@ -38,7 +38,7 @@ void cfx_big_reserve(cfx_big_t* b, size_t need) {
     b->limb = (uint64_t*)realloc(b->limb, new_cap*sizeof(uint64_t));
     memset(b->limb + old_cap, 0, (new_cap - old_cap) * sizeof(uint64_t));
     b->cap = new_cap;
-    PRINT_DBG("realloc new cap: %zu\n", new_cap);
+    CFX_PRINT_DBG("realloc new cap: %zu\n", new_cap);
 }
 
 static void _cfx_big_trim_leading_zeros(cfx_big_t* b) {
@@ -91,7 +91,7 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
         t *= 2u;
     }
     /* now t is the largest s.t. p^t <= lim */
-    PRINT_DBG("multiplying by %llu^%llu by breaking it into (%llu^%llu)^(%llu/%llu) \n", p, e, p, t, e, t);
+    CFX_PRINT_DBG("multiplying by %llu^%llu by breaking it into (%llu^%llu)^(%llu/%llu) \n", p, e, p, t, e, t);
 
     /* Now multiply by (p^t)^(e/t) and then the remainder */
     /* Compute p^t */
@@ -218,7 +218,7 @@ char* cfx_big_to_str(const cfx_big_t* b, size_t* sz_out) {
 
         /* debug */        
         // for (char* pt = p+CFX_DIGITS_PER_LIMB-1; pt >= p; --pt) {
-        //     PRINT_DBG("printed ls: %c (ord: 0x%x)\n", *pt, *pt);
+        //     CFX_PRINT_DBG("printed ls: %c (ord: 0x%x)\n", *pt, *pt);
         // }
     }
     
@@ -226,7 +226,7 @@ char* cfx_big_to_str(const cfx_big_t* b, size_t* sz_out) {
     uint64_t ms = b->limb[b->n-1];
     do {
         /* debug */
-        // PRINT_DBG("printed ms: %c\n", (char)('0' + (ms % 10)));
+        // CFX_PRINT_DBG("printed ms: %c\n", (char)('0' + (ms % 10)));
         *(--p) = (char)('0' + (ms % 10));
         ms /= 10;
     } while (ms);

@@ -47,7 +47,7 @@ static void test_mul_by_zero(void) {
     cfx_big_mul_sm(&b, 0);
     size_t sz = 0;
     char* s = cfx_big_to_str(&b, &sz);
-    PRINT_DBG("s: %s, sz: %zu\n", s, sz);
+    CFX_PRINT_DBG("s: %s, sz: %zu\n", s, sz);
     assert(sz == 1);
     assert(strcmp(s, "0") == 0);
     free(s);
@@ -57,26 +57,26 @@ static void test_add_sm(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     char *s = cfx_big_to_str(&b, NULL);
-    PRINT_DBG("init: %s\n", s);
+    CFX_PRINT_DBG("init: %s\n", s);
     
     cfx_big_set_val(&b, 123);
     s = cfx_big_to_str(&b, NULL);
-    PRINT_DBG("after setting val: %s\n", s);
+    CFX_PRINT_DBG("after setting val: %s\n", s);
 
     cfx_big_add_sm(&b, 321);
     s = cfx_big_to_str(&b, NULL);
-    PRINT_DBG("after add: %s\n",s);
+    CFX_PRINT_DBG("after add: %s\n",s);
     assert(b.limb[0] == 444);
     cfx_big_set_val(&b, CFX_BIG_BASE-1);
     s = cfx_big_to_str(&b, NULL);
-    PRINT_DBG("after set: %s\n", s);
+    CFX_PRINT_DBG("after set: %s\n", s);
     free(s);
     assert(b.limb[0] == CFX_BIG_BASE-1);
     cfx_big_add_sm(&b, 1);
     assert(b.limb[0] == 0);
     assert(b.limb[1] == 1);
     s = cfx_big_to_str(&b, NULL);
-    PRINT_DBG("after carry: %s\n", s);
+    CFX_PRINT_DBG("after carry: %s\n", s);
     free(s);
 }
 
@@ -84,7 +84,7 @@ static void test_add_sm(void) {
 static void test_sub_sm(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    PRINTF_BIG(&b, "init: b.n:%ld; ", b.n);
+    CFX_BIG_PRINTF(&b, "init: b.n:%ld; ", b.n);
 
     cfx_big_set_val(&b, 1);
     cfx_big_sub_sm(&b, 1);
@@ -92,30 +92,30 @@ static void test_sub_sm(void) {
     cfx_big_sub_sm(&b, 1);
     assert(b.limb[0] == 0);
     cfx_big_set_val(&b, CFX_BIG_BASE-1);
-    PRINTF_BIG(&b, "set to CFX_BIG_BASE-1: ");
+    CFX_BIG_PRINTF(&b, "set to CFX_BIG_BASE-1: ");
     cfx_big_add_sm(&b, 1);
-    PRINTF_BIG(&b, "add 1: ");
+    CFX_BIG_PRINTF(&b, "add 1: ");
     cfx_big_sub_sm(&b, 1);
-    PRINTF_BIG(&b, "sub 1: ");
+    CFX_BIG_PRINTF(&b, "sub 1: ");
     cfx_big_sub_sm(&b, 1);
-    PRINTF_BIG(&b, "sub 1: ");
+    CFX_BIG_PRINTF(&b, "sub 1: ");
     cfx_big_sub_sm(&b, 1);
-    PRINTF_BIG(&b, "sub 1: ");
+    CFX_BIG_PRINTF(&b, "sub 1: ");
     cfx_big_sub_sm(&b, 1);
-    PRINTF_BIG(&b, "sub 1: ");
+    CFX_BIG_PRINTF(&b, "sub 1: ");
     
     cfx_big_add_sm(&b, 100);
-    PRINTF_BIG(&b, "add 100: ");
+    CFX_BIG_PRINTF(&b, "add 100: ");
     cfx_big_sub_sm(&b, 100);
-    PRINTF_BIG(&b, "sub 100: ");
+    CFX_BIG_PRINTF(&b, "sub 100: ");
     cfx_big_add_sm(&b, 100);
-    PRINTF_BIG(&b, "add 100: ");
+    CFX_BIG_PRINTF(&b, "add 100: ");
     cfx_big_sub_sm(&b, 100);
-    PRINTF_BIG(&b, "sub 100: ");
+    CFX_BIG_PRINTF(&b, "sub 100: ");
     cfx_big_add_sm(&b, 100);
-    PRINTF_BIG(&b, "add 100: ");
+    CFX_BIG_PRINTF(&b, "add 100: ");
     cfx_big_sub_sm(&b, 100);
-    PRINTF_BIG(&b, "sub 100: ");
+    CFX_BIG_PRINTF(&b, "sub 100: ");
 
 }
 
@@ -125,12 +125,12 @@ static void check(const char *label, const uint64_t *limbs, size_t n, const char
     big_init_from_limbs(&b, limbs, n);
     size_t len = 0;
     char *s = cfx_big_to_str(&b, &len);
-    // PRINTF_BIG(&b, "str is:\n");
-    // PRINT_DBG("str should be:\n%s\n", expect);
+    // CFX_BIG_PRINTF(&b, "str is:\n");
+    // CFX_PRINT_DBG("str should be:\n%s\n", expect);
     assert(strcmp(s, expect) == 0);
     assert(len == strlen(expect));
     assert(s[len] == '\0');
-    PRINT_DBG("[ok] %s -> %s\n", label, s);
+    CFX_PRINT_DBG("[ok] %s -> %s\n", label, s);
     free(s);
     cfx_big_free(&b);
 }
@@ -194,7 +194,7 @@ static void test_limb7(void) {
     for (int i = 0; i < 10; ++i) cfx_big_mul_sm(&b, 1000000000u - 1u); // (1e9-1)^10
     char *s = cfx_big_to_str(&b, NULL);
     // spot checks: starts with '9' and length >= 9
-    PRINT_DBG("%s\n", s);
+    CFX_PRINT_DBG("%s\n", s);
     assert(s[0] == '9');
     assert(strlen(s) >= 9);
     char* expect = "999999990000000044999999880000000209999999"
@@ -211,7 +211,7 @@ static void test_str1(void) {
     cfx_big_from_str(&b, sin);
     char *sout = cfx_big_to_str(&b, NULL);
     int ok = (strcmp(sin, sout) == 0); 
-    PRINT_DBG("test str1: in:\n%s \n%s\nout.. %s\n", sin, sout,
+    CFX_PRINT_DBG("test str1: in:\n%s \n%s\nout.. %s\n", sin, sout,
         ok ? "ok":"NOT ok");
     assert(ok);
 }
@@ -223,7 +223,7 @@ static void test_str2(void) {
     cfx_big_from_str(&b, sin);
     char *sout = cfx_big_to_str(&b, NULL);
     int ok = (strcmp(sin, sout) == 0); 
-    PRINT_DBG("test str: in:\n%s \n%s\nout.. %s\n", sin, sout,
+    CFX_PRINT_DBG("test str: in:\n%s \n%s\nout.. %s\n", sin, sout,
         ok ? "ok":"NOT ok");
     assert(ok);
 }

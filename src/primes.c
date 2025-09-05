@@ -15,7 +15,7 @@ cfx_vec_t cfx_sieve_primes(uint64_t n) {
     for (uint64_t i = 2; (i * i) <= n; ++i) {
         if (!mark[i]) {
             for (uint64_t j = i*i; j <= n; j += i) {
-                // PRINT_DBG("marking %u composite\n", j);
+                // CFX_PRINT_DBG("marking %u composite\n", j);
                 mark[j] = 1;
             }
         }

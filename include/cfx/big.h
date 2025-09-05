@@ -42,10 +42,10 @@ int cfx_big_from_str(cfx_big_t* b, const char* str);
  *  args: cfx_big_t * b : ptr to big
  *  fmt: format string
  * */
-#define PRINTF_BIG(b, fmt, ...) \
+#define CFX_BIG_PRINTF(b, fmt, ...) \
 do {\
     char *s = cfx_big_to_str(b, NULL); \
-    PRINT_DBG(fmt "%s\n", ##__VA_ARGS__, s); \
+    CFX_PRINT_DBG(fmt "%s\n", ##__VA_ARGS__, s); \
     free(s); \
 } while (0)
 

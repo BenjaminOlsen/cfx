@@ -9,13 +9,13 @@
 #include <stdio.h>
 
 void cfx_fac_print(cfx_fac_t* f) {
-    PRINT_DBG("f: %p, cap: %zu, len: %zu\n", (void*)f, f->cap, f->len);
+    CFX_PRINT_DBG("f: %p, cap: %zu, len: %zu\n", (void*)f, f->cap, f->len);
     for (size_t k = 0; k < f->len-1; ++k) {
         cfx_pf_t* pf = &f->data[k];
-        PRINT_DBG("%llu^%llu * ", pf->p, pf->e);
+        CFX_PRINT_DBG("%llu^%llu * ", pf->p, pf->e);
     }
     cfx_pf_t* pf = &f->data[f->len-1];
-    PRINT_DBG("%llu^%llu\n", pf->p, pf->e);
+    CFX_PRINT_DBG("%llu^%llu\n", pf->p, pf->e);
 }
 
 void cfx_fac_init(cfx_fac_t* f) {
@@ -44,7 +44,7 @@ int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
     if (new_cap < req_cap) {
         new_cap = req_cap;
     }
-    // PRINT_DBG("cfx_fac_reserve %p requested cap: %zu, new cap: %zu\n", f, req_cap, new_cap);
+    // CFX_PRINT_DBG("cfx_fac_reserve %p requested cap: %zu, new cap: %zu\n", f, req_cap, new_cap);
     size_t bytes;
     if (_cfx_mul_zu_ok(new_cap, sizeof(cfx_pf_t), &bytes) != CFX_OK) {
         return CFX_ENOMEM;
