@@ -1,5 +1,6 @@
 #include "cfx/big.h"
 #include "cfx/fac.h"
+#include "cfx/algo.h"
 #include "cfx/types.h"
 #include "cfx/macros.h"
 
@@ -151,6 +152,10 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
     if (rempow != 1) cfx_big_mul_sm_fast(b, rempow);
 }
 
+void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
+
+}
+
 void cfx_big_add_sm(cfx_big_t* b, uint64_t n) {
     if (n == 0) return;
     if (b->n == 0) {
@@ -250,6 +255,53 @@ uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m) {
     }
     return (uint64_t)acc;
 }
+
+int cfx_fac_from_big(cfx_fac_t* fac, const cfx_big_t* in) {
+    // cfx_big_t N = *in; // make a working copy
+    // cfx_fac_init(fac);
+
+    // // 1) strip small primes up to B (say, 10k–100k)
+    // cfx_big_strip_small(&N, fac, /*B=*/100000);
+
+    // // stack of pending cofactors to split (skip 1)
+    // cfx_big_t stk[MAX_STACK]; size_t top=0;
+    // if (!cfx_big_is_one(&N)) stk[top++] = N;
+
+    // while (top) {
+    //     cfx_big_t m = stk[--top];
+    //     if (cfx_big_is_one(&m)) continue;
+
+    //     uint64_t u64;
+    //     if (cfx_big_fits_u64(&m, &u64)) {
+    //         cfx_fac_from_u64(fac, u64);
+    //         continue;
+    //     }
+
+    //     if (cfx_big_is_probable_prime(&m)) { // big-PRP (MR or BPSW)
+    //         // emit m as a prime factor (store big primes in fac as u64? or separate big-prime path)
+    //         // If you require u64 primes only, keep splitting until fit; otherwise extend fac to hold big p.
+    //         cfx_fac_push_big(fac, &m, 1);
+    //         continue;
+    //     }
+
+    //     cfx_big_t d; cfx_big_init(&d);
+    //     if (!cfx_big_rho_brent_split(&m, &d)) {
+    //         // optional: try p-1; else increase small-prime bound and repeat
+    //         // as a fallback, treat as prime (to avoid infinite loops)
+    //         cfx_fac_push_big(fac, &m, 1);
+    //         continue;
+    //     }
+
+    //     cfx_big_t q;
+    //     cfx_big_div_big(&q, &m, &d); // q = m / d (exact)
+    //     stk[top++] = d;
+    //     stk[top++] = q;
+    // }
+
+    // cfx_fac_coalesce_sort(fac);
+    // return 0;
+}
+
 
 /* Convert cfx_big_t to decimal string */
 char* cfx_big_to_str(const cfx_big_t* src, size_t *sz_out) {

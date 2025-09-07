@@ -27,7 +27,7 @@ int cfx_vec_reserve(cfx_vec_t* v, size_t need) {
 
     v->data = (uint64_t*)p;
     v->cap = new_cap;
-    CFX_PRINT_DBG("reserved cap %zu\n", new_cap);
+    // CFX_PRINT_DBG("reserved cap %zu\n", new_cap);
     return 0;
 }
 
