@@ -11,7 +11,7 @@
 #ifdef CFX_DEBUG
 #define CFX_PRINT_DBG(fmt, ...) \
     do { \
-        fprintf(stderr, "[%s:%d:%s():]: " fmt, \
+        fprintf(stderr, "[%s:%d:%s()]: " fmt, \
         __FILENAME__, __LINE__, __func__, ##__VA_ARGS__); \
     } while(0)
 #else

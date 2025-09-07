@@ -12,20 +12,22 @@
 /* accumulator type of X bits and max value of multiplicands to fit therein */
 #if defined(__SIZEOF_INT128__)
 #define acc_t __uint128_t
-#define MAX_ACC_MUL 0xFFFFFFFFFFFFFFFFllu /* floor(sqrt(UINT128_MAX+1)) - 1 */
+#define MAX_ACC_MUL 0xFFFFFFFFFFFFFFFFllu   /* floor(sqrt(UINT128_MAX+1)) - 1 */
 #else
 #define acc_t uint64_t
-#define MAX_ACC_MUL 0xFFFFFFFFllu /* floor(sqrt(UINT64_MAX+1)) - 1 */
+#define MAX_ACC_MUL 0xFFFFFFFFllu           /* floor(sqrt(UINT64_MAX+1)) - 1 */
 #endif
 
 void cfx_big_init(cfx_big_t* b) {
     b->limb = NULL;
+    b->cache = NULL;
     b->n = 0;
     b->cap = 0;
 }
 
 void cfx_big_free(cfx_big_t* b) {
     free(b->limb);
+    free(b->cache);
     cfx_big_init(b);
 }
 
@@ -42,6 +44,25 @@ void cfx_big_reserve(cfx_big_t* b, size_t need) {
     CFX_PRINT_DBG("realloc new cap: %zu\n", new_cap);
 }
 
+void cfx_big_enable_fac(cfx_big_t* b) {
+    if (!b->cache) {
+        b->cache = malloc(sizeof(struct cfx_fac_cache));
+        cfx_fac_init(&b->cache->primes);
+        cfx_big_init(&b->cache->cofactor);
+        b->cache->state = CFX_FAC_NONE;
+        b->cache->bnd = 0;
+    }
+}
+
+void cfx_big_disable_fac(cfx_big_t* b) {
+    if (b->cache) {
+        cfx_fac_free(&b->cache->primes);
+        cfx_big_free(&b->cache->cofactor);
+        free(b->cache);
+        b->cache = NULL;
+    }
+}
+
 static inline void _cfx_big_trim_leading_zeros(cfx_big_t* b) {
     if (b->n == 0) return;
     size_t i = b->n - 1;
@@ -55,6 +76,10 @@ void cfx_big_set_val(cfx_big_t* b, uint64_t v) {
     cfx_big_reserve(b, 1);
     b->n = v ? 1:0;
     if (v) b->limb[0] = v;
+    
+    if (b->cache) {
+        /* factor v */
+    }
 }
 
 
@@ -169,6 +194,15 @@ void cfx_big_mul_sm(cfx_big_t* b, uint64_t m) {
     cfx_big_mul_sm_fast(b, m);
 }
 
+uint64_t cfx_big_mod_small(const cfx_big_t* n, uint64_t p) {
+    __uint128_t acc = 0;
+    for (size_t i = n->n; i-- > 0;) {
+        acc = ( (acc << 64) + n->limb[i] ) % p;
+    }
+    return (uint64_t)acc;
+}
+
+
 /* Materialize factorization into cfx_big_t */
 void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t *f) {
     cfx_big_set_val(b, 1);
@@ -177,17 +211,44 @@ void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t *f) {
     }
 }
 
-// Divides x (base 2^64) by uint32_t d (e.g. 1,000,000,000), returns remainder.
-static uint32_t cfx_big_div_sm_u32(cfx_big_t* x, uint32_t d) {
-    uint64_t rem = 0;
-    for (ssize_t i = (ssize_t)x->n - 1; i >= 0; --i) {
-        __uint128_t cur = (( __uint128_t)rem << 64) | x->limb[i];
-        uint64_t q = (uint64_t)(cur / d);      // 128/32 -> 128/64 promoted; OK
+void cfx_big_to_fac(cfx_fac_t *f, const cfx_big_t *b) {
+    
+}
+
+uint64_t cfx_big_div_sm(cfx_big_t* b, uint64_t d) {
+    __uint128_t rem = 0;
+    for (ssize_t i = (ssize_t)b->n - 1; i >=0; --i) {
+        __uint128_t cur = ((__uint128_t)rem << 64) | b->limb[i];
+        uint64_t q = (uint64_t)(cur / d);
         rem = (uint64_t)(cur % d);
-        x->limb[i] = q;
+        b->limb[i] = q;
     }
-    _cfx_big_trim_leading_zeros(x);
+    return rem;
+}
+
+// Divides x (base 2^64) by uint32_t d, returns remainder.
+uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d) {
+    uint64_t rem = 0;
+    for (ssize_t i = (ssize_t)b->n - 1; i >= 0; --i) {
+        __uint128_t cur = ((__uint128_t)rem << 64) | b->limb[i];
+        uint64_t q = (uint64_t)(cur / d);   // 128/32 -> 128/64 promoted; OK
+        rem = (uint64_t)(cur % d);
+        b->limb[i] = q;
+    }
+    _cfx_big_trim_leading_zeros(b);
     return (uint32_t)rem;
+}
+
+/* uses Horner's rule to evaluate the polynomial with x = B=2^64 */
+/* P(x)=(...((an​x+an−1​)x+an−2​)x+...+a1​)x+a0 */
+uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m) {
+    if (b->n == 0) return 0;
+    __uint128_t acc = 0;
+    for (ssize_t i = (ssize_t)b->n - 1; i >= 0; --i) {
+        /* acc << 64 is acc * 2^64, which is (a_n * B); limb[i] is a_(n-1)*/
+        acc = ((acc << 64) + b->limb[i]) % m;
+    }
+    return (uint64_t)acc;
 }
 
 /* Convert cfx_big_t to decimal string */
@@ -206,7 +267,7 @@ char* cfx_big_to_str(const cfx_big_t* src, size_t *sz_out) {
     memcpy(tmp.limb, src->limb, tmp.n * sizeof(uint64_t));
 
     enum { CHUNK_BASE = 1000000000u, CHUNK_DIGS = 9 };
-    size_t maxdig = src->n * 20;
+    size_t maxdig = src->n * 20; /* log10(2^64) == 19.2659... */
     uint32_t *chunks = (uint32_t*)malloc(maxdig);
     size_t k = 0;
 

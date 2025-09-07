@@ -2,19 +2,9 @@
 #define CFX_PRIMES_H
 
 #include <stdint.h>
-#include "vector.h"
+#include <stddef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+extern const uint32_t cfx_primes[];
+extern const size_t cfx_primes_sz;
 
-/* find all primes up to n using sieve of eratosthenes */
-cfx_vec_t cfx_sieve_primes(uint64_t n);
-
-/* uses legendre's formula to give th power of p that divides n! */
-uint64_t cfx_legendre(uint64_t n, uint64_t p);
-
-#ifdef __cplusplus
-}
-#endif
-#endif
+#endif 

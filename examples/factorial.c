@@ -1,6 +1,6 @@
 #include "cfx/fac.h"
 #include "cfx/big.h"
-#include "cfx/primes.h"
+#include "cfx/algo.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -23,10 +23,11 @@ int main(int argc, char* argv[]) {
     cfx_big_from_fac(&b, &fac);
     size_t sz = 0;
     char* s = cfx_big_to_str(&b, &sz);
-    printf("%llu! = %s\nlen: %zu\n", n, s, sz);
+    printf("%llu! = %s\ndigits: %zu\nlimbs: %zu\n", n, s, sz, b.n);
     free(s);
     cfx_big_free(&b);
-    cfx_fac_clear(&fac);
+    cfx_fac_free(&fac);
+    cfx_vec_free(&primes);
 
     return 0;
 }

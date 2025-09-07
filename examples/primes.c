@@ -1,4 +1,4 @@
-#include "cfx/primes.h"
+#include "cfx/algo.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -33,8 +33,10 @@ int main(int argc, char* argv[]) {
             "e.g. 'primes 800 100': find primes to 800 printed with line width of 100");
         return 1;
     }
+    
     int dmax = INT32_MAX;
     if (argc == 3) dmax = (size_t)strtol(argv[2], NULL, 10);
+
     uint64_t n = (uint64_t)strtol(argv[1], NULL, 10);
     cfx_vec_t primes = cfx_sieve_primes(n);
     int dcnt = 0;
@@ -49,7 +51,8 @@ int main(int argc, char* argv[]) {
         printf("%llu, ", primes.data[k]);
     }
     printf("%llu\n", primes.data[primes.size-1]);
-    printf("found %zu primes until %llu:\n", primes.size, n);
+
+    printf("found %zu primes until %llu (0x%llx)\n", primes.size, n, n);
 
     cfx_vec_free(&primes);
     return 0;

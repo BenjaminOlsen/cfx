@@ -14,19 +14,21 @@ option(CFX_BUILD_EXAMPLES "Build examples" ON)
 set(CFX_HEADERS
     include/cfx/big.h
     include/cfx/fac.h
+    include/cfx/algo.h
+    include/cfx/error.h
     include/cfx/primes.h
     include/cfx/vector.h
-    include/cfx/version.h
-    include/cfx/error.h
     include/cfx/macros.h
+    include/cfx/version.h
 )
 
 set(CFX_SOURCES
     src/big.c
     src/fac.c
+    src/algo.c
+    src/error.c
     src/primes.c
     src/vector.c
-    src/error.c
 )
 
 add_library(cfx ${CFX_SOURCES})
@@ -69,6 +71,8 @@ if(CFX_BUILD_TESTS)
     test_cfx
     test_big
     test_fac
+    test_algo
+    test_rho_brent
   )
 
   foreach(test_name IN LISTS TEST_NAMES)

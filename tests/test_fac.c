@@ -1,6 +1,6 @@
 #include "cfx/fac.h"
 #include "cfx/vector.h"
-#include "cfx/primes.h"
+#include "cfx/algo.h"
 #include "cfx/big.h"
 #include "cfx/error.h"
 #include "cfx/macros.h"
@@ -28,7 +28,7 @@ static void test_reserve(void) {
     const size_t cap2 = cap1 / 2;
     cfx_fac_reserve(&f, cap2);
     assert(f.cap == cap1);  /* shouldn't have changed */
-    cfx_fac_clear(&f);
+    cfx_fac_free(&f);
 }
 
 static void test_push(void) {
@@ -44,7 +44,7 @@ static void test_push(void) {
     assert(f.len == 3);
     cfx_fac_push(&f, 5, 800);
     assert(f.len == 4);
-    cfx_fac_clear(&f);
+    cfx_fac_free(&f);
 }
 
 char* F[] = {
@@ -165,9 +165,26 @@ static void test_factorial_to_100(int quiet) {
         int ok = (strcmp(s, F[n]) == 0);
         if (!quiet) CFX_PRINT_DBG("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
         aok &= ok;
-        cfx_fac_clear(&f);
+        cfx_fac_free(&f);
     }
     assert(aok);
+}
+
+static void test_fac_from_u64(void) {
+    cfx_fac_t f;
+    cfx_fac_init(&f);
+    uint64_t n1 = 2*3*5*7;
+    int ok = cfx_fac_from_u64(&f, n1);
+    cfx_fac_print(&f);
+    assert(ok);
+    cfx_fac_free(&f);
+
+    uint64_t n2 = 4294967291ULL * 4294967279ULL;
+    cfx_fac_init(&f);
+    ok = cfx_fac_from_u64(&f, n2);
+    cfx_fac_print(&f);
+    assert(ok);
+    cfx_fac_free(&f);
 }
 
 int main() {
@@ -177,5 +194,6 @@ int main() {
     test_reserve();
     test_push();
     test_factorial_to_100(quiet);
+    test_fac_from_u64();
     return 0;
 }

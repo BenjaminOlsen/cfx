@@ -233,6 +233,18 @@ static void test_str2(void) {
     assert(ok);
 }
 
+static void test_cache(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    assert(b.cache == NULL);
+    cfx_big_enable_fac(&b);
+    assert(b.cache != NULL);
+
+    cfx_big_set_val(&b, 1);
+    assert(b.cache->primes.data == NULL);
+    assert(b.cache->state == CFX_FAC_FULL);
+}
+
 int main(void) {
     test_cfx_big_init();
     test_cfx_big_reserve();
@@ -248,5 +260,7 @@ int main(void) {
     test_str2();
     test_add_sm();
     test_sub_sm();
+    test_cache();
+
     return 0;
 }

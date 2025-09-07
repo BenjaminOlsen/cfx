@@ -19,6 +19,11 @@ typedef struct {
 
 /**
  * cfx_fac_t: a struct to hold a prime factorization of a number
+ * 
+ * Invariants:
+ * 
+ * - Contains only pairs (p, e) with p prime, p >= 2, e >= 1
+ * - Sorted strictly by p, coalesced (no duplicates), no zero exponents
  */
 typedef struct {
     cfx_pf_t* data;
@@ -29,7 +34,7 @@ typedef struct {
 
 void cfx_fac_print(cfx_fac_t* f);
 void cfx_fac_init(cfx_fac_t* f);
-void cfx_fac_clear(cfx_fac_t* f) ;
+void cfx_fac_free(cfx_fac_t* f) ;
 int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap);
 int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint64_t e);
 
@@ -48,6 +53,8 @@ int cfx_fac_factorial(cfx_fac_t* f, uint64_t n, const cfx_vec_t *primes);
 
 /* Factorization of C(n,k) = n! / (k! (n-k)!) */
 cfx_fac_t cfx_fac_binom(uint64_t n, uint64_t k);
+
+int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n);
 
 #ifdef __cplusplus
 }
