@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+typedef __uint128_t uint128_t;
 
 typedef struct {
     uint64_t hi, lo;

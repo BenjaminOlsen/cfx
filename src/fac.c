@@ -56,16 +56,14 @@ int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
 }
 
 int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint64_t e) {
-    int ret = CFX_OK;
-    if (e == 0) goto end;
-    ret = cfx_fac_reserve(f, f->len + 1);
-    if (ret != CFX_OK) goto end;
+    if (e == 0) return -1;
+    int ret = cfx_fac_reserve(f, f->len + 1);
+    if (ret != CFX_OK) return -1;
     ++f->len;
     cfx_pf_t* pf = &f->data[f->len - 1];
     pf->p = p;
     pf->e = e;
-end:
-    return ret;
+    return CFX_OK;
 }
 
 /* Deep copy: dst becomes a copy of src, using cfx_fac_push for each element. */

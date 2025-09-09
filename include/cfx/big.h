@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+#define CFX_BIG_PRINT(bg) printf("b.n %zu: b.cap: %zu, b %s\n", bg.n, bg.cap, cfx_big_to_str(&bg, NULL))
+
+
 typedef enum {
     CFX_FAC_NONE,
     CFX_FAC_PARTIAL,
@@ -48,15 +51,25 @@ struct cfx_fac_cache {
 
 void cfx_big_init(cfx_big_t* b);
 void cfx_big_free(cfx_big_t* b);
+void cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src);
 void cfx_big_reserve(cfx_big_t* b, size_t need);
 void cfx_big_set_val(cfx_big_t* b, uint64_t v);
+void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
+void cfx_big_sq(cfx_big_t* b);
+int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r remainder. */
 
 void cfx_big_add_sm(cfx_big_t* b, uint64_t n);
 void cfx_big_sub_sm(cfx_big_t* b, uint64_t n);
 void cfx_big_mul_sm(cfx_big_t* b, uint64_t m);
+
 uint64_t cfx_big_div_sm(cfx_big_t* b, uint64_t d);
 uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d);
 uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m);
+
+int cfx_big_is_zero(const cfx_big_t* b);
+int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n);
+int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
+void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
 
 void cfx_big_enable_fac(cfx_big_t* b);
 void cfx_big_disable_fac(cfx_big_t* b);
@@ -64,7 +77,7 @@ void cfx_big_disable_fac(cfx_big_t* b);
 /* Multiply by p^e by repeated squaring using small chunks to avoid overflow */
 void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e);
 
-/* Materialize factorization into cfx_big_t */
+void cfx_big_from_limbs(cfx_big_t* b, const uint64_t* limbs, size_t n);
 void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t* f);
 void cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b);
 

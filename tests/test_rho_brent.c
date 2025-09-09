@@ -1,9 +1,11 @@
+#include "cfx/algo.h"
+#include "cfx/types.h"
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cfx/algo.h"
 
 static int is_valid_factor(uint64_t n, uint64_t d) {
     return (d > 1) && (d < n) && (n % d == 0);
@@ -69,7 +71,7 @@ static void test_large_64bit_semiprime(void) {
     const uint64_t p = 4294967291ULL; // 2^32 - 5, prime
     const uint64_t q = 4294967279ULL; // 2^32 - 17, prime
 
-    __uint128_t prod = ( __uint128_t)p * ( __uint128_t)q;
+    uint128_t prod = ( uint128_t)p * ( uint128_t)q;
     uint64_t n = (uint64_t)prod; // still < 2^64
 
     expect_factor(n);
