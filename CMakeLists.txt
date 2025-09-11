@@ -16,6 +16,7 @@ set(CFX_HEADERS
     include/cfx/fac.h
     include/cfx/algo.h
     include/cfx/error.h
+    include/cfx/types.h
     include/cfx/primes.h
     include/cfx/vector.h
     include/cfx/macros.h
@@ -124,3 +125,9 @@ install(FILES
   ${CMAKE_CURRENT_BINARY_DIR}/cfxConfigVersion.cmake
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cfx
 )
+
+# ---------------- benchmarking:::::
+option(CFX_BUILD_BENCHMARKS "Build microbenchmarks" OFF)
+if (CFX_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarking)
+endif()

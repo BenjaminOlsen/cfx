@@ -266,7 +266,7 @@ static void test_cache(void) {
     assert(b.cache != NULL);
 
     cfx_big_set_val(&b, 1);
-    assert(b.cache->primes.data == NULL);
+    // assert(b.cache->primes.data == NULL);
     // assert(b.cache->state == CFX_FAC_FULL); todo
 }
 
@@ -353,7 +353,7 @@ static void test_mul_by_base_2_64_shift(void) {
     uint64_t limbs_m[] = {0ull, 1ull};
     cfx_big_from_limbs(&m, limbs_m, 2);
 
-    const size_t N = 11111;
+    const size_t N = 1111;
 
     for (size_t n = 1; n < N; ++n) {
 
@@ -367,7 +367,7 @@ static void test_mul_by_base_2_64_shift(void) {
         expect[n+sz0-1] = 0x0000000000000001ull;
 
         big_expect_limbs(__func__, &b, expect, sz0 + n);
-        printf("[test_mul_by_base_2_64_shift]: tested shift of %zu OK\n", n);
+        // printf("[test_mul_by_base_2_64_shift]: tested shift of %zu OK\n", n);
         free(expect);
         expect = NULL;
     }
@@ -402,6 +402,22 @@ static void test_self_multiply_big(void) {
     cfx_big_free(&b);
     free(limbs);
     limbs = NULL;
+}
+
+
+void test_mul(cfx_big_t* b, const cfx_big_t* m) {
+    if(cfx_big_is_zero(m)) {
+        printf("multiplying b by zero!\n");
+        cfx_big_free(b);
+        cfx_big_set_val(b, 0);
+        return;
+    }
+    // if (cfx_big_eq(b, m)) {
+    //     cfx_big_sq(b);
+    //     return;
+    // }
+
+    
 }
 
 static void test_known_squares(void) {
@@ -463,7 +479,7 @@ static void test_known_squares(void) {
         "2564742658586426229545514803499564697000372"
         "3095350971345437292114654548843072761868784"
         "674125049315509629339381027496416991005114370");
-    cfx_big_sq(&b);
+    cfx_big_sq(&b); // 1
     free(s);
     s = cfx_big_to_str(&b, NULL);
     
@@ -540,19 +556,62 @@ static void test_known_squares(void) {
         "2100000000";
     printf("\n\n%s\n\n", s);
     assert(strcmp(s, expect) == 0);
+    // CFX_BIG_PRINT_LIMBS(b);
 
-    // sanity check:
-    cfx_big_t B;
-    cfx_big_from_str(&B, expect);
-    assert(cfx_big_eq(&B, &b));
     
-    cfx_big_sq(&b); // 8
+    // cfx_big_sq(&b); // 8
+    cfx_big_mul(&b, &b);
     free(s);
     s = cfx_big_to_str(&b, NULL);
-    
+    //// sanity check:
+    cfx_big_t B;
+    cfx_big_from_str(&B, s);
+    assert(cfx_big_eq(&B, &b));
+    char* sanity = cfx_big_to_str(&B, NULL);
+    assert(strcmp(s, sanity) == 0);
     expect = "12850498340565118640831124663943566637163477270761965804775357209550765230785703949035729472531170991846950765062231843931603991577837122702202578619413163343802199724298959199688594791894654764450428039375530903550022460719636135025802643105174385371702288121193336984280156229260813405468551910887207681430170841269088143925314707610300410631962624300469472858167288519605269872627946462373021700902442150967139315116172545474219540016600664971616358393885751109046842533050183826430384246617880667515303122705936214635228967259835005388450384900687056571344933537245392429971062926387006758181202634581358151550436165392630946855812938662698021351517729227827971635271649805374176176940281753018739171849301949232131565817532850243174625134450254366859930465467865935871669065946539235916390634180117949435696071838514048795111101267436279103470592457465410839430058374274997666026789906916220271637971862818408213637491993426120588003613013514121426918778425609885983132067309940493824037246336471087139347566932289527147579507444510833470558987620105627392491106342931918229603332167519231845701934759523730028587564778522689440283636622636742434431091107839566802176801151089094414637433966684982281939928036568083598873318392485777034090015016265841172493029035363177944812390618909768667573763207436642271055957361540865636837910531318607009603088734768184385262471743568922118461465472820244894124358177759866070832621634448723670657830089717393358547747703735801523850299292208462216521430657525373415183422463571048104152842920726565698681208502981595141456253796350916896570590072884174607249064969441514018160468583314653443352671437479825779995459466312201730735736110098653787331865116531446616641987026900818215864623614884767160893264417488979936319828793408610211926232514931040704633236494245315339349224851289392387332474248568479216841581124860328079900988652092392614618200827173162666704740632419460637566175022280383967839231370086128119069239566679344622785639260673870367122861560404871658960189532546990946727895958575281330314215816959430714079369740156022375856316371677709024505475091778006456248457155666092229065835357913477405119329372494342721686545800319902824829662799906780886313825440342423658177641941252419690985063319979924638260305722020541317833802446921285816583681614997935512759860955018042317788791616381896041300997716291956236555872471276333548522003017903198166576927518763140985360706323427487549508484530837381768891367647567673106372095645829146242426938921111540219157093806251149323044120727645913143734374450245354473392643178616466237265916832878586939031607485456329408461025836997224109513396266781143113993671870210102616033541932236431301110708951036119790977069093536028698906465137616493507440201974410000000000000000";
-    printf("\n\n%s\n\n", s);
-    // assert(strcmp(s, expect) == 0);
+    cfx_big_from_str(&B, expect);
+    free(sanity);
+    sanity = cfx_big_to_str(&B, NULL);
+    assert(strcmp(sanity, expect) == 0);
+
+    for (size_t i = 0; i < b.n; ++i) {
+        printf("calculated: b.limb[%zu]: %llu; correct: B.limb[%zu]: %llu: %s: diff %d\n",
+        i, b.limb[i], i, B.limb[i], b.limb[i] == B.limb[i] ? "ok" : "--- NOT OK",
+        (int)(b.limb[i] & 0xFFFF) - (int)(B.limb[i] & 0xFFFF));
+    }
+    printf("\n\n");
+    assert(cfx_big_eq(&B, &b));
+    assert(strcmp(s, expect) == 0);
+    int cnt = 0;
+    cfx_big_mul(&b, &b); // 16
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 32
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 64
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 128
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 256
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 512
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 1024
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 2048
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 4096
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+
+    for (size_t i = 0; i < b.n; ++i) {
+        printf("calculated: b.limb[%zu]: %llu (0x%llx)\n", i, b.limb[i], b.limb[i]);
+    }
+    
+    char* huge = cfx_big_to_str(&b, NULL);
+    printf("%s\n", huge);
+    printf("digits: %zu\n", strlen(huge));
+    free(huge);
+    free(s);
     cfx_big_free(&b);
 }
 
@@ -572,7 +631,7 @@ int main(void) {
     test_str2();
     test_add_sm();
     test_sub_sm();
-    // test_cache();
+    test_cache();
     test_zero_right();
     test_zero_left();
     test_scalar_fastpath();

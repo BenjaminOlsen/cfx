@@ -18,4 +18,7 @@
 #define CFX_PRINT_DBG(...) do {} while(0)
 #endif
 
+#define U128_HI(x) (uint64_t)((x>>64)&0xFFFFFFFFFFFFFFFF)
+#define U128_LO(x) (uint64_t)((x)&0xFFFFFFFFFFFFFFFF)
+
 #endif /* CFX_MACROS_H */

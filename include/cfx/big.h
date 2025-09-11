@@ -13,6 +13,12 @@ extern "C" {
 
 #define CFX_BIG_PRINT(bg) printf("b.n %zu: b.cap: %zu, b %s\n", bg.n, bg.cap, cfx_big_to_str(&bg, NULL))
 
+#define CFX_BIG_PRINT_LIMBS(bg) \
+    do { \
+        for (size_t i = 0; i < bg.n; ++i) { \
+            printf("limb[%zu] = %llu\n", i, bg.limb[i]); \
+        } \
+    } while (0)
 
 typedef enum {
     CFX_FAC_NONE,

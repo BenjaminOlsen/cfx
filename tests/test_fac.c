@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static void test_init(void) {
     cfx_fac_t f;
@@ -152,8 +153,9 @@ char* F[] = {
 
 static void test_factorial_to_100(int quiet) {
     int aok = 1;
-    for (size_t n = 0; n < 100; ++n) {
-        cfx_vec_t primes = cfx_sieve_primes(n);
+    const size_t N = 100;
+    cfx_vec_t primes = cfx_sieve_primes(N);
+    for (size_t n = 0; n < N; ++n) {
         cfx_fac_t f;
         cfx_fac_init(&f);
         cfx_fac_factorial(&f, n, &primes);
@@ -166,6 +168,41 @@ static void test_factorial_to_100(int quiet) {
         if (!quiet) CFX_PRINT_DBG("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
         aok &= ok;
         cfx_fac_free(&f);
+        cfx_big_free(&b);
+        free(s);
+    }
+    assert(aok);
+}
+
+static void fac(cfx_big_t* out, const cfx_big_t* in) {
+    cfx_big_init(out);
+    if(cfx_big_is_zero(in)) { cfx_big_set_val(out, 0); return; }
+    cfx_big_t tmp;
+    cfx_big_copy(&tmp, in);
+    cfx_big_set_val(out, 1);
+    
+    while (!cfx_big_is_zero(&tmp)) {
+        cfx_big_mul(out, &tmp);
+        cfx_big_sub_sm(&tmp, 1);
+        char* s = cfx_big_to_str(&tmp, NULL);
+        // printf("tmp: %s\n", s);
+        free(s);
+    }
+}
+
+static void test_big_factorial_to_100(int quiet) {
+    int aok = 1;
+    size_t N = 100;
+    for (size_t n = 0; n < N; ++n) {
+        cfx_big_t b, f;
+        cfx_big_set_val(&b, n);
+        fac(&f, &b);
+        char* s = cfx_big_to_str(&f, NULL);
+        int ok = (strcmp(s, F[n]) == 0);
+        if (!quiet) CFX_PRINT_DBG("%zu! %s", n, ok ? "ok" : "NOT OK!");
+        if (ok) { printf("\n");}
+        else { printf("\n%s\n%s\n", s, F[n]);}
+        aok &= ok;
     }
     assert(aok);
 }
@@ -220,7 +257,8 @@ int main() {
     test_init();
     test_reserve();
     test_push();
-    test_factorial_to_100(quiet);
     test_fac_from_u64();
+    test_factorial_to_100(quiet);
+    test_big_factorial_to_100(quiet);
     return 0;
 }

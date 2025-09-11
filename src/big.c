@@ -10,6 +10,10 @@
 #include <assert.h>
 #include <ctype.h>
 
+// x86-64 BMI2/ADX fast path
+// compile with -march=native (or -03 -mbmi2 -madx)
+#include <immintrin.h>
+
 /* accumulator type of X bits and max value of multiplicands to fit therein */
 #if defined(__SIZEOF_INT128__)
 #define acc_t uint128_t
@@ -89,23 +93,45 @@ void cfx_big_set_val(cfx_big_t* b, uint64_t v) {
     }
 }
 
-static void cfx_big_mul_sm_fast(cfx_big_t* b, uint64_t m) {
+
+static inline void cfx_big_mul_sm_fast(cfx_big_t* b, uint64_t m) {
+    uint64_t* p = b->limb;
+    size_t    n = b->n;
+#if defined(__x86_64__) && defined(__BMI2__) || defined(__INTELLISENSE__) /* FU!!!! */
+#pragma message "Compiling with instrinsics!! "
+
+    if (b->cap <= n) {
+        cfx_big_reserve(b, n + 1);
+        p = b->limb;
+    }
+
+    uint64_t carry = 0;
+    for (size_t i = 0; i < n; ++i) {
+        uint64_t lo, hi;
+        // lo = (p[i] * m) low 64, hi = high 64 — flags NOT clobbered
+        lo = _mulx_u64(p[i], m, &hi);
+
+        // add previous carry into lo, get carry-out in c1
+        unsigned char c1 = _addcarry_u64(0, lo, carry, &lo);
+        // hi += c1
+        hi += c1;
+
+        p[i] = lo;
+        carry = hi;
+    }
+
+    p[n] = carry;
+    b->n = n + (carry != 0);
+#else // Portable fallback (uint128_t)
     uint128_t carry = 0;
-    acc_t t;
-    for (size_t i = 0; i < b->n; ++i) {
-        t = b->limb[i];
-        t *= m;
-        t += carry;
-        b->limb[i] = (uint64_t)t;
+    for (size_t i = 0; i < n; ++i) {
+        uint128_t t = (uint128_t)p[i] * m + carry;
+        p[i] = (uint64_t)t;
         carry = t >> 64;
     }
-    while (carry) {
-        // have to add a digit 
-        cfx_big_reserve(b, b->n+1);
-        b->limb[b->n] = (uint64_t)carry;
-        b->n++;
-        carry >>= 64;
-    }
+    p[n] = (uint64_t)carry;
+    b->n = n + ((uint64_t)carry != 0);
+#endif
 }
 
 /* Multiply by p^e by repeated squaring using small chunks to avoid u32 overflow */
@@ -181,7 +207,7 @@ void cfx_big_swap(cfx_big_t* a, cfx_big_t* b) {
 }
 
 void cfx_big_sq(cfx_big_t* b) {
-#if 1
+#if 0
     if (b->n == 0) return;
     cfx_big_t tmp;
     cfx_big_init(&tmp);
@@ -231,7 +257,7 @@ void cfx_big_sq(cfx_big_t* b) {
     cfx_big_trim_leading_zeros(&tmp);
     cfx_big_swap(&tmp, b);
     cfx_big_free(&tmp);
-#else
+#elif 0
     if (b->n == 0) return;
 
     size_t n = b->n;
@@ -286,6 +312,76 @@ void cfx_big_sq(cfx_big_t* b) {
     b->n = out_n;
     cfx_big_trim_leading_zeros(b);
     free(tmp);
+#else 
+    const size_t n = b->n;
+    if (n == 0) return;
+
+    size_t cnt = 0;
+    cfx_big_t r;
+    cfx_big_init(&r);
+    cfx_big_reserve(&r, 2*n);
+    memset(r.limb, 0, 2*n * sizeof(uint64_t));
+    r.n = 2*n;
+
+    // 1) Cross terms: for i < j, add 2*b[i]*b[j] into r[i+j]
+    for (size_t i = 0; i < n; ++i) {
+        uint128_t carry = 0;
+        for (size_t j = i + 1; j < n; ++j) {
+            uint128_t p = (uint128_t)b->limb[i] * b->limb[j];
+
+            // add p once
+            uint128_t t = (uint128_t)r.limb[i + j]
+                            + (uint64_t)p
+                            + (uint64_t)carry;
+            r.limb[i + j] = (uint64_t)t;
+            carry = (carry >> 64) + (t >> 64) + (p >> 64);
+
+            // add p again (to double) -- same carry rule
+            t = (uint128_t)r.limb[i + j]
+                + (uint64_t)p
+                + (uint64_t)carry;
+            r.limb[i + j] = (uint64_t)t;
+            carry = (carry >> 64) + (t >> 64) + (p >> 64);
+            cnt++;
+        }
+
+        // propagate whatever is left in 'carry'
+        size_t k = i + n; // next column after the last updated (i + (n-1))
+        while (carry) {
+            uint128_t t = (uint128_t)r.limb[k] + (uint64_t)carry;
+            r.limb[k] = (uint64_t)t;
+            carry = (carry >> 64) + (t >> 64);
+            ++k;
+            cnt++;
+        }
+    }
+
+    // 2) Diagonals: add b[i]^2 once at r[2*i]
+    for (size_t i = 0; i < n; ++i) {
+        uint128_t sq = (uint128_t)b->limb[i] * b->limb[i];
+
+        uint128_t t = (uint128_t)r.limb[2*i] + (uint64_t)sq;
+        r.limb[2*i] = (uint64_t)t;
+        uint128_t c = (t >> 64) + (sq >> 64);
+
+        size_t k = 2*i + 1;
+        cnt++;
+        while (c) {
+            t = (uint128_t)r.limb[k] + (uint64_t)c;
+            r.limb[k] = (uint64_t)t;
+            c = (c >> 64) + (t >> 64);
+            ++k;
+        }
+    }
+
+    // trim
+    while (r.n && r.limb[r.n - 1] == 0) --r.n;
+
+    // printf("%s loop cnt: %zu\n", __func__, cnt);
+    // move result back
+    cfx_big_free(b);
+    *b = r;
+
 #endif
 }
 
@@ -296,16 +392,20 @@ void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
         cfx_big_set_val(b, 0);
         return;
     }
-    if (cfx_big_eq(b, m)) {
+
+    /* not sure this is worth it:*/
+    /* if (cfx_big_eq(b, m)) {
         cfx_big_sq(b);
         return;
     }
+    */
 
     cfx_big_t tmp;
     cfx_big_init(&tmp);
     size_t szb = b->n;
     size_t szm = m->n;
 
+    size_t cnt = 0;
     cfx_big_reserve(&tmp, szb + szm);
     tmp.n = szm + szb;
 
@@ -315,15 +415,18 @@ void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
         for (size_t j = 0; j < szb; ++j) {
             uint128_t prod = mi * b->limb[j];
             prod += carry;
-            tmp.limb[i+j] += (uint64_t)prod;
-            carry = prod >> 64;
-            // printf("i: %zu, j: %zu; prod: %llu, carry: %llu\n", i, j, (uint64_t)prod, (uint64_t)carry);
+            uint128_t sum = (uint128_t)tmp.limb[i+j];
+            sum += prod;
+            tmp.limb[i+j] = (uint64_t)sum;
+            carry = sum >> 64;
+            cnt++;
         }
-        uint128_t l = carry + tmp.limb[i+szb];
         if (carry) {
+            uint128_t l = carry + tmp.limb[i+szb];
             tmp.limb[i+szb] = (uint64_t)l;
         }
     }
+    // printf("%s loop cnt: %zu\n", __func__, cnt);
     cfx_big_trim_leading_zeros(&tmp);
     cfx_big_swap(&tmp, b);
     cfx_big_free(&tmp);
@@ -338,14 +441,17 @@ void cfx_big_add_sm(cfx_big_t* b, uint64_t n) {
     }
 
     size_t i = 0;
-    while (n) {
-        cfx_big_reserve(b, b->n + 1); // doesn't do anything if b->n + 1 < b->cap
-        uint128_t s = (uint128_t)b->limb[i] + n; // sum
+    while (i < b->n) {
+        uint128_t s = (uint128_t)b->limb[i] + n;
         b->limb[i] = (uint64_t)s;
         n = (uint64_t)(s >> 64);
+        if (n == 0) return;
         ++i;
     }
-    if (i > b->n) b->n = i;
+
+    // carry left; append one limb
+    cfx_big_reserve(b, b->n + 1);
+    b->limb[b->n++] = n;      // n < 2^64 here
 }
 
 void cfx_big_sub_sm(cfx_big_t* b, uint64_t n) {
@@ -397,11 +503,15 @@ void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t *f) {
 
 
 int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r) {
-
+    (void)b;
+    (void)d;
+    (void)r;
+    return 0;
 }
 
 void cfx_big_to_fac(cfx_fac_t *f, const cfx_big_t *b) {
-    
+    (void)f;
+    (void)b;
 }
 
 uint64_t cfx_big_div_sm(cfx_big_t* b, uint64_t d) {
@@ -429,7 +539,14 @@ uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d) {
 }
 
 /* uses Horner's rule to evaluate the polynomial with x = B=2^64 */
-/* P(x)=(...((an​x+an−1​)x+an−2​)x+...+a1​)x+a0 */
+/* P(x)=(...((an​x+an−1​)x+an−2​)x+...+a1​)x+a0 as a running sum:
+acc0 = (an*B + an-1)
+acc1 = acc0*B + an-2 = (an*B + an-1)B + an-2 = anB^2 + an-1B + an-2
+acc2 = acc1*B + an-3 .. etc
+
+and each step, take % m because the remainder of the sum div m 
+is the sum of the remainders modulo m
+*/
 uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m) {
     if (b->n == 0) return 0;
     uint128_t acc = 0;
@@ -441,6 +558,8 @@ uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m) {
 }
 
 int cfx_fac_from_big(cfx_fac_t* fac, const cfx_big_t* in) {
+    (void)fac;
+    (void)in;
 #if 0
     cfx_big_t N = *in; // make a working copy
     cfx_fac_init(fac);
@@ -484,8 +603,8 @@ int cfx_fac_from_big(cfx_fac_t* fac, const cfx_big_t* in) {
     }
 
     cfx_fac_coalesce_sort(fac);
-    return 0;
 #endif
+    return 0;
 }
 
 
@@ -509,8 +628,18 @@ char* cfx_big_to_str(const cfx_big_t* src, size_t *sz_out) {
     uint32_t *chunks = (uint32_t*)malloc(maxdig);
     size_t k = 0;
 
+    printf("[cfx_big_to_str] building base %u representation... max digits: %zu\n",
+        CHUNK_BASE, maxdig);
+    int cnt = 0;
+    const size_t n0 = tmp.n;
     while (tmp.n) {
-        // printf("tmp.n:%zu; k: %zu/%zu\n", tmp.n, k, maxdig);
+        
+        if (!(tmp.n % 100)) { 
+            const char spinner[] = "|/-\\";
+            printf("%zu decimal digits done... %zu/%zu limbs remain... %c        \r",
+                k*9, tmp.n, n0, spinner[cnt++ % 4]);
+            fflush(stdout);
+        }
         chunks[k++] = cfx_big_div_sm_u32(&tmp, CHUNK_BASE);
     }
     cfx_big_free(&tmp);
