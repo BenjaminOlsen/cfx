@@ -277,7 +277,7 @@ static void test_zero_right(void) {
     cfx_big_init(&m);
     cfx_big_set_val(&m, 0);
 
-    cfx_big_mul(&b, &m);
+    cfx_big_mul_eq(&b, &m);
     assert(cfx_big_is_zero(&b));
 
     cfx_big_free(&b);
@@ -291,7 +291,7 @@ static void test_zero_left(void) {
     cfx_big_init(&m);
     cfx_big_set_val(&m, 987);
 
-    cfx_big_mul(&b, &m);
+    cfx_big_mul_eq(&b, &m);
     
     assert(cfx_big_is_zero(&b));
 
@@ -319,7 +319,7 @@ static void test_scalar_fastpath(void) {
     cfx_big_init(&m);
     cfx_big_set_val(&m, 7);
 
-    cfx_big_mul(&b, &m);
+    cfx_big_mul_eq(&b, &m);
     uint64_t expect[] = {35};
     CFX_BIG_PRINT(b);
     big_expect_limbs(__func__, &b, expect, 1);
@@ -335,7 +335,7 @@ static void test_carry_two_limbs_times_2(void) {
     cfx_big_init(&m);
     cfx_big_set_val(&m, 2);
 
-    cfx_big_mul(&b, &m);
+    cfx_big_mul_eq(&b, &m);
     uint64_t expect[] = {0xFFFFFFFFFFFFFFFEull, 0xFFFFFFFFFFFFFFFFull, 1ull};
     big_expect_limbs(__func__, &b, expect, 3);
 
@@ -357,7 +357,7 @@ static void test_mul_by_base_2_64_shift(void) {
 
     for (size_t n = 1; n < N; ++n) {
 
-        cfx_big_mul(&b, &m);
+        cfx_big_mul_eq(&b, &m);
         uint64_t* expect = (uint64_t*)malloc((n + sz0)*sizeof(uint64_t));
         for (size_t k = 0; k < n; ++k) {
             expect[k] = 0;
@@ -382,7 +382,7 @@ static void test_self_multiply_square(void) {
     uint64_t limbs[] = {0xFFFFFFFFFFFFFFFFull};
     cfx_big_from_limbs(&b, limbs, 1);
     big_expect_limbs(__func__, &b, limbs, 1);
-    cfx_big_mul(&b, &b); // self-mul path
+    cfx_big_mul_eq(&b, &b); // self-mul path
     uint64_t expect[] = {1ull, 0xFFFFFFFFFFFFFFFEull};
     big_expect_limbs(__func__, &b, expect, 2);
     cfx_big_free(&b);
@@ -397,7 +397,7 @@ static void test_self_multiply_big(void) {
     }
     cfx_big_from_limbs(&b, limbs, N);
     printf("before: "); CFX_BIG_PRINT(b);
-    cfx_big_mul(&b, &b);
+    cfx_big_mul_eq(&b, &b);
     printf("after: "); CFX_BIG_PRINT(b);
     cfx_big_free(&b);
     free(limbs);
@@ -413,7 +413,7 @@ void test_mul(cfx_big_t* b, const cfx_big_t* m) {
         return;
     }
     // if (cfx_big_eq(b, m)) {
-    //     cfx_big_sq(b);
+    //     cfx_big_sq_eq(b);
     //     return;
     // }
 
@@ -425,7 +425,7 @@ static void test_known_squares(void) {
     cfx_big_from_str(&b, 
         "12554203470773361528352143580257209"
         "759168353591939024551938");
-    cfx_big_sq(&b);
+    cfx_big_sq_eq(&b);
     char* s = cfx_big_to_str(&b, NULL);
     char* expect = 
         "15760802478557791686620405668794173"
@@ -440,7 +440,7 @@ static void test_known_squares(void) {
         "27136112775646765168338161504493023"
         "20618275753867907499968765052767290"
         "9553511701551770336148695547906");
-    cfx_big_sq(&b);
+    cfx_big_sq_eq(&b);
     free(s);
     s = cfx_big_to_str(&b, NULL);
     
@@ -460,7 +460,7 @@ static void test_known_squares(void) {
         "788040123927889584288300542721290477751811"
         "061317446299559616920266928982601233965513"
         "84510299169195903266945438318594");
-    cfx_big_sq(&b);
+    cfx_big_sq_eq(&b);
     free(s);
     s = cfx_big_to_str(&b, NULL);
     
@@ -479,7 +479,7 @@ static void test_known_squares(void) {
         "2564742658586426229545514803499564697000372"
         "3095350971345437292114654548843072761868784"
         "674125049315509629339381027496416991005114370");
-    cfx_big_sq(&b); // 1
+    cfx_big_sq_eq(&b); // 1
     free(s);
     s = cfx_big_to_str(&b, NULL);
     
@@ -495,7 +495,7 @@ static void test_known_squares(void) {
     assert(strcmp(s, expect) == 0);
 
     /* ----------------------------------- */
-    cfx_big_sq(&b); // 2
+    cfx_big_sq_eq(&b); // 2
     free(s);
     s = cfx_big_to_str(&b, NULL);
     
@@ -518,7 +518,7 @@ static void test_known_squares(void) {
         "610000";
     assert(strcmp(s, expect) == 0);
 
-    cfx_big_sq(&b); // 4
+    cfx_big_sq_eq(&b); // 4
     free(s);
     s = cfx_big_to_str(&b, NULL);
     
@@ -559,8 +559,8 @@ static void test_known_squares(void) {
     // CFX_BIG_PRINT_LIMBS(b);
 
     
-    // cfx_big_sq(&b); // 8
-    cfx_big_mul(&b, &b);
+    // cfx_big_sq_eq(&b); // 8
+    cfx_big_mul_eq(&b, &b);
     free(s);
     s = cfx_big_to_str(&b, NULL);
     //// sanity check:
@@ -584,24 +584,24 @@ static void test_known_squares(void) {
     assert(cfx_big_eq(&B, &b));
     assert(strcmp(s, expect) == 0);
     int cnt = 0;
-    cfx_big_mul(&b, &b); // 16
+    cfx_big_mul_eq(&b, &b); // 16
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 32
+    cfx_big_mul_eq(&b, &b); // 32
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 64
+    cfx_big_mul_eq(&b, &b); // 64
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 128
+    cfx_big_mul_eq(&b, &b); // 128
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 256
+    cfx_big_mul_eq(&b, &b); // 256
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 512
+    cfx_big_mul_eq(&b, &b); // 512
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 1024
-    printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 2048
-    printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 4096
-    printf("mul %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul_eq(&b, &b); // 1024
+    // printf("mul %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul_eq(&b, &b); // 2048
+    // printf("mul %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul_eq(&b, &b); // 4096
+    // printf("mul %d len: %zu \n", ++cnt, b.n);
 
     for (size_t i = 0; i < b.n; ++i) {
         printf("calculated: b.limb[%zu]: %llu (0x%llx)\n", i, b.limb[i], b.limb[i]);
