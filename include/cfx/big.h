@@ -69,9 +69,13 @@ cfx_big_t cfx_big_sq(const cfx_big_t* b);
 void cfx_big_sq_eq(cfx_big_t* b);
 int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r remainder. */
 
-void cfx_big_add_sm(cfx_big_t* b, uint64_t n);
-void cfx_big_sub_sm(cfx_big_t* b, uint64_t n);
-void cfx_big_mul_sm(cfx_big_t* b, uint64_t m);
+cfx_big_t cfx_big_sub_sm(const cfx_big_t* b, uint64_t n);
+cfx_big_t cfx_big_mul_sm(const cfx_big_t* b, uint64_t m);
+cfx_big_t cfx_big_add_sm(const cfx_big_t* b, uint64_t n);
+
+void cfx_big_add_eq_sm(cfx_big_t* b, uint64_t n);
+void cfx_big_sub_eq_sm(cfx_big_t* b, uint64_t n);
+void cfx_big_mul_eq_sm(cfx_big_t* b, uint64_t m);
 
 uint64_t cfx_big_div_eq_sm(cfx_big_t* b, uint64_t d);
 cfx_big_t cfx_big_div_sm(const cfx_big_t* b, uint64_t d, uint64_t* r);

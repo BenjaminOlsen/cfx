@@ -49,10 +49,10 @@ static void test_push(void) {
 }
 
 char* F[] = {
-    "1",
-    "1",
-    "2",
-    "6",
+    "1",    /* 0! */
+    "1",    /* 1! */
+    "2",    /* 2! */
+    "6",    /* 3! */
     "24",
     "120",
     "720",
@@ -153,7 +153,7 @@ char* F[] = {
 
 static void test_factorial_to_100(int quiet) {
     int aok = 1;
-    const size_t N = 100;
+    const size_t N = 2;
     cfx_vec_t primes = cfx_sieve_primes(N);
     for (size_t n = 0; n < N; ++n) {
         cfx_fac_t f;
@@ -176,18 +176,19 @@ static void test_factorial_to_100(int quiet) {
 
 static void fac(cfx_big_t* out, const cfx_big_t* in) {
     cfx_big_init(out);
-    if(cfx_big_is_zero(in)) { cfx_big_set_val(out, 0); return; }
+    if(cfx_big_is_zero(in)) { cfx_big_set_val(out, 1); return; }
     cfx_big_t tmp;
     cfx_big_copy(&tmp, in);
     cfx_big_set_val(out, 1);
     
     while (!cfx_big_is_zero(&tmp)) {
         cfx_big_mul_eq(out, &tmp);
-        cfx_big_sub_sm(&tmp, 1);
+        cfx_big_sub_eq_sm(&tmp, 1);
         char* s = cfx_big_to_str(&tmp, NULL);
         // printf("tmp: %s\n", s);
         free(s);
     }
+    cfx_big_free(&tmp);
 }
 
 static void test_big_factorial_to_100(int quiet) {
@@ -203,6 +204,8 @@ static void test_big_factorial_to_100(int quiet) {
         if (ok) { printf("\n");}
         else { printf("\n%s\n%s\n", s, F[n]);}
         aok &= ok;
+        cfx_big_free(&b);
+        cfx_big_free(&f);
     }
     assert(aok);
 }

@@ -326,7 +326,7 @@ cfx_big_t cfx_big_sq(const cfx_big_t* b) {
     if (n == 0) {
         return ret;
     }
-    
+
     size_t cnt = 0;
     
     cfx_big_reserve(&ret, 2*n);
@@ -451,7 +451,34 @@ void cfx_big_mul_eq(cfx_big_t* b, const cfx_big_t* m) {
     cfx_big_free(&tmp);
 }
 
-void cfx_big_add_sm(cfx_big_t* b, uint64_t n) {
+cfx_big_t cfx_big_add(const cfx_big_t* b, uint64_t n) {
+    cfx_big_t ret;
+    cfx_big_init(&ret);
+    if (b->n == 0) {
+        cfx_big_set_val(&ret, n);
+        return ret;
+    }
+    if (n == 0) {
+        return ret;
+    }
+
+    cfx_big_copy(&ret, b);
+    size_t i = 0;
+    while (i < ret.n) {
+        uint128_t s = (uint128_t)ret.limb[i] + n;
+        ret.limb[i] = (uint64_t)s;
+        n = (uint64_t)(s >> 64);
+        if (n == 0) return ret; // done carrying, done adding
+        ++i;
+    }
+    // append one limb if there is any carry left
+    cfx_big_reserve(&ret, ret.n + 1);
+    ret.limb[ret.n] = n;
+    ++ret.n;
+    return ret;
+}
+
+void cfx_big_add_eq_sm(cfx_big_t* b, uint64_t n) {
     if (n == 0) return;
     if (b->n == 0) {
         cfx_big_init(b);
@@ -473,7 +500,7 @@ void cfx_big_add_sm(cfx_big_t* b, uint64_t n) {
     b->limb[b->n++] = n;      // n < 2^64 here
 }
 
-void cfx_big_sub_sm(cfx_big_t* b, uint64_t n) {
+void cfx_big_sub_eq_sm(cfx_big_t* b, uint64_t n) {
     if (n == 0 || b->n == 0) return;
     if (b->limb[0] < n) {
         if (b->n == 1) {
@@ -487,7 +514,7 @@ void cfx_big_sub_sm(cfx_big_t* b, uint64_t n) {
     _trim_leading_zeros(b);
 }
 
-void cfx_big_mul_sm(cfx_big_t* b, uint64_t m) {
+void cfx_big_mul_eq_sm(cfx_big_t* b, uint64_t m) {
     if (m == 1) return;
     if (m == 0 || b->n == 0) {
         cfx_big_init(b);
@@ -647,8 +674,7 @@ char* cfx_big_to_str(const cfx_big_t* src, size_t *sz_out) {
     uint32_t *chunks = (uint32_t*)malloc(maxdig);
     size_t k = 0;
 
-    printf("[cfx_big_to_str] building base %u representation... max digits: %zu\n",
-        CHUNK_BASE, maxdig);
+    // printf("[cfx_big_to_str] building base %u representation... max digits: %zu\n",CHUNK_BASE, maxdig);
     int cnt = 0;
     const size_t n0 = tmp.n;
     while (tmp.n) {
@@ -696,8 +722,8 @@ int cfx_big_from_str(cfx_big_t* out, const char* s) {
     for (; *s; s++) {
         if (!isdigit((unsigned char)*s)) return -1;
         uint32_t digit = (uint32_t)(*s - '0');
-        cfx_big_mul_sm(out, 10); // out = out * 10
-        cfx_big_add_sm(out, digit); // out = out + digit
+        cfx_big_mul_eq_sm(out, 10); // out = out * 10
+        cfx_big_add_eq_sm(out, digit); // out = out + digit
     }
     return 0;
 }

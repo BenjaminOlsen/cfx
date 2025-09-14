@@ -25,9 +25,15 @@ void cfx_fac_init(cfx_fac_t* f) {
     f->cap = 0;
 }
 
+void cfx_fac_clear(cfx_fac_t* f) {
+    f->len = 0;
+}
+
 void cfx_fac_free(cfx_fac_t* f) {
     free(f->data);
-    cfx_fac_init(f);
+    f->data = NULL;
+    f->len = 0;
+    f->cap = 0;
 }
 
 static inline int _cfx_mul_zu_ok(size_t a, size_t b, size_t* out) {
@@ -154,10 +160,13 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
     *dst = out;
 }
 
-/* calculate the factorization of n.
-we pass in a list of primes to not have to calculate it on every call of this function */
+/** calculate the factorial of n.
+* we pass in a list of primes to not have to calculate it on every call of this function -
+* precondition: primes is sorted strictly increasing! 
+*/
 int cfx_fac_factorial(cfx_fac_t *f, uint64_t n, const cfx_vec_t *primes) {
     int ret = CFX_OK;
+    if (n == 0)
     for (size_t i = 0; i < primes->size; ++i) {
         uint64_t p = primes->data[i];
         if (p > n) break;

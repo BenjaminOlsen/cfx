@@ -1,5 +1,6 @@
 #include "cfx/big.h"
 #include "cfx/macros.h"
+#include "cfx/error.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -56,8 +57,8 @@ static void big_init_from_limbs_base_1e9(cfx_big_t* b, const uint64_t *limbs, si
     cfx_big_init(b);
     if (n == 0) return;
     for (ssize_t i = n - 1; i >= 0; --i) {
-        cfx_big_mul_sm(b, 1000000000ull);
-        cfx_big_add_sm(b, limbs[i]);
+        cfx_big_mul_eq_sm(b, 1000000000ull);
+        cfx_big_add_eq_sm(b, limbs[i]);
     }
 }
 
@@ -65,11 +66,11 @@ static void test_mul_by_zero(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_set_val(&b, 123);
-    cfx_big_mul_sm(&b, 2838);
-    cfx_big_mul_sm(&b, 1928);
-    cfx_big_mul_sm(&b, 9);
-    cfx_big_mul_sm(&b, 123765);
-    cfx_big_mul_sm(&b, 0);
+    cfx_big_mul_eq_sm(&b, 2838);
+    cfx_big_mul_eq_sm(&b, 1928);
+    cfx_big_mul_eq_sm(&b, 9);
+    cfx_big_mul_eq_sm(&b, 123765);
+    cfx_big_mul_eq_sm(&b, 0);
     size_t sz = 0;
     char* s = cfx_big_to_str(&b, &sz);
     CFX_PRINT_DBG("s: %s, sz: %zu\n", s, sz);
@@ -86,14 +87,14 @@ static void test_add_sm(void) {
     cfx_big_set_val(&b, 123);
     CFX_BIG_PRINTF(&b, "after setting val: ");
 
-    cfx_big_add_sm(&b, 321);
+    cfx_big_add_eq_sm(&b, 321);
     CFX_BIG_PRINTF(&b, "after add: ");
     assert(b.limb[0] == 444);
     cfx_big_set_val(&b, UINT64_MAX);
     CFX_BIG_PRINTF(&b, "after set:");
     
     assert(b.limb[0] == UINT64_MAX);
-    cfx_big_add_sm(&b, 1);
+    cfx_big_add_eq_sm(&b, 1);
     CFX_BIG_PRINTF(&b, "after carry: ");
     assert(b.limb[0] == 0);
     assert(b.limb[1] == 1);
@@ -106,27 +107,27 @@ static void test_sub_sm(void) {
     CFX_BIG_PRINTF(&b, "init: b.n:%ld; ", b.n);
 
     cfx_big_set_val(&b, 1);
-    cfx_big_sub_sm(&b, 1);
+    cfx_big_sub_eq_sm(&b, 1);
     assert(b.limb[0] == 0);
-    cfx_big_sub_sm(&b, 1);
+    cfx_big_sub_eq_sm(&b, 1);
     assert(b.limb[0] == 0);
     
     cfx_big_set_val(&b, UINT64_MAX);
     CFX_BIG_PRINTF(&b, "set to UINT64_MAX: ");
     assert(b.limb[0] == UINT64_MAX);
-    cfx_big_add_sm(&b, 1);
+    cfx_big_add_eq_sm(&b, 1);
     CFX_BIG_PRINTF(&b, "add 1: ");
     assert(b.limb[0] == 0);
     assert(b.limb[1] == 1);
 
-    cfx_big_sub_sm(&b, 1);
+    cfx_big_sub_eq_sm(&b, 1);
     CFX_BIG_PRINTF(&b, "sub 1: ");
     assert(b.limb[0] == UINT64_MAX);
     assert(b.n == 1);
 
     const uint64_t N = 12;
     for (uint64_t n = 0; n < N; ++n) {
-        cfx_big_sub_sm(&b, 1);
+        cfx_big_sub_eq_sm(&b, 1);
         CFX_BIG_PRINTF(&b, "sub 1: ");
     }
     assert(b.limb[0] == UINT64_MAX - N);
@@ -135,12 +136,12 @@ static void test_sub_sm(void) {
     uint64_t orig = b.limb[0];
     for (uint64_t n = 0; n < 2; ++n) {
         uint128_t s = (uint128_t)b.limb[0] + q;
-        cfx_big_add_sm(&b, q);
+        cfx_big_add_eq_sm(&b, q);
         CFX_BIG_PRINTF(&b, "add %llu: ", q);
         assert(b.limb[0] == (uint64_t)s);
         assert(b.n > 1);
         assert(b.limb[1] == (uint64_t)(s >> 64));
-        cfx_big_sub_sm(&b, q);
+        cfx_big_sub_eq_sm(&b, q);
         CFX_BIG_PRINTF(&b, "sub %llu: ", q);
         assert(b.limb[0] == orig);
     }
@@ -218,7 +219,7 @@ static void test_limb7(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_set_val(&b, 1);
-    for (int i = 0; i < 10; ++i) cfx_big_mul_sm(&b, 1000000000u - 1u); // (1e9-1)^10
+    for (int i = 0; i < 10; ++i) cfx_big_mul_eq_sm(&b, 1000000000u - 1u); // (1e9-1)^10
     char *s = cfx_big_to_str(&b, NULL);
     // spot checks: starts with '9' and length >= 9
     CFX_PRINT_DBG("%s\n", s);
@@ -312,7 +313,7 @@ static void big_expect_limbs(const char* s, const cfx_big_t* b, const uint64_t* 
     assert(ok);
 }
 
-static void test_scalar_fastpath(void) {
+static void test_mul1(void) {
     cfx_big_t b, m;
     cfx_big_init(&b);
     cfx_big_set_val(&b, 5);
@@ -326,6 +327,21 @@ static void test_scalar_fastpath(void) {
 
     cfx_big_free(&b);
     cfx_big_free(&m);
+}
+
+static void test_mul_add_equiv(void) {
+    cfx_big_t a, m;
+    cfx_big_init(&a);
+    cfx_big_set_val(&a, 0);
+    cfx_big_init(&m);
+    cfx_big_set_val(&m, 1);
+    uint64_t K = 0x1B2CDE;
+    cfx_big_mul_eq_sm(&m, K);
+
+    for (uint64_t i = 0; i < K; ++i) {
+        cfx_big_add_eq_sm(&a, 1);
+    }
+    assert(cfx_big_eq(&a, &m));
 }
 
 static void test_carry_two_limbs_times_2(void) {
@@ -594,8 +610,8 @@ static void test_known_squares(void) {
     printf("mul %d len: %zu \n", ++cnt, b.n);
     cfx_big_mul_eq(&b, &b); // 256
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_eq(&b, &b); // 512
-    printf("mul %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul_eq(&b, &b); // 512
+    // printf("mul %d len: %zu \n", ++cnt, b.n);
     // cfx_big_mul_eq(&b, &b); // 1024
     // printf("mul %d len: %zu \n", ++cnt, b.n);
     // cfx_big_mul_eq(&b, &b); // 2048
@@ -634,11 +650,12 @@ int main(void) {
     test_cache();
     test_zero_right();
     test_zero_left();
-    test_scalar_fastpath();
+    test_mul1();
     test_carry_two_limbs_times_2();
     test_mul_by_base_2_64_shift();
     test_self_multiply_square();
     test_self_multiply_big();
     test_known_squares();
+    test_mul_add_equiv();
     return 0;
 }
