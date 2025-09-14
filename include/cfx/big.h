@@ -62,30 +62,21 @@ void cfx_big_reserve(cfx_big_t* b, size_t need);
 void cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src);
 
 void cfx_big_set_val(cfx_big_t* b, uint64_t v);
-cfx_big_t cfx_big_mul(const cfx_big_t* b, const cfx_big_t* m);
-void cfx_big_mul_eq(cfx_big_t* b, const cfx_big_t* m);
+void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
 
-cfx_big_t cfx_big_sq(const cfx_big_t* b);
-void cfx_big_sq_eq(cfx_big_t* b);
-int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r remainder. */
+void cfx_big_sq(cfx_big_t* b);
+int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r remainder. */
 
-cfx_big_t cfx_big_sub_sm(const cfx_big_t* b, uint64_t n);
-cfx_big_t cfx_big_mul_sm(const cfx_big_t* b, uint64_t m);
-cfx_big_t cfx_big_add_sm(const cfx_big_t* b, uint64_t n);
+void cfx_big_add_sm(cfx_big_t* b, uint64_t n);
+void cfx_big_sub_sm(cfx_big_t* b, uint64_t n);
+void cfx_big_mul_sm(cfx_big_t* b, uint64_t m);
 
-void cfx_big_add_eq_sm(cfx_big_t* b, uint64_t n);
-void cfx_big_sub_eq_sm(cfx_big_t* b, uint64_t n);
-void cfx_big_mul_eq_sm(cfx_big_t* b, uint64_t m);
-
-uint64_t cfx_big_div_eq_sm(cfx_big_t* b, uint64_t d);
-cfx_big_t cfx_big_div_sm(const cfx_big_t* b, uint64_t d, uint64_t* r);
-uint32_t cfx_big_div_eq_sm_u32(cfx_big_t* b, uint32_t d);
-cfx_big_t cfx_big_div_sm_u32(const cfx_big_t* b, uint32_t d);
-uint64_t cfx_big_mod_eq_sm(cfx_big_t* b, uint64_t m);
-cfx_big_t cfx_big_mod_sm(const cfx_big_t* b, uint64_t m);
+uint64_t cfx_big_div_sm(cfx_big_t* b, uint64_t d);
+uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d);
+uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m);
 
 int cfx_big_is_zero(const cfx_big_t* b);
-int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n);
+int cfx_big_sm(const cfx_big_t* b, uint64_t n);
 int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
 

@@ -19,7 +19,7 @@ static void BM_AddSmall(benchmark::State& state) {
     cfx_big_init(&b);
     cfx_big_set_val(&b, 0);
     for (auto _ : state) {
-        cfx_big_add_eq_sm(&b, 123456789ULL);
+        cfx_big_add_sm(&b, 123456789ULL);
         benchmark::DoNotOptimize(b);
     }
     cfx_big_free(&b);
@@ -31,7 +31,7 @@ static void BM_MulSmall(benchmark::State& state) {
     cfx_big_init(&b);
     for (auto _ : state) {
         cfx_big_set_val(&b, 123456789ULL);
-        cfx_big_mul_eq_sm(&b, 7);
+        cfx_big_mul_sm(&b, 7);
     }
     benchmark::DoNotOptimize(b);
     cfx_big_free(&b);
@@ -46,7 +46,7 @@ static void BM_MulBig(benchmark::State& state) {
     cfx_big_set_val(&b, 987654321ULL);
     for (auto _ : state) {
         cfx_big_set_val(&a, 123456789ULL);
-        cfx_big_mul_eq(&a, &b);
+        cfx_big_mul(&a, &b);
         benchmark::DoNotOptimize(a);
         benchmark::DoNotOptimize(b);
     }
@@ -65,7 +65,7 @@ static void BM_DivSm(benchmark::State& state) {
         cfx_big_t tmp;
         cfx_big_init(&tmp);
         cfx_big_copy(&tmp, &a);
-        uint64_t rem = cfx_big_div_eq_sm(&tmp, 7);
+        uint64_t rem = cfx_big_div_sm(&tmp, 7);
         benchmark::DoNotOptimize(rem);
         cfx_big_free(&tmp);
     }
