@@ -444,23 +444,24 @@ void cfx_big_sq(cfx_big_t* b) {
 
 /* b += a */
 void cfx_big_add(cfx_big_t* b, const cfx_big_t* a) {
-    if (b->n == 0) {
-        cfx_big_copy(b, a);
-        return;
-    }
     uint64_t carry = 0;
     size_t i = 0;
-    while (i < a->n) {
-        cfx_big_reserve(b, i+1);
-        uint128_t s = b->limb[i] + a->limb[i] + carry;
+
+    while (i < a->n || carry) {
+        cfx_big_reserve(b, i + 1);
+
+        uint128_t bi = (i < b->n) ? b->limb[i] : 0;
+        uint128_t ai = (i < a->n) ? a->limb[i] : 0;
+        uint128_t s  = bi + ai + carry;
+
+        if (i >= b->n) b->n = i + 1;      // we’re extending b
         b->limb[i] = (uint64_t)s;
-        carry = (uint64_t)(s >> 64);
+        carry      = (uint64_t)(s >> 64);
         ++i;
     }
-    if (carry) {
-        cfx_big_reserve(b, b->n+1);
-        b->limb[b->n] = carry;
-    }
+
+    // If a->n > b->n and carry ended at 0, we may still need to bump b->n
+    if (i > b->n) b->n = i;
 }
 
 
