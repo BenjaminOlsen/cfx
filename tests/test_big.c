@@ -666,6 +666,227 @@ static void test_known_squares(void) {
     PRINT_TEST(1);
 }
 
+/* ------------------------------------------------------------------------ */
+
+
+static void expect_dec_eq(const cfx_big_t* x, const char* dec) {
+    cfx_big_t tmp; 
+    cfx_big_from_str(&tmp, dec);
+    assert(cfx_big_eq(x, &tmp));
+    cfx_big_free(&tmp);
+}
+
+static void big_dec1(cfx_big_t* x) {
+    uint64_t borrow = 1;
+    for (size_t i = 0; i < x->n && borrow; ++i) {
+        uint64_t old = x->limb[i];
+        x->limb[i] = old - borrow;
+        borrow = (x->limb[i] > old);
+    }
+    // rely on library ops to keep canonical form later
+}
+
+// Property check: n == q*d + r and r < d
+static void assert_n_eq_qd_plus_r(const cfx_big_t* n, const cfx_big_t* q,
+                                  const cfx_big_t* d, const cfx_big_t* r) {
+    cfx_big_t check;
+    cfx_big_copy(&check, q);
+    cfx_big_t tmp;
+    cfx_big_init(&tmp);
+
+    cfx_big_mul(&check, d);
+    cfx_big_copy(&tmp, r);
+    cfx_big_add(&check, &tmp);
+
+    assert(cfx_big_eq(&check, n));
+    assert(cfx_big_cmp(r, d) == -1);
+
+    cfx_big_free(&check);
+    cfx_big_free(&tmp);
+}
+
+// ---------- tests ----------
+
+void test_big_div_divide_by_zero(void) {
+    cfx_big_t n, d, q, r;
+    cfx_big_set_val(&n, 123);
+    cfx_big_set_val(&d, 0);
+    cfx_big_init(&q);
+    cfx_big_init(&r);
+
+    int rc = cfx_big_divrem(&q, &r, &n, &d);
+    assert(rc == -1);
+
+    cfx_big_free(&n);
+    cfx_big_free(&d);
+    cfx_big_free(&q);
+    cfx_big_free(&r);
+}
+
+void test_big_div_zero_dividend(void) {
+    cfx_big_t n, d, q, r;
+    cfx_big_set_val(&n, 0);
+    cfx_big_set_val(&d, 42);
+
+    int rc = cfx_big_divrem(&q, &r, &n, &d);
+    assert(rc == 0);
+    expect_dec_eq(&q, "0");
+    expect_dec_eq(&r, "0");
+
+    cfx_big_free(&n);
+    cfx_big_free(&d);
+    cfx_big_free(&q);
+    cfx_big_free(&r);
+}
+
+void test_big_div_n_less_than_d(void) {
+    cfx_big_t n, d, q, r;
+    cfx_big_set_val(&n, 123456);
+    cfx_big_set_val(&d, 123456789);
+
+    int rc = cfx_big_divrem(&q, &r, &n, &d);
+    assert(rc == 0);
+    expect_dec_eq(&q, "0");
+    assert(cfx_big_eq(&r, &n));
+
+    cfx_big_free(&n);
+    cfx_big_free(&d);
+    cfx_big_free(&q);
+    cfx_big_free(&r);
+}
+
+void test_big_div_equal_numbers(void) {
+    cfx_big_t n, d, q, r;
+    cfx_big_from_str(&n, "1234567890123456789012345678901234567890");
+    cfx_big_copy(&d, &n);
+
+    int rc = cfx_big_divrem(&q, &r, &n, &d);
+    assert(rc == 0);
+    expect_dec_eq(&q, "1");
+    expect_dec_eq(&r, "0");
+
+    cfx_big_free(&n);
+    cfx_big_free(&d);
+    cfx_big_free(&q);
+    cfx_big_free(&r);
+}
+
+void test_big_div_single_limb_divisor_property(void) {
+    cfx_big_t n, d, q, r;
+    cfx_big_from_str(&n, "340282366920938463463374607431768211455"); // 2^128 - 1
+    cfx_big_set_val(&d, 123456789ULL);
+
+    int rc = cfx_big_divrem(&q, &r, &n, &d);
+    assert(rc == 0);
+    assert_n_eq_qd_plus_r(&n, &q, &d, &r);
+
+    cfx_big_free(&n);
+    cfx_big_free(&d);
+    cfx_big_free(&q);
+    cfx_big_free(&r);
+}
+
+void test_big_div_multi_limb_divisor_exact_and_remainder(void) {
+    // n = a*b + r, then n / b -> q=a, rem=r
+    cfx_big_t a, b, r, n, q, rem;
+    cfx_big_from_str(&a, "123456789012345678901234567890123456789");
+    cfx_big_from_str(&b, "987654321098765432109876543210987654321");
+    cfx_big_from_str(&r, "12345678901234567890");
+
+    cfx_big_copy(&n, &a);
+    cfx_big_mul(&n, &b);
+    cfx_big_add(&n, &r);
+
+    int rc = cfx_big_divrem(&q, &rem, &n, &b);
+    assert(rc == 0);
+    assert(cfx_big_eq(&q, &a));
+    assert(cfx_big_eq(&rem, &r));
+    assert_n_eq_qd_plus_r(&n, &q, &b, &rem);
+
+    cfx_big_free(&a); 
+    cfx_big_free(&b);
+    cfx_big_free(&r);
+    cfx_big_free(&n);
+    cfx_big_free(&q);
+    cfx_big_free(&rem);
+}
+
+void test_big_div_in_place_eq_with_remainder(void) {
+    // Build n = a*b + 42, then n := n / b, rem = 42
+    cfx_big_t a, b, n, rem, forty_two;
+    cfx_big_from_str(&a, "1122334455667788990011223344556677889900");
+    cfx_big_from_str(&b, "18446744073709551616"); // 2^64
+    cfx_big_copy(&n, &a);
+    cfx_big_mul(&n, &b);
+    cfx_big_set_val(&forty_two, 42);
+    cfx_big_add(&n, &forty_two);
+
+    int rc = cfx_big_div_eq(&n, &b, &rem);
+    assert(rc == 0);
+    assert(cfx_big_eq(&n, &a));
+    expect_dec_eq(&rem, "42");
+
+    cfx_big_free(&a);
+    cfx_big_free(&b);
+    cfx_big_free(&n);
+    cfx_big_free(&rem);
+    cfx_big_free(&forty_two);
+}
+
+void test_big_div_quotient_only_and_remainder_only(void) {
+    cfx_big_t a, b, n, q, r, b_minus_1;
+    cfx_big_from_str(&a, "3141592653589793238462643383279502884197");
+    cfx_big_from_str(&b, "2718281828459045235360287471352662497757");
+
+    // n = a*b + (b-1)
+    cfx_big_copy(&n, &a);
+    cfx_big_mul(&n, &b);
+
+    cfx_big_copy(&b_minus_1, &b);
+    big_dec1(&b_minus_1);
+
+    cfx_big_add(&n, &b_minus_1);
+
+    // quotient only
+    assert(cfx_big_div_out(&q, &n, &b) == 0);
+    assert(cfx_big_eq(&q, &a));
+
+    // remainder only
+    assert(cfx_big_mod_out(&r, &n, &b) == 0);
+    assert(cfx_big_eq(&r, &b_minus_1));
+
+    cfx_big_free(&a);
+    cfx_big_free(&b);
+    cfx_big_free(&n);
+    cfx_big_free(&q);
+    cfx_big_free(&r);
+    cfx_big_free(&b_minus_1);
+}
+
+void test_big_div_alias_remainder_eq_src(void) {
+    // Verify cfx_big_div_eq supports r == b (if your impl promises this).
+    cfx_big_t b, d;
+    cfx_big_from_str(&b, "123456789012345678901234567890");
+    cfx_big_from_str(&d, "987654321");
+
+    cfx_big_t orig; cfx_big_copy(&orig, &b);
+
+    int rc = cfx_big_div_eq(&b, &d, &b);   // r aliases src
+    assert(rc == 0);
+
+    // Check property with a fresh recompute: orig == q*d + r, where q is in 'b' (after div)
+    cfx_big_t q_copy;
+    cfx_big_copy(&q_copy, &b);  // b now holds q
+    assert_n_eq_qd_plus_r(&orig, &q_copy, &d, &b);
+
+    cfx_big_free(&orig);
+    cfx_big_free(&q_copy);
+    cfx_big_free(&b);
+    cfx_big_free(&d);
+}
+
+
+
 int main(void) {
     test_copy_swap();
     test_cfx_big_init();
@@ -692,5 +913,18 @@ int main(void) {
     test_self_multiply_big();
     test_known_squares();
     test_mul_adduiv();
+
+    test_big_div_divide_by_zero();
+    test_big_div_zero_dividend();
+    test_big_div_n_less_than_d();
+    test_big_div_equal_numbers();
+    test_big_div_single_limb_divisor_property();
+    // test_big_div_multi_limb_divisor_exact_and_remainder();
+    // test_big_div_in_place_eq_with_remainder();
+    
+    // test_big_div_quotient_only_and_remainder_only();
+    // test_big_div_alias_remainder_eq_src();
+
+    puts("OK");
     return 0;
 }

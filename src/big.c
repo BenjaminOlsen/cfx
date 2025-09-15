@@ -190,17 +190,30 @@ int cfx_big_is_zero(const cfx_big_t* b) {
     return b->n <= 1 && b->limb[0] == 0;
 }
 
-int cfx_big_sm(const cfx_big_t* b, uint64_t n) {
+int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n) {
     return b->n == 1 && b->limb[0] == n;
 }
 
-int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2) {
-    if (b1->n != b2->n) return 0;
+int cfx_big_eq(const cfx_big_t* a, const cfx_big_t* b) {
+    if (a->n != b->n) return 0;
     uint64_t diff = 0;
-    for (size_t i = 0; i < b1->n; ++i) {
-        diff |= (b1->limb[i] ^ b2->limb[i]);
+    for (size_t i = 0; i < a->n; ++i) {
+        diff |= (a->limb[i] ^ b->limb[i]);
     }
     return diff == 0;
+}
+/** compare two bigs - 
+ * returns: 
+ * -1 if a < b
+ * 0 if a == b
+ * 1 if a > b
+ **/
+int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b) {
+    if (a->n != b->n) return (a->n < b->n) ? -1 : 1;
+    for (size_t i = a->n; i-- > 0; ) {
+        if (a->limb[i] != b->limb[i]) return (a->limb[i] < b->limb[i]) ? -1 : 1;
+    }
+    return 0;
 }
 
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b) {
@@ -536,13 +549,6 @@ void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t *f) {
 }
 
 
-int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r) {
-    (void)b;
-    (void)d;
-    (void)r;
-    return 0;
-}
-
 void cfx_big_to_fac(cfx_fac_t *f, const cfx_big_t *b) {
     (void)f;
     (void)b;
@@ -714,4 +720,206 @@ int cfx_big_from_str(cfx_big_t* out, const char* s) {
         cfx_big_add_sm(out, digit); // out = out + digit
     }
     return 0;
+}
+
+/* ------------------------------------------------------------- */
+static inline unsigned _clz64(uint64_t x) { return x ? __builtin_clzll(x) : 64; }
+
+/* out = x << s (0..63)  */
+void cfx_big_shl(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
+    cfx_big_init(out);
+    if (x->n == 0 || s == 0) { cfx_big_copy(out, x); return; }
+
+    cfx_big_reserve(out, x->n + 1);
+    uint64_t carry = 0;
+    for (size_t i = 0; i < x->n; ++i) {
+        uint128_t t = ((uint128_t)x->limb[i] << s) | carry;
+        out->limb[i] = (uint64_t)t;
+        carry = (uint64_t)(t >> 64);
+    }
+    out->n = x->n;
+    if (carry) { out->limb[out->n++] = carry; }
+}
+
+/* out = x >> s (0..63)  */
+void cfx_big_shr(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
+    cfx_big_init(out);
+    if (x->n == 0 || s == 0) { cfx_big_copy(out, x); return; }
+
+    cfx_big_reserve(out, x->n);
+    uint64_t carry = 0;
+    for (ssize_t i = (ssize_t)x->n - 1; i >= 0; --i) {
+        uint128_t t = ((uint128_t)carry << 64) | x->limb[i];
+        out->limb[i] = (uint64_t)(t >> s);
+        carry = (uint64_t)(x->limb[i] << (64 - s));
+    }
+    out->n = x->n;
+    _trim_leading_zeros(out);
+}
+
+/* Compare a and b: -1/0/1 */
+static int _cmp(const cfx_big_t* a, const cfx_big_t* b) {
+    if (a->n != b->n) return (a->n < b->n) ? -1 : 1;
+    for (ssize_t i = (ssize_t)a->n - 1; i >= 0; --i) {
+        if (a->limb[i] != b->limb[i]) return (a->limb[i] < b->limb[i]) ? -1 : 1;
+    }
+    return 0;
+}
+
+/* Core: q = n / d; r = n % d; any of q or r may be NULL. Returns 0, or -1 if d==0. */
+int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
+                   const cfx_big_t* n, const cfx_big_t* d) {
+
+    if (cfx_big_is_zero(d)) return -1;
+
+    /* n == 0 */
+    if (cfx_big_is_zero(n)) {
+        cfx_big_set_val(q, 0);
+        cfx_big_set_val(r, 0);
+        return 0;
+    }
+
+    /* n < d */
+    if (_cmp(n, d) < 0) {
+        cfx_big_set_val(q, 0);
+        cfx_big_copy(r, n);
+        return 0;
+    }
+
+    /* d is single-limb -> fast path */
+    if (d->n == 1) {
+        uint64_t div = d->limb[0];
+        uint128_t rem = 0;
+        { cfx_big_reserve(q, n->n); q->n = n->n; }
+        for (ssize_t i = (ssize_t)n->n - 1; i >= 0; --i) {
+            uint128_t cur = (rem << 64) | n->limb[i];
+            uint64_t qi = (uint64_t)(cur / div);
+            rem = cur % div;
+            q->limb[i] = qi;
+        }
+        _trim_leading_zeros(q);
+        cfx_big_set_val(r, (uint64_t)rem);
+        return 0;
+    }
+
+    /* Knuth Algorithm D (normalized) */
+
+    /* Normalize: shift so msb of d's top limb is set */
+    unsigned s = _clz64(d->limb[d->n - 1]);
+    cfx_big_t V, U;
+    cfx_big_shl(&V, d, s);
+    cfx_big_shl(&U, n, s);
+
+    /* Ensure U has one extra top limb for convenience */
+    cfx_big_reserve(&U, U.n + 1);
+    U.limb[U.n] = 0;
+    U.n += 1;
+
+    size_t m = V.n;           /* divisor length after norm */
+    size_t nn = U.n;          /* dividend length after norm (incl extra top) */
+    size_t qlen = (nn >= m) ? (nn - m) : 0; /* expected quotient length */
+
+    cfx_big_t QT;
+
+    cfx_big_init(&QT);
+    cfx_big_reserve(&QT, qlen);
+    QT.n = qlen;
+    for (size_t i = 0; i < qlen; ++i) QT.limb[i] = 0;
+
+    const uint64_t v1 = V.limb[m - 1];
+    const uint64_t v2 = V.limb[m - 2]; /* safe because m>=2 in this branch */
+
+    for (ssize_t j = (ssize_t)qlen - 1; j >= 0; --j) {
+        /* Estimate qhat from the top 2 (or 3) limbs */
+        uint128_t top = ((uint128_t)U.limb[j + m] << 64) | U.limb[j + m - 1];
+        uint64_t qhat = (uint64_t)(top / v1);
+        uint64_t rhat = (uint64_t)(top % v1);
+
+        /* Adjust qhat if necessary (Knuth step D3) */
+        if (qhat == UINT64_MAX || (uint128_t)qhat * v2 > (((uint128_t)rhat << 64) | U.limb[j + m - 2])) {
+            qhat--;
+            rhat += v1;
+            if (rhat < v1 && (uint128_t)qhat * v2 > (((uint128_t)rhat << 64) | U.limb[j + m - 2])) {
+                qhat--;
+                rhat += v1;
+            }
+        }
+
+        /* Multiply-subtract U[j..j+m] -= qhat * V[0..m-1] */
+        uint64_t carry = 0;
+        for (size_t i = 0; i < m; ++i) {
+            uint128_t prod = (uint128_t)qhat * V.limb[i] + carry;
+            uint64_t plo = (uint64_t)prod;
+            carry = (uint64_t)(prod >> 64);
+
+            uint64_t uj = U.limb[j + i];
+            uint64_t uj_new = uj - plo;
+            uint64_t borrow = (uj_new > uj); /* underflow -> borrow 1 */
+            U.limb[j + i] = uj_new;
+            carry += borrow;
+        }
+        /* subtract final carry from U[j+m] */
+        uint64_t ujm = U.limb[j + m];
+        uint64_t ujm_new = ujm - carry;
+        uint64_t borrow_out = (ujm_new > ujm);
+        U.limb[j + m] = ujm_new;
+
+        if (borrow_out) {
+            /* Too big: qhat--, add V back */
+            qhat--;
+            uint64_t c = 0;
+            for (size_t i = 0; i < m; ++i) {
+                uint128_t ssum = (uint128_t)U.limb[j + i] + V.limb[i] + c;
+                U.limb[j + i] = (uint64_t)ssum;
+                c = (uint64_t)(ssum >> 64);
+            }
+            U.limb[j + m] += c; /* cannot overflow because we just fixed an over-subtraction */
+        }
+
+        QT.limb[j] = qhat;
+    }
+
+    /* Unnormalize remainder: R = (U[0..m-1] >> s) */
+    cfx_big_t Rn;
+    cfx_big_init(&Rn);
+    cfx_big_reserve(&Rn, m);
+    Rn.n = m;
+    for (size_t i = 0; i < m; ++i) Rn.limb[i] = U.limb[i];
+    cfx_big_shr(r, &Rn, s);
+    cfx_big_free(&Rn);
+
+    /* Output quotient (already normalized) */
+    _trim_leading_zeros(&QT);
+    cfx_big_swap(&QT, q);
+    cfx_big_free(&QT);
+
+
+    cfx_big_free(&U);
+    cfx_big_free(&V);
+    return 0;
+}
+
+/* Convenience wrappers */
+int cfx_big_div_out(cfx_big_t* q, const cfx_big_t* n, const cfx_big_t* d) {
+    return cfx_big_divrem(q, NULL, n, d);
+}
+int cfx_big_mod_out(cfx_big_t* r, const cfx_big_t* n, const cfx_big_t* d) {
+    return cfx_big_divrem(NULL, r, n, d);
+}
+
+/* In-place: b := floor(b/d); optional remainder r. Alias-safe for any combination. */
+int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r /*nullable*/) {
+    cfx_big_t qtmp, rtmp;
+    cfx_big_init(&qtmp);
+    cfx_big_init(&rtmp);
+
+    int rc = cfx_big_divrem(&qtmp, r ? &rtmp : NULL, b, d);
+    if (rc == 0) {
+        cfx_big_swap(&qtmp, b);
+        if (r) cfx_big_swap(&rtmp, r);
+    }
+
+    cfx_big_free(&qtmp);
+    cfx_big_free(&rtmp);
+    return rc;
 }

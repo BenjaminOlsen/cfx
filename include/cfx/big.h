@@ -67,17 +67,31 @@ void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
 void cfx_big_sq(cfx_big_t* b);
 int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r remainder. */
 
+void cfx_big_add(cfx_big_t* b, const cfx_big_t* a);
 void cfx_big_add_sm(cfx_big_t* b, uint64_t n);
 void cfx_big_sub_sm(cfx_big_t* b, uint64_t n);
 void cfx_big_mul_sm(cfx_big_t* b, uint64_t m);
+
+int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r, const cfx_big_t* n, const cfx_big_t* d);
+int cfx_big_div_out(cfx_big_t* q, const cfx_big_t* n, const cfx_big_t* d);
+int cfx_big_mod_out(cfx_big_t* r, const cfx_big_t* n, const cfx_big_t* d);
+/* In-place: b := floor(b/d); optional remainder r. Alias-safe for any combination. */
+int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r /*nullable*/);
 
 uint64_t cfx_big_div_sm(cfx_big_t* b, uint64_t d);
 uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d);
 uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m);
 
+/* Bitshift operations */
+/* out = x << s (0..63)  */
+void cfx_big_shl(cfx_big_t* out, const cfx_big_t* x, unsigned s);
+/* out = x >> s (0..63)  */
+void cfx_big_shr(cfx_big_t* out, const cfx_big_t* x, unsigned s);
+
 int cfx_big_is_zero(const cfx_big_t* b);
-int cfx_big_sm(const cfx_big_t* b, uint64_t n);
+int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n);
 int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
+int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
 
 void cfx_big_enable_fac(cfx_big_t* b);
