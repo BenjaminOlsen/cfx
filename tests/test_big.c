@@ -9,7 +9,7 @@
 
 #define PRINT_TEST(ok) \
     do { \
-        printf("%s() ---- %s\n", __func__, ok ? "ok" : "NOT OK"); \
+        printf("[%s] ---- %s\n", __func__, ok ? "ok" : "NOT OK"); \
     } while (0)
 
 static void test_cfx_big_init(void) {
@@ -280,6 +280,160 @@ static void test_str2(void) {
     PRINT_TEST(1);
 }
 
+
+// --- hex tests ---
+static void test_hex_zero_empty_n(void) {
+    cfx_big_t b = {0};
+    // n == 0 should yield "0"
+    size_t len = 12345;
+    char* s = cfx_big_to_hex(&b, &len);
+    assert(s);
+    assert(strcmp(s, "0") == 0);
+    assert(len == 1);
+    assert(s[len] == '\0');
+    printf("[%s] - %s\n", __func__, s);
+    free(s);
+    PRINT_TEST(1);
+}
+
+static void test_hex_zero_explicit_limb_zero(void) {
+    cfx_big_t b = {0};
+    uint64_t limbs[] = {0};
+    cfx_big_from_limbs(&b, limbs, 1);
+    size_t len = 0;
+    char* s = cfx_big_to_hex(&b, &len);
+    assert(s);
+    assert(strcmp(s, "0") == 0);
+    assert(len == 1);
+    assert(s[len] == '\0');
+    cfx_big_free(&b);
+    printf("[%s] - %s\n", __func__, s);
+    free(s);
+    PRINT_TEST(1);
+}
+
+static void test_hex_single_limb_basic(void) {
+    cfx_big_t b = {0};
+    // 0x1 -> "1"
+    uint64_t limbs1[] = {0x1ull};
+    cfx_big_from_limbs(&b, limbs1, 1);
+    size_t len1 = 0;
+    char* s1 = cfx_big_to_hex(&b, &len1);
+    assert(strcmp(s1, "1") == 0);
+    assert(len1 == strlen("1"));
+    assert(s1[len1] == '\0');
+    printf("[%s] - %s\n", __func__, s1);
+    free(s1);
+
+    // 0xabcdef -> "abcdef" (lowercase)
+    b.limb[0] = 0xabcdefull;
+    size_t len2 = 0;
+    char* s2 = cfx_big_to_hex(&b, &len2);
+    assert(strcmp(s2, "abcdef") == 0);
+    assert(len2 == strlen("abcdef"));
+    assert(s2[len2] == '\0');
+    cfx_big_free(&b);
+    printf("[%s] - %s\n", __func__, s2);
+    free(s2);
+    PRINT_TEST(1);
+}
+
+static void test_hex_single_limb_hex_digit_count(void) {
+    cfx_big_t b = {0};
+    // 2^60 = 0x1000000000000000 -> 1 followed by 15 zeros (16 digits total)
+    uint64_t limbs[] = {0x1000000000000000ull};
+    cfx_big_from_limbs(&b, limbs, 1);
+    size_t len = 0;
+    char* s = cfx_big_to_hex(&b, &len);
+    assert(strcmp(s, "1000000000000000") == 0);
+    assert(len == 16);
+    assert(s[len] == '\0');
+    cfx_big_free(&b);
+    printf("[%s] - %s\n", __func__, s);
+    free(s);
+    PRINT_TEST(1);
+}
+
+static void test_hex_two_limbs_padding(void) {
+    cfx_big_t b = {0};
+    // high = 0x1, low = 0x1 -> "1" + "0000000000000001"
+    uint64_t limbs[] = {
+        0x0000000000000001ull, // low
+        0x0000000000000001ull  // high
+    };
+    cfx_big_from_limbs(&b, limbs, 2);
+    size_t len = 0;
+    char* s = cfx_big_to_hex(&b, &len);
+    assert(strcmp(s, "10000000000000001") == 0);
+    assert(len == 17);                  // 1 + 16
+    assert(s[len] == '\0');
+    cfx_big_free(&b);
+    printf("[%s] - %s\n", __func__, s);
+    free(s);
+    PRINT_TEST(1);
+}
+
+static void test_hex_two_limbs_mixed_digits(void) {
+    cfx_big_t b = {0};
+    // high = 0xABC, low = 0x0011223344556677
+    // expect: "abc" + "0011223344556677"
+    uint64_t limbs[] = {
+        0x0011223344556677ull, // low
+        0x0000000000000ABCull  // high
+    };
+    cfx_big_from_limbs(&b, limbs, 2);
+    char* s = cfx_big_to_hex(&b, NULL); // also test sz_out == NULL
+    assert(strcmp(s, "abc0011223344556677") == 0);
+    assert(s[strlen(s)] == '\0');
+    cfx_big_free(&b);
+    printf("[%s] - %s\n", __func__, s);
+    free(s);
+    PRINT_TEST(1);
+}
+
+static void test_hex_leading_zero_limb_skipped(void) {
+    cfx_big_t b = {0};
+    // limbs: [low=X, mid=Y, high=0] -> should behave like just [low=X, mid=Y]
+    uint64_t limbs3[] = {
+        0xDEADBEEFCAFEBABEuLL, // low
+        0x0000000000000123uLL, // mid
+        0x0000000000000000uLL  // high (zero)
+    };
+    cfx_big_from_limbs(&b, limbs3, 3);
+    size_t len = 0;
+    char* s = cfx_big_to_hex(&b, &len);
+    // expected: "123" + "%016" of low
+    const char* expect_low = "deadbeefcafebabe"; // lowercase
+    // const char* expect = "1230000000000000" "deadbeefcafebabe";
+    // But careful: mid=0x123 -> "123", low padded to 16
+    char expect_buf[3 + 16 + 1];
+    snprintf(expect_buf, sizeof(expect_buf), "%s%s", "123", expect_low);
+    assert(strcmp(s, expect_buf) == 0);
+    assert(len == strlen(expect_buf));
+    assert(s[len] == '\0');
+    cfx_big_free(&b);
+    printf("[%s] - %s\n", __func__, s);
+    free(s);
+    PRINT_TEST(1);
+}
+
+static void test_hex_no_leading_zeros_on_msl(void) {
+    cfx_big_t b = {0};
+    // high = 0x00000000000000ab -> "ab", low zero-padded
+    uint64_t limbs[] = {
+        0ULL,
+        0xABULL
+    };
+    cfx_big_from_limbs(&b, limbs, 2);
+    size_t len = 0;
+    char* s = cfx_big_to_hex(&b, &len);
+    assert(strcmp(s, "ab0000000000000000") == 0);
+    assert(len == 2 + 16);
+    assert(s[len] == '\0');
+    cfx_big_free(&b);
+    free(s);
+    PRINT_TEST(1);
+}
 static void test_cache(void) {
     cfx_big_t b;
     cfx_big_init(&b);
@@ -644,20 +798,20 @@ static void test_known_squares(void) {
     printf("mul %d len: %zu \n", ++cnt, b.n);
     cfx_big_mul(&b, &b); // 256
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul(&b, &b); // 512
-    // printf("mul %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul(&b, &b); // 1024
-    // printf("mul %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul(&b, &b); // 2048
-    // printf("mul %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul(&b, &b); // 4096
-    // printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 512
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 1024
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 2048
+    printf("mul %d len: %zu \n", ++cnt, b.n);
+    cfx_big_mul(&b, &b); // 4096
+    printf("mul %d len: %zu \n", ++cnt, b.n);
 
     for (size_t i = 0; i < b.n; ++i) {
         printf("calculated: b.limb[%zu]: %llu (0x%llx)\n", i, b.limb[i], b.limb[i]);
     }
     
-    char* huge = cfx_big_to_str(&b, NULL);
+    char* huge = cfx_big_to_hex(&b, NULL);
     printf("%s\n", huge);
     printf("digits: %zu\n", strlen(huge));
     free(huge);
@@ -924,6 +1078,15 @@ int main(void) {
     
     // test_big_div_quotient_only_and_remainder_only();
     // test_big_div_alias_remainder_eq_src();
+
+    test_hex_leading_zero_limb_skipped();
+    test_hex_no_leading_zeros_on_msl();
+    test_hex_single_limb_basic();
+    test_hex_single_limb_hex_digit_count();
+    test_hex_two_limbs_mixed_digits();
+    test_hex_two_limbs_padding();
+    test_hex_zero_empty_n();
+    test_hex_zero_explicit_limb_zero();
 
     puts("OK");
     return 0;

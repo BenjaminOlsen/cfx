@@ -63,6 +63,7 @@ void cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src);
 
 void cfx_big_set_val(cfx_big_t* b, uint64_t v);
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
+void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
 
 void cfx_big_sq(cfx_big_t* b);
 int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r remainder. */
@@ -105,8 +106,9 @@ void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t* f);
 void cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b);
 
 char* cfx_big_to_str(const cfx_big_t* b, size_t *sz_out);
+char* cfx_big_to_hex(const cfx_big_t* src, size_t *sz_out);
 int cfx_big_from_str(cfx_big_t* b, const char* str);
-
+int cfx_big_from_hex(cfx_big_t* b, const char* str);
 /**
  *  args: cfx_big_t * b : ptr to big
  *  fmt: format string

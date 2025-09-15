@@ -166,7 +166,10 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
 */
 int cfx_fac_factorial(cfx_fac_t *f, uint64_t n, const cfx_vec_t *primes) {
     int ret = CFX_OK;
-    if (n == 0)
+    if (n == 0) {
+        cfx_fac_init(f);
+        goto end;
+    }
     for (size_t i = 0; i < primes->size; ++i) {
         uint64_t p = primes->data[i];
         if (p > n) break;

@@ -10,6 +10,8 @@
 
 int main(int argc, char* argv[]) {
     if (argc < 2) return 1;
+    int print_hex = 0;
+    if ((argc == 3) && (strcmp(argv[2], "-x")==0)) print_hex = 1;
     uint64_t n = (uint64_t)strtol(argv[1], NULL, 10);
     printf("%llu\n", n);
     cfx_vec_t primes = cfx_sieve_primes(n);
@@ -17,12 +19,18 @@ int main(int argc, char* argv[]) {
     cfx_fac_t fac;
     cfx_fac_init(&fac);
     cfx_fac_factorial(&fac, n, &primes);
-
+    printf("fac size: %zu\n", fac.len);
+    
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_from_fac(&b, &fac);
     size_t sz = 0;
-    char* s = cfx_big_to_str(&b, &sz);
+    char* s;
+    if (print_hex) {
+        s = cfx_big_to_hex(&b, &sz);
+    } else {
+        s = cfx_big_to_str(&b, &sz);
+    }
     printf("%llu! = %s\ndigits: %zu\nlimbs: %zu\n", n, s, sz, b.n);
     free(s);
     cfx_big_free(&b);

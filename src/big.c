@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <ctype.h>
+#include <inttypes.h>
 
 // x86-64 BMI2/ADX fast path
 // compile with -march=native (or -03 -mbmi2 -madx)
@@ -33,9 +34,11 @@ void cfx_big_clear(cfx_big_t* b) {
 
 void cfx_big_free(cfx_big_t* b) {
     b->n = 0;
-    free(b->limb); b->limb = 0;
-    free(b->cache); b->cache = 0;
     b->cap = 0;
+    free(b->limb);
+    b->limb = NULL;
+    free(b->cache);
+    b->cache = NULL;
 }
 
 
@@ -202,6 +205,7 @@ int cfx_big_eq(const cfx_big_t* a, const cfx_big_t* b) {
     }
     return diff == 0;
 }
+
 /** compare two bigs - 
  * returns: 
  * -1 if a < b
@@ -407,7 +411,12 @@ void cfx_big_sq(cfx_big_t* b) {
 #endif
 }
 
- void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
+/* TODO */
+void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m) {
+    cfx_big_mul(b, m);
+}
+
+void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
     
     if (cfx_big_is_zero(b) || cfx_big_is_zero(m)) {
         cfx_big_set_val(b, 0);
@@ -538,6 +547,7 @@ void cfx_big_from_limbs(cfx_big_t* b, const uint64_t* limbs, size_t n) {
     cfx_big_reserve(b, n);
     memcpy(b->limb, limbs, n * sizeof(uint64_t));
     b->n = n;
+    _trim_leading_zeros(b);
 }
 
 /* Materialize factorization into cfx_big_t */
@@ -647,6 +657,60 @@ int cfx_fac_from_big(cfx_fac_t* fac, const cfx_big_t* in) {
     return 0;
 }
 
+static inline size_t hex_digits_u64(uint64_t v) {
+    if (!v) return 1;
+#if defined(__GNUC__) || defined(__clang__)
+    unsigned lead = (unsigned)__builtin_clzll(v);
+    unsigned bits = 64u - lead;
+    return (bits + 3u) / 4u; // ceil(bits/4)
+#else
+    size_t d = 0;
+    while (v) { v >>= 4; ++d; }
+    return d;
+#endif
+}
+
+char* cfx_big_to_hex(const cfx_big_t* src, size_t* sz_out) {
+    // Treat empty/zero as "0"
+    if (!src || src->n == 0) {
+        char* s = (char*)malloc(2);
+        if (!s) return NULL;
+        s[0] = '0'; s[1] = '\0';
+        if (sz_out) *sz_out = 1;
+        return s;
+    }
+
+    /* trim leading zeros */
+    size_t ms = src->n;
+
+    const uint64_t ms_val = src->limb[ms - 1];
+    const size_t ms_digits = hex_digits_u64(ms_val);
+    const size_t total_len = ms_digits + (ms - 1) * 16; // 16 hex chars per remaining limb
+
+    char* s = (char*)malloc(total_len + 1); // +1 for NUL
+    if (!s) return NULL;
+
+    char* p = s;
+    size_t rem = total_len + 1;
+
+    // Most-significant limb without leading zeros
+    int written = snprintf(p, rem, "%" PRIx64, (uint64_t)ms_val);
+    assert(written > 0 && (size_t)written == ms_digits);
+    p   += written;
+    rem -= (size_t)written;
+
+    // Remaining limbs, zero-padded to 16 hex chars each
+    for (ssize_t i = (ssize_t)ms - 2; i >= 0; --i) {
+        written = snprintf(p, rem, "%016" PRIx64, (uint64_t)src->limb[i]);
+        assert(written == 16);
+        p   += written;
+        rem -= (size_t)written;
+    }
+
+    // `snprintf` already wrote the final '\0' on the last call
+    if (sz_out) *sz_out = total_len;
+    return s;
+}
 
 /* Convert cfx_big_t to decimal string */
 char* cfx_big_to_str(const cfx_big_t* src, size_t *sz_out) {
@@ -723,7 +787,7 @@ int cfx_big_from_str(cfx_big_t* out, const char* s) {
 }
 
 /* ------------------------------------------------------------- */
-static inline unsigned _clz64(uint64_t x) { return x ? __builtin_clzll(x) : 64; }
+static inline unsigned _clz64(uint64_t x) { return x ? __builtin_clzll(x) : 64u; }
 
 /* out = x << s (0..63)  */
 void cfx_big_shl(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
@@ -758,13 +822,6 @@ void cfx_big_shr(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
 }
 
 /* Compare a and b: -1/0/1 */
-static int _cmp(const cfx_big_t* a, const cfx_big_t* b) {
-    if (a->n != b->n) return (a->n < b->n) ? -1 : 1;
-    for (ssize_t i = (ssize_t)a->n - 1; i >= 0; --i) {
-        if (a->limb[i] != b->limb[i]) return (a->limb[i] < b->limb[i]) ? -1 : 1;
-    }
-    return 0;
-}
 
 /* Core: q = n / d; r = n % d; any of q or r may be NULL. Returns 0, or -1 if d==0. */
 int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
@@ -780,7 +837,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
     }
 
     /* n < d */
-    if (_cmp(n, d) < 0) {
+    if (cfx_big_cmp(n, d) < 0) {
         cfx_big_set_val(q, 0);
         cfx_big_copy(r, n);
         return 0;
