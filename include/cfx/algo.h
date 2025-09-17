@@ -26,6 +26,13 @@ uint64_t cfx_gcd_u64(uint64_t a, uint64_t b);
 uint64_t cfx_rho_brent(uint64_t n);
 int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n);
 
+/* A * B -> R  (schoolbook) with carry-save accumulation.
+   - A has na limbs, B has nb limbs
+   - R must have space for na+nb limbs
+*/
+void cfx_mul_csa_portable(const uint64_t* A, size_t na,
+                          const uint64_t* B, size_t nb,
+                          uint64_t* R);
 #ifdef __cplusplus
 }
 #endif

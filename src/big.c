@@ -416,6 +416,27 @@ void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m) {
     cfx_big_mul(b, m);
 }
 
+void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m) {
+    if (cfx_big_is_zero(b) || cfx_big_is_zero(m)) {
+        cfx_big_set_val(b, 0);
+        return;
+    }
+
+    const size_t nb = b->n;
+    const size_t nm = m->n;
+    const size_t nout = nm + nb;
+
+    cfx_big_t tmp;
+    cfx_big_init(&tmp);
+    cfx_big_reserve(&tmp, nout);
+
+    cfx_mul_csa_portable(b->limb, nb, m->limb, nm, tmp.limb);
+    tmp.n = nout;
+    _trim_leading_zeros(&tmp);
+    cfx_big_swap(&tmp, b);
+    cfx_big_free(&tmp);
+}
+
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
     
     if (cfx_big_is_zero(b) || cfx_big_is_zero(m)) {
@@ -700,11 +721,20 @@ char* cfx_big_to_hex(const cfx_big_t* src, size_t* sz_out) {
     rem -= (size_t)written;
 
     // Remaining limbs, zero-padded to 16 hex chars each
+    size_t k = 0;
     for (ssize_t i = (ssize_t)ms - 2; i >= 0; --i) {
         written = snprintf(p, rem, "%016" PRIx64, (uint64_t)src->limb[i]);
         assert(written == 16);
         p   += written;
         rem -= (size_t)written;
+
+        if (!(i % 100)) { 
+            const char spinner[] = "|/-\\";
+            ++k;
+            printf("%zu hex digits done... %zu/%zu limbs remain... %c        \r",
+                k, i, ms, spinner[k % 4]);
+            fflush(stdout);
+        }
     }
 
     // `snprintf` already wrote the final '\0' on the last call
@@ -771,13 +801,65 @@ char* cfx_big_to_str(const cfx_big_t* src, size_t *sz_out) {
     return s;
 }
 
+// static inline int hexval(unsigned char c) {
+//     unsigned v = c - '0';
+//     if (v <= 9) return (int)v;
+//     v = (c | 32) - 'a'; // to lowercase trick, then to [0,5]: 'A' | 32 -> 'a'; 'a' | 32 -> 'a'
+//     if (v <= 5) return (int)(v + 10);
+//     return -1;                   // not a hex digit
+// }
+
+static const int8_t hex_table[256] = {
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1,-1,-1,-1,-1,-1,
+    -1,10,11,12,13,14,15,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,10,11,12,13,14,15,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+};
+
+int cfx_big_from_hex(cfx_big_t* out, const char* s) {
+    cfx_big_init(out);
+    cfx_big_set_val(out, 0);
+
+    while (*s && isspace((unsigned char)*s)) ++s;
+
+    if (s[0]=='0' && (s[1]=='x' || s[1]=='X')) s += 2;
+
+    int any = 0;
+    for (; *s; ++s) {
+        int d = hex_table[(unsigned char)*s];   // -1 if not hex
+        if (d < 0) break;                       // stop on first non-hex
+        // out = (out << 4) + d;
+        cfx_big_shl(out, out, 4);               // or cfx_big_mul_sm(out, 16)
+        cfx_big_add_sm(out, (uint64_t)d);
+        any = 1;
+    }
+
+    // allow trailing spaces only
+    while (*s && isspace((unsigned char)*s)) ++s;
+
+    if (!any || *s != '\0') return -1;          // no digits or junk trailing
+    return 0;
+}
+
 int cfx_big_from_str(cfx_big_t* out, const char* s) {
     cfx_big_init(out);
     cfx_big_set_val(out, 0);
 
     while (isspace((unsigned char)*s)) s++;
 
-    for (; *s; s++) {
+    for (; *s; ++s) {
         if (!isdigit((unsigned char)*s)) return -1;
         uint32_t digit = (uint32_t)(*s - '0');
         cfx_big_mul_sm(out, 10); // out = out * 10
@@ -820,8 +902,6 @@ void cfx_big_shr(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
     out->n = x->n;
     _trim_leading_zeros(out);
 }
-
-/* Compare a and b: -1/0/1 */
 
 /* Core: q = n / d; r = n % d; any of q or r may be NULL. Returns 0, or -1 if d==0. */
 int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,

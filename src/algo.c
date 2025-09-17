@@ -4,6 +4,9 @@
 #include "cfx/primes.h"
 
 #include <stdlib.h>
+#include <stdint.h>
+#include <string.h>   // memset
+#include <assert.h>
 
 /* bit index i -> x = 2i + 3 */
 #define BIT_GET(A,i)  (((A)[(i)>>3] >> ((i)&7)) & 1u)
@@ -294,4 +297,80 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n) {
     }
     cfx_vec_free(&v);
     return 0;
+}
+
+/* Accumulator holds a value as:  (acc_hi << 64) + acc_lo
+   No cross-limb carry is propagated while accumulating. */
+typedef struct {
+    uint64_t lo;  // sum bits
+    uint64_t hi;  // saved carries (conceptually << 1 bit each)
+} csa128_t;
+
+/* Add a 128-bit value (add_hi:add_lo) into one accumulator cell */
+static inline void csa_add128_into(csa128_t* acc, uint64_t add_lo, uint64_t add_hi) {
+    // 128-bit add: (acc_hi:acc_lo) += (add_hi:add_lo)   without leaking carries to neighbors
+    uint128_t t  = (uint128_t)acc->lo + add_lo;
+    acc->lo        = (uint64_t)t;
+    acc->hi       += add_hi + (uint64_t)(t >> 64);  // keep the carry in the local 'hi' word
+}
+
+void cfx_mul_csa_portable(const uint64_t* A, size_t na,
+                          const uint64_t* B, size_t nb, uint64_t* R) {
+
+    assert(na > 0 && nb > 0);
+    const size_t nout = na + nb;              // result limbs
+    csa128_t* acc = (csa128_t*)alloca(nout * sizeof(csa128_t));
+    for (size_t k = 0; k < nout; ++k) { acc[k].lo = 0; acc[k].hi = 0; }
+
+    // Accumulate all partial products per diagonal, carry-save style
+    for (size_t i = 0; i < na; ++i) {
+        uint64_t ai = A[i];
+        for (size_t j = 0; j < nb; ++j) {
+            __uint128_t p  = (__uint128_t)ai * (__uint128_t)B[j];
+            uint64_t add_lo = (uint64_t)p;
+            uint64_t add_hi = (uint64_t)(p >> 64);
+            size_t k = i + j;
+
+            // (acc_hi:acc_lo) += (add_hi:add_lo)
+            __uint128_t t = (__uint128_t)acc[k].lo + add_lo;
+            uint64_t new_lo = (uint64_t)t;
+            uint64_t c0     = (uint64_t)(t >> 64);
+
+            __uint128_t u = (__uint128_t)acc[k].hi + add_hi + c0;
+            acc[k].lo = new_lo;
+            acc[k].hi = (uint64_t)u;
+
+            // *** spill overflow of the diagonal's hi into the NEXT diagonal's hi ***
+            uint64_t spill = (uint64_t)(u >> 64);   // 0 or 1
+            size_t kk = k + 1;
+            while (spill && kk < nout) {
+                __uint128_t w = (__uint128_t)acc[kk].hi + spill;
+                acc[kk].hi = (uint64_t)w;
+                spill = (uint64_t)(w >> 64);        // might ripple further
+                ++kk;
+            }
+            // If spill is still nonzero here, it would be beyond the m+n limb bound.
+            // For 64-bit limb products of sizes na, nb, true products fit in exactly na+nb limbs.
+            assert(spill == 0);
+        }
+    }
+
+    // Final single carry-propagation across limbs
+    __uint128_t carry = 0;
+    for (size_t k = 0; k < nout; ++k) {
+        __uint128_t wide = (((__uint128_t)acc[k].hi) << 64) | acc[k].lo;
+        wide += carry;
+        R[k]  = (uint64_t)wide;
+        carry = wide >> 64;
+    }
+
+    // By construction, carry should be 0 here for na+nb limbs.
+    assert(carry == 0);
+
+    // CFX_PRINT_DBG("A:\t");
+    // PRINT_ARR(A, na);
+    // CFX_PRINT_DBG("B:\t");
+    // PRINT_ARR(B, nb);
+    // CFX_PRINT_DBG("R:\t");
+    // PRINT_ARR(R, nout);
 }

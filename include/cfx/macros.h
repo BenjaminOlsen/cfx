@@ -21,4 +21,18 @@
 #define U128_HI(x) (uint64_t)((x>>64)&0xFFFFFFFFFFFFFFFF)
 #define U128_LO(x) (uint64_t)((x)&0xFFFFFFFFFFFFFFFF)
 
+#define PRINT_TEST(ok) \
+    do { \
+        printf("[%s] ---- %s\n", __func__, ok ? "ok" : "NOT OK"); \
+    } while (0)
+
+#define PRINT_ARR(A, na) do { \
+    printf("["); \
+    for (ssize_t i = na-1; i >= 0; --i) { \
+        printf("%llu", A[i]); \
+        if (i == 0) printf("]\n"); \
+        else printf(", "); \
+    } \
+} while (0)
+
 #endif /* CFX_MACROS_H */

@@ -98,12 +98,159 @@ static void test_fermat_primes(void) {
     }
 }
 
+
+/* --- simple reference multiply with carry propagation --- */
+static void mul_ref(const uint64_t* A, size_t na,
+                    const uint64_t* B, size_t nb,
+                    uint64_t* R) {
+    size_t nout = na + nb;
+    memset(R, 0, nout * sizeof(uint64_t));
+
+    for (size_t i = 0; i < na; ++i) {
+        __uint128_t carry = 0;
+        for (size_t j = 0; j < nb; ++j) {
+            __uint128_t cur = (__uint128_t)A[i] * B[j]
+                            + (__uint128_t)R[i + j]
+                            + carry;
+            R[i + j] = (uint64_t)cur;
+            carry    = cur >> 64;
+        }
+        size_t k = i + nb;
+        while (carry) {
+            __uint128_t t = (__uint128_t)R[k] + carry;
+            R[k]   = (uint64_t)t;
+            carry  = t >> 64;
+            ++k;
+        }
+    }
+    // CFX_PRINT_DBG("A:\t"); 
+    // PRINT_ARR(A, na);
+    // CFX_PRINT_DBG("B:\t"); 
+    // PRINT_ARR(B, nb);
+    // CFX_PRINT_DBG("R:\t");
+    // PRINT_ARR(R, nout);
+}
+
+/* --- helpers --- */
+static void assert_eq_arr(const uint64_t* X, const uint64_t* Y, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+        assert(X[i] == Y[i]);
+    }
+}
+
+static void test_zero(void) {
+    uint64_t A[] = {0};
+    uint64_t B[] = {0, 0, 0};
+    size_t na = 1, nb = 3, nout = na + nb;
+    uint64_t R1[4], R2[4];
+
+    cfx_mul_csa_portable(A, na, B, nb, R1);
+    mul_ref(A, na, B, nb, R2);
+    assert_eq_arr(R1, R2, nout);
+    PRINT_TEST(1);
+}
+
+static void test_one_by_small(void) {
+    uint64_t A[] = {1};
+    uint64_t B[] = {0x0123456789abcdefULL, 0xfedcba9876543210ULL};
+    size_t na = 1, nb = 2, nout = na + nb;
+    uint64_t R1[3], R2[3];
+
+    cfx_mul_csa_portable(A, na, B, nb, R1);
+    mul_ref(A, na, B, nb, R2);
+    assert_eq_arr(R1, R2, nout);
+    PRINT_TEST(1);
+}
+
+static void test_single_limb_carry(void) {
+    uint64_t A[] = {0xffffffffffffffffULL};
+    uint64_t B[] = {0xffffffffffffffffULL};
+    size_t na = 1, nb = 1, nout = na + nb;
+    uint64_t R1[2], R2[2];
+
+    cfx_mul_csa_portable(A, na, B, nb, R1);
+    mul_ref(A, na, B, nb, R2);
+    assert_eq_arr(R1, R2, nout);
+    PRINT_TEST(1);
+}
+
+static void test_mixed_lengths(void) {
+    uint64_t A[] = {0x0000000000000001ULL, 0x0000000000000000ULL, 0x0000000000000001ULL}; // 2^128 + 1
+    uint64_t B[] = {0x0000000000000000ULL, 0x0000000000000002ULL};                         // 2^65
+    size_t na = 3, nb = 2, nout = na + nb;
+    uint64_t R1[5], R2[5];
+
+    cfx_mul_csa_portable(A, na, B, nb, R1);
+    mul_ref(A, na, B, nb, R2);
+    assert_eq_arr(R1, R2, nout);
+    PRINT_TEST(1);
+}
+
+static void test_all_ones_multi(void) {
+    /* (2^192 - 1) * (2^128 - 1) */
+    uint64_t A[] = {0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL};
+    uint64_t B[] = {0xffffffffffffffffULL, 0xffffffffffffffffULL};
+    size_t na = 3, nb = 2, nout = na + nb;
+    uint64_t R1[5], R2[5];
+
+    cfx_mul_csa_portable(A, na, B, nb, R1);
+    mul_ref(A, na, B, nb, R2);
+    assert_eq_arr(R1, R2, nout);
+    PRINT_TEST(1);
+}
+
+static void test_power_of_two_alignment(void) {
+    /* A = 2^64 + 1, B = 2^128 + 2^64 + 1 */
+    uint64_t A[] = {1ULL, 1ULL};
+    uint64_t B[] = {1ULL, 1ULL, 1ULL};
+    size_t na = 2, nb = 3, nout = na + nb;
+    uint64_t R1[5], R2[5];
+
+    cfx_mul_csa_portable(A, na, B, nb, R1);
+    mul_ref(A, na, B, nb, R2);
+    assert_eq_arr(R1, R2, nout);
+    PRINT_TEST(1);
+}
+
+/* optional: a tiny deterministic fuzz */
+static uint64_t xorshift64(uint64_t* s) {
+    uint64_t x = *s;
+    x ^= x << 13; x ^= x >> 7; x ^= x << 17;
+    *s = x;
+    return x;
+}
+static void test_fuzz_small(void) {
+    uint64_t seed = 0x123456789abcdef0ULL;
+    for (int t = 0; t < 100; ++t) {
+        size_t na = 1 + (xorshift64(&seed) % 4);
+        size_t nb = 1 + (xorshift64(&seed) % 4);
+        uint64_t A[4], B[4], R1[8], R2[8];
+
+        for (size_t i = 0; i < na; ++i) A[i] = xorshift64(&seed);
+        for (size_t j = 0; j < nb; ++j) B[j] = xorshift64(&seed);
+
+        cfx_mul_csa_portable(A, na, B, nb, R1);
+        mul_ref(A, na, B, nb, R2);
+        assert_eq_arr(R1, R2, na + nb);
+    }
+    PRINT_TEST(1);
+}
+
 int main(void) {
     test_prime_sieve();
     test_primality_test();
     test_mulmod_basic();
     test_powmod_edges();
     test_fermat_primes();
+    // csa tests:
+    test_zero();
+    test_one_by_small();
+    test_single_limb_carry();
+    test_mixed_lengths();
+    test_all_ones_multi();
+    test_power_of_two_alignment();
+    test_fuzz_small();
+    puts("OK: cfx_mul_csa_portable tests passed.\n");
     return 0;
 }
 
