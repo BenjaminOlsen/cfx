@@ -12,4 +12,4 @@ target_link_libraries(bench_big PRIVATE benchmark::benchmark cfx::cfx)
 
 add_executable(bench_mul_vs_csa bench_mul_vs_csa.cpp)
 target_compile_options(bench_mul_vs_csa PRIVATE -O1 -march=native)
-target_link_libraries(bench_mul_vs_csa PRIVATE benchmark::benchmark cfx::cfx)
+target_link_libraries(bench_mul_vs_csa PRIVATE benchmark::benchmark pthread cfx::cfx)

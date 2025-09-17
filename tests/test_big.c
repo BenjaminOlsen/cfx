@@ -21,12 +21,12 @@ static void test_cfx_big_reserve(void) {
     cfx_big_t b;
     size_t rcap1 = 55;
     cfx_big_reserve(&b, rcap1);
-    assert(b.cap == rcap1);
+    assert(b.cap >= rcap1);
     assert(b.n == 0);
     assert(b.limb != NULL);
     size_t rcap2 = rcap1 / 2;
     cfx_big_reserve(&b, rcap2);  /* shouldn't reserve less space. */
-    assert(b.cap == rcap1);
+    assert(b.cap >= rcap1);
     PRINT_TEST(1);
 }
 

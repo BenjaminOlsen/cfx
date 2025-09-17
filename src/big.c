@@ -4,6 +4,9 @@
 #include "cfx/types.h"
 #include "cfx/macros.h"
 
+#include <pthread.h>
+#include <stdint.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -41,28 +44,64 @@ void cfx_big_free(cfx_big_t* b) {
     b->cache = NULL;
 }
 
+int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src) {
+    if (dst == src) return 0;
 
+    cfx_big_free(dst);
 
-void cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src) {
-    cfx_big_init(dst);
     if (src->n) {
-        cfx_big_reserve(dst, src->n);
-        memcpy(dst->limb, src->limb, src->n*sizeof(uint64_t));
+        if (cfx_big_reserve(dst, src->n) != 0) {
+            return -1; // OOM
+        }
+        memcpy(dst->limb, src->limb, src->n * sizeof(uint64_t));
+        dst->n = src->n;
+    } else {
+        dst->n = 0;
     }
-    dst->n = src->n;
+    return 0;
 }
 
-void cfx_big_reserve(cfx_big_t* b, size_t need) {
-    if (need < b->cap) return;
-    size_t new_cap = b->cap ? 2*b->cap : 32;
-    if (new_cap < need) {
-        new_cap = need;
-    }
+/* returns 0 on success, -1 on failure (errno set) */
+int cfx_big_reserve(cfx_big_t* b, size_t need) {
+    if (need <= b->cap) return 0;
+
     size_t old_cap = b->cap;
-    b->limb = (uint64_t*)realloc(b->limb, new_cap*sizeof(uint64_t));
-    memset(b->limb + old_cap, 0, (new_cap - old_cap) * sizeof(uint64_t));
+    size_t new_cap = old_cap ? old_cap : 32;
+
+    while (new_cap < need) {
+        if (new_cap > SIZE_MAX / 2) {  // doubling would overflow
+            new_cap = need;            // fall back to exactly need
+            break;
+        }
+        new_cap *= 2;
+    }
+
+    if (new_cap > SIZE_MAX / sizeof(uint64_t)) {
+        // errno = ENOMEM;
+        return -1;
+    }
+
+    size_t new_bytes = new_cap * sizeof(uint64_t);
+
+    // Use a temp so we don't clobber b->limb on failure
+    void* tmp = realloc(b->limb, new_bytes);
+    if (!tmp) {
+        // b->limb is still valid; caller can continue using old buffer
+        // or handle the error.
+        return -1;
+    }
+
+    b->limb = (uint64_t*)tmp;
+
+    // Zero the newly added region only (realloc doesn't do this for you)
+    if (new_cap > old_cap) {
+        size_t add = new_cap - old_cap;
+        memset(b->limb + old_cap, 0, add * sizeof(uint64_t));
+    }
+
     b->cap = new_cap;
     // CFX_PRINT_DBG("realloc new cap: %zu\n", new_cap);
+    return 0;
 }
 
 void cfx_big_enable_fac(cfx_big_t* b) {
@@ -190,7 +229,7 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
 }
 
 int cfx_big_is_zero(const cfx_big_t* b) {
-    return b->n <= 1 && b->limb[0] == 0;
+    return (b->n == 0) || (b->n == 1 && b->limb[0] == 0);
 }
 
 int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n) {
@@ -453,6 +492,156 @@ void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t
     cfx_big_swap(&tmp, b);
     cfx_big_free(&tmp);
 }
+
+/* >>>>>>>>>>>>>>>> Threads <<<<<<<<<<<<<<<<< */
+typedef struct {
+    const uint64_t* A; size_t ia, na_rows;
+    const uint64_t* B; size_t nb;
+    cfx_mul_scratch_t* scratch; /* thread-local */
+    size_t nout;
+} worker_args_t;
+
+static void* worker_accumulate(void* argp) {
+    worker_args_t* a = (worker_args_t*)argp;
+    cfx_mul_scratch_zero(a->scratch, a->nout);
+    cfx_mul_csa_portable_fast_rows(a->A, a->ia, a->na_rows,
+                                   a->B, a->nb,
+                                   a->scratch->acc, a->scratch->spill);
+    return NULL;
+}
+
+typedef struct {
+    csa128_t*       g_acc;
+    uint64_t*       g_spill;
+    const cfx_mul_scratch_t* locals;
+    int             nlocals;
+    size_t          nout;
+    size_t          k0, k1;
+} reduce_args_t;
+
+static void* reducer_chunk(void* argp) {
+    reduce_args_t* r = (reduce_args_t*)argp;
+    for (size_t k = r->k0; k < r->k1; ++k) {
+        __uint128_t sum_lo = 0, sum_hi = 0;
+        uint64_t spill_k = 0, spill_kp1_from_hi = 0;
+
+        for (int t = 0; t < r->nlocals; ++t) {
+            const csa128_t* acc = r->locals[t].acc;
+            const uint64_t* sp  = r->locals[t].spill;
+
+            __uint128_t tl = sum_lo + acc[k].lo;
+            uint64_t c0 = (uint64_t)(tl >> 64);
+            sum_lo = tl;
+
+            __uint128_t th = sum_hi + acc[k].hi + c0;
+            spill_kp1_from_hi += (uint64_t)(th >> 64);
+            sum_hi = th;
+
+            spill_k += sp[k];
+        }
+
+        /* write combined into global (assumed zeroed) */
+        r->g_acc[k].lo = (uint64_t)sum_lo;
+        uint64_t carry0 = (uint64_t)(sum_lo >> 64); /* already folded into sum_hi via c0 above */
+        (void)carry0;
+
+        r->g_acc[k].hi = (uint64_t)sum_hi;
+        r->g_spill[k] += spill_k;               /* sum of locals' spill[k] */
+        r->g_spill[k+1] += spill_kp1_from_hi;   /* carry from hi sums goes to next diagonal */
+    }
+
+    /* The last spill slot nout also needs locals' spill[nout] once.
+       Let only the last chunk thread (the one owning the top of the range)
+       handle k==nout by summing locals' spill[nout]. */
+    if (r->k1 == r->nout) {
+        uint64_t tail = 0;
+        for (int t = 0; t < r->nlocals; ++t) tail += r->locals[t].spill[r->nout];
+        r->g_spill[r->nout] += tail;
+    }
+
+    return NULL;
+}
+
+/* In-place parallel CSA multiply: b *= m using `threads` POSIX threads. */
+void cfx_big_mul_csa_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
+{
+    const size_t na = b->n, nb = m->n;
+    const size_t nout = na + nb;
+    if (!na || !nb) {
+        /* set b = 0 */
+        cfx_big_set_val(b, 0);
+        return;
+    }
+
+    if (threads <= 0) {
+        long hw = sysconf(_SC_NPROCESSORS_ONLN);
+        threads = (hw > 0) ? (int)hw : 1;
+    }
+    if (threads > (int)na) threads = (int)na; /* never spawn more threads than rows */
+
+    /* --- Allocate global and local scratch --- */
+    cfx_mul_scratch_t global = {0};
+    cfx_mul_scratch_alloc(&global, nout);
+    cfx_mul_scratch_zero(&global, nout);
+
+    cfx_mul_scratch_t* locals = (cfx_mul_scratch_t*)calloc((size_t)threads, sizeof(*locals));
+    assert(locals);
+    for (int t = 0; t < threads; ++t) {
+        cfx_mul_scratch_alloc(&locals[t], nout);
+        cfx_mul_scratch_zero (&locals[t], nout);
+    }
+
+    /* --- Phase 1: parallel local accumulation (row blocks of A) --- */
+    pthread_t* th = (pthread_t*)calloc((size_t)threads, sizeof(*th));
+    worker_args_t* args = (worker_args_t*)calloc((size_t)threads, sizeof(*args));
+    assert(th && args);
+
+    for (int t = 0; t < threads; ++t) {
+        size_t ia   = (na * (size_t)t) / (size_t)threads;
+        size_t iend = (na * (size_t)(t+1)) / (size_t)threads;
+        size_t cnt  = iend - ia;
+
+        args[t] = (worker_args_t){
+            .A = b->limb, .ia = ia, .na_rows = cnt,
+            .B = m->limb, .nb = nb,
+            .scratch = &locals[t], .nout = nout
+        };
+        pthread_create(&th[t], NULL, worker_accumulate, &args[t]);
+    }
+    for (int t = 0; t < threads; ++t) pthread_join(th[t], NULL);
+
+    /* --- Phase 2: parallel reduction of locals into global by diagonal chunks --- */
+    /* partition [0, nout) into `threads` chunks */
+    pthread_t* rth = (pthread_t*)calloc((size_t)threads, sizeof(*rth));
+    reduce_args_t* rargs = (reduce_args_t*)calloc((size_t)threads, sizeof(*rargs));
+    assert(rth && rargs);
+
+    for (int t = 0; t < threads; ++t) {
+        size_t k0   = (nout * (size_t)t) / (size_t)threads;
+        size_t k1   = (nout * (size_t)(t+1)) / (size_t)threads;
+        rargs[t] = (reduce_args_t){
+            .g_acc = global.acc, .g_spill = global.spill,
+            .locals = locals, .nlocals = threads,
+            .nout = nout, .k0 = k0, .k1 = k1
+        };
+        pthread_create(&rth[t], NULL, reducer_chunk, &rargs[t]);
+    }
+    for (int t = 0; t < threads; ++t) pthread_join(rth[t], NULL);
+
+    free(rth); free(rargs);
+
+    /* --- Phase 3: fold spills and normalize into b --- */
+    cfx_mul_csa_fold_and_normalize(global.acc, global.spill, nout, b->limb);
+    b->n = nout;
+    while (b->n && b->limb[b->n - 1] == 0) --b->n;
+
+    /* cleanup */
+    for (int t = 0; t < threads; ++t) cfx_mul_scratch_free(&locals[t]);
+    free(locals);
+    cfx_mul_scratch_free(&global);
+    free(th); free(args);
+}
+
 
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
     

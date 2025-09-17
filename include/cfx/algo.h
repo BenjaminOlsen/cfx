@@ -58,6 +58,15 @@ void cfx_mul_scratch_free(cfx_mul_scratch_t* s);
 // Zero only the first `nout` entries that the multiplication will touch
 void cfx_mul_scratch_zero(cfx_mul_scratch_t* s, size_t nout);
 
+/* portable CSA inner: accumulate rows i in [ia, ia+na_rows) into acc/spill */
+void cfx_mul_csa_portable_fast_rows(const uint64_t* A, size_t ia, size_t na_rows,
+                                    const uint64_t* B, size_t nb,
+                                    csa128_t* acc, uint64_t* spill);
+
+/* fold spills once and normalize: writes R[0..nout-1] */
+void cfx_mul_csa_fold_and_normalize(csa128_t* acc, uint64_t* spill,
+                                    size_t nout, uint64_t* R);
+
 #ifdef __cplusplus
 }
 #endif

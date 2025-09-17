@@ -137,12 +137,60 @@ static void BM_cfx_big_mul_csa_scratch(benchmark::State& state) {
     state.counters["limbs"] = static_cast<double>(limbs);
 }
 
+static void BM_cfx_big_mul_csa_pthreads(benchmark::State& state) {
+    const size_t limbs   = static_cast<size_t>(state.range(0));
+    const int    threads = static_cast<int>(state.range(1));
+
+    InplaceInputs I(limbs, limbs, /*seed*/0xDEADBEEF);
+
+    // One-time correctness: compare against legacy schoolbook
+    {
+        cfx_big_t ref;
+        cfx_big_init(&ref);
+        cfx_big_copy(&ref, &I.b0);
+        cfx_big_mul(&ref, &I.m); 
+
+        cfx_big_t pt;
+        cfx_big_init(&pt);
+        cfx_big_copy(&pt, &I.b0);
+        cfx_big_mul_csa_pthreads(&pt, &I.m, threads);
+
+        assert(eq_limbs(ref, pt));
+        cfx_big_free(&ref);
+        cfx_big_free(&pt);
+    }
+
+    for (auto _ : state) {
+        // reset input each iter (avoid realloc inside timed region)
+        cfx_big_copy(&I.bt, &I.b0);
+        cfx_big_mul_csa_pthreads(&I.bt, &I.m, threads);
+
+        benchmark::DoNotOptimize(I.bt.limb[0]);
+        benchmark::ClobberMemory();
+    }
+
+    state.SetItemsProcessed(state.iterations());
+    state.counters["limbs"]   = static_cast<double>(limbs);
+    state.counters["threads"] = static_cast<double>(threads);
+}
+
+// static void Args_Limbs_Threads(benchmark::internal::Benchmark* b) {
+//     const int sizes[]   = {256, 512, 1024, 2048, 4096};
+//     const int ths[]     = {1, 2, 3, 4, 6, 8, 12};
+//     for (int s : sizes) for (int t : ths) b->Args({s, t});
+// }
+// BENCHMARK(BM_cfx_big_mul_csa_pthreads)->Apply(Args_Limbs_Threads);
 
 // ---- Register sizes --------------------------------------------------------
 #define REG(sz) \
     BENCHMARK(BM_cfx_big_mul)->Arg(sz); \
     BENCHMARK(BM_cfx_big_mul_csa)->Arg(sz); \
-    BENCHMARK(BM_cfx_big_mul_csa_scratch)->Arg(sz)
+    BENCHMARK(BM_cfx_big_mul_csa_scratch)->Arg(sz); \
+    BENCHMARK(BM_cfx_big_mul_csa_pthreads)->Args({sz, 8}) \
+    // BENCHMARK(BM_cfx_big_mul_csa_pthreads)->Args({sz, 1}); \
+    // BENCHMARK(BM_cfx_big_mul_csa_pthreads)->Args({sz, 2}); \
+    // BENCHMARK(BM_cfx_big_mul_csa_pthreads)->Args({sz, 4}); \
+    
 
 REG(4);     // 256 bits
 REG(8);     // 512 bits

@@ -454,3 +454,50 @@ void cfx_mul_csa_portable(const uint64_t* A, size_t na,
     // CFX_PRINT_DBG("R:\t");
     // PRINT_ARR(R, nout);
 }
+
+// Accumulate rows i in [ia, ia+na_rows) of A against full B into acc/spill (size nout).
+void cfx_mul_csa_portable_fast_rows(const uint64_t* A, size_t ia, size_t na_rows,
+                                    const uint64_t* B, size_t nb,
+                                    csa128_t* acc, uint64_t* spill)
+{
+    for (size_t ii = 0; ii < na_rows; ++ii) {
+        size_t i = ia + ii;
+        uint64_t ai = A[i];
+        for (size_t j = 0; j < nb; ++j) {
+            __uint128_t p  = (__uint128_t)ai * (__uint128_t)B[j];
+            uint64_t add_lo = (uint64_t)p;
+            uint64_t add_hi = (uint64_t)(p >> 64);
+            size_t k = i + j;
+
+            __uint128_t t = (__uint128_t)acc[k].lo + add_lo;
+            uint64_t c0   = (uint64_t)(t >> 64);
+            acc[k].lo     = (uint64_t)t;
+
+            __uint128_t u = (__uint128_t)acc[k].hi + add_hi + c0;
+            acc[k].hi     = (uint64_t)u;
+
+            spill[k + 1] += (uint64_t)(u >> 64);
+        }
+    }
+}
+
+void cfx_mul_csa_fold_and_normalize(csa128_t* acc, uint64_t* spill,
+                                    size_t nout, uint64_t* R)
+{
+    // Fold spills left->right (predictable)
+    uint64_t pending = spill[0];
+    for (size_t k = 0; k < nout; ++k) {
+        __uint128_t h = (__uint128_t)acc[k].hi + pending;
+        acc[k].hi = (uint64_t)h;
+        pending = (uint64_t)(h >> 64);
+        pending += spill[k + 1]; // spill sized nout+1
+    }
+    // Final normalization
+    __uint128_t carry = 0;
+    for (size_t k = 0; k < nout; ++k) {
+        __uint128_t w = (((__uint128_t)acc[k].hi) << 64) | acc[k].lo;
+        w += carry;
+        R[k]  = (uint64_t)w;
+        carry = (uint64_t)(w >> 64);
+    }
+}

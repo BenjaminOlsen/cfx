@@ -59,8 +59,8 @@ struct cfx_fac_cache {
 void cfx_big_init(cfx_big_t* b);
 void cfx_big_clear(cfx_big_t* b);
 void cfx_big_free(cfx_big_t* b);
-void cfx_big_reserve(cfx_big_t* b, size_t need);
-void cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src);
+int cfx_big_reserve(cfx_big_t* b, size_t need);
+int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src);
 
 void cfx_big_set_val(cfx_big_t* b, uint64_t v);
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
@@ -68,6 +68,7 @@ void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
 void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m);
 /* assumes scratch is allocated with the appropriate size b->n + m->n already. */
 void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t* scratch);
+void cfx_big_mul_csa_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads);
 
 void cfx_big_sq(cfx_big_t* b);
 int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r remainder. */
