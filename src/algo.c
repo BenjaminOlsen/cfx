@@ -299,12 +299,7 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n) {
     return 0;
 }
 
-/* Accumulator holds a value as:  (acc_hi << 64) + acc_lo
-   No cross-limb carry is propagated while accumulating. */
-typedef struct {
-    uint64_t lo;  // sum bits
-    uint64_t hi;  // saved carries (conceptually << 1 bit each)
-} csa128_t;
+
 
 /* Add a 128-bit value (add_hi:add_lo) into one accumulator cell */
 static inline void csa_add128_into(csa128_t* acc, uint64_t add_lo, uint64_t add_hi) {
@@ -313,6 +308,91 @@ static inline void csa_add128_into(csa128_t* acc, uint64_t add_lo, uint64_t add_
     acc->lo        = (uint64_t)t;
     acc->hi       += add_hi + (uint64_t)(t >> 64);  // keep the carry in the local 'hi' word
 }
+
+// Zero only the first `nout` entries that the multiplication will touch
+void cfx_mul_scratch_zero(cfx_mul_scratch_t* s, size_t nout) {
+    assert(nout <= s->cap);
+    memset(s->acc,   0, nout * sizeof(*s->acc));
+    memset(s->spill, 0, (nout+1) * sizeof(uint64_t));
+}
+
+void cfx_mul_scratch_alloc(cfx_mul_scratch_t* s, size_t needed) {
+    if (s->cap >= needed) return;  // already big enough
+
+    // free old
+    free(s->acc);
+    free(s->spill);
+
+    /* or use typeof(s->acc) :D gcc extension*/
+    s->acc   = (csa128_t*)calloc(needed, sizeof(*s->acc));
+    s->spill = (uint64_t*)calloc(needed+1, sizeof(uint64_t)); // we write spill[k+1] when k==nout-1)
+    s->cap   = needed;
+
+    assert(s->acc && s->spill);
+}
+
+void cfx_mul_scratch_free(cfx_mul_scratch_t* s) {
+    free(s->acc);
+    free(s->spill);
+    s->acc = NULL;
+    s->spill = NULL;
+    s->cap = 0;
+}
+
+// Assumes scratch->acc[0..nout-1] and scratch->spill[0..nout-1] are zeroed by the caller.
+void cfx_mul_csa_portable_fast(const uint64_t* A, size_t na,
+                               const uint64_t* B, size_t nb,
+                               uint64_t* R,
+                               cfx_mul_scratch_t* scratch)
+{
+    const size_t nout = na + nb;
+    csa128_t* acc = scratch->acc;
+    uint64_t* spill = scratch->spill;
+
+    // --- Accumulate all partial products (no ripple spills) ---
+    for (size_t i = 0; i < na; ++i) {
+        uint64_t ai = A[i];
+        for (size_t j = 0; j < nb; ++j) {
+            uint128_t p  = (uint128_t)ai * (uint128_t)B[j];
+            uint64_t add_lo = (uint64_t)p;
+            uint64_t add_hi = (uint64_t)(p >> 64);
+            size_t k = i + j;
+
+            uint128_t t = (uint128_t)acc[k].lo + add_lo;
+            uint64_t c0   = (uint64_t)(t >> 64);
+            acc[k].lo     = (uint64_t)t;
+
+            uint128_t u = (uint128_t)acc[k].hi + add_hi + c0;
+            acc[k].hi     = (uint64_t)u;
+
+            // Defer the overflow of acc[k].hi into a 1-bit counter for next diagonal.
+            spill[k + 1] += (uint64_t)(u >> 64);  // 0 or 1
+        }
+    }
+
+    // --- Fold deferred spills into acc[].hi with a single linear propagate ---
+    // spill[i] can become >1, so we propagate once left-to-right; this is cheap & predictable.
+    uint64_t c = 0;
+    for (size_t k = 0; k < nout; ++k) {
+        uint128_t h = (uint128_t)acc[k].hi + c;
+        acc[k].hi = (uint64_t)h;
+        c = (uint64_t)(h >> 64);
+        // carry from adding c merges with next diagonal’s spill counter
+        spill[k + 1] += c;   // safe: spill has nout entries; spill[nout] is ignored later
+        c = spill[k + 1];
+    }
+
+    // --- Final normalization (single carry-propagating pass across limbs) ---
+    uint128_t carry = 0;
+    for (size_t k = 0; k < nout; ++k) {
+        uint128_t wide = (((uint128_t)acc[k].hi) << 64) | acc[k].lo;
+        wide += carry;
+        R[k]  = (uint64_t)wide;
+        carry = wide >> 64;
+    }
+    // By construction carry==0 for na+nb limbs.
+}
+
 
 void cfx_mul_csa_portable(const uint64_t* A, size_t na,
                           const uint64_t* B, size_t nb, uint64_t* R) {
@@ -326,17 +406,17 @@ void cfx_mul_csa_portable(const uint64_t* A, size_t na,
     for (size_t i = 0; i < na; ++i) {
         uint64_t ai = A[i];
         for (size_t j = 0; j < nb; ++j) {
-            __uint128_t p  = (__uint128_t)ai * (__uint128_t)B[j];
+            uint128_t p  = (uint128_t)ai * (uint128_t)B[j];
             uint64_t add_lo = (uint64_t)p;
             uint64_t add_hi = (uint64_t)(p >> 64);
             size_t k = i + j;
 
             // (acc_hi:acc_lo) += (add_hi:add_lo)
-            __uint128_t t = (__uint128_t)acc[k].lo + add_lo;
+            uint128_t t = (uint128_t)acc[k].lo + add_lo;
             uint64_t new_lo = (uint64_t)t;
             uint64_t c0     = (uint64_t)(t >> 64);
 
-            __uint128_t u = (__uint128_t)acc[k].hi + add_hi + c0;
+            uint128_t u = (uint128_t)acc[k].hi + add_hi + c0;
             acc[k].lo = new_lo;
             acc[k].hi = (uint64_t)u;
 
@@ -344,7 +424,7 @@ void cfx_mul_csa_portable(const uint64_t* A, size_t na,
             uint64_t spill = (uint64_t)(u >> 64);   // 0 or 1
             size_t kk = k + 1;
             while (spill && kk < nout) {
-                __uint128_t w = (__uint128_t)acc[kk].hi + spill;
+                uint128_t w = (uint128_t)acc[kk].hi + spill;
                 acc[kk].hi = (uint64_t)w;
                 spill = (uint64_t)(w >> 64);        // might ripple further
                 ++kk;
@@ -356,9 +436,9 @@ void cfx_mul_csa_portable(const uint64_t* A, size_t na,
     }
 
     // Final single carry-propagation across limbs
-    __uint128_t carry = 0;
+    uint128_t carry = 0;
     for (size_t k = 0; k < nout; ++k) {
-        __uint128_t wide = (((__uint128_t)acc[k].hi) << 64) | acc[k].lo;
+        uint128_t wide = (((uint128_t)acc[k].hi) << 64) | acc[k].lo;
         wide += carry;
         R[k]  = (uint64_t)wide;
         carry = wide >> 64;

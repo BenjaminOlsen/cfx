@@ -1,6 +1,7 @@
 // bench_mul_vs_csa.cpp
 
 #include <cfx/big.h>
+#include <cfx/algo.h>
 
 #include <benchmark/benchmark.h>
 
@@ -50,7 +51,7 @@ static void verify_correctness(InplaceInputs& I) {
     cfx_big_copy(&I.out_ref, &I.b0);
     cfx_big_mul_csa(&I.out_ref, &I.m);
 
-    // bt = b0; bt *= m using legacy
+    // bt = b0; bt *= m using schoolbook
     cfx_big_copy(&I.bt, &I.b0);
     cfx_big_mul(&I.bt, &I.m);
 
@@ -92,10 +93,56 @@ static void BM_cfx_big_mul_csa(benchmark::State& state) {
     });
 }
 
+// --- CSA with scratch benchmark (in-place) ---
+static void BM_cfx_big_mul_csa_scratch(benchmark::State& state) {
+    const size_t limbs = static_cast<size_t>(state.range(0));
+    InplaceInputs I(limbs, limbs, /*seed*/0xDEADBEEF);
+
+    // one-time correctness check against your legacy mul
+    {
+        cfx_big_t tmp; cfx_big_init(&tmp);
+        cfx_big_copy(&tmp, &I.b0);
+        cfx_big_mul(&tmp, &I.m);  // legacy
+        cfx_mul_scratch_t s{};    // temp scratch just for verify
+        cfx_mul_scratch_alloc(&s, I.nb + I.nm);
+        cfx_mul_scratch_zero(&s, I.nb + I.nm);
+        cfx_big_t ref; cfx_big_init(&ref);
+        cfx_big_copy(&ref, &I.b0);
+        cfx_big_mul_csa_scratch(&ref, &I.m, &s);
+        assert(eq_limbs(tmp, ref));
+        cfx_mul_scratch_free(&s);
+        cfx_big_free(&tmp);
+        cfx_big_free(&ref);
+    }
+
+    // persistent scratch sized to nout = nb + nm
+    cfx_mul_scratch_t scratch{};
+    const size_t nout = I.nb + I.nm;
+    cfx_mul_scratch_alloc(&scratch, nout);
+
+    for (auto _ : state) {
+        // reset inputs and scratch
+        cfx_big_copy(&I.bt, &I.b0);
+        cfx_mul_scratch_zero(&scratch, nout);
+
+        // in-place multiply using CSA + scratch
+        cfx_big_mul_csa_scratch(&I.bt, &I.m, &scratch);
+
+        benchmark::DoNotOptimize(I.bt.limb[0]);
+        benchmark::ClobberMemory();
+    }
+
+    cfx_mul_scratch_free(&scratch);
+    state.SetItemsProcessed(state.iterations());
+    state.counters["limbs"] = static_cast<double>(limbs);
+}
+
+
 // ---- Register sizes --------------------------------------------------------
 #define REG(sz) \
     BENCHMARK(BM_cfx_big_mul)->Arg(sz); \
-    BENCHMARK(BM_cfx_big_mul_csa)->Arg(sz)
+    BENCHMARK(BM_cfx_big_mul_csa)->Arg(sz); \
+    BENCHMARK(BM_cfx_big_mul_csa_scratch)->Arg(sz)
 
 REG(4);     // 256 bits
 REG(8);     // 512 bits
@@ -104,5 +151,11 @@ REG(32);    // 2048 bits
 REG(64);    // 4096 bits
 REG(128);   // 8192 bits
 REG(256);   // 16384 bits
+REG(512);   // 32768 bits
+REG(1024);   // 65536 bits
+REG(2048);   // 131072 bits
+REG(4096);   // 262144 bits ---> segfault!
+REG(8192);
+REG(16384);
 
 BENCHMARK_MAIN();

@@ -8,6 +8,19 @@
 extern "C" {
 #endif
 
+/* Accumulator holds a value as:  (acc_hi << 64) + acc_lo
+   No cross-limb carry is propagated while accumulating. */
+typedef struct {
+    uint64_t lo;  // sum bits
+    uint64_t hi;  // saved carries (conceptually << 1 bit each)
+} csa128_t;
+
+typedef struct {
+    csa128_t* acc;     // nout entries
+    uint64_t* spill;   // nout entries (small counters)
+    size_t    cap;
+} cfx_mul_scratch_t;
+
 /* find all primes up to n using sieve of eratosthenes */
 cfx_vec_t cfx_sieve_primes(uint64_t n);
 
@@ -33,6 +46,18 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n);
 void cfx_mul_csa_portable(const uint64_t* A, size_t na,
                           const uint64_t* B, size_t nb,
                           uint64_t* R);
+
+void cfx_mul_csa_portable_fast(const uint64_t* A, size_t na,
+                               const uint64_t* B, size_t nb,
+                               uint64_t* R,
+                               cfx_mul_scratch_t* scratch);
+
+void cfx_mul_scratch_alloc(cfx_mul_scratch_t* s, size_t needed);
+void cfx_mul_scratch_free(cfx_mul_scratch_t* s);
+
+// Zero only the first `nout` entries that the multiplication will touch
+void cfx_mul_scratch_zero(cfx_mul_scratch_t* s, size_t nout);
+
 #ifdef __cplusplus
 }
 #endif

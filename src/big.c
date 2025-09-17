@@ -437,6 +437,23 @@ void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m) {
     cfx_big_free(&tmp);
 }
 
+/* assumes scratch is allocated with the appropriate size b->n + m->n already. */
+void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t* scratch) {
+    const size_t nb = b->n;
+    const size_t nm = m->n;
+    size_t nout = nm + nb;
+    // cfx_mul_scratch_alloc(scratch, nout);
+    cfx_mul_scratch_zero(scratch, nout);
+    cfx_big_t tmp;
+    cfx_big_init(&tmp);
+    cfx_big_reserve(&tmp, nout);
+    cfx_mul_csa_portable_fast(b->limb, nb, m->limb, nm, tmp.limb, scratch);
+    tmp.n = nout;
+    _trim_leading_zeros(&tmp);
+    cfx_big_swap(&tmp, b);
+    cfx_big_free(&tmp);
+}
+
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
     
     if (cfx_big_is_zero(b) || cfx_big_is_zero(m)) {
@@ -706,7 +723,7 @@ char* cfx_big_to_hex(const cfx_big_t* src, size_t* sz_out) {
 
     const uint64_t ms_val = src->limb[ms - 1];
     const size_t ms_digits = hex_digits_u64(ms_val);
-    const size_t total_len = ms_digits + (ms - 1) * 16; // 16 hex chars per remaining limb
+    const size_t total_len = ms_digits + (ms - 1) * 16;  // 16 hex chars per remaining limb
 
     char* s = (char*)malloc(total_len + 1); // +1 for NUL
     if (!s) return NULL;
