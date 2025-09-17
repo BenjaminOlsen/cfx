@@ -75,6 +75,7 @@ if(CFX_BUILD_TESTS)
     test_algo
     test_rho_brent
     test_mul_csa_pthreads
+    test_mul_rows
   )
 
   foreach(test_name IN LISTS TEST_NAMES)

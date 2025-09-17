@@ -512,7 +512,8 @@ static void* worker_accumulate(void* argp) {
 
 typedef struct {
     csa128_t*       g_acc;
-    uint64_t*       g_spill;
+    uint64_t*       g_spill;   // length nout+1, zeroed
+    uint64_t*       g_carry;   // length nout, zeroed
     const cfx_mul_scratch_t* locals;
     int             nlocals;
     size_t          nout;
@@ -523,82 +524,77 @@ static void* reducer_chunk(void* argp) {
     reduce_args_t* r = (reduce_args_t*)argp;
     for (size_t k = r->k0; k < r->k1; ++k) {
         __uint128_t sum_lo = 0, sum_hi = 0;
-        uint64_t spill_k = 0, spill_kp1_from_hi = 0;
+        uint64_t spill_k = 0, carry_to_kp1 = 0;
 
         for (int t = 0; t < r->nlocals; ++t) {
             const csa128_t* acc = r->locals[t].acc;
             const uint64_t* sp  = r->locals[t].spill;
 
             __uint128_t tl = sum_lo + acc[k].lo;
-            uint64_t c0 = (uint64_t)(tl >> 64);
-            sum_lo = tl;
+            uint64_t c0    = (uint64_t)(tl >> 64);
+            sum_lo         = tl;
 
             __uint128_t th = sum_hi + acc[k].hi + c0;
-            spill_kp1_from_hi += (uint64_t)(th >> 64);
-            sum_hi = th;
+            carry_to_kp1  += (uint64_t)(th >> 64);
+            sum_hi         = th;
 
-            spill_k += sp[k];
+            spill_k       += sp[k];
         }
-
-        /* write combined into global (assumed zeroed) */
         r->g_acc[k].lo = (uint64_t)sum_lo;
-        uint64_t carry0 = (uint64_t)(sum_lo >> 64); /* already folded into sum_hi via c0 above */
-        (void)carry0;
-
         r->g_acc[k].hi = (uint64_t)sum_hi;
-        r->g_spill[k] += spill_k;               /* sum of locals' spill[k] */
-        r->g_spill[k+1] += spill_kp1_from_hi;   /* carry from hi sums goes to next diagonal */
+
+        r->g_spill[k]  += spill_k;        // disjoint index -> safe
+        r->g_carry[k]  += carry_to_kp1;   // disjoint index -> safe
     }
 
-    /* The last spill slot nout also needs locals' spill[nout] once.
-       Let only the last chunk thread (the one owning the top of the range)
-       handle k==nout by summing locals' spill[nout]. */
+    // (Optional) only last chunk handles spill[nout] aggregation:
     if (r->k1 == r->nout) {
         uint64_t tail = 0;
         for (int t = 0; t < r->nlocals; ++t) tail += r->locals[t].spill[r->nout];
         r->g_spill[r->nout] += tail;
     }
-
     return NULL;
 }
 
-/* In-place parallel CSA multiply: b *= m using `threads` POSIX threads. */
-void cfx_big_mul_csa_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
+/* In-place parallel CSA multiply: b *= m using `threadcnt` POSIX threads. */
+void cfx_big_mul_csa_pthreads(cfx_big_t* b, const cfx_big_t* m, int threadcnt)
 {
-    const size_t na = b->n, nb = m->n;
+    const size_t na = b->n;
+    const size_t nb = m->n;
     const size_t nout = na + nb;
+
     if (!na || !nb) {
         /* set b = 0 */
         cfx_big_set_val(b, 0);
         return;
     }
 
-    if (threads <= 0) {
+    if (threadcnt <= 0) {
         long hw = sysconf(_SC_NPROCESSORS_ONLN);
-        threads = (hw > 0) ? (int)hw : 1;
+        threadcnt = (hw > 0) ? (int)hw : 1;
     }
-    if (threads > (int)na) threads = (int)na; /* never spawn more threads than rows */
+    if (threadcnt > (int)na) threadcnt = (int)na; /* never spawn more threads than rows */
 
     /* --- Allocate global and local scratch --- */
-    cfx_mul_scratch_t global = {0};
+    cfx_mul_scratch_t global = (cfx_mul_scratch_t){0};
     cfx_mul_scratch_alloc(&global, nout);
     cfx_mul_scratch_zero(&global, nout);
 
-    cfx_mul_scratch_t* locals = (cfx_mul_scratch_t*)calloc((size_t)threads, sizeof(*locals));
+    cfx_mul_scratch_t* locals = (cfx_mul_scratch_t*)calloc((size_t)threadcnt, sizeof(*locals));
     assert(locals);
-    for (int t = 0; t < threads; ++t) {
+    for (int t = 0; t < threadcnt; ++t) {
         cfx_mul_scratch_alloc(&locals[t], nout);
         cfx_mul_scratch_zero (&locals[t], nout);
     }
 
     /* --- Phase 1: parallel local accumulation (row blocks of A) --- */
-    pthread_t* th = (pthread_t*)calloc((size_t)threads, sizeof(*th));
-    worker_args_t* args = (worker_args_t*)calloc((size_t)threads, sizeof(*args));
+    pthread_t* th = (pthread_t*)calloc((size_t)threadcnt, sizeof(*th));
+    worker_args_t* args = (worker_args_t*)calloc((size_t)threadcnt, sizeof(*args));
     assert(th && args);
 
-    for (int t = 0; t < threads; ++t) {
-        size_t ia   = (na * (size_t)t) / (size_t)threads;
-        size_t iend = (na * (size_t)(t+1)) / (size_t)threads;
+    for (int t = 0; t < threadcnt; ++t) {
+        size_t ia   = (na * (size_t)t) / (size_t)threadcnt;
+        size_t iend = (na * (size_t)(t+1)) / (size_t)threadcnt;
         size_t cnt  = iend - ia;
 
         args[t] = (worker_args_t){
@@ -608,27 +604,37 @@ void cfx_big_mul_csa_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
         };
         pthread_create(&th[t], NULL, worker_accumulate, &args[t]);
     }
-    for (int t = 0; t < threads; ++t) pthread_join(th[t], NULL);
+    for (int t = 0; t < threadcnt; ++t) pthread_join(th[t], NULL);
 
     /* --- Phase 2: parallel reduction of locals into global by diagonal chunks --- */
-    /* partition [0, nout) into `threads` chunks */
-    pthread_t* rth = (pthread_t*)calloc((size_t)threads, sizeof(*rth));
-    reduce_args_t* rargs = (reduce_args_t*)calloc((size_t)threads, sizeof(*rargs));
+    /* Globals for reduction: add a separate carry buffer to avoid races on spill[k+1] */
+    uint64_t* g_carry = (uint64_t*)calloc(nout, sizeof(uint64_t));
+    assert(g_carry);
+
+    pthread_t* rth = (pthread_t*)calloc((size_t)threadcnt, sizeof(*rth));
+    reduce_args_t* rargs = (reduce_args_t*)calloc((size_t)threadcnt, sizeof(*rargs));
     assert(rth && rargs);
 
-    for (int t = 0; t < threads; ++t) {
-        size_t k0   = (nout * (size_t)t) / (size_t)threads;
-        size_t k1   = (nout * (size_t)(t+1)) / (size_t)threads;
+    for (int t = 0; t < threadcnt; ++t) {
+        size_t k0   = (nout * (size_t)t) / (size_t)threadcnt;
+        size_t k1   = (nout * (size_t)(t+1)) / (size_t)threadcnt;
         rargs[t] = (reduce_args_t){
-            .g_acc = global.acc, .g_spill = global.spill,
-            .locals = locals, .nlocals = threads,
+            .g_acc = global.acc,
+            .g_spill = global.spill,
+            .g_carry = g_carry,               /* NEW */
+            .locals = locals, .nlocals = threadcnt,
             .nout = nout, .k0 = k0, .k1 = k1
         };
         pthread_create(&rth[t], NULL, reducer_chunk, &rargs[t]);
     }
-    for (int t = 0; t < threads; ++t) pthread_join(rth[t], NULL);
+    for (int t = 0; t < threadcnt; ++t) pthread_join(rth[t], NULL);
 
-    free(rth); free(rargs);
+    /* Shift+add the per-diagonal carries once: spill[k+1] += g_carry[k] */
+    for (size_t k = 0; k < nout; ++k) global.spill[k + 1] += g_carry[k];
+
+    free(g_carry);
+    free(rth);
+    free(rargs);
 
     /* --- Phase 3: fold spills and normalize into b --- */
     cfx_mul_csa_fold_and_normalize(global.acc, global.spill, nout, b->limb);
@@ -636,11 +642,13 @@ void cfx_big_mul_csa_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
     while (b->n && b->limb[b->n - 1] == 0) --b->n;
 
     /* cleanup */
-    for (int t = 0; t < threads; ++t) cfx_mul_scratch_free(&locals[t]);
+    for (int t = 0; t < threadcnt; ++t) cfx_mul_scratch_free(&locals[t]);
     free(locals);
     cfx_mul_scratch_free(&global);
-    free(th); free(args);
+    free(th);
+    free(args);
 }
+
 
 
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
@@ -1265,4 +1273,224 @@ int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r /*nullable*/) 
     cfx_big_free(&qtmp);
     cfx_big_free(&rtmp);
     return rc;
+}
+
+
+// 128-bit + wrap counter accumulator per column.
+// Value represented = hi * 2^128 + lo
+typedef struct {
+    uint128_t     lo;
+    uint64_t hi;
+    uint64_t pad; // pad to 32 bytes to reduce false sharing during reductions
+} acc128p_t;
+
+// add 64-bit x into accumulator (as a 128-bit add)
+static inline void acc_add_u64(acc128p_t* a, uint64_t x) {
+    uint128_t old = a->lo;
+    a->lo = old + (uint128_t)x;
+    a->hi += (a->lo < old); // wrap over 2^128
+}
+
+// add 128-bit x into accumulator
+static inline void acc_add_u128(acc128p_t* a, uint128_t x) {
+    uint128_t old = a->lo;
+    a->lo = old + x;
+    a->hi += (a->lo < old);
+}
+
+// dst[k] += src[k] for k in [0..n)
+static inline void acc_vec_add(acc128p_t* dst, const acc128p_t* src, size_t n) {
+    for (size_t k = 0; k < n; ++k) {
+        uint128_t old = dst[k].lo;
+        dst[k].lo = old + src[k].lo;
+        uint64_t carry128 = (dst[k].lo < old);
+        // add hi parts + carry128; staying in 64 bits is fine for "millions of limbs"
+        dst[k].hi += src[k].hi + carry128;
+    }
+}
+
+// Worker arguments
+typedef struct {
+    const uint64_t* a; size_t na;
+    const uint64_t* b; size_t nb;
+    size_t j_begin, j_end;          // range of rows (limbs of b) to process
+    acc128p_t* local_acc;           // per-thread accumulator array (length = ncols)
+    size_t ncols;                   // ncols = na + nb
+} rc_worker_args_t;
+
+static void* worker_rowblock(void* vp) {
+    rc_worker_args_t* w = (rc_worker_args_t*)vp;
+    const uint64_t* a = w->a;
+    const uint64_t* b = w->b;
+    const size_t na = w->na;
+    const size_t ncols = w->ncols;
+
+    // zero local accumulator
+    memset(w->local_acc, 0, ncols * sizeof(acc128p_t));
+
+    for (size_t j = w->j_begin; j < w->j_end; ++j) {
+        uint64_t bj = b[j];
+        if (!bj) continue; // skip zero rows fast
+
+        for (size_t i = 0; i < na; ++i) {
+            uint128_t p  = (uint128_t)a[i] * (uint128_t)bj;    // 64x64->128
+            uint64_t lo = (uint64_t)p;
+            uint64_t hi = (uint64_t)(p >> 64);
+            size_t k = i + j;                   // column for lo
+            // Bounds: k in [0 .. na-1 + j] <= na-1 + (nb-1) < na+nb = ncols
+            acc_add_u64(&w->local_acc[k],     lo);
+            acc_add_u64(&w->local_acc[k + 1], hi);
+        }
+    }
+    return NULL;
+}
+
+// Expand acc[k] = hi*2^128 + lo into base-2^64 lanes T[] and do one global carry pass.
+// out must have length >= ncols + 3.
+static void expand_and_carry(const acc128p_t* acc, size_t ncols, uint64_t* out)
+{
+    // 1) clear T (we reuse 'out' as T)
+    memset(out, 0, (ncols + 3) * sizeof(uint64_t));
+
+    // 2) expand each column into up to 3 neighboring columns, locally handling tiny carries
+    for (size_t k = 0; k < ncols; ++k) {
+        uint128_t lo = acc[k].lo;
+        uint64_t lo0 = (uint64_t)lo;
+        uint64_t lo1 = (uint64_t)(lo >> 64);
+        uint64_t hi0 = acc[k].hi; // each unit here is exactly 2^128 = 2 limbs
+
+        // T[k] += lo0
+        uint128_t t = (uint128_t)out[k] + lo0;
+        out[k] = (uint64_t)t;
+        uint64_t c0 = (uint64_t)(t >> 64);
+
+        // T[k+1] += lo1 + c0
+        t = (uint128_t)out[k+1] + lo1 + c0;
+        out[k+1] = (uint64_t)t;
+        uint64_t c1 = (uint64_t)(t >> 64);
+
+        // T[k+2] += hi0 + c1
+        t = (uint128_t)out[k+2] + hi0 + c1;
+        out[k+2] = (uint64_t)t;
+        uint64_t c2 = (uint64_t)(t >> 64);
+
+        // Any leftover tiny carry bubbles one more limb; global pass will finish everything.
+        out[k+3] += c2;
+    }
+
+    // 3) single left-to-right carry sweep
+    uint64_t carry = 0;
+    for (size_t k = 0; k < ncols + 3; ++k) {
+        uint128_t t = (uint128_t)out[k] + carry;
+        out[k]  = (uint64_t)t;
+        carry   = (uint64_t)(t >> 64);
+    }
+    if (carry) {
+        // ensure the caller reserved at least ncols+4 if they want to keep this
+        out[ncols + 3] = carry;
+    }
+}
+
+// Top-level: b *= m using row-parallel accumulation + single carry pass.
+// threads<=0 → auto (online CPUs). threads is capped to nb.
+void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
+{
+    const size_t na = b->n;
+    const size_t nb = m->n;
+
+    if (!na || !nb) { cfx_big_set_val(b, 0); return; }
+    if (nb == 1 && m->limb[0] == 1) { return; } // b *= 1
+
+    // Copy multiplicand 'a' because we'll overwrite b.
+    uint64_t* a_copy = (uint64_t*)malloc(na * sizeof(uint64_t));
+    if (!a_copy) { /* handle OOM */ abort(); }
+    memcpy(a_copy, b->limb, na * sizeof(uint64_t));
+
+    // Plan threads
+    long hw = sysconf(_SC_NPROCESSORS_ONLN);
+    if (threads <= 0) threads = (hw > 0) ? (int)hw : 1;
+    if (threads > (int)nb) threads = (int)nb;
+    if (threads < 1) threads = 1;
+
+    const size_t ncols = na + nb;          // columns 0..(na+nb-1)
+    const size_t acc_len = ncols;          // acc arrays length
+    const size_t out_len = ncols + 4;      // room for expansion + final carry
+
+    // Allocate per-thread local accumulators
+    acc128p_t** locals = (acc128p_t**)malloc(threads * sizeof(acc128p_t*));
+    rc_worker_args_t* args = (rc_worker_args_t*)malloc(threads * sizeof(rc_worker_args_t));
+    pthread_t* tids = (pthread_t*)malloc(threads * sizeof(pthread_t));
+    if (!locals || !args || !tids) { abort(); }
+
+    for (int t = 0; t < threads; ++t) {
+        // 64B-align to reduce false sharing during reduction
+        void* p = NULL;
+#if defined(_ISOC11_SOURCE)
+        p = aligned_alloc(64, ((acc_len * sizeof(acc128p_t) + 63) / 64) * 64);
+        if (!p) { abort(); }
+#else
+        if (posix_memalign(&p, 64, acc_len * sizeof(acc128p_t)) != 0) { abort(); }
+#endif
+        locals[t] = (acc128p_t*)p;
+
+        size_t chunk = (nb + threads - 1) / threads;
+        size_t j0 = (size_t)t * chunk;
+        size_t j1 = j0 + chunk; if (j1 > nb) j1 = nb;
+
+        args[t].a = a_copy; args[t].na = na;
+        args[t].b = m->limb; args[t].nb = nb;
+        args[t].j_begin = j0; args[t].j_end = j1;
+        args[t].local_acc = locals[t];
+        args[t].ncols = ncols;
+
+        // spawn
+        int rc = pthread_create(&tids[t], NULL, worker_rowblock, &args[t]);
+        if (rc != 0) { abort(); }
+    }
+
+    // Join all workers
+    for (int t = 0; t < threads; ++t) {
+        pthread_join(tids[t], NULL);
+    }
+
+    // Reduce locals -> global accumulator
+    acc128p_t* acc = NULL;
+#if defined(_ISOC11_SOURCE)
+    acc = (acc128p_t*)aligned_alloc(64, ((acc_len * sizeof(acc128p_t) + 63) / 64) * 64);
+    if (!acc) { abort(); }
+#else
+    void* accp = NULL;
+    if (posix_memalign(&accp, 64, acc_len * sizeof(acc128p_t)) != 0) { abort(); }
+    acc = (acc128p_t*)accp;
+#endif
+    memset(acc, 0, acc_len * sizeof(acc128p_t));
+
+    for (int t = 0; t < threads; ++t) {
+        acc_vec_add(acc, locals[t], acc_len);
+    }
+
+    // Expand to base-2^64 lanes and do one global carry pass
+    uint64_t* out = (uint64_t*)calloc(out_len, sizeof(uint64_t));
+    if (!out) { abort(); }
+    expand_and_carry(acc, acc_len, out);
+
+    // Normalize: find actual limb length (trim leading zeros)
+    size_t rn = out_len;
+    while (rn > 0 && out[rn - 1] == 0) { --rn; }
+    if (rn == 0) { cfx_big_set_val(b, 0); }
+    else {
+        cfx_big_reserve(b, rn);
+        // (Assumes cfx_big_reserve zeros new space; if not, it's fine—we overwrite.)
+        memcpy(b->limb, out, rn * sizeof(uint64_t));
+        b->n = rn;
+    }
+
+    // Cleanup
+    free(out);
+    free(acc);
+    for (int t = 0; t < threads; ++t) free(locals[t]);
+    free(locals);
+    free(args);
+    free(tids);
+    free(a_copy);
 }
