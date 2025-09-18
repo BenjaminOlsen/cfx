@@ -1055,7 +1055,7 @@ int cfx_big_from_hex(cfx_big_t* out, const char* s) {
         int d = hex_table[(unsigned char)*s];   // -1 if not hex
         if (d < 0) break;                       // stop on first non-hex
         // out = (out << 4) + d;
-        cfx_big_shl(out, out, 4);               // or cfx_big_mul_sm(out, 16)
+        cfx_big_shl_bits(out, out, 4);               // or cfx_big_mul_sm(out, 16)
         cfx_big_add_sm(out, (uint64_t)d);
         any = 1;
     }
@@ -1085,8 +1085,24 @@ int cfx_big_from_str(cfx_big_t* out, const char* s) {
 /* ------------------------------------------------------------- */
 static inline unsigned _clz64(uint64_t x) { return x ? __builtin_clzll(x) : 64u; }
 
+/* b <<= s*/
+void cfx_big_shl_bits_eq(cfx_big_t* b, unsigned s) {
+    cfx_big_t tmp;
+    cfx_big_shl_bits(&tmp, b, s);
+    cfx_big_swap(b, &tmp);
+    cfx_big_free(&tmp);
+}
+
+/* b >>= s */
+void cfx_big_shr_bits_eq(cfx_big_t* b, unsigned s) {
+    cfx_big_t tmp;
+    cfx_big_shr_bits(&tmp, b, s);
+    cfx_big_swap(b, &tmp);
+    cfx_big_free(&tmp);
+}
+
 /* out = x << s (0..63)  */
-void cfx_big_shl(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
+void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
     cfx_big_init(out);
     if (x->n == 0 || s == 0) { cfx_big_copy(out, x); return; }
 
@@ -1102,7 +1118,7 @@ void cfx_big_shl(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
 }
 
 /* out = x >> s (0..63)  */
-void cfx_big_shr(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
+void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
     cfx_big_init(out);
     if (x->n == 0 || s == 0) { cfx_big_copy(out, x); return; }
 
@@ -1158,8 +1174,8 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
     /* Normalize: shift so msb of d's top limb is set */
     unsigned s = _clz64(d->limb[d->n - 1]);
     cfx_big_t V, U;
-    cfx_big_shl(&V, d, s);
-    cfx_big_shl(&U, n, s);
+    cfx_big_shl_bits(&V, d, s);
+    cfx_big_shl_bits(&U, n, s);
 
     /* Ensure U has one extra top limb for convenience */
     cfx_big_reserve(&U, U.n + 1);
@@ -1236,7 +1252,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
     cfx_big_reserve(&Rn, m);
     Rn.n = m;
     for (size_t i = 0; i < m; ++i) Rn.limb[i] = U.limb[i];
-    cfx_big_shr(r, &Rn, s);
+    cfx_big_shr_bits(r, &Rn, s);
     cfx_big_free(&Rn);
 
     /* Output quotient (already normalized) */
@@ -1292,11 +1308,11 @@ static inline void acc_add_u64(acc128p_t* a, uint64_t x) {
 }
 
 // add 128-bit x into accumulator
-static inline void acc_add_u128(acc128p_t* a, uint128_t x) {
-    uint128_t old = a->lo;
-    a->lo = old + x;
-    a->hi += (a->lo < old);
-}
+// static inline void acc_add_u128(acc128p_t* a, uint128_t x) {
+//     uint128_t old = a->lo;
+//     a->lo = old + x;
+//     a->hi += (a->lo < old);
+// }
 
 // dst[k] += src[k] for k in [0..n)
 static inline void acc_vec_add(acc128p_t* dst, const acc128p_t* src, size_t n) {
@@ -1493,4 +1509,194 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
     free(args);
     free(tids);
     free(a_copy);
+}
+
+#ifndef CFX_DEC_CHUNK_DIG
+#define CFX_DEC_CHUNK_DIG 18u /* 10^18 fits in uint64_t */
+#endif
+
+#ifndef CFX_HEX_CHUNK_DIG
+#define CFX_HEX_CHUNK_DIG 15u /* 16^15 = 2^60 fits in uint64_t */
+#endif
+
+
+/* Precomputed 10^k for k=0..18 */
+static const uint64_t POW10U64[CFX_DEC_CHUNK_DIG + 1] = {
+    1ULL,
+    10ULL,
+    100ULL,
+    1000ULL,
+    10000ULL,
+    100000ULL,
+    1000000ULL,
+    10000000ULL,
+    100000000ULL,
+    1000000000ULL,
+    10000000000ULL,
+    100000000000ULL,
+    1000000000000ULL,
+    10000000000000ULL,
+    100000000000000ULL,
+    1000000000000000ULL,
+    10000000000000000ULL,
+    100000000000000000ULL,
+    1000000000000000000ULL,
+};
+
+static void flush_chunk(cfx_big_t* out,
+                        unsigned base,
+                        uint64_t* chunk_val,
+                        unsigned* chunk_len)
+{
+    if (*chunk_len == 0) return;
+
+    if (base == 10) {
+        extern const uint64_t POW10U64[]; /* from earlier */
+        cfx_big_mul_sm(out, POW10U64[*chunk_len]);
+        cfx_big_add_sm(out, *chunk_val);
+    } else if (base == 16) {
+        unsigned bits = 4u * (*chunk_len);
+        cfx_big_shl_bits_eq(out, bits);
+        cfx_big_add_sm(out, *chunk_val);
+    } else { /* base 2 */
+        unsigned bits = *chunk_len;
+        cfx_big_shl_bits_eq(out, bits);
+        cfx_big_add_sm(out, *chunk_val);
+    }
+
+    *chunk_val = 0;
+    *chunk_len = 0;
+}
+
+/* Return 0 on success, nonzero on parse error. */
+int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base) {
+    cfx_big_set_val(out, 0);
+
+    enum { BASE_DEC=10, BASE_HEX=16, BASE_BIN=2 };
+    int detected_base; 
+    if ((base != BASE_DEC) && (base != BASE_HEX) && (base != BASE_BIN))  {
+        detected_base = BASE_DEC; /* default */
+    } else {
+        detected_base = base;
+    }
+    
+    int saw_digit = 0;
+    int negative = 0;
+    int in_prefix = 1; /* we’re skipping leading ws, sign, 0x */
+
+    /* chunk accumulators */
+    uint64_t chunk_val = 0;
+    unsigned chunk_len = 0; /* digits in current chunk */
+
+    unsigned dec_chunk_max = CFX_DEC_CHUNK_DIG;
+    unsigned hex_chunk_max = CFX_HEX_CHUNK_DIG;
+
+    unsigned char buf[64 * 1024];
+    size_t nread;
+
+    while ((nread = fread(buf, 1, sizeof(buf), fp)) > 0) {
+        for (size_t i = 0; i < nread; ++i) {
+            unsigned char c = buf[i];
+
+            /* Allow underscores, quotes, spaces, newlines, tabs as visual separators */
+            if ( (c == '\n') ||(c == '_') || (c == '"') || isspace(c) || (c == '\t') || (c == '\r') )  continue;
+
+            if (in_prefix) {
+                if (isspace(c)) continue;
+                if (c == '+') { in_prefix = 0; continue; }
+                if (c == '-') { negative = 1; in_prefix = 0; continue; }
+
+                /* Base detection: 0x / 0X (hex), 0b / 0B (bin) */
+                if (c == '0') {
+                    /* Peek ahead safely: if at buffer end, we’ll detect on next loop */
+                    unsigned char next = (i + 1 < nread) ? buf[i + 1] : 0;
+                    if (next == 'x' || next == 'X') {
+                        if (detected_base != BASE_HEX) {
+                            CFX_PRINT_ERR("hex '0x' prefix in file,"
+                                " but different base (%d) specified!", detected_base);
+                            
+                        }
+                        detected_base = BASE_HEX;
+                        i++;
+                        in_prefix = 0;
+                        continue;
+                    }
+                    if (next == 'b' || next == 'B') {
+                        if (detected_base != BASE_BIN) {
+                            CFX_PRINT_ERR("binary '0b' prefix in file,"
+                                " but different base (%d) specified!", detected_base);
+                                return -1;
+                        }
+                        detected_base = BASE_BIN;
+                        i++;
+                        in_prefix = 0;
+                        continue;
+                    }
+                    /* Otherwise, treat as decimal 0 and fall through as a digit */
+                }
+                /* We’ve seen a non-space, non-sign */
+                in_prefix = 0;
+            }
+
+            /* Digit handling by base */
+            if (detected_base == BASE_DEC) {
+                if (c >= '0' && c <= '9') {
+                    saw_digit = 1;
+                    if (chunk_len == dec_chunk_max) flush_chunk(out, detected_base, &chunk_val, &chunk_len);
+                    chunk_val = chunk_val * 10u + (uint64_t)(c - '0');
+                    chunk_len++;
+                    continue;
+                }
+            } else if (detected_base == BASE_HEX) {
+                int v = hex_table[c];
+
+                if (v != -1) {
+                    saw_digit = 1;
+                    if (chunk_len == hex_chunk_max) flush_chunk(out, detected_base, &chunk_val, &chunk_len);
+                    chunk_val = (chunk_val << 4) | (uint64_t)v;
+                    chunk_len++;
+                    continue;
+                }
+            } else { /* BASE_BIN */
+                if (c == '0' || c == '1') {
+                    saw_digit = 1;
+                    if (chunk_len == 60u) flush_chunk(out, detected_base, &chunk_val, &chunk_len); /* keep under 64 bits */
+                    chunk_val = (chunk_val << 1) | (uint64_t)(c - '0');
+                    chunk_len++;
+                    continue;
+                }
+            }
+
+            /* Any other non-space char terminates the number (or is an error). */
+            if (isspace(c)) {
+                /* End of the number */
+                goto done_reading;
+            } else {
+                /* Invalid character in the number */
+                // errno = EINVAL;
+                CFX_PRINT_ERR("Invalid character found: '%c' (0x%x)!", c, c);
+                return -1;
+            }
+        }
+    }
+
+done_reading:
+    /* Flush any pending chunk */
+    flush_chunk(out, base, &chunk_val, &chunk_len);
+
+    if (!saw_digit) {
+        CFX_PRINT_ERR("didn't find any digit!");
+        return -1;
+    }
+
+    /* If you support signed bigs, apply the sign here.
+       If `cfx_big_t` is unsigned, track sign externally in your API. */
+    if (negative) {
+        /* Example: if you have cfx_big_negate(out); otherwise reject negatives for now */
+        // errno = ERANGE; /* or implement signed handling */
+        CFX_PRINT_ERR("negative number found");
+        return -1;
+    }
+
+    return 0;
 }

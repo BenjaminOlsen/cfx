@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,10 +91,14 @@ uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d);
 uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m);
 
 /* Bitshift operations */
+/* b >>= s */
+void cfx_big_shr_bits_eq(cfx_big_t* b, unsigned s);
+/* b <<= s */
+void cfx_big_shl_bits_eq(cfx_big_t* b, unsigned s);
 /* out = x << s (0..63)  */
-void cfx_big_shl(cfx_big_t* out, const cfx_big_t* x, unsigned s);
+void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s);
 /* out = x >> s (0..63)  */
-void cfx_big_shr(cfx_big_t* out, const cfx_big_t* x, unsigned s);
+void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s);
 
 int cfx_big_is_zero(const cfx_big_t* b);
 int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n);
@@ -115,6 +120,7 @@ char* cfx_big_to_str(const cfx_big_t* b, size_t *sz_out);
 char* cfx_big_to_hex(const cfx_big_t* src, size_t *sz_out);
 int cfx_big_from_str(cfx_big_t* b, const char* str);
 int cfx_big_from_hex(cfx_big_t* out, const char* s);
+int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base);
 /**
  *  args: cfx_big_t * b : ptr to big
  *  fmt: format string

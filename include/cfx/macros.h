@@ -18,6 +18,12 @@
 #define CFX_PRINT_DBG(...) do {} while(0)
 #endif
 
+#define CFX_PRINT_ERR(fmt, ...) do {                       \
+    char buf[128];                                               \
+    snprintf(buf, sizeof(buf), fmt, ##__VA_ARGS__);              \
+    fprintf(stderr, "[%s] - %s\n", __func__, buf);               \
+} while (0)
+
 #define U128_HI(x) (uint64_t)((x>>64)&0xFFFFFFFFFFFFFFFF)
 #define U128_LO(x) (uint64_t)((x)&0xFFFFFFFFFFFFFFFF)
 
