@@ -118,6 +118,7 @@ void cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b);
 
 char* cfx_big_to_str(const cfx_big_t* b, size_t *sz_out);
 char* cfx_big_to_hex(const cfx_big_t* src, size_t *sz_out);
+char* cfx_big_to_bin(const cfx_big_t* b, size_t *sz_out);
 int cfx_big_from_str(cfx_big_t* b, const char* str);
 int cfx_big_from_hex(cfx_big_t* out, const char* s);
 int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base);

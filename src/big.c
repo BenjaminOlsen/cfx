@@ -904,6 +904,53 @@ static inline size_t hex_digits_u64(uint64_t v) {
     return d;
 #endif
 }
+static size_t bits_in_u64(uint64_t x) {
+    if (!x) return 0;
+#if defined(__GNUC__) || defined(__clang__)
+    return 64u - (size_t)__builtin_clzll(x);
+#else
+    size_t n = 0;
+    while (x) { ++n; x >>= 1; }
+    return n;
+#endif
+}
+
+char* cfx_big_to_bin(const cfx_big_t* src, size_t* sz_out) {
+    if (!src || src->n == 0) {
+        char* s = (char*)malloc(2);
+        if (!s) return NULL;
+        s[0] = '0'; s[1] = '\0';
+        if (sz_out) *sz_out = 1;
+        return s;
+    }
+
+    const size_t ms_idx  = src->n - 1;              /* most-significant limb index */
+    const uint64_t msval  = src->limb[ms_idx];
+    const size_t ms_bits  = bits_in_u64(msval);      /* 1..64 */
+    const size_t total_len = ms_bits + 64u * ms_idx; /* total bits as characters */
+
+    char* s = (char*)malloc(total_len + 1);
+    if (!s) return NULL;
+
+    size_t pos = 0;
+    const char bch[2] = {'0', '1'};
+
+    for (size_t b = ms_bits; b-- > 0; ) {
+        s[pos++] = bch[(size_t)((msval >> b) & 1u)];
+    }
+
+
+    for (size_t i = ms_idx; i-- > 0; ) {
+        uint64_t limb = src->limb[i];
+        for (size_t b = 64; b-- > 0; ) {
+            s[pos++] = bch[(size_t)((limb >> b) & 1u)];
+        }
+    }
+
+    s[total_len] = '\0';
+    if (sz_out) *sz_out = total_len;
+    return s;
+}
 
 char* cfx_big_to_hex(const cfx_big_t* src, size_t* sz_out) {
     // Treat empty/zero as "0"
@@ -936,17 +983,19 @@ char* cfx_big_to_hex(const cfx_big_t* src, size_t* sz_out) {
 
     // Remaining limbs, zero-padded to 16 hex chars each
     size_t k = 0;
+    size_t cnt = 0;
     for (ssize_t i = (ssize_t)ms - 2; i >= 0; --i) {
         written = snprintf(p, rem, "%016" PRIx64, (uint64_t)src->limb[i]);
         assert(written == 16);
         p   += written;
+        cnt += written;
         rem -= (size_t)written;
 
-        if (!(i % 100)) { 
+        if (!(cnt % 7)) {  /* some number.. */
             const char spinner[] = "|/-\\";
             ++k;
             printf("%zu hex digits done... %zu/%zu limbs remain... %c        \r",
-                k, i, ms, spinner[k % 4]);
+                cnt, rem, total_len, spinner[k % 4]);
             fflush(stdout);
         }
     }
@@ -1593,8 +1642,10 @@ int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base) {
 
     unsigned char buf[64 * 1024];
     size_t nread;
-
+    uint64_t cnt = 0;
     while ((nread = fread(buf, 1, sizeof(buf), fp)) > 0) {
+        cnt += nread;
+        printf("read %llu characters..... \n", cnt);
         for (size_t i = 0; i < nread; ++i) {
             unsigned char c = buf[i];
 
@@ -1689,10 +1740,9 @@ done_reading:
         return -1;
     }
 
-    /* If you support signed bigs, apply the sign here.
-       If `cfx_big_t` is unsigned, track sign externally in your API. */
+    /* TODO: track sign */
     if (negative) {
-        /* Example: if you have cfx_big_negate(out); otherwise reject negatives for now */
+        /* reject negatives for now */
         // errno = ERANGE; /* or implement signed handling */
         CFX_PRINT_ERR("negative number found");
         return -1;
