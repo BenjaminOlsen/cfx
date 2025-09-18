@@ -191,7 +191,7 @@ static void test_small_vector_known(void)
     cfx_big_free(&a); cfx_big_free(&m); cfx_big_free(&ref);
 }
 
-static void test_random_compare_ref(size_t na, size_t nb, int threads, uint64_t seed_init)
+static void test_random_compare_ref(size_t na, size_t nb, int threads, uint64_t seed_init, char* msg)
 {
     cfx_big_t a, b, ref, tmpa;
     cfx_big_init(&a); cfx_big_init(&b); cfx_big_init(&ref); cfx_big_init(&tmpa);
@@ -215,18 +215,18 @@ static void test_random_compare_ref(size_t na, size_t nb, int threads, uint64_t 
         big_print("GOT", &tmpa);
     }
     assert(big_equal(&tmpa, &ref));
-
+    if (msg) printf("%s\n", msg);
     cfx_big_free(&a); cfx_big_free(&b); cfx_big_free(&ref); cfx_big_free(&tmpa);
 }
 
 static void test_thread_counts_agree(void)
 {
-    cfx_big_t a, b, t1, t8;
+    cfx_big_t a, b, t1, t8, t32;
     cfx_big_init(&a); cfx_big_init(&b); cfx_big_init(&t1); cfx_big_init(&t8);
 
     uint64_t seed = 12345;
-    big_rand(&a, 64, &seed);
-    big_rand(&b, 57, &seed);
+    big_rand(&a, 764, &seed);
+    big_rand(&b, 857, &seed);
 
     big_set_limbs(&t1, a.limb, a.n);
     cfx_big_mul_rows_pthreads(&t1, &b, 1);
@@ -234,31 +234,43 @@ static void test_thread_counts_agree(void)
     big_set_limbs(&t8, a.limb, a.n);
     cfx_big_mul_rows_pthreads(&t8, &b, 8);
 
-    assert(big_equal(&t1, &t8));
+    big_set_limbs(&t32, a.limb, a.n);
+    cfx_big_mul_rows_pthreads(&t32, &b, 32);
 
-    cfx_big_free(&a); cfx_big_free(&b); cfx_big_free(&t1); cfx_big_free(&t8);
+    assert(big_equal(&t1, &t8));
+    assert(big_equal(&t32, &t8));
+
+    cfx_big_free(&a); cfx_big_free(&b); cfx_big_free(&t1); cfx_big_free(&t8); cfx_big_free(&t32);
 }
 
 // ---- Main -------------------------------------------------------------------
+#define STR(x) #x
+#define TEST(f) f(); printf(STR(f) "() - OK\n")
+#define TEST_RAND(na, nb, threads, seed_init) \
+    test_random_compare_ref(na, nb, threads, seed_init, \
+        "test_random_compare_ref(" STR(na) ", " STR(nb) ", " STR(threads) ", " STR(seed_init) ") - OK")
 
 int main(void)
 {
-    test_mul_zero_zero();
-    test_mul_zero_x();
-    test_mul_x_zero();
-    test_mul_by_one();
-    test_cross_limb_carry_small();
-    test_small_vector_known();
+    TEST(test_mul_zero_zero);
+    TEST(test_mul_zero_x);
+    TEST(test_mul_x_zero);
+    TEST(test_mul_by_one);
+    TEST(test_cross_limb_carry_small);
+    TEST(test_small_vector_known);
+    TEST(test_thread_counts_agree);
 
     // Randoms vs reference (sizes & threads)
-    test_random_compare_ref(1, 1, 1, 0xC0FFEE);
-    test_random_compare_ref(3, 2, 2, 0xDEADBEEF);
-    test_random_compare_ref(8, 9, 4, 0x12345678);
-    test_random_compare_ref(32, 17, 8, 0xBADC0DE);
-    test_random_compare_ref(64, 64, 4, 0xFEEDFACE);
-
-    test_thread_counts_agree();
-
+    TEST_RAND(1, 1, 1, 0xC0FFEEF);
+    TEST_RAND(3, 2, 2, 0xDEADBAEF);
+    TEST_RAND(8, 9, 4, 0x12345678);
+    TEST_RAND(32, 17, 8, 0xB1DC0DE);
+    TEST_RAND(64, 64, 4, 0xFEEDFACE);
+    TEST_RAND(128, 64, 4, 0xFEADFACA);
+    TEST_RAND(4000, 6410, 4, 0xAC0FFEE);
+    TEST_RAND(6430, 6420, 8, 0xFAEDFFCE);
+    TEST_RAND(14302, 14203, 8, 0xFE000CE);
+    TEST_RAND(14302, 14203, 18, 0xFABADA);
     printf("OK: all tests passed.\n");
     return 0;
 }
