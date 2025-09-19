@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 /* removes folders from __FILE__ path */
 #define __FILENAME__ \
@@ -51,5 +52,19 @@ do { \
 
 #define STR(x) #x
 #define CFX_TEST(f) f(); printf(STR(f) "() - OK\n")
+
+#define CFX_PRINT_TEST_COND(cond) printf("[%s] cond: '%s' - %s\n", __func__,  STR(cond), cond ? "OK" : ">>>> NOT OK <<<<")
+
+#ifdef CFX_DEBUG
+#define CFX_ASSERT_PRINT(cond) \
+    do { \
+        CFX_PRINT_TEST_COND(cond); \
+        assert(cond); \
+    } while (0)
+#else
+#define CFX_ASSERT_PRINT(cond) CFX_PRINT_TEST_COND(cond)
+#endif 
+
+#define CFX_ASSERT(cond) assert(cond)
 
 #endif /* CFX_MACROS_H */

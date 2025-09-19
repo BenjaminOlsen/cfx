@@ -28,13 +28,16 @@ int main(int argc, char* argv[]) {
     
     cfx_fac_t fac;
     cfx_fac_init(&fac);
+    printf("calculating factorial... \n");
     cfx_fac_factorial(&fac, n, &primes);
-    printf("fac size: %zu\n", fac.len);
+    printf("done, fac size: %zu\n", fac.len);
     
     cfx_big_t b;
     cfx_big_init(&b);
+    printf("making big int... ");
+    fflush(stdout);
     cfx_big_from_fac(&b, &fac);
-    
+    printf("done, limbs: %zu\n", b.n);
     size_t sz = 0;
     char* s;
     

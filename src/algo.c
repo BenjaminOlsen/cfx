@@ -134,9 +134,9 @@ int cfx_is_prime_u64(uint64_t n) {
     while ((d & 1) == 0) { d >>= 1; ++s; }
 
     /* The "Sinclair 7" bases, determinstic for 64 bit */
-    static const uint64_t bases[] = {2, 325, 9375, 28178, 450775, 9780504, 1795265022};
+    static const uint64_t bases[] = {2, 325, 9375, 28178, 450775, 9780504, 1795265022, 0};
 
-    for (int i = 0; bases[i]; ++i) {
+    for (int i = 0; i < sizeof(bases)/sizeof(bases[0]); ++i) {
         uint64_t a = bases[i];
         if (a % n == 0) continue;             // skip if a == n
         uint64_t x = _cfx_powmod_u64(a, d, n);

@@ -3,7 +3,6 @@
 #include "cfx/macros.h"
 
 #include <stdio.h>
-#include <assert.h>
 
 extern const size_t cfx_primes_len;
 extern const uint32_t cfx_primes[];
@@ -14,7 +13,7 @@ static void test_prime_sieve(void) {
     // CFX_PRINT_DBG("len: %zu, maxp: %u\n", cfx_primes_len, maxp);
     assert(primes.size == cfx_primes_len);
     for (size_t i = 0; i < primes.size; ++i) {
-        assert(primes.data[i] == cfx_primes[i]);
+        CFX_ASSERT(primes.data[i] == cfx_primes[i]);
     }
     cfx_vec_free(&primes);
     CFX_PRINT_DBG("ok\n");
