@@ -38,27 +38,71 @@ void cfx_big_clear(cfx_big_t* b) {
 void cfx_big_free(cfx_big_t* b) {
     b->n = 0;
     b->cap = 0;
-    free(b->limb);
+    if (b->limb) free(b->limb);
     b->limb = NULL;
-    free(b->cache);
+    if (b->cache) free(b->cache);
     b->cache = NULL;
 }
 
 int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src) {
     if (dst == src) return 0;
 
-    cfx_big_free(dst);
+
+    cfx_big_t tmp;
+    cfx_big_init(&tmp);
 
     if (src->n) {
-        if (cfx_big_reserve(dst, src->n) != 0) {
+        if (cfx_big_reserve(&tmp, src->n) != 0) {
+            cfx_big_free(&tmp);
             return -1; // OOM
         }
-        memcpy(dst->limb, src->limb, src->n * sizeof(uint64_t));
-        dst->n = src->n;
+        memcpy(tmp.limb, src->limb, src->n * sizeof(*src->limb));
+        tmp.n = src->n;
     } else {
-        dst->n = 0;
+        tmp.n = 0;
+    }
+    cfx_big_swap(&tmp, dst);
+    cfx_big_free(&tmp);
+    return 0;
+}
+
+
+int cfx_big_is_zero(const cfx_big_t* b) {
+    return (b->n == 0) || (b->n == 1 && b->limb[0] == 0);
+}
+
+int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n) {
+    return b->n == 1 && b->limb[0] == n;
+}
+
+int cfx_big_eq(const cfx_big_t* a, const cfx_big_t* b) {
+    if (a->n != b->n) return 0;
+    uint64_t diff = 0;
+    for (size_t i = 0; i < a->n; ++i) {
+        diff |= (a->limb[i] ^ b->limb[i]);
+    }
+    return diff == 0;
+}
+
+/** compare two bigs - 
+ * returns: 
+ * -1 if a < b
+ * 0 if a == b
+ * 1 if a > b
+ **/
+int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b) {
+    if (a->n != b->n) return (a->n < b->n) ? -1 : 1;
+    for (size_t i = a->n; i-- > 0; ) {
+        if (a->limb[i] != b->limb[i]) return (a->limb[i] < b->limb[i]) ? -1 : 1;
     }
     return 0;
+}
+
+void cfx_big_swap(cfx_big_t* a, cfx_big_t* b) {
+    if (a == b) return;
+    cfx_big_t tmp = *a;
+    *a = *b;
+    *b = tmp;
 }
 
 /* returns 0 on success, -1 on failure (errno set) */
@@ -228,43 +272,6 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
     if (rempow != 1) _mul_sm_fast(b, rempow);
 }
 
-int cfx_big_is_zero(const cfx_big_t* b) {
-    return (b->n == 0) || (b->n == 1 && b->limb[0] == 0);
-}
-
-int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n) {
-    return b->n == 1 && b->limb[0] == n;
-}
-
-int cfx_big_eq(const cfx_big_t* a, const cfx_big_t* b) {
-    if (a->n != b->n) return 0;
-    uint64_t diff = 0;
-    for (size_t i = 0; i < a->n; ++i) {
-        diff |= (a->limb[i] ^ b->limb[i]);
-    }
-    return diff == 0;
-}
-
-/** compare two bigs - 
- * returns: 
- * -1 if a < b
- * 0 if a == b
- * 1 if a > b
- **/
-int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b) {
-    if (a->n != b->n) return (a->n < b->n) ? -1 : 1;
-    for (size_t i = a->n; i-- > 0; ) {
-        if (a->limb[i] != b->limb[i]) return (a->limb[i] < b->limb[i]) ? -1 : 1;
-    }
-    return 0;
-}
-
-void cfx_big_swap(cfx_big_t* a, cfx_big_t* b) {
-    if (a == b) return;
-    cfx_big_t tmp = *a;
-    *a = *b;
-    *b = tmp;
-}
 
 
 void cfx_big_sq(cfx_big_t* b) {
@@ -492,164 +499,6 @@ void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t
     cfx_big_swap(&tmp, b);
     cfx_big_free(&tmp);
 }
-
-/* >>>>>>>>>>>>>>>> Threads <<<<<<<<<<<<<<<<< */
-typedef struct {
-    const uint64_t* A; size_t ia, na_rows;
-    const uint64_t* B; size_t nb;
-    cfx_mul_scratch_t* scratch; /* thread-local */
-    size_t nout;
-} worker_args_t;
-
-static void* worker_accumulate(void* argp) {
-    worker_args_t* a = (worker_args_t*)argp;
-    cfx_mul_scratch_zero(a->scratch, a->nout);
-    cfx_mul_csa_portable_fast_rows(a->A, a->ia, a->na_rows,
-                                   a->B, a->nb,
-                                   a->scratch->acc, a->scratch->spill);
-    return NULL;
-}
-
-typedef struct {
-    csa128_t*       g_acc;
-    uint64_t*       g_spill;   // length nout+1, zeroed
-    uint64_t*       g_carry;   // length nout, zeroed
-    const cfx_mul_scratch_t* locals;
-    int             nlocals;
-    size_t          nout;
-    size_t          k0, k1;
-} reduce_args_t;
-
-static void* reducer_chunk(void* argp) {
-    reduce_args_t* r = (reduce_args_t*)argp;
-    for (size_t k = r->k0; k < r->k1; ++k) {
-        __uint128_t sum_lo = 0, sum_hi = 0;
-        uint64_t spill_k = 0, carry_to_kp1 = 0;
-
-        for (int t = 0; t < r->nlocals; ++t) {
-            const csa128_t* acc = r->locals[t].acc;
-            const uint64_t* sp  = r->locals[t].spill;
-
-            __uint128_t tl = sum_lo + acc[k].lo;
-            uint64_t c0    = (uint64_t)(tl >> 64);
-            sum_lo         = tl;
-
-            __uint128_t th = sum_hi + acc[k].hi + c0;
-            carry_to_kp1  += (uint64_t)(th >> 64);
-            sum_hi         = th;
-
-            spill_k       += sp[k];
-        }
-        r->g_acc[k].lo = (uint64_t)sum_lo;
-        r->g_acc[k].hi = (uint64_t)sum_hi;
-
-        r->g_spill[k]  += spill_k;        // disjoint index -> safe
-        r->g_carry[k]  += carry_to_kp1;   // disjoint index -> safe
-    }
-
-    // (Optional) only last chunk handles spill[nout] aggregation:
-    if (r->k1 == r->nout) {
-        uint64_t tail = 0;
-        for (int t = 0; t < r->nlocals; ++t) tail += r->locals[t].spill[r->nout];
-        r->g_spill[r->nout] += tail;
-    }
-    return NULL;
-}
-
-/* In-place parallel CSA multiply: b *= m using `threadcnt` POSIX threads. */
-void cfx_big_mul_csa_pthreads(cfx_big_t* b, const cfx_big_t* m, int threadcnt)
-{
-    const size_t na = b->n;
-    const size_t nb = m->n;
-    const size_t nout = na + nb;
-
-    if (!na || !nb) {
-        /* set b = 0 */
-        cfx_big_set_val(b, 0);
-        return;
-    }
-
-    if (threadcnt <= 0) {
-        long hw = sysconf(_SC_NPROCESSORS_ONLN);
-        threadcnt = (hw > 0) ? (int)hw : 1;
-    }
-    if (threadcnt > (int)na) threadcnt = (int)na; /* never spawn more threads than rows */
-
-    /* --- Allocate global and local scratch --- */
-    cfx_mul_scratch_t global = (cfx_mul_scratch_t){0};
-    cfx_mul_scratch_alloc(&global, nout);
-    cfx_mul_scratch_zero(&global, nout);
-
-    cfx_mul_scratch_t* locals = (cfx_mul_scratch_t*)calloc((size_t)threadcnt, sizeof(*locals));
-    assert(locals);
-    for (int t = 0; t < threadcnt; ++t) {
-        cfx_mul_scratch_alloc(&locals[t], nout);
-        cfx_mul_scratch_zero (&locals[t], nout);
-    }
-
-    /* --- Phase 1: parallel local accumulation (row blocks of A) --- */
-    pthread_t* th = (pthread_t*)calloc((size_t)threadcnt, sizeof(*th));
-    worker_args_t* args = (worker_args_t*)calloc((size_t)threadcnt, sizeof(*args));
-    assert(th && args);
-
-    for (int t = 0; t < threadcnt; ++t) {
-        size_t ia   = (na * (size_t)t) / (size_t)threadcnt;
-        size_t iend = (na * (size_t)(t+1)) / (size_t)threadcnt;
-        size_t cnt  = iend - ia;
-
-        args[t] = (worker_args_t){
-            .A = b->limb, .ia = ia, .na_rows = cnt,
-            .B = m->limb, .nb = nb,
-            .scratch = &locals[t], .nout = nout
-        };
-        pthread_create(&th[t], NULL, worker_accumulate, &args[t]);
-    }
-    for (int t = 0; t < threadcnt; ++t) pthread_join(th[t], NULL);
-
-    /* --- Phase 2: parallel reduction of locals into global by diagonal chunks --- */
-    /* Globals for reduction: add a separate carry buffer to avoid races on spill[k+1] */
-    uint64_t* g_carry = (uint64_t*)calloc(nout, sizeof(uint64_t));
-    assert(g_carry);
-
-    pthread_t* rth = (pthread_t*)calloc((size_t)threadcnt, sizeof(*rth));
-    reduce_args_t* rargs = (reduce_args_t*)calloc((size_t)threadcnt, sizeof(*rargs));
-    assert(rth && rargs);
-
-    for (int t = 0; t < threadcnt; ++t) {
-        size_t k0   = (nout * (size_t)t) / (size_t)threadcnt;
-        size_t k1   = (nout * (size_t)(t+1)) / (size_t)threadcnt;
-        rargs[t] = (reduce_args_t){
-            .g_acc = global.acc,
-            .g_spill = global.spill,
-            .g_carry = g_carry,               /* NEW */
-            .locals = locals, .nlocals = threadcnt,
-            .nout = nout, .k0 = k0, .k1 = k1
-        };
-        pthread_create(&rth[t], NULL, reducer_chunk, &rargs[t]);
-    }
-    for (int t = 0; t < threadcnt; ++t) pthread_join(rth[t], NULL);
-
-    /* Shift+add the per-diagonal carries once: spill[k+1] += g_carry[k] */
-    for (size_t k = 0; k < nout; ++k) global.spill[k + 1] += g_carry[k];
-
-    free(g_carry);
-    free(rth);
-    free(rargs);
-
-    /* --- Phase 3: fold spills and normalize into b --- */
-    cfx_mul_csa_fold_and_normalize(global.acc, global.spill, nout, b->limb);
-    b->n = nout;
-    while (b->n && b->limb[b->n - 1] == 0) --b->n;
-
-    /* cleanup */
-    for (int t = 0; t < threadcnt; ++t) cfx_mul_scratch_free(&locals[t]);
-    free(locals);
-    cfx_mul_scratch_free(&global);
-    free(th);
-    free(args);
-}
-
-
 
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
     
@@ -1137,6 +986,7 @@ static inline unsigned _clz64(uint64_t x) { return x ? __builtin_clzll(x) : 64u;
 /* b <<= s*/
 void cfx_big_shl_bits_eq(cfx_big_t* b, unsigned s) {
     cfx_big_t tmp;
+    cfx_big_init(&tmp);
     cfx_big_shl_bits(&tmp, b, s);
     cfx_big_swap(b, &tmp);
     cfx_big_free(&tmp);
@@ -1145,6 +995,7 @@ void cfx_big_shl_bits_eq(cfx_big_t* b, unsigned s) {
 /* b >>= s */
 void cfx_big_shr_bits_eq(cfx_big_t* b, unsigned s) {
     cfx_big_t tmp;
+    cfx_big_init(&tmp);
     cfx_big_shr_bits(&tmp, b, s);
     cfx_big_swap(b, &tmp);
     cfx_big_free(&tmp);
@@ -1344,7 +1195,7 @@ int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r /*nullable*/) 
 // 128-bit + wrap counter accumulator per column.
 // Value represented = hi * 2^128 + lo
 typedef struct {
-    uint128_t     lo;
+    uint128_t lo;
     uint64_t hi;
     uint64_t pad; // pad to 32 bytes to reduce false sharing during reductions
 } acc128p_t;
@@ -1473,6 +1324,7 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
 
     // Plan threads
     long hw = sysconf(_SC_NPROCESSORS_ONLN);
+    // CFX_PRINT_DBG("hw threads: %ld\n", hw);
     if (threads <= 0) threads = (hw > 0) ? (int)hw : 1;
     if (threads > (int)nb) threads = (int)nb;
     if (threads < 1) threads = 1;
@@ -1558,6 +1410,44 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
     free(args);
     free(tids);
     free(a_copy);
+}
+
+void cfx_big_mul_auto(cfx_big_t* b, const cfx_big_t* m) {
+    const size_t na = b->n;
+    const size_t nb = m->n;
+
+    // trivial cases
+    if (!na || !nb) { cfx_big_set_val(b, 0); return; }
+    if (nb == 1 && m->limb[0] == 1) return;           // b *= 1
+    if (na == 1 && b->limb[0] == 1) {                  // 1 * m
+        cfx_big_reserve(b, nb);
+        memcpy(b->limb, m->limb, nb * sizeof(uint64_t));
+        b->n = nb;
+        return;
+    }
+
+    const size_t mn = (na < nb) ? na : nb;
+
+    if (mn < 256) {
+        // small/skinny -> classic single-thread
+        cfx_big_mul(b, m);
+        return;
+    }
+
+    // Large enough: threaded row/col/carry.
+    // Make sure the *row* operand is the larger one to expose threads.
+    if (nb >= na) {
+        // m already larger (or equal): rows = m
+        cfx_big_mul_rows_pthreads(b, m, -1);  // -1 = auto threads in your impl
+    } else {
+        // m is smaller: compute (m *= b) into a temp, then move into b
+        cfx_big_t tmp;
+        cfx_big_init(&tmp);
+        cfx_big_copy(&tmp, m);                // tmp = m
+        cfx_big_mul_rows_pthreads(&tmp, b, -1);
+        cfx_big_swap(b, &tmp);
+        cfx_big_free(&tmp);
+    }
 }
 
 #ifndef CFX_DEC_CHUNK_DIG

@@ -221,12 +221,21 @@ static void test_random_compare_ref(size_t na, size_t nb, int threads, uint64_t 
 
 static void test_thread_counts_agree(void)
 {
-    cfx_big_t a, b, t1, t8, t32;
-    cfx_big_init(&a); cfx_big_init(&b); cfx_big_init(&t1); cfx_big_init(&t8);
+    cfx_big_t a, b, t0, t1, t8, t32;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+    cfx_big_init(&t0);
+    cfx_big_init(&t1);
+    cfx_big_init(&t8);
+    cfx_big_init(&t32);
 
     uint64_t seed = 12345;
     big_rand(&a, 764, &seed);
     big_rand(&b, 857, &seed);
+
+    /* normal mul sanity check */
+    cfx_big_copy(&t0, &a);
+    cfx_big_mul(&t0, &b);
 
     big_set_limbs(&t1, a.limb, a.n);
     cfx_big_mul_rows_pthreads(&t1, &b, 1);
@@ -237,10 +246,16 @@ static void test_thread_counts_agree(void)
     big_set_limbs(&t32, a.limb, a.n);
     cfx_big_mul_rows_pthreads(&t32, &b, 32);
 
+    assert(big_equal(&t0, &t1));
     assert(big_equal(&t1, &t8));
     assert(big_equal(&t32, &t8));
 
-    cfx_big_free(&a); cfx_big_free(&b); cfx_big_free(&t1); cfx_big_free(&t8); cfx_big_free(&t32);
+    cfx_big_free(&a);
+    cfx_big_free(&b);
+    cfx_big_free(&t0);
+    cfx_big_free(&t1);
+    cfx_big_free(&t8);
+    cfx_big_free(&t32);
 }
 
 // ---- Main -------------------------------------------------------------------

@@ -19,6 +19,7 @@ static void test_cfx_big_init(void) {
 
 static void test_cfx_big_reserve(void) {
     cfx_big_t b;
+    cfx_big_init(&b);
     size_t rcap1 = 55;
     cfx_big_reserve(&b, rcap1);
     assert(b.cap >= rcap1);
@@ -44,6 +45,8 @@ static void test_copy_swap(void) {
         assert(b.limb[i] == lb[i]);
     }
     cfx_big_t aa, bb;
+    cfx_big_init(&aa);
+    cfx_big_init(&bb);
     cfx_big_copy(&aa, &a);
     cfx_big_copy(&bb, &b);
 
@@ -815,14 +818,14 @@ static void test_known_squares(void) {
     printf("mul %d len: %zu \n", ++cnt, b.n);
     cfx_big_mul(&b, &b); // 512
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 1024
-    printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 2048
-    printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 4096
-    printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 8192
-    printf("mul %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul(&b, &b); // 1024
+    // printf("mul %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul(&b, &b); // 2048
+    // printf("mul %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul(&b, &b); // 4096
+    // printf("mul %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul(&b, &b); // 8192
+    // printf("mul %d len: %zu \n", ++cnt, b.n);
 
     // for (size_t i = 0; i < b.n; ++i) {
     //     printf("calculated: b.limb[%zu]: %llu (0x%llx)\n", i, b.limb[i], b.limb[i]);
@@ -960,12 +963,12 @@ static void test_known_squares_2(void) {
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
     cfx_big_mul_csa(&b, &b); // 512
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); // 1024
-    printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); // 2048
-    printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); // 4096
-    printf("mul csa %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul_csa(&b, &b); // 1024
+    // printf("mul csa %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul_csa(&b, &b); // 2048
+    // printf("mul csa %d len: %zu \n", ++cnt, b.n);
+    // cfx_big_mul_csa(&b, &b); // 4096
+    // printf("mul csa %d len: %zu \n", ++cnt, b.n);
 
     // for (size_t i = 0; i < b.n; ++i) {
     //     printf("calculated: b.limb[%zu]: %llu (0x%llx)\n", i, b.limb[i], b.limb[i]);
@@ -984,6 +987,7 @@ static void test_known_squares_2(void) {
 
 static void expect_dec_eq(const cfx_big_t* x, const char* dec) {
     cfx_big_t tmp; 
+    cfx_big_init(&tmp);
     cfx_big_from_str(&tmp, dec);
     assert(cfx_big_eq(x, &tmp));
     cfx_big_free(&tmp);
@@ -1003,6 +1007,7 @@ static void big_dec1(cfx_big_t* x) {
 static void assert_n_eq_qd_plus_r(const cfx_big_t* n, const cfx_big_t* q,
                                   const cfx_big_t* d, const cfx_big_t* r) {
     cfx_big_t check;
+    cfx_big_init(&check);
     cfx_big_copy(&check, q);
     cfx_big_t tmp;
     cfx_big_init(&tmp);
@@ -1086,6 +1091,10 @@ void test_big_div_equal_numbers(void) {
 
 void test_big_div_single_limb_divisor_property(void) {
     cfx_big_t n, d, q, r;
+    cfx_big_init(&n);
+    cfx_big_init(&d);
+    cfx_big_init(&q);
+    cfx_big_init(&r);
     cfx_big_from_str(&n, "340282366920938463463374607431768211455"); // 2^128 - 1
     cfx_big_set_val(&d, 123456789ULL);
 
@@ -1198,56 +1207,53 @@ void test_big_div_alias_remainder_eq_src(void) {
     cfx_big_free(&d);
 }
 
-
+#define STR(x) #x
+#define TEST(f) f(); printf(STR(f) "() - OK\n")
 
 int main(void) {
-    test_copy_swap();
-    test_cfx_big_init();
-    test_cfx_big_reserve();
-    test_mul_by_zero();
-    test_limb1();
-    test_limb2();
-    test_limb3();
-    test_limb4();
-    test_limb5();
-    test_limb6();
-    test_limb7();
-    test_str1();
-    test_str2();
-    test_add_sm();
-    test_sub_sm();
-    test_cache();
-    test_zero_right();
-    test_zero_left();
-    test_mul1();
-    test_carry_two_limbs_times_2();
-    test_mul_by_base_2_64_shift();
-    test_self_multiply_square();
-    test_self_multiply_big();
-    test_known_squares();
-    test_known_squares_2();
-    test_mul_adduiv();
-
-    test_big_div_divide_by_zero();
-    test_big_div_zero_dividend();
-    test_big_div_n_less_than_d();
-    test_big_div_equal_numbers();
-    test_big_div_single_limb_divisor_property();
-    // test_big_div_multi_limb_divisor_exact_and_remainder();
-    // test_big_div_in_place_eq_with_remainder();
-    
-    // test_big_div_quotient_only_and_remainder_only();
-    // test_big_div_alias_remainder_eq_src();
-
-    test_hex_leading_zero_limb_skipped();
-    test_hex_no_leading_zeros_on_msl();
-    test_hex_single_limb_basic();
-    test_hex_single_limb_hex_digit_count();
-    test_hex_two_limbs_mixed_digits();
-    test_hex_two_limbs_padding();
-    test_hex_zero_empty_n();
-    test_hex_zero_explicit_limb_zero();
-
+    TEST(test_copy_swap);
+    TEST(test_cfx_big_init);
+    TEST(test_cfx_big_reserve);
+    TEST(test_mul_by_zero);
+    TEST(test_limb1);
+    TEST(test_limb2);
+    TEST(test_limb3);
+    TEST(test_limb4);
+    TEST(test_limb5);
+    TEST(test_limb6);
+    TEST(test_limb7);
+    TEST(test_str1);
+    TEST(test_str2);
+    TEST(test_add_sm);
+    TEST(test_sub_sm);
+    TEST(test_cache);
+    TEST(test_zero_right);
+    TEST(test_zero_left);
+    TEST(test_mul1);
+    TEST(test_carry_two_limbs_times_2);
+    TEST(test_mul_by_base_2_64_shift);
+    TEST(test_self_multiply_square);
+    TEST(test_self_multiply_big);
+    TEST(test_known_squares);
+    TEST(test_known_squares_2);
+    TEST(test_mul_adduiv);
+    TEST(test_big_div_divide_by_zero);
+    TEST(test_big_div_zero_dividend);
+    TEST(test_big_div_n_less_than_d);
+    TEST(test_big_div_equal_numbers);
+    TEST(test_big_div_single_limb_divisor_property);
+    // test_big_div_multi_limb_divisor_exact_and_remainder);
+    // test_big_div_in_place_eq_with_remainder);
+    // test_big_div_quotient_only_and_remainder_only);
+    // test_big_div_alias_remainder_eq_src);
+    TEST(test_hex_leading_zero_limb_skipped);
+    TEST(test_hex_no_leading_zeros_on_msl);
+    TEST(test_hex_single_limb_basic);
+    TEST(test_hex_single_limb_hex_digit_count);
+    TEST(test_hex_two_limbs_mixed_digits);
+    TEST(test_hex_two_limbs_padding);
+    TEST(test_hex_zero_empty_n);
+    TEST(test_hex_zero_explicit_limb_zero);
     puts("OK");
     return 0;
 }

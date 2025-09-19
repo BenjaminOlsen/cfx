@@ -178,6 +178,7 @@ static void fac(cfx_big_t* out, const cfx_big_t* in) {
     cfx_big_init(out);
     if(cfx_big_is_zero(in)) { cfx_big_set_val(out, 1); return; }
     cfx_big_t tmp;
+    cfx_big_init(&tmp);
     cfx_big_copy(&tmp, in);
     cfx_big_set_val(out, 1);
     
@@ -196,6 +197,8 @@ static void test_big_factorial_to_100(int quiet) {
     size_t N = 100;
     for (size_t n = 0; n < N; ++n) {
         cfx_big_t b, f;
+        cfx_big_init(&b);
+        cfx_big_init(&f);
         cfx_big_set_val(&b, n);
         fac(&f, &b);
         char* s = cfx_big_to_str(&f, NULL);

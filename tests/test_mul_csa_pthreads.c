@@ -108,7 +108,7 @@ static void run_case(const char* name,
     ensure_cap(&b_pt,  nout);
     PRINT_BIG("b_pt after ensure", &b_pt);
 
-    // reference multiply (single-thread schoolbook)    
+    // reference multiply (single-thread schoolbook)
     cfx_big_mul(&b_ref, m_in);
 
     // pthreads CSA multiply
