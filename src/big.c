@@ -47,7 +47,6 @@ void cfx_big_free(cfx_big_t* b) {
 int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src) {
     if (dst == src) return 0;
 
-
     cfx_big_t tmp;
     cfx_big_init(&tmp);
 
@@ -66,6 +65,19 @@ int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src) {
     return 0;
 }
 
+void cfx_big_assign(cfx_big_t* dst, const cfx_big_t* src) {
+    if (dst == src) return;
+    cfx_big_reserve(dst, src->n);
+    memcpy(dst->limb, src->limb, src->n * sizeof(uint64_t));
+    dst->n = src->n;
+}
+
+void cfx_big_move(cfx_big_t* dst, cfx_big_t* src) {
+    if (dst == src) return;
+    cfx_big_free(dst);
+    *dst = *src;
+    cfx_big_init(src);
+}
 
 int cfx_big_is_zero(const cfx_big_t* b) {
     return (b->n == 0) || (b->n == 1 && b->limb[0] == 0);
@@ -148,15 +160,8 @@ int cfx_big_reserve(cfx_big_t* b, size_t need) {
     return 0;
 }
 
-void cfx_big_assign(cfx_big_t* out, const cfx_big_t* in) {
-    if (out == in) return;
-    cfx_big_reserve(out, in->n);
-    memcpy(out->limb, in->limb, in->n * sizeof(uint64_t));
-    out->n = in->n;
-}
 
-
-void cfx_big_enable_fac(cfx_big_t* b) {
+void cfx_big_enable_cache(cfx_big_t* b) {
     if (!b->cache) {
         b->cache = (cfx_fac_cache_t*)malloc(sizeof(struct cfx_fac_cache));
         cfx_fac_init(&b->cache->primes);
@@ -166,7 +171,7 @@ void cfx_big_enable_fac(cfx_big_t* b) {
     }
 }
 
-void cfx_big_disable_fac(cfx_big_t* b) {
+void cfx_big_disable_cache(cfx_big_t* b) {
     if (b->cache) {
         cfx_fac_free(&b->cache->primes);
         cfx_big_free(&b->cache->cofactor);
@@ -1687,6 +1692,7 @@ done_reading:
 
 /* ==================== Montgomery ==================== */
 
+/* if x >= n then x -= n */
 static inline void cfx_big_cond_sub_n_(cfx_big_t* x, const cfx_big_t* n) {
     if (cfx_big_cmp(x, n) >= 0) cfx_big_sub(x, n);
 }
@@ -1757,8 +1763,10 @@ int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, con
     const size_t k = ctx->k;
     const uint64_t n0inv = ctx->n0inv;
 
-    cfx_big_t T; cfx_big_init(&T);
+    cfx_big_t T;
+    cfx_big_init(&T);
     cfx_big_reserve(&T, k + 1);
+    /* >>>> reserve zeros the newly added limbs, so this is unnecessary >>>> */
     memset(T.limb, 0, (k + 1) * sizeof(uint64_t));
     T.n = k + 1;
 
@@ -1811,7 +1819,8 @@ int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, con
 int cfx_big_mont_to(cfx_big_t* out, const cfx_big_t* a, const cfx_big_mont_ctx_t* ctx) {
     if (!out || !a || !ctx) return 0;
     /* If your inputs may be >> n, call your real mod here. For now, quick reduce by repeated sub when a < few*n. */
-    cfx_big_t ared; cfx_big_init(&ared);
+    cfx_big_t ared;
+    cfx_big_init(&ared);
     cfx_big_assign(&ared, a);
     while (cfx_big_cmp(&ared, &ctx->n) >= 0) cfx_big_sub(&ared, &ctx->n);
 
@@ -1823,25 +1832,31 @@ int cfx_big_mont_to(cfx_big_t* out, const cfx_big_t* a, const cfx_big_mont_ctx_t
 /* Convert from Montgomery: aR * R^{-1} = a mod n = MontMul(aR, 1) */
 int cfx_big_mont_from(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_ctx_t* ctx) {
     if (!out || !aR || !ctx) return 0;
-    cfx_big_t one; cfx_big_init(&one); cfx_big_set_val(&one, 1);
+    cfx_big_t one;
+    cfx_big_init(&one);
+    cfx_big_set_val(&one, 1);
     int ok = cfx_big_mont_mul(out, aR, &one, ctx);
     cfx_big_free(&one);
     return ok;
 }
 
 /* ----------------- One-liners that hide the ctx ----------------- */
-
 int cfx_big_mul_mod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_t* n) {
-    cfx_big_mont_ctx_t C; if (!cfx_big_mont_ctx_init(&C, n)) return 0;
+    cfx_big_mont_ctx_t C;
+    if (!cfx_big_mont_ctx_init(&C, n)) return 0;
     cfx_big_t aR, bR, r;
-    cfx_big_init(&aR); cfx_big_init(&bR); cfx_big_init(&r);
+    cfx_big_init(&aR);
+    cfx_big_init(&bR);
+    cfx_big_init(&r);
 
     int ok = cfx_big_mont_to(&aR, a, &C)
            && cfx_big_mont_to(&bR, b, &C)
            && cfx_big_mont_mul(&r, &aR, &bR, &C)
            && cfx_big_mont_from(out, &r, &C);
 
-    cfx_big_free(&aR); cfx_big_free(&bR); cfx_big_free(&r);
+    cfx_big_free(&aR);
+    cfx_big_free(&bR);
+    cfx_big_free(&r);
     cfx_big_mont_ctx_free(&C);
     return ok;
 }

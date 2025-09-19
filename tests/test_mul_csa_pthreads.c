@@ -8,13 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define PRINT_BIG(s, b) \
-do { \
-    printf("%s, cap: %zu, n: %zu, limb %p\n", s, (b)->cap, (b)->n, (void*)(b)->limb); \
-    if((b)->n) printf("--- "); \
-    for(size_t i=0; i<(b)->n; ++i) {printf("limb[%zu]=0x%llx ", i, (b)->limb[i]);} \
-    if((b)->n) printf("\n"); \
-} while(0)
+
 
 /* --- helpers --- */
 static void ensure_cap(cfx_big_t* b, size_t need) {

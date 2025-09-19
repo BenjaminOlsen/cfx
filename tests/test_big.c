@@ -488,7 +488,7 @@ static void test_cache(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     assert(b.cache == NULL);
-    cfx_big_enable_fac(&b);
+    cfx_big_enable_cache(&b);
     assert(b.cache != NULL);
 
     cfx_big_set_val(&b, 1);

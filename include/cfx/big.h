@@ -30,7 +30,13 @@ typedef enum {
 
 typedef struct cfx_fac_cache cfx_fac_cache_t;
 
-/* minimal big int struct */
+/** cfx_big_t - arbitrary precision positive integer type, represented in base 2^64 limbs
+ * limb: ptr to array of limbs
+ * n: current number of limbs
+ * cap: capacity of underlying limb array
+ * 
+ * >>>>> Always call cfx_big_init after declaring a cfx_big_t ! 
+ **/
 typedef struct {
     uint64_t* limb; /* the 'digits' of the number with base BIG_BASE*/
     size_t n;
@@ -61,7 +67,14 @@ void cfx_big_init(cfx_big_t* b);
 void cfx_big_clear(cfx_big_t* b);
 void cfx_big_free(cfx_big_t* b);
 int cfx_big_reserve(cfx_big_t* b, size_t need);
+void cfx_big_assign(cfx_big_t* dst, const cfx_big_t* src);
 int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src);
+void cfx_big_move(cfx_big_t* dst, cfx_big_t* src);
+int cfx_big_is_zero(const cfx_big_t* b);
+int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n);
+int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
+int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
+void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
 
 void cfx_big_set_val(cfx_big_t* b, uint64_t v);
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
@@ -102,15 +115,8 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s);
 /* out = x >> s (0..63)  */
 void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s);
 
-int cfx_big_is_zero(const cfx_big_t* b);
-int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n);
-int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
-int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
-void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
-void cfx_big_assign(cfx_big_t* out, const cfx_big_t* in);
-
-void cfx_big_enable_fac(cfx_big_t* b);
-void cfx_big_disable_fac(cfx_big_t* b);
+void cfx_big_enable_cache(cfx_big_t* b);
+void cfx_big_disable_cache(cfx_big_t* b);
 
 /* Multiply by p^e by repeated squaring using small chunks to avoid overflow */
 void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e);

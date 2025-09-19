@@ -41,6 +41,14 @@
     } \
 } while (0)
 
+#define PRINT_BIG(s, b) \
+do { \
+    printf("%s, cap: %zu, n: %zu, limb %p\n", s, (b)->cap, (b)->n, (void*)(b)->limb); \
+    if((b)->n) printf("--- "); \
+    for(size_t i=0; i<(b)->n; ++i) {printf("limb[%zu]=0x%llx ", i, (b)->limb[i]);} \
+    if((b)->n) printf("\n"); \
+} while(0)
+
 #define STR(x) #x
 #define CFX_TEST(f) f(); printf(STR(f) "() - OK\n")
 
