@@ -148,6 +148,14 @@ int cfx_big_reserve(cfx_big_t* b, size_t need) {
     return 0;
 }
 
+void cfx_big_assign(cfx_big_t* out, const cfx_big_t* in) {
+    if (out == in) return;
+    cfx_big_reserve(out, in->n);
+    memcpy(out->limb, in->limb, in->n * sizeof(uint64_t));
+    out->n = in->n;
+}
+
+
 void cfx_big_enable_fac(cfx_big_t* b) {
     if (!b->cache) {
         b->cache = (cfx_fac_cache_t*)malloc(sizeof(struct cfx_fac_cache));
@@ -167,20 +175,37 @@ void cfx_big_disable_fac(cfx_big_t* b) {
     }
 }
 
-static inline void _trim_leading_zeros(cfx_big_t* b) {
+static inline void cfx_big_trim(cfx_big_t* b) {
     while (b->n && b->limb[b->n-1] == 0) --b->n;
     if (b->n == 0 && b->cap){ b->limb[0] = 0; } /* dont trim last zero */
 }
-
-void cfx_big_set_val(cfx_big_t* b, uint64_t v) {
-    cfx_big_init(b);
-    cfx_big_reserve(b, 1);
-    b->n = v ? 1 : 0;
-    b->limb[0] = v;
-    
+static inline void cfx_clear_cache(cfx_big_t* b) {
     if (b->cache) {
-        /* factor v */
+        free(b->cache);
+        b->cache = NULL;
     }
+}
+
+/* assumes b is already initted */
+void cfx_big_set_val(cfx_big_t* b, uint64_t v) {
+    if (v == 0) {
+        b->n = 0;
+        if (b->cap) b->limb[0] = 0;
+        cfx_clear_cache(b);
+        return;
+    }
+
+    if (b->cap < 1) {
+        int rc = cfx_big_reserve(b, 1);
+        if (rc) /* error */ return;
+    }
+
+    b->limb[0] = v;
+    if (b->n > 1) { /* hygiene: zero out any higher limbs, if they exist */
+        memset(b->limb + 1, 0, (b->n-1) * sizeof(*b->limb));
+    }
+    b->n = 1;
+    cfx_clear_cache(b);
 }
 
 
@@ -322,7 +347,7 @@ void cfx_big_sq(cfx_big_t* b) {
             }
         }
     }
-    _trim_leading_zeros(&ret);
+    cfx_big_trim(&ret);
     cfx_big_swap(&ret, b);
     cfx_big_free(&ret);
     
@@ -379,7 +404,7 @@ void cfx_big_sq(cfx_big_t* b) {
     cfx_big_reserve(ret, out_n);
     memcpy(ret->limb, tmp, out_n * sizeof(uint64_t));
     ret->n = out_n;
-    _trim_leading_zeros(ret);
+    cfx_big_trim(ret);
     free(tmp);
     return ret;
 #else 
@@ -478,7 +503,7 @@ void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m) {
 
     cfx_mul_csa_portable(b->limb, nb, m->limb, nm, tmp.limb);
     tmp.n = nout;
-    _trim_leading_zeros(&tmp);
+    cfx_big_trim(&tmp);
     cfx_big_swap(&tmp, b);
     cfx_big_free(&tmp);
 }
@@ -495,7 +520,7 @@ void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t
     cfx_big_reserve(&tmp, nout);
     cfx_mul_csa_portable_fast(b->limb, nb, m->limb, nm, tmp.limb, scratch);
     tmp.n = nout;
-    _trim_leading_zeros(&tmp);
+    cfx_big_trim(&tmp);
     cfx_big_swap(&tmp, b);
     cfx_big_free(&tmp);
 }
@@ -543,7 +568,7 @@ void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
         }
     }
 
-    _trim_leading_zeros(&tmp);
+    cfx_big_trim(&tmp);
     cfx_big_swap(&tmp, b);
     cfx_big_free(&tmp);
 }
@@ -592,6 +617,25 @@ void cfx_big_add_sm(cfx_big_t* b, uint64_t n) {
     b->limb[b->n++] = n;      // n < 2^64 here
 }
 
+void cfx_big_sub(cfx_big_t* a, const cfx_big_t* b) {
+    /* assumes a >= b; subtract b from a */
+    __uint128_t borrow = 0;
+    size_t i = 0, n = b->n;
+    for (; i < n; ++i) {
+        __uint128_t ai = a->limb[i];
+        __uint128_t s  = (__uint128_t)b->limb[i] + borrow;
+        __uint128_t r  = ai - s;
+        a->limb[i] = (uint64_t)r;
+        borrow = (ai < s);
+    }
+    while (borrow && i < a->n) {
+        uint64_t ai = a->limb[i];
+        uint64_t r  = ai - 1u;
+        a->limb[i++] = r;
+        borrow = (ai == 0u);
+    }
+    cfx_big_trim(a);
+}
 
 void cfx_big_sub_sm(cfx_big_t* b, uint64_t n) {
     if (n == 0 || b->n == 0) return;
@@ -604,7 +648,7 @@ void cfx_big_sub_sm(cfx_big_t* b, uint64_t n) {
         }
     }
     b->limb[0] -= n;
-    _trim_leading_zeros(b);
+    cfx_big_trim(b);
 }
 
 
@@ -631,7 +675,7 @@ void cfx_big_from_limbs(cfx_big_t* b, const uint64_t* limbs, size_t n) {
     cfx_big_reserve(b, n);
     memcpy(b->limb, limbs, n * sizeof(uint64_t));
     b->n = n;
-    _trim_leading_zeros(b);
+    cfx_big_trim(b);
 }
 
 /* Materialize factorization into cfx_big_t */
@@ -668,7 +712,7 @@ uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d) {
         rem = (uint64_t)(cur % d);
         b->limb[i] = q;
     }
-    _trim_leading_zeros(b);
+    cfx_big_trim(b);
     return (uint32_t)rem;
 }
 
@@ -1030,7 +1074,7 @@ void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s) {
         carry = (uint64_t)(x->limb[i] << (64 - s));
     }
     out->n = x->n;
-    _trim_leading_zeros(out);
+    cfx_big_trim(out);
 }
 
 /* Core: q = n / d; r = n % d; any of q or r may be NULL. Returns 0, or -1 if d==0. */
@@ -1064,7 +1108,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
             rem = cur % div;
             q->limb[i] = qi;
         }
-        _trim_leading_zeros(q);
+        cfx_big_trim(q);
         cfx_big_set_val(r, (uint64_t)rem);
         return 0;
     }
@@ -1156,7 +1200,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
     cfx_big_free(&Rn);
 
     /* Output quotient (already normalized) */
-    _trim_leading_zeros(&QT);
+    cfx_big_trim(&QT);
     cfx_big_swap(&QT, q);
     cfx_big_free(&QT);
 
@@ -1197,7 +1241,7 @@ int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r /*nullable*/) 
 typedef struct {
     uint128_t lo;
     uint64_t hi;
-    uint64_t pad; // pad to 32 bytes to reduce false sharing during reductions
+    uint64_t pad; // pad to 32 bytes to reduce 0 sharing during reductions
 } acc128p_t;
 
 // add 64-bit x into accumulator (as a 128-bit add)
@@ -1340,7 +1384,7 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
     if (!locals || !args || !tids) { abort(); }
 
     for (int t = 0; t < threads; ++t) {
-        // 64B-align to reduce false sharing during reduction
+        // 64B-align to reduce 0 sharing during reduction
         void* p = NULL;
 #if defined(_ISOC11_SOURCE)
         p = aligned_alloc(64, ((acc_len * sizeof(acc128p_t) + 63) / 64) * 64);
@@ -1639,4 +1683,207 @@ done_reading:
     }
 
     return 0;
+}
+
+/* ==================== Montgomery ==================== */
+
+static inline void cfx_big_cond_sub_n_(cfx_big_t* x, const cfx_big_t* n) {
+    if (cfx_big_cmp(x, n) >= 0) cfx_big_sub(x, n);
+}
+
+/* n0^{-1} mod 2^64 via Newton; n0 must be odd */
+static inline uint64_t inv64_mod2_64_(uint64_t n0) {
+    uint64_t x = 1;
+    for (int i = 0; i < 6; ++i) x *= (2 - x * n0);
+    return x;
+}
+static inline uint64_t mont_n0inv_(uint64_t n0) {
+    return (uint64_t)(0 - inv64_mod2_64_(n0)); /* -n^{-1} mod 2^64 */
+}
+
+/* rr = R^2 mod n, with R=2^(64*k). Build rr = 2^(128*k) mod n by repeated doubling. */
+static int compute_rr_(cfx_big_t* rr, const cfx_big_t* n, size_t k) {
+    cfx_big_set_val(rr, 1);
+    for (size_t bit = 0; bit < 128ull * k; ++bit) {
+        /* rr = (rr + rr) mod n (rr < n ⇒ rr+rr < 2n ⇒ one cond. subtract is enough) */
+        cfx_big_reserve(rr, rr->n + 1);
+        __uint128_t carry = 0;
+        size_t i = 0;
+        for (; i < rr->n; ++i) {
+            __uint128_t s = (__uint128_t)rr->limb[i] * 2 + carry;
+            rr->limb[i] = (uint64_t)s;
+            carry = s >> 64;
+        }
+        if (carry) rr->limb[rr->n++] = (uint64_t)carry;
+        cfx_big_cond_sub_n_(rr, n);
+    }
+    return 1;
+}
+
+int cfx_big_mont_ctx_init(cfx_big_mont_ctx_t* ctx, const cfx_big_t* n_in) {
+    if (!ctx || !n_in || n_in->n == 0) return 0;
+    if ((n_in->limb[0] & 1ull) == 0) return 0; /* modulus must be odd */
+
+    cfx_big_init(&ctx->n);
+    cfx_big_init(&ctx->rr);
+
+    cfx_big_assign(&ctx->n, n_in);
+    cfx_big_trim(&ctx->n);
+
+    ctx->k = ctx->n.n;
+    if (ctx->k == 0) { cfx_big_mont_ctx_free(ctx); return 0; }
+
+    ctx->n0inv = mont_n0inv_(ctx->n.limb[0]);
+
+    if (!compute_rr_(&ctx->rr, &ctx->n, ctx->k)) {
+        cfx_big_mont_ctx_free(ctx);
+        return 0;
+    }
+    return 1;
+}
+
+void cfx_big_mont_ctx_free(cfx_big_mont_ctx_t* ctx) {
+    if (!ctx) return;
+    cfx_big_free(&ctx->n);
+    cfx_big_free(&ctx->rr);
+    memset(ctx, 0, sizeof(*ctx));
+}
+
+/* out = a*b*R^{-1} mod n ; a,b in Montgomery domain. Alias-safe. */
+int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_mont_ctx_t* ctx) {
+    if (!out || !a || !b || !ctx) return 0;
+
+    const cfx_big_t* n = &ctx->n;
+    const size_t k = ctx->k;
+    const uint64_t n0inv = ctx->n0inv;
+
+    cfx_big_t T; cfx_big_init(&T);
+    cfx_big_reserve(&T, k + 1);
+    memset(T.limb, 0, (k + 1) * sizeof(uint64_t));
+    T.n = k + 1;
+
+    const uint64_t* an = a->limb;
+    const uint64_t* bn = b->limb;
+    const uint64_t* nn = n->limb;
+
+    for (size_t i = 0; i < k; ++i) {
+        const uint64_t bi = (i < b->n) ? bn[i] : 0;
+
+        /* T += a*bi */
+        __uint128_t carry = 0;
+        for (size_t j = 0; j < k; ++j) {
+            const uint64_t aj = (j < a->n) ? an[j] : 0;
+            __uint128_t sum = (__uint128_t)T.limb[j] + (__uint128_t)aj * bi + carry;
+            T.limb[j] = (uint64_t)sum;
+            carry = sum >> 64;
+        }
+        __uint128_t top = (__uint128_t)T.limb[k] + carry;
+        T.limb[k] = (uint64_t)top;
+
+        /* m = T[0]*n0inv mod 2^64 */
+        const uint64_t m = T.limb[0] * n0inv;
+
+        /* T += m*n */
+        __uint128_t carry2 = 0;
+        for (size_t j = 0; j < k; ++j) {
+            __uint128_t sum = (__uint128_t)T.limb[j] + (__uint128_t)m * nn[j] + carry2;
+            T.limb[j] = (uint64_t)sum;
+            carry2 = sum >> 64;
+        }
+        __uint128_t top2 = (__uint128_t)T.limb[k] + carry2;
+        T.limb[k] = (uint64_t)top2;
+
+        /* T = (T + m*n) / R : drop limb 0 */
+        memmove(&T.limb[0], &T.limb[1], k * sizeof(uint64_t));
+        T.limb[k] = 0; /* scratch for next iter */
+    }
+
+    T.n = k;
+    cfx_big_trim(&T);
+    if (cfx_big_cmp(&T, n) >= 0) cfx_big_sub(&T, n);
+
+    cfx_big_assign(out, &T);
+    cfx_big_free(&T);
+    return 1;
+}
+
+/* Convert to Montgomery: aR mod n = MontMul(a, R^2) */
+int cfx_big_mont_to(cfx_big_t* out, const cfx_big_t* a, const cfx_big_mont_ctx_t* ctx) {
+    if (!out || !a || !ctx) return 0;
+    /* If your inputs may be >> n, call your real mod here. For now, quick reduce by repeated sub when a < few*n. */
+    cfx_big_t ared; cfx_big_init(&ared);
+    cfx_big_assign(&ared, a);
+    while (cfx_big_cmp(&ared, &ctx->n) >= 0) cfx_big_sub(&ared, &ctx->n);
+
+    int ok = cfx_big_mont_mul(out, &ared, &ctx->rr, ctx);
+    cfx_big_free(&ared);
+    return ok;
+}
+
+/* Convert from Montgomery: aR * R^{-1} = a mod n = MontMul(aR, 1) */
+int cfx_big_mont_from(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_ctx_t* ctx) {
+    if (!out || !aR || !ctx) return 0;
+    cfx_big_t one; cfx_big_init(&one); cfx_big_set_val(&one, 1);
+    int ok = cfx_big_mont_mul(out, aR, &one, ctx);
+    cfx_big_free(&one);
+    return ok;
+}
+
+/* ----------------- One-liners that hide the ctx ----------------- */
+
+int cfx_big_mul_mod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_t* n) {
+    cfx_big_mont_ctx_t C; if (!cfx_big_mont_ctx_init(&C, n)) return 0;
+    cfx_big_t aR, bR, r;
+    cfx_big_init(&aR); cfx_big_init(&bR); cfx_big_init(&r);
+
+    int ok = cfx_big_mont_to(&aR, a, &C)
+           && cfx_big_mont_to(&bR, b, &C)
+           && cfx_big_mont_mul(&r, &aR, &bR, &C)
+           && cfx_big_mont_from(out, &r, &C);
+
+    cfx_big_free(&aR); cfx_big_free(&bR); cfx_big_free(&r);
+    cfx_big_mont_ctx_free(&C);
+    return ok;
+}
+
+int cfx_big_sqr_mod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* n) {
+    cfx_big_mont_ctx_t C; if (!cfx_big_mont_ctx_init(&C, n)) return 0;
+    cfx_big_t aR, r;
+    cfx_big_init(&aR); cfx_big_init(&r);
+    int ok = cfx_big_mont_to(&aR, a, &C)
+           && cfx_big_mont_sqr(&r, &aR, &C)
+           && cfx_big_mont_from(out, &r, &C);
+    cfx_big_free(&aR); cfx_big_free(&r);
+    cfx_big_mont_ctx_free(&C);
+    return ok;
+}
+
+int cfx_big_modexp(cfx_big_t* out, const cfx_big_t* base, const cfx_big_t* exp, const cfx_big_t* n) {
+    cfx_big_mont_ctx_t C; if (!cfx_big_mont_ctx_init(&C, n)) return 0;
+
+    cfx_big_t A, X;
+    cfx_big_init(&A); cfx_big_init(&X);
+
+    int ok = cfx_big_mont_to(&A, base, &C);
+    if (ok) {
+        cfx_big_t one; cfx_big_init(&one); cfx_big_set_val(&one, 1);
+        ok = cfx_big_mont_to(&X, &one, &C);
+        cfx_big_free(&one);
+    }
+    if (ok) {
+        for (size_t i = 0; i < exp->n; ++i) {
+            uint64_t w = exp->limb[i];
+            for (int b = 0; b < 64; ++b) {
+                if (w & 1u) { ok = cfx_big_mont_mul(&X, &X, &A, &C); if (!ok) break; }
+                w >>= 1;
+                ok = cfx_big_mont_mul(&A, &A, &A, &C); if (!ok) break; /* square */
+            }
+            if (!ok) break;
+        }
+        if (ok) ok = cfx_big_mont_from(out, &X, &C);
+    }
+
+    cfx_big_free(&A); cfx_big_free(&X);
+    cfx_big_mont_ctx_free(&C);
+    return ok;
 }

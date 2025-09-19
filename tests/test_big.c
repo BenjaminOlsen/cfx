@@ -31,6 +31,17 @@ static void test_cfx_big_reserve(void) {
     PRINT_TEST(1);
 }
 
+static void test_cfx_big_assign(void) {
+    cfx_big_t a, b;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+    uint64_t al[] = {0x12371237, 0x0, 0x2, 0xFFFFFFFFFFFFFFFF};
+    cfx_big_from_limbs(&a, al, sizeof(al)/sizeof(al[0]));
+    cfx_big_assign(&b, &a);
+    int c = cfx_big_cmp(&a, &b);
+    assert(c == 0);
+}
+
 static void test_copy_swap(void) {
     cfx_big_t a, b;
     uint64_t la[] = {1, 2, 3, 4};
@@ -155,6 +166,46 @@ static void test_sub_sm(void) {
         CFX_BIG_PRINTF(&b, "sub %llu: ", q);
         assert(b.limb[0] == orig);
     }
+    PRINT_TEST(1);
+}
+
+static void test_sub(void) {
+    cfx_big_t a, b;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+
+    uint64_t limbs[] = {0x1, 0x2, 0x333, 0x4444, 0x55555, 0x666666, 0x7777777, 0x88888888, 0xFF};
+    cfx_big_from_limbs(&a, limbs, sizeof(limbs)/sizeof(limbs[0]));
+    cfx_big_assign(&b, &a);
+    
+    cfx_big_t t;
+    cfx_big_init(&t);
+    cfx_big_copy(&t, &a);
+
+    assert(cfx_big_eq(&a, &b));
+    assert(cfx_big_eq(&a, &t));
+
+    cfx_big_sub(&t, &a);
+    assert(cfx_big_is_zero(&t));
+
+    cfx_big_copy(&t, &a);
+    cfx_big_add_sm(&t, 0xFABADA);
+    cfx_big_sub(&t, &a);
+    assert(cfx_big_eq_sm(&t, 0xFABADA));
+
+    cfx_big_copy(&t, &a);
+    cfx_big_mul_sm(&t, 2);
+    cfx_big_sub(&t, &a);
+    assert(cfx_big_eq(&t, &a));
+
+    cfx_big_t two;
+    cfx_big_init(&two);
+    cfx_big_set_val(&two, 2);
+
+    cfx_big_copy(&t, &a);
+    cfx_big_mul(&t, &two);
+    cfx_big_sub(&t, &a);
+    assert(cfx_big_eq(&t, &a));
     PRINT_TEST(1);
 }
 
@@ -1027,10 +1078,12 @@ static void assert_n_eq_qd_plus_r(const cfx_big_t* n, const cfx_big_t* q,
 
 void test_big_div_divide_by_zero(void) {
     cfx_big_t n, d, q, r;
-    cfx_big_set_val(&n, 123);
-    cfx_big_set_val(&d, 0);
+    cfx_big_init(&n);
+    cfx_big_init(&d);
     cfx_big_init(&q);
     cfx_big_init(&r);
+    cfx_big_set_val(&n, 123);
+    cfx_big_set_val(&d, 0);
 
     int rc = cfx_big_divrem(&q, &r, &n, &d);
     assert(rc == -1);
@@ -1043,6 +1096,10 @@ void test_big_div_divide_by_zero(void) {
 
 void test_big_div_zero_dividend(void) {
     cfx_big_t n, d, q, r;
+    cfx_big_init(&n);
+    cfx_big_init(&d);
+    cfx_big_init(&q);
+    cfx_big_init(&r);
     cfx_big_set_val(&n, 0);
     cfx_big_set_val(&d, 42);
 
@@ -1059,6 +1116,10 @@ void test_big_div_zero_dividend(void) {
 
 void test_big_div_n_less_than_d(void) {
     cfx_big_t n, d, q, r;
+    cfx_big_init(&n);
+    cfx_big_init(&d);
+    cfx_big_init(&q);
+    cfx_big_init(&r);
     cfx_big_set_val(&n, 123456);
     cfx_big_set_val(&d, 123456789);
 
@@ -1075,6 +1136,10 @@ void test_big_div_n_less_than_d(void) {
 
 void test_big_div_equal_numbers(void) {
     cfx_big_t n, d, q, r;
+    cfx_big_init(&n);
+    cfx_big_init(&d);
+    cfx_big_init(&q);
+    cfx_big_init(&r);
     cfx_big_from_str(&n, "1234567890123456789012345678901234567890");
     cfx_big_copy(&d, &n);
 
@@ -1111,6 +1176,12 @@ void test_big_div_single_limb_divisor_property(void) {
 void test_big_div_multi_limb_divisor_exact_and_remainder(void) {
     // n = a*b + r, then n / b -> q=a, rem=r
     cfx_big_t a, b, r, n, q, rem;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+    cfx_big_init(&n);
+    cfx_big_init(&q);
+    cfx_big_init(&r);
+    cfx_big_init(&rem);
     cfx_big_from_str(&a, "123456789012345678901234567890123456789");
     cfx_big_from_str(&b, "987654321098765432109876543210987654321");
     cfx_big_from_str(&r, "12345678901234567890");
@@ -1207,53 +1278,52 @@ void test_big_div_alias_remainder_eq_src(void) {
     cfx_big_free(&d);
 }
 
-#define STR(x) #x
-#define TEST(f) f(); printf(STR(f) "() - OK\n")
-
 int main(void) {
-    TEST(test_copy_swap);
-    TEST(test_cfx_big_init);
-    TEST(test_cfx_big_reserve);
-    TEST(test_mul_by_zero);
-    TEST(test_limb1);
-    TEST(test_limb2);
-    TEST(test_limb3);
-    TEST(test_limb4);
-    TEST(test_limb5);
-    TEST(test_limb6);
-    TEST(test_limb7);
-    TEST(test_str1);
-    TEST(test_str2);
-    TEST(test_add_sm);
-    TEST(test_sub_sm);
-    TEST(test_cache);
-    TEST(test_zero_right);
-    TEST(test_zero_left);
-    TEST(test_mul1);
-    TEST(test_carry_two_limbs_times_2);
-    TEST(test_mul_by_base_2_64_shift);
-    TEST(test_self_multiply_square);
-    TEST(test_self_multiply_big);
-    TEST(test_known_squares);
-    TEST(test_known_squares_2);
-    TEST(test_mul_adduiv);
-    TEST(test_big_div_divide_by_zero);
-    TEST(test_big_div_zero_dividend);
-    TEST(test_big_div_n_less_than_d);
-    TEST(test_big_div_equal_numbers);
-    TEST(test_big_div_single_limb_divisor_property);
+    CFX_TEST(test_cfx_big_assign);
+    CFX_TEST(test_copy_swap);
+    CFX_TEST(test_cfx_big_init);
+    CFX_TEST(test_cfx_big_reserve);
+    CFX_TEST(test_mul_by_zero);
+    CFX_TEST(test_limb1);
+    CFX_TEST(test_limb2);
+    CFX_TEST(test_limb3);
+    CFX_TEST(test_limb4);
+    CFX_TEST(test_limb5);
+    CFX_TEST(test_limb6);
+    CFX_TEST(test_limb7);
+    CFX_TEST(test_str1);
+    CFX_TEST(test_str2);
+    CFX_TEST(test_add_sm);
+    CFX_TEST(test_sub);
+    CFX_TEST(test_sub_sm);
+    CFX_TEST(test_cache);
+    CFX_TEST(test_zero_right);
+    CFX_TEST(test_zero_left);
+    CFX_TEST(test_mul1);
+    CFX_TEST(test_carry_two_limbs_times_2);
+    CFX_TEST(test_mul_by_base_2_64_shift);
+    CFX_TEST(test_self_multiply_square);
+    CFX_TEST(test_self_multiply_big);
+    CFX_TEST(test_known_squares);
+    CFX_TEST(test_known_squares_2);
+    CFX_TEST(test_mul_adduiv);
+    CFX_TEST(test_big_div_divide_by_zero);
+    CFX_TEST(test_big_div_zero_dividend);
+    CFX_TEST(test_big_div_n_less_than_d);
+    CFX_TEST(test_big_div_equal_numbers);
+    CFX_TEST(test_big_div_single_limb_divisor_property);
     // test_big_div_multi_limb_divisor_exact_and_remainder);
     // test_big_div_in_place_eq_with_remainder);
     // test_big_div_quotient_only_and_remainder_only);
     // test_big_div_alias_remainder_eq_src);
-    TEST(test_hex_leading_zero_limb_skipped);
-    TEST(test_hex_no_leading_zeros_on_msl);
-    TEST(test_hex_single_limb_basic);
-    TEST(test_hex_single_limb_hex_digit_count);
-    TEST(test_hex_two_limbs_mixed_digits);
-    TEST(test_hex_two_limbs_padding);
-    TEST(test_hex_zero_empty_n);
-    TEST(test_hex_zero_explicit_limb_zero);
+    CFX_TEST(test_hex_leading_zero_limb_skipped);
+    CFX_TEST(test_hex_no_leading_zeros_on_msl);
+    CFX_TEST(test_hex_single_limb_basic);
+    CFX_TEST(test_hex_single_limb_hex_digit_count);
+    CFX_TEST(test_hex_two_limbs_mixed_digits);
+    CFX_TEST(test_hex_two_limbs_padding);
+    CFX_TEST(test_hex_zero_empty_n);
+    CFX_TEST(test_hex_zero_explicit_limb_zero);
     puts("OK");
     return 0;
 }

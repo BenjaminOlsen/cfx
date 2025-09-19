@@ -1,10 +1,4 @@
 // test_mul_rows.c
-// Basic unit tests for cfx_big_mul_rows_pthreads using assert.
-// Compile example (adjust include/lib paths):
-//   gcc -O2 -std=c11 -Wall -Wextra -I./include test_mul_rows.c -L./build -lcfx -lpthread -o test_mul_rows
-//
-// Run:
-//   ./test_mul_rows
 
 #include <assert.h>
 #include <stdint.h>
@@ -13,8 +7,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "cfx/big.h"  // must expose cfx_big_t and APIs used below
-
+#include "cfx/big.h" 
+#include "cfx/macros.h"
 
 
 // ---- Tiny helpers -----------------------------------------------------------
@@ -259,21 +253,20 @@ static void test_thread_counts_agree(void)
 }
 
 // ---- Main -------------------------------------------------------------------
-#define STR(x) #x
-#define TEST(f) f(); printf(STR(f) "() - OK\n")
+
 #define TEST_RAND(na, nb, threads, seed_init) \
     test_random_compare_ref(na, nb, threads, seed_init, \
         "test_random_compare_ref(" STR(na) ", " STR(nb) ", " STR(threads) ", " STR(seed_init) ") - OK")
 
 int main(void)
 {
-    TEST(test_mul_zero_zero);
-    TEST(test_mul_zero_x);
-    TEST(test_mul_x_zero);
-    TEST(test_mul_by_one);
-    TEST(test_cross_limb_carry_small);
-    TEST(test_small_vector_known);
-    TEST(test_thread_counts_agree);
+    CFX_TEST(test_mul_zero_zero);
+    CFX_TEST(test_mul_zero_x);
+    CFX_TEST(test_mul_x_zero);
+    CFX_TEST(test_mul_by_one);
+    CFX_TEST(test_cross_limb_carry_small);
+    CFX_TEST(test_small_vector_known);
+    CFX_TEST(test_thread_counts_agree);
 
     // Randoms vs reference (sizes & threads)
     TEST_RAND(1, 1, 1, 0xC0FFEEF);

@@ -78,6 +78,7 @@ int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r re
 
 void cfx_big_add(cfx_big_t* b, const cfx_big_t* a);
 void cfx_big_add_sm(cfx_big_t* b, uint64_t n);
+void cfx_big_sub(cfx_big_t* a, const cfx_big_t* b);
 void cfx_big_sub_sm(cfx_big_t* b, uint64_t n);
 void cfx_big_mul_sm(cfx_big_t* b, uint64_t m);
 
@@ -106,6 +107,7 @@ int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n);
 int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
 int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
+void cfx_big_assign(cfx_big_t* out, const cfx_big_t* in);
 
 void cfx_big_enable_fac(cfx_big_t* b);
 void cfx_big_disable_fac(cfx_big_t* b);
@@ -123,6 +125,35 @@ char* cfx_big_to_bin(const cfx_big_t* b, size_t *sz_out);
 int cfx_big_from_str(cfx_big_t* b, const char* str);
 int cfx_big_from_hex(cfx_big_t* out, const char* s);
 int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base);
+
+/* ================== Montgomery ================== */
+
+typedef struct {
+    cfx_big_t n;        /* modulus (odd), normalized */
+    size_t    k;        /* limb count of n (R = 2^(64*k)) */
+    uint64_t  n0inv;    /* -n^{-1} mod 2^64 (requires n.limb[0] odd) */
+    cfx_big_t rr;       /* R^2 mod n */
+} cfx_big_mont_ctx_t;
+
+int cfx_big_mont_ctx_init(cfx_big_mont_ctx_t* ctx, const cfx_big_t* n);
+void cfx_big_mont_ctx_free(cfx_big_mont_ctx_t* ctx);
+
+/* Conversions between normal domain and Montgomery domain */
+int cfx_big_mont_to   (cfx_big_t* out, const cfx_big_t* a,  const cfx_big_mont_ctx_t* ctx); /* out = a*R mod n */
+int cfx_big_mont_from (cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_ctx_t* ctx); /* out = aR*R^-1 */
+
+/* Core Montgomery ops (operands/results in Montgomery domain) */
+int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_t* bR, const cfx_big_mont_ctx_t* ctx);
+static inline int cfx_big_mont_sqr(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_ctx_t* ctx) {
+    return cfx_big_mont_mul(out, aR, aR, ctx);
+}
+
+/* Ergonomic one-liners that hide the context internally */
+int cfx_big_mul_mod (cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_t* n);
+int cfx_big_sqr_mod (cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* n);
+int cfx_big_modexp  (cfx_big_t* out, const cfx_big_t* base, const cfx_big_t* exp, const cfx_big_t* n);
+
+
 /**
  *  args: cfx_big_t * b : ptr to big
  *  fmt: format string

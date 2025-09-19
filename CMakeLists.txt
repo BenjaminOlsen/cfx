@@ -72,6 +72,7 @@ if(CFX_BUILD_TESTS)
   set(TEST_NAMES
     test_cfx
     test_big
+    test_big_mont
     test_fac
     test_algo
     test_rho_brent

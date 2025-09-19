@@ -41,4 +41,7 @@
     } \
 } while (0)
 
+#define STR(x) #x
+#define CFX_TEST(f) f(); printf(STR(f) "() - OK\n")
+
 #endif /* CFX_MACROS_H */
