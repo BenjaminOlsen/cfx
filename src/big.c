@@ -1164,8 +1164,7 @@ void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
 
 /* Core: q = u / v; r = u % v; any of q or r may be NULL. Returns 0, or -1 if v==0. */
 int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
-                   const cfx_big_t* u, const cfx_big_t* v)
-{
+                   const cfx_big_t* u, const cfx_big_t* v) {
     const uint64_t B_hi_bit = 1ull << 63;
 
     // ---- Trivial cases
@@ -1235,7 +1234,8 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
 
     PRINT_DBG("---- Sizes: n(divisor limbs)=%zu, U.n=%zu, qlen=%zu\n", n, U.n, m);
 
-    cfx_big_t Q; cfx_big_init(&Q);
+    cfx_big_t Q;
+    cfx_big_init(&Q);
     cfx_big_reserve(&Q, m);
     Q.n = m;
     for (size_t i = 0; i < m; ++i) Q.limb[i] = 0;
@@ -1347,7 +1347,8 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
 
     // D8: Unnormalize remainder: r = (U[0..n-1] >> s)
     if (r) {
-        cfx_big_t Rn; cfx_big_init(&Rn);
+        cfx_big_t Rn;
+        cfx_big_init(&Rn);
         cfx_big_reserve(&Rn, n);
         Rn.n = n;
         for (size_t i = 0; i < n; ++i) Rn.limb[i] = U.limb[i];

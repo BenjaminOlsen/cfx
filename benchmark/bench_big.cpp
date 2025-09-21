@@ -73,6 +73,32 @@ static void BM_DivSm(benchmark::State& state) {
 }
 BENCHMARK(BM_DivSm);
 
+
+static void BM_DivBig(benchmark::State& state) {
+    cfx_big_t u;
+    cfx_big_init(&u);
+    const char* s = "1239487123691239872398127309183701928370918237019283709870708711037507120306120489389261001010192743768471263948712630489172364019823740192384701237864012837461923876501293874619283746192348751602398476";
+    cfx_big_from_str(&u, s);
+    
+    for (auto _ : state) {
+        cfx_big_t v;
+        cfx_big_init(&v);
+        cfx_big_from_hex(&v, "fe01023987fe08abc102870a987d87e981296300ea");
+        cfx_big_t q, r;
+        cfx_big_init(&q);
+        cfx_big_init(&r);
+        cfx_big_divrem(&q, &r, &u, &v);
+        
+        benchmark::DoNotOptimize(r);
+        benchmark::DoNotOptimize(q);
+        cfx_big_free(&q);
+        cfx_big_free(&r);
+        cfx_big_free(&v);
+
+    }
+    cfx_big_free(&u);
+}
+BENCHMARK(BM_DivBig);
 // ----------------------------------------------------------------------------
 // different squaring functions
 cfx_big_t sq1(const cfx_big_t* b) {
@@ -262,6 +288,7 @@ cfx_big_t sq3(const cfx_big_t* b) {
 static void BM_sq1(benchmark::State& state) {
     cfx_big_t a, b;
     cfx_big_init(&a);
+    cfx_big_init(&b);
 
     for (auto _ : state) {
         cfx_big_from_u64(&a, 123456789ULL);
@@ -277,6 +304,7 @@ BENCHMARK(BM_sq1);
 static void BM_sq2(benchmark::State& state) {
     cfx_big_t a, b;
     cfx_big_init(&a);
+    cfx_big_init(&b);
 
     for (auto _ : state) {
         cfx_big_from_u64(&a, 123456789ULL);
@@ -292,6 +320,7 @@ BENCHMARK(BM_sq2);
 static void BM_sq3(benchmark::State& state) {
     cfx_big_t a, b;
     cfx_big_init(&a);
+    cfx_big_init(&b);
 
     for (auto _ : state) {
         cfx_big_from_u64(&a, 123456789ULL);
