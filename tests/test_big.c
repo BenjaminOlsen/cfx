@@ -74,7 +74,7 @@ static void test_copy_swap(void) {
 static void big_init_from_limbs_base_1e9(cfx_big_t* b, const uint64_t *limbs, size_t n) {
     cfx_big_init(b);
     if (n == 0) return;
-    for (ssize_t i = n - 1; i >= 0; --i) {
+    for (size_t i = n; i--;) {
         cfx_big_mul_sm(b, 1000000000ull);
         cfx_big_add_sm(b, limbs[i]);
     }
@@ -84,7 +84,7 @@ static void big_init_from_limbs_base_1e9(cfx_big_t* b, const uint64_t *limbs, si
 static void test_mul_by_zero(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    cfx_big_set_val(&b, 123);
+    cfx_big_from_u64(&b, 123);
     cfx_big_mul_sm(&b, 2838);
     cfx_big_mul_sm(&b, 1928);
     cfx_big_mul_sm(&b, 9);
@@ -104,13 +104,13 @@ static void test_add_sm(void) {
     cfx_big_init(&b);
     CFX_BIG_PRINTF(&b, "init: b.n:%ld; ", b.n);
     
-    cfx_big_set_val(&b, 123);
+    cfx_big_from_u64(&b, 123);
     CFX_BIG_PRINTF(&b, "after setting val: ");
 
     cfx_big_add_sm(&b, 321);
     CFX_BIG_PRINTF(&b, "after add: ");
     assert(b.limb[0] == 444);
-    cfx_big_set_val(&b, UINT64_MAX);
+    cfx_big_from_u64(&b, UINT64_MAX);
     CFX_BIG_PRINTF(&b, "after set:");
     
     assert(b.limb[0] == UINT64_MAX);
@@ -127,13 +127,13 @@ static void test_sub_sm(void) {
     cfx_big_init(&b);
     CFX_BIG_PRINTF(&b, "init: b.n:%ld; ", b.n);
 
-    cfx_big_set_val(&b, 1);
+    cfx_big_from_u64(&b, 1);
     cfx_big_sub_sm(&b, 1);
     assert(b.limb[0] == 0);
     cfx_big_sub_sm(&b, 1);
     assert(b.limb[0] == 0);
     
-    cfx_big_set_val(&b, UINT64_MAX);
+    cfx_big_from_u64(&b, UINT64_MAX);
     CFX_BIG_PRINTF(&b, "set to UINT64_MAX: ");
     assert(b.limb[0] == UINT64_MAX);
     cfx_big_add_sm(&b, 1);
@@ -200,7 +200,7 @@ static void test_sub(void) {
 
     cfx_big_t two;
     cfx_big_init(&two);
-    cfx_big_set_val(&two, 2);
+    cfx_big_from_u64(&two, 2);
 
     cfx_big_copy(&t, &a);
     cfx_big_mul(&t, &two);
@@ -286,7 +286,7 @@ static void test_limb6(void) {
 static void test_limb7(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    cfx_big_set_val(&b, 1);
+    cfx_big_from_u64(&b, 1);
     for (int i = 0; i < 10; ++i) cfx_big_mul_sm(&b, 1000000000u - 1u); // (1e9-1)^10
     char *s = cfx_big_to_str(&b, NULL);
     // spot checks: starts with '9' and length >= 9
@@ -491,7 +491,7 @@ static void test_cache(void) {
     cfx_big_enable_cache(&b);
     assert(b.cache != NULL);
 
-    cfx_big_set_val(&b, 1);
+    cfx_big_from_u64(&b, 1);
     // assert(b.cache->primes.data == NULL);
     // assert(b.cache->state == CFX_FAC_FULL); todo
     PRINT_TEST(1);
@@ -500,9 +500,9 @@ static void test_cache(void) {
 static void test_zero_right(void) {
     cfx_big_t b, m;
     cfx_big_init(&b);
-    cfx_big_set_val(&b, 123);
+    cfx_big_from_u64(&b, 123);
     cfx_big_init(&m);
-    cfx_big_set_val(&m, 0);
+    cfx_big_from_u64(&m, 0);
 
     cfx_big_mul(&b, &m);
     assert(cfx_big_is_zero(&b));
@@ -515,9 +515,9 @@ static void test_zero_right(void) {
 static void test_zero_left(void) {
     cfx_big_t b, m;
     cfx_big_init(&b);
-    cfx_big_set_val(&b, 0);
+    cfx_big_from_u64(&b, 0);
     cfx_big_init(&m);
-    cfx_big_set_val(&m, 987);
+    cfx_big_from_u64(&m, 987);
 
     cfx_big_mul(&b, &m);
     
@@ -548,9 +548,9 @@ static void big_expect_limbs(const char* s, const cfx_big_t* b, const uint64_t* 
 static void test_mul1(void) {
     cfx_big_t b, m;
     cfx_big_init(&b);
-    cfx_big_set_val(&b, 5);
+    cfx_big_from_u64(&b, 5);
     cfx_big_init(&m);
-    cfx_big_set_val(&m, 7);
+    cfx_big_from_u64(&m, 7);
 
     cfx_big_mul(&b, &m);
     uint64_t expect[] = {35};
@@ -565,9 +565,9 @@ static void test_mul1(void) {
 static void test_mul_adduiv(void) {
     cfx_big_t a, m;
     cfx_big_init(&a);
-    cfx_big_set_val(&a, 0);
+    cfx_big_from_u64(&a, 0);
     cfx_big_init(&m);
-    cfx_big_set_val(&m, 1);
+    cfx_big_from_u64(&m, 1);
     uint64_t K = 0x1B2CDE;
     cfx_big_mul_sm(&m, K);
 
@@ -583,7 +583,7 @@ static void test_carry_two_limbs_times_2(void) {
     uint64_t limbs_b[] = {0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFFFFFFFFFFull};
     cfx_big_from_limbs(&b, limbs_b, 2);
     cfx_big_init(&m);
-    cfx_big_set_val(&m, 2);
+    cfx_big_from_u64(&m, 2);
 
     cfx_big_mul(&b, &m);
     uint64_t expect[] = {0xFFFFFFFFFFFFFFFEull, 0xFFFFFFFFFFFFFFFFull, 1ull};
@@ -663,7 +663,7 @@ void test_mul(cfx_big_t* b, const cfx_big_t* m) {
     if(cfx_big_is_zero(m)) {
         printf("multiplying b by zero!\n");
         cfx_big_free(b);
-        cfx_big_set_val(b, 0);
+        cfx_big_from_u64(b, 0);
         return;
     }
     // if (cfx_big_eq(b, m)) {
@@ -1082,8 +1082,8 @@ void test_big_div_divide_by_zero(void) {
     cfx_big_init(&d);
     cfx_big_init(&q);
     cfx_big_init(&r);
-    cfx_big_set_val(&n, 123);
-    cfx_big_set_val(&d, 0);
+    cfx_big_from_u64(&n, 123);
+    cfx_big_from_u64(&d, 0);
 
     int rc = cfx_big_divrem(&q, &r, &n, &d);
     assert(rc == -1);
@@ -1100,8 +1100,8 @@ void test_big_div_zero_dividend(void) {
     cfx_big_init(&d);
     cfx_big_init(&q);
     cfx_big_init(&r);
-    cfx_big_set_val(&n, 0);
-    cfx_big_set_val(&d, 42);
+    cfx_big_from_u64(&n, 0);
+    cfx_big_from_u64(&d, 42);
 
     int rc = cfx_big_divrem(&q, &r, &n, &d);
     assert(rc == 0);
@@ -1120,8 +1120,8 @@ void test_big_div_n_less_than_d(void) {
     cfx_big_init(&d);
     cfx_big_init(&q);
     cfx_big_init(&r);
-    cfx_big_set_val(&n, 123456);
-    cfx_big_set_val(&d, 123456789);
+    cfx_big_from_u64(&n, 123456);
+    cfx_big_from_u64(&d, 123456789);
 
     int rc = cfx_big_divrem(&q, &r, &n, &d);
     assert(rc == 0);
@@ -1161,7 +1161,7 @@ void test_big_div_single_limb_divisor_property(void) {
     cfx_big_init(&q);
     cfx_big_init(&r);
     cfx_big_from_str(&n, "340282366920938463463374607431768211455"); // 2^128 - 1
-    cfx_big_set_val(&d, 123456789ULL);
+    cfx_big_from_u64(&d, 123456789ULL);
 
     int rc = cfx_big_divrem(&q, &r, &n, &d);
     assert(rc == 0);
@@ -1211,7 +1211,7 @@ void test_big_div_in_place_eq_with_remainder(void) {
     cfx_big_from_str(&b, "18446744073709551616"); // 2^64
     cfx_big_copy(&n, &a);
     cfx_big_mul(&n, &b);
-    cfx_big_set_val(&forty_two, 42);
+    cfx_big_from_u64(&forty_two, 42);
     cfx_big_add(&n, &forty_two);
 
     int rc = cfx_big_div_eq(&n, &b, &rem);
@@ -1278,6 +1278,151 @@ void test_big_div_alias_remainder_eq_src(void) {
     cfx_big_free(&d);
 }
 
+static void test_shifts(void) {
+    cfx_big_t a, b;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+
+    uint64_t lsb = 123, msb = 283912;
+    uint64_t limbs[] = {lsb, msb};
+    cfx_big_from_limbs(&a, limbs, sizeof(limbs)/sizeof(limbs[0]));
+    cfx_big_copy(&b, &a);
+
+    cfx_big_shl_bits(&b, &b, 1);
+    assert(b.limb[1] == 2 * msb);
+    assert(b.limb[0] == 2 * lsb);
+    
+    cfx_big_shl_bits(&b, &b, 1);
+    assert(b.limb[1] == 4 * msb);
+    assert(b.limb[0] == 4 * lsb);
+    
+    cfx_big_shr_bits(&b, &b, 1);
+    assert(b.limb[1] == 2 * msb);
+    assert(b.limb[0] == 2 * lsb);
+    
+    cfx_big_shr_bits(&b, &b, 1);
+    assert(cfx_big_cmp(&a, &b) == 0);
+
+
+}
+
+/* ---- helpers ----------------------------------------------------------- */
+
+static void assert_hex_eq(const char* tag, const cfx_big_t* x, const char* hex_exp) {
+    char* got = cfx_big_to_hex(x, NULL);
+    int ok = (strcmp(got, hex_exp) == 0);
+    if (!ok) {
+        fprintf(stderr, "[%s] expected 0x%s, got 0x%s\n", tag, hex_exp, got);
+        // fflush(stderr);
+    }
+    CFX_ASSERT_PRINT(ok);
+    free(got);
+}
+
+static void check_shl_case(const char* msg, const char* hex_in, unsigned s, const char* hex_exp) {
+    /* out-of-place */
+    cfx_big_t a, out;
+    cfx_big_init(&a); 
+    cfx_big_init(&out);
+    cfx_big_from_hex(&a, hex_in);
+    cfx_big_shl_bits(&out, &a, s);
+    char obuf[128];
+    snprintf(obuf, sizeof obuf, "%s - %s", msg, "shl oopl");
+    assert_hex_eq(obuf, &out, hex_exp);
+    cfx_big_free(&out);
+
+    /* in-place (aliasing) */
+    cfx_big_shl_bits(&a, &a, s);
+    char ibuf[128];
+    snprintf(ibuf, sizeof ibuf, "%s - %s", msg, "shl inpl");
+    assert_hex_eq(ibuf, &a, hex_exp);
+    cfx_big_free(&a);
+}
+
+static void check_shr_case(const char* msg, const char* hex_in, unsigned s, const char* hex_exp) {
+    /* out-of-place */
+    cfx_big_t a, out;
+    cfx_big_init(&a);  cfx_big_init(&out);
+    cfx_big_from_hex(&a, hex_in);
+    cfx_big_shr_bits(&out, &a, s);
+    char obuf[128];
+    snprintf(obuf, sizeof obuf, "%s - %s", msg, "shr oopl");
+    assert_hex_eq(obuf, &out, hex_exp);
+    cfx_big_free(&out);
+
+    /* in-place (aliasing) */
+    cfx_big_shr_bits(&a, &a, s);
+    char ibuf[128];
+    snprintf(ibuf, sizeof ibuf, "%s - %s", msg, "shr inpl");
+    assert_hex_eq(ibuf, &a, hex_exp);
+    cfx_big_free(&a);
+}
+
+#define CHECK_SHL_CASE(hex_in, s, hex_out) check_shl_case(__func__, hex_in, s, hex_out)
+#define CHECK_SHR_CASE(hex_in, s, hex_out) check_shr_case(__func__, hex_in, s, hex_out)
+
+/* ---- tests ------------------------------------------------------------- */
+
+static void test_shl_basic_identity(void) {
+    /* shift by 0: identity */
+    CHECK_SHL_CASE("0", 0, "0");
+    CHECK_SHL_CASE("1", 0, "1");
+    CHECK_SHL_CASE("deadbeef", 0, "deadbeef");
+}
+
+static void test_shl_create_top_limb(void) {
+    /* new top limb created when MSB carries out */
+    CHECK_SHL_CASE("8000000000000000", 1, "10000000000000000");    // 2^63 << 1 -> 2^64
+    CHECK_SHL_CASE("1", 64, "10000000000000000");                   // append 16 hex zeros
+    CHECK_SHL_CASE("1", 68, "1000000000000000000");                 // 16 zeros + 1 hex nibble
+}
+
+static void test_shl_cross_limb_1bit(void) {
+    /* two-limb pattern: hi=1, lo=0x8000...0001, shift left by 1
+       expected: hi' = 3, lo' = 2  => hex "3" || "000...0002" */
+    CHECK_SHL_CASE("100000000000000008000000000000001", 1, "30000000000000002");
+}
+
+static void test_shr_basic_identity(void) {
+    /* shift by 0: identity */
+    CHECK_SHR_CASE("0", 0, "0");
+    CHECK_SHR_CASE("1", 0, "1");
+    CHECK_SHR_CASE("deadbeef", 0, "deadbeef");
+}
+
+static void test_shr_drop_whole_limb(void) {
+    /* exact 64-bit drops */
+    CHECK_SHR_CASE("10000000000000000", 64, "1");         // 2^64 >> 64
+    CHECK_SHR_CASE("1000000000000000000", 68, "1");       // (2^68) >> 68
+}
+
+static void test_shr_to_zero(void) {
+    /* shifting past total bit-length -> zero */
+    CHECK_SHR_CASE("1", 65, "0");
+    CHECK_SHR_CASE("ffffffffffffffff", 128, "0");
+}
+
+static void test_shr_cross_limb_carry_6bits(void) {
+    /* This reproduces the cross-limb carry you just debugged:
+       Input limbs: hi=0x3e, lo=0x0c40  -> hex "3e0000000000000c40"
+       Right shift by 6:
+         r1 = 0x3e >> 6 = 0
+         carry = (0x3e & 0x3f) << 58 = 0xf800000000000000
+         r0 = (0x0c40 >> 6) | carry = 0x31 | 0xf800000000000000 = 0xf800000000000031
+       Trim top zero limb => "f800000000000031"
+    */
+    CHECK_SHR_CASE("3e0000000000000c40", 6, "f800000000000031");
+}
+
+static void test_shr_mixed_cases(void) {
+    /* assorted mixes with odd s and multiple limbs */
+    CHECK_SHR_CASE("100000000000000000000", 4, "10000000000000000000");  // divide by 16
+    CHECK_SHR_CASE("abcdef0123456789", 4, "0abcdef012345678");          // >>4 removes low nibble
+    CHECK_SHR_CASE("abcdef0123456789", 68, "a");                         // >>68 = >>64 then >>4
+}
+
+/* ------------------------------------------------------------------ */
+
 int main(void) {
     CFX_TEST(test_cfx_big_assign);
     CFX_TEST(test_copy_swap);
@@ -1324,6 +1469,15 @@ int main(void) {
     CFX_TEST(test_hex_two_limbs_padding);
     CFX_TEST(test_hex_zero_empty_n);
     CFX_TEST(test_hex_zero_explicit_limb_zero);
+    CFX_TEST(test_shifts);
+    CFX_TEST(test_shl_basic_identity);
+    CFX_TEST(test_shl_create_top_limb);
+    CFX_TEST(test_shl_cross_limb_1bit);
+    CFX_TEST(test_shr_basic_identity);
+    CFX_TEST(test_shr_drop_whole_limb);
+    CFX_TEST(test_shr_to_zero);
+    CFX_TEST(test_shr_cross_limb_carry_6bits);
+    CFX_TEST(test_shr_mixed_cases);
     puts("OK");
     return 0;
 }

@@ -76,7 +76,7 @@ int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
 int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
 
-void cfx_big_set_val(cfx_big_t* b, uint64_t v);
+void cfx_big_from_u64(cfx_big_t* b, uint64_t v);
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
 void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
 void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m);
@@ -88,14 +88,15 @@ void cfx_big_mul_auto(cfx_big_t* b, const cfx_big_t* m);
 
 void cfx_big_sq(cfx_big_t* b);
 int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r remainder. */
-
 void cfx_big_add(cfx_big_t* b, const cfx_big_t* a);
 void cfx_big_add_sm(cfx_big_t* b, uint64_t n);
 void cfx_big_sub(cfx_big_t* a, const cfx_big_t* b);
 void cfx_big_sub_sm(cfx_big_t* b, uint64_t n);
 void cfx_big_mul_sm(cfx_big_t* b, uint64_t m);
 
-int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r, const cfx_big_t* n, const cfx_big_t* d);
+/* Knuth's long division from TAOCP Vol. 2, 4.3.1 */
+int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r, const cfx_big_t* u, const cfx_big_t* v);
+
 int cfx_big_div_out(cfx_big_t* q, const cfx_big_t* n, const cfx_big_t* d);
 int cfx_big_mod_out(cfx_big_t* r, const cfx_big_t* n, const cfx_big_t* d);
 /* In-place: b := floor(b/d); optional remainder r. Alias-safe for any combination. */

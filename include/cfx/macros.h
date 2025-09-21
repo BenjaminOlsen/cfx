@@ -35,7 +35,7 @@
 
 #define PRINT_ARR(A, na) do { \
     printf("["); \
-    for (ssize_t i = na-1; i >= 0; --i) { \
+    for (size_t i = na; i--;) { \
         printf("%llu", A[i]); \
         if (i == 0) printf("]\n"); \
         else printf(", "); \
@@ -64,6 +64,13 @@ do { \
 #else
 #define CFX_ASSERT_PRINT(cond) CFX_PRINT_TEST_COND(cond)
 #endif 
+
+#ifdef CFX_DEBUG
+  #define PRINT_DBG(...) printf(__VA_ARGS__)
+#else
+  #define PRINT_DBG(...) do { } while (0)
+#endif
+
 
 #define CFX_ASSERT(cond) assert(cond)
 

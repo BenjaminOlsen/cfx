@@ -95,8 +95,8 @@ static void test_mul_zero_zero(void)
 {
     cfx_big_t a, b;
     cfx_big_init(&a); cfx_big_init(&b);
-    cfx_big_set_val(&a, 0);
-    cfx_big_set_val(&b, 0);
+    cfx_big_from_u64(&a, 0);
+    cfx_big_from_u64(&b, 0);
 
     cfx_big_mul_rows_pthreads(&a, &b, 1);
     assert(a.n == 0 || (a.n == 1 && a.limb[0] == 0));
@@ -107,7 +107,7 @@ static void test_mul_zero_x(void)
 {
     cfx_big_t a, b;
     cfx_big_init(&a); cfx_big_init(&b);
-    cfx_big_set_val(&a, 0);
+    cfx_big_from_u64(&a, 0);
     uint64_t one = 123456789ULL;
     big_set_limbs(&b, &one, 1);
 
@@ -122,7 +122,7 @@ static void test_mul_x_zero(void)
     cfx_big_init(&a); cfx_big_init(&b);
     uint64_t one = 987654321ULL;
     big_set_limbs(&a, &one, 1);
-    cfx_big_set_val(&b, 0);
+    cfx_big_from_u64(&b, 0);
 
     cfx_big_mul_rows_pthreads(&a, &b, 2);
     assert(a.n == 0 || (a.n == 1 && a.limb[0] == 0));
@@ -136,7 +136,7 @@ static void test_mul_by_one(void)
 
     uint64_t limbs[] = {0x0123456789abcdefULL, 0xfedcba9876543210ULL};
     big_set_limbs(&a, limbs, 2);
-    cfx_big_set_val(&m, 1);
+    cfx_big_from_u64(&m, 1);
 
     // reference: a * 1 = a
     big_set_limbs(&ref, limbs, 2);

@@ -7,7 +7,7 @@ static void BM_InitFree(benchmark::State& state) {
     for (auto _ : state) {
         cfx_big_t b;
         cfx_big_init(&b);
-        cfx_big_set_val(&b, 42);
+        cfx_big_from_u64(&b, 42);
         cfx_big_free(&b);
         benchmark::DoNotOptimize(b);
     }
@@ -17,7 +17,7 @@ BENCHMARK(BM_InitFree);
 static void BM_AddSmall(benchmark::State& state) {
     cfx_big_t b;
     cfx_big_init(&b);
-    cfx_big_set_val(&b, 0);
+    cfx_big_from_u64(&b, 0);
     for (auto _ : state) {
         cfx_big_add_sm(&b, 123456789ULL);
         benchmark::DoNotOptimize(b);
@@ -30,7 +30,7 @@ static void BM_MulSmall(benchmark::State& state) {
     cfx_big_t b;
     cfx_big_init(&b);
     for (auto _ : state) {
-        cfx_big_set_val(&b, 123456789ULL);
+        cfx_big_from_u64(&b, 123456789ULL);
         cfx_big_mul_sm(&b, 7);
     }
     benchmark::DoNotOptimize(b);
@@ -43,9 +43,9 @@ static void BM_MulBig(benchmark::State& state) {
     cfx_big_init(&a);
     cfx_big_init(&b);
     
-    cfx_big_set_val(&b, 987654321ULL);
+    cfx_big_from_u64(&b, 987654321ULL);
     for (auto _ : state) {
-        cfx_big_set_val(&a, 123456789ULL);
+        cfx_big_from_u64(&a, 123456789ULL);
         cfx_big_mul(&a, &b);
         benchmark::DoNotOptimize(a);
         benchmark::DoNotOptimize(b);
@@ -264,7 +264,7 @@ static void BM_sq1(benchmark::State& state) {
     cfx_big_init(&a);
 
     for (auto _ : state) {
-        cfx_big_set_val(&a, 123456789ULL);
+        cfx_big_from_u64(&a, 123456789ULL);
         b = sq1(&a);
         benchmark::DoNotOptimize(a);
         benchmark::DoNotOptimize(b);
@@ -279,7 +279,7 @@ static void BM_sq2(benchmark::State& state) {
     cfx_big_init(&a);
 
     for (auto _ : state) {
-        cfx_big_set_val(&a, 123456789ULL);
+        cfx_big_from_u64(&a, 123456789ULL);
         b = sq1(&a);
         benchmark::DoNotOptimize(a);
         benchmark::DoNotOptimize(b);
@@ -294,7 +294,7 @@ static void BM_sq3(benchmark::State& state) {
     cfx_big_init(&a);
 
     for (auto _ : state) {
-        cfx_big_set_val(&a, 123456789ULL);
+        cfx_big_from_u64(&a, 123456789ULL);
         b = sq1(&a);
         benchmark::DoNotOptimize(a);
         benchmark::DoNotOptimize(b);

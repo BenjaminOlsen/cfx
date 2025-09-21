@@ -176,11 +176,11 @@ static void test_factorial_to_100(int quiet) {
 
 static void fac(cfx_big_t* out, const cfx_big_t* in) {
     cfx_big_init(out);
-    if(cfx_big_is_zero(in)) { cfx_big_set_val(out, 1); return; }
+    if(cfx_big_is_zero(in)) { cfx_big_from_u64(out, 1); return; }
     cfx_big_t tmp;
     cfx_big_init(&tmp);
     cfx_big_copy(&tmp, in);
-    cfx_big_set_val(out, 1);
+    cfx_big_from_u64(out, 1);
     
     while (!cfx_big_is_zero(&tmp)) {
         cfx_big_mul(out, &tmp);
@@ -199,7 +199,7 @@ static void test_big_factorial_to_100(int quiet) {
         cfx_big_t b, f;
         cfx_big_init(&b);
         cfx_big_init(&f);
-        cfx_big_set_val(&b, n);
+        cfx_big_from_u64(&b, n);
         fac(&f, &b);
         char* s = cfx_big_to_str(&f, NULL);
         int ok = (strcmp(s, F[n]) == 0);
