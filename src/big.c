@@ -1017,7 +1017,6 @@ int cfx_big_from_hex(cfx_big_t* out, const char* s) {
 }
 
 int cfx_big_from_str(cfx_big_t* out, const char* s) {
-    cfx_big_init(out);
     cfx_big_from_u64(out, 0);
 
     while (isspace((unsigned char)*s)) s++;

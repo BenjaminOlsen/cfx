@@ -598,6 +598,8 @@ static void test_carry_two_limbs_times_2(void) {
 static void test_mul_by_base_2_64_shift(void) {
     // Multiply by 2^64 (limbs = [0,1]) should shift by one limb
     cfx_big_t b, m;
+    cfx_big_init(&b);
+    cfx_big_init(&m);
     uint64_t limbs_b[] = {0x0123456789ABCDEFull, 0x0FEDCBA987654321ull, 0x0000000000000001ull};
     size_t sz0 = sizeof(limbs_b)/sizeof(limbs_b[0]);
     cfx_big_from_limbs(&b, limbs_b, sz0);
@@ -631,6 +633,7 @@ static void test_mul_by_base_2_64_shift(void) {
 static void test_self_multiply_square(void) {
     // (2^64 - 1)^2 = [0xFFFFFFFFFFFFFFFE, 1] in base 2^64
     cfx_big_t b;
+    cfx_big_init(&b);
     uint64_t limbs[] = {0xFFFFFFFFFFFFFFFFull};
     cfx_big_from_limbs(&b, limbs, 1);
     big_expect_limbs(__func__, &b, limbs, 1);
@@ -643,6 +646,7 @@ static void test_self_multiply_square(void) {
 
 static void test_self_multiply_big(void) {
     cfx_big_t b;
+    cfx_big_init(&b);
     size_t N = 10;
     uint64_t* limbs = (uint64_t*)malloc(N * sizeof(uint64_t));
     for (size_t i = 0; i < N; ++i) {
@@ -693,6 +697,7 @@ static void write_string_wrapped(const char* s, const char* fn, size_t w) {
 
 static void test_known_squares(void) {
     cfx_big_t b;
+    cfx_big_init(&b);
     cfx_big_from_str(&b, 
         "12554203470773361528352143580257209"
         "759168353591939024551938");
@@ -836,6 +841,7 @@ static void test_known_squares(void) {
     s = cfx_big_to_str(&b, NULL);
     //// sanity check:
     cfx_big_t B;
+    cfx_big_init(&B);
     cfx_big_from_str(&B, s);
     assert(cfx_big_eq(&B, &b));
     char* sanity = cfx_big_to_str(&B, NULL);
@@ -893,6 +899,7 @@ static void test_known_squares(void) {
 
 static void test_known_squares_2(void) {
     cfx_big_t b;
+    cfx_big_init(&b);
     cfx_big_from_str(&b,
         "4946608029462090681478206578991795742708644"
         "2564742658586426229545514803499564697000372"
@@ -940,7 +947,7 @@ static void test_known_squares_2(void) {
     cfx_big_mul_csa(&b, &b); // 4
     free(s);
     s = cfx_big_to_str(&b, NULL);
-    write_string_wrapped(s, "", 80);
+    // write_string_wrapped(s, "", 80);
     expect = 
         "3584759174695717079200799669904391027371015034"
         "5591263067167166620789779901562032648556807601"
@@ -983,6 +990,7 @@ static void test_known_squares_2(void) {
     s = cfx_big_to_str(&b, NULL);
     //// sanity check:
     cfx_big_t B;
+    cfx_big_init(&B);
     cfx_big_from_str(&B, s);
     assert(cfx_big_eq(&B, &b));
     char* sanity = cfx_big_to_str(&B, NULL);
@@ -1207,6 +1215,11 @@ void test_big_div_multi_limb_divisor_exact_and_remainder(void) {
 void test_big_div_in_place_eq_with_remainder(void) {
     // Build n = a*b + 42, then n := n / b, rem = 42
     cfx_big_t a, b, n, rem, forty_two;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+    cfx_big_init(&n);
+    cfx_big_init(&rem);
+    cfx_big_init(&forty_two);
     cfx_big_from_str(&a, "1122334455667788990011223344556677889900");
     cfx_big_from_str(&b, "18446744073709551616"); // 2^64
     cfx_big_copy(&n, &a);
@@ -1228,6 +1241,12 @@ void test_big_div_in_place_eq_with_remainder(void) {
 
 void test_big_div_quotient_only_and_remainder_only(void) {
     cfx_big_t a, b, n, q, r, b_minus_1;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+    cfx_big_init(&n);
+    cfx_big_init(&q);
+    cfx_big_init(&r);
+    cfx_big_init(&b_minus_1);
     cfx_big_from_str(&a, "3141592653589793238462643383279502884197");
     cfx_big_from_str(&b, "2718281828459045235360287471352662497757");
 
@@ -1259,16 +1278,22 @@ void test_big_div_quotient_only_and_remainder_only(void) {
 void test_big_div_alias_remainder_eq_src(void) {
     // Verify cfx_big_div_eq supports r == b (if your impl promises this).
     cfx_big_t b, d;
+    cfx_big_init(&b);
+    cfx_big_init(&d);
     cfx_big_from_str(&b, "123456789012345678901234567890");
     cfx_big_from_str(&d, "987654321");
 
-    cfx_big_t orig; cfx_big_copy(&orig, &b);
+    cfx_big_t orig;
+    cfx_big_init(&orig);
+    
+    cfx_big_copy(&orig, &b);
 
     int rc = cfx_big_div_eq(&b, &d, &b);   // r aliases src
     assert(rc == 0);
 
     // Check property with a fresh recompute: orig == q*d + r, where q is in 'b' (after div)
     cfx_big_t q_copy;
+    cfx_big_init(&q_copy);
     cfx_big_copy(&q_copy, &b);  // b now holds q
     assert_n_eq_qd_plus_r(&orig, &q_copy, &d, &b);
 
@@ -1342,7 +1367,8 @@ static void check_shl_case(const char* msg, const char* hex_in, unsigned s, cons
 static void check_shr_case(const char* msg, const char* hex_in, unsigned s, const char* hex_exp) {
     /* out-of-place */
     cfx_big_t a, out;
-    cfx_big_init(&a);  cfx_big_init(&out);
+    cfx_big_init(&a);
+    cfx_big_init(&out);
     cfx_big_from_hex(&a, hex_in);
     cfx_big_shr_bits(&out, &a, s);
     char obuf[128];
