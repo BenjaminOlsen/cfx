@@ -1374,13 +1374,13 @@ static void test_shl_create_top_limb(void) {
     /* new top limb created when MSB carries out */
     CHECK_SHL_CASE("8000000000000000", 1, "10000000000000000");    // 2^63 << 1 -> 2^64
     CHECK_SHL_CASE("1", 64, "10000000000000000");                   // append 16 hex zeros
-    CHECK_SHL_CASE("1", 68, "1000000000000000000");                 // 16 zeros + 1 hex nibble
+    CHECK_SHL_CASE("1", 68, "100000000000000000");                 // 16 zeros + 1 hex nibble
 }
 
 static void test_shl_cross_limb_1bit(void) {
     /* two-limb pattern: hi=1, lo=0x8000...0001, shift left by 1
        expected: hi' = 3, lo' = 2  => hex "3" || "000...0002" */
-    CHECK_SHL_CASE("100000000000000008000000000000001", 1, "30000000000000002");
+    CHECK_SHL_CASE("100000000000000008000000000000001", 1, "200000000000000010000000000000002");
 }
 
 static void test_shr_basic_identity(void) {
@@ -1393,7 +1393,7 @@ static void test_shr_basic_identity(void) {
 static void test_shr_drop_whole_limb(void) {
     /* exact 64-bit drops */
     CHECK_SHR_CASE("10000000000000000", 64, "1");         // 2^64 >> 64
-    CHECK_SHR_CASE("1000000000000000000", 68, "1");       // (2^68) >> 68
+    CHECK_SHR_CASE("100000000000000000", 68, "1");       // (2^68) >> 68
 }
 
 static void test_shr_to_zero(void) {
@@ -1417,8 +1417,8 @@ static void test_shr_cross_limb_carry_6bits(void) {
 static void test_shr_mixed_cases(void) {
     /* assorted mixes with odd s and multiple limbs */
     CHECK_SHR_CASE("100000000000000000000", 4, "10000000000000000000");  // divide by 16
-    CHECK_SHR_CASE("abcdef0123456789", 4, "0abcdef012345678");          // >>4 removes low nibble
-    CHECK_SHR_CASE("abcdef0123456789", 68, "a");                         // >>68 = >>64 then >>4
+    CHECK_SHR_CASE("abcdef0123456789", 4, "abcdef012345678");          // >>4 removes low nibble
+    CHECK_SHR_CASE("abcdef0123456789", 60, "a");                         // >>68 = >>64 then >>4
 }
 
 /* ------------------------------------------------------------------ */

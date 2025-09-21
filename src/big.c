@@ -1060,31 +1060,54 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
         return;
     }
 
+    cfx_big_t* p;
+    cfx_big_t tmp;
+    cfx_big_init(&tmp);
+
+    int alias = 0;
+    if (a == out) {
+        p = &tmp;
+        cfx_big_copy(p, a);
+        alias = 1;
+    } else {
+        p = out;
+    }
+
     unsigned limb_shift = s >> 6; // s / 64
     unsigned bit_shift  = s & 63; // s & 64
     
+    // printf("cfx_big_shl_bits - limb shift: %u, bit shift: %u\n", limb_shift, bit_shift);
+
+    // bits from the right coming in to each limb
     unsigned r = (bit_shift ? 64 - bit_shift : 0);
 
     size_t new_n = a->n + limb_shift + (bit_shift ? 1 : 0);
-    cfx_big_reserve(out, new_n);
-    for (size_t i = 0; i < limb_shift; ++i) out->limb[i] = 0;
+    cfx_big_reserve(p, new_n);
+    for (size_t i = 0; i < limb_shift; ++i) p->limb[i] = 0;
 
     if (bit_shift == 0) {
-        for (size_t i = 0; i < a->n; ++i)
-            out->limb[i + limb_shift] = a->limb[i];
-        out->n = a->n + limb_shift;
+        for (size_t i = 0; i < a->n; ++i) {
+            p->limb[i + limb_shift] = a->limb[i];
+            // printf("s: %u, bit_shift: %u, limb_shift: %u, i: %zx -> p->limb[%zu] = a->limb[%zu]\n", s, bit_shift, limb_shift, i, i+limb_shift, i);
+        }
+        p->n = a->n + limb_shift;
+        
     } else {
         uint64_t carry = 0;
         for (size_t i = 0; i < a->n; ++i) {
             uint64_t lo = a->limb[i];
-            out->limb[i + limb_shift] = (lo << bit_shift) | carry;
+            p->limb[i + limb_shift] = (lo << bit_shift) | carry;
             carry = (r ? (lo >> r) : 0);
+            // printf("s: %u, bit_shift: %u, limb_shift: %u, lo: %llx, carry: %zx, i: %llx\n", s, bit_shift, limb_shift, lo, i, carry);
         }
-        out->limb[limb_shift + a->n] = carry;
-        out->n = limb_shift + a->n + (carry ? 1 : 0);
+        p->limb[limb_shift + a->n] = carry;
+        p->n = limb_shift + a->n + (carry ? 1 : 0);
     }
 
-    cfx_big_trim(out);
+    cfx_big_trim(p);
+    if (alias) {
+        cfx_big_move(out, p);
+    }
 }
 
 
@@ -1104,24 +1127,40 @@ void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
         return;
     }
 
+    cfx_big_t* p;
+    cfx_big_t tmp;
+    cfx_big_init(&tmp);
+
+    int alias = 0;
+    if (a == out) {
+        p = &tmp;
+        cfx_big_copy(p, a);
+        alias = 1;
+    } else {
+        p = out;
+    }
+
     size_t new_n = a->n - limb_shift;
-    cfx_big_reserve(out, new_n);
-    out->n = new_n;
+    cfx_big_reserve(p, new_n);
+    p->n = new_n;
 
     if (bit_shift == 0) {
         // Pure limb drop
         for (size_t i = 0; i < new_n; ++i)
-            out->limb[i] = a->limb[i + limb_shift];
+            p->limb[i] = a->limb[i + limb_shift];
     } else {
         unsigned r = 64 - bit_shift;
         for (size_t i = 0; i < new_n; ++i) {
             uint64_t lo = a->limb[i + limb_shift];
             uint64_t hi = (i + limb_shift + 1 < a->n) ? a->limb[i + limb_shift + 1] : 0;
-            out->limb[i] = (lo >> bit_shift) | (hi << r);
+            p->limb[i] = (lo >> bit_shift) | (hi << r);
         }
     }
 
-    cfx_big_trim(out);
+    cfx_big_trim(p);
+    if (alias) {
+        cfx_big_move(out, p);
+    }
 }
 
 /* Core: q = u / v; r = u % v; any of q or r may be NULL. Returns 0, or -1 if v==0. */
