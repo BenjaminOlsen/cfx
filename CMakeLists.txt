@@ -46,6 +46,11 @@ target_include_directories(cfx
     $<INSTALL_INTERFACE:include>
 )
 
+if (UNIX AND NOT APPLE)
+  target_link_libraries(cfx PUBLIC m)
+  message(STATUS "Linking to libm")
+endif()
+
 include(cmake/cfxCompileFlags.cmake)
 
 add_library(cfx::cfx ALIAS cfx)
