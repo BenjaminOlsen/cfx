@@ -47,7 +47,7 @@
 do { \
     printf(".................\n"); \
     printf("%s, cap: %zu, n: %zu, limb %p\n", s, (b)->cap, (b)->n, (void*)(b)->limb); \
-    for(size_t i=(b)->n; i--;) {printf("    limb[%zu]=0x%016llx\n", i, (b)->limb[i]);} \
+    for(size_t i=(b)->n; i--;) {printf("    limb[%zu]=0x%016" PRIx64 "\n", i, (b)->limb[i]);} \
     if((b)->n) printf("\n"); \
 } while(0)
 

@@ -1187,7 +1187,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
             uint64_t qi = (uint64_t)(cur / div);
             rem = cur % div;
             if (q) q->limb[i] = qi;
-            PRINT_DBG("  [FAST] i=%zd  cur=(%016llx|%016llx)  qi=%016llx  rem=%016llx\n",
+            PRINT_DBG("  [FAST] i=%zd  cur=(%016" PRIx64 "|%016" PRIx64 ")  qi=%016" PRIx64 "  rem=%016" PRIx64 "\n",
                    i, (unsigned long long)(cur >> 64), (unsigned long long)(uint64_t)cur,
                    (unsigned long long)qi, (unsigned long long)(uint64_t)rem);
         }
@@ -1249,13 +1249,13 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
             // clamp qhat to b-1; rhat reflects the "borrowed" v_{n-1}
             qhat = UINT64_MAX;               // b-1
             rhat = Ujm1 + Vn1;               // may wrap; that’s okay for the D3 test
-            PRINT_DBG("j=%zd  qhat CLAMP (Ujm==Vn1)  qhat=%016llx rhat=%016llx\n",
+            PRINT_DBG("j=%zd  qhat CLAMP (Ujm==Vn1)  qhat=%016" PRIx64 " rhat=%016" PRIx64 "\n",
                    j, (unsigned long long)qhat, (unsigned long long)rhat);
         } else {
             uint128_t top = ((uint128_t)Ujm << 64) | Ujm1;
             qhat = (uint64_t)(top / Vn1);
             rhat = (uint64_t)(top % Vn1);
-            PRINT_DBG("j=%zd  top=[%016llx|%016llx]/%016llx -> qhat=%016llx rhat=%016llx\n",
+            PRINT_DBG("j=%zd  top=[%016" PRIx64 "|%016" PRIx64 "]/%016" PRIx64 " -> qhat=%016" PRIx64 " rhat=%016" PRIx64 "\n",
                    j, (unsigned long long)Ujm, (unsigned long long)Ujm1,
                    (unsigned long long)Vn1, (unsigned long long)qhat, (unsigned long long)rhat);
         }
@@ -1293,7 +1293,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
             U.limb[j + i] = uji_new;
             carry = (uint128_t)t_hi + borrow;
 
-            PRINT_DBG("  D4: j=%zd i=%zu  q*V=%016llx|%016llx  U=%016llx -> %016llx  carry=%016llx(+%u)\n",
+            PRINT_DBG("  D4: j=%zd i=%zu  q*V=%016" PRIx64 "|%016" PRIx64 "  U=%016" PRIx64 " -> %016" PRIx64 "  carry=%016" PRIx64 "(+%u)\n",
                    j, i,
                    (unsigned long long)t_hi, (unsigned long long)t_lo,
                    (unsigned long long)uji, (unsigned long long)uji_new,
@@ -1306,7 +1306,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
         uint64_t ujm_new = (uint64_t)diff;
         uint64_t borrow_out = (ujmw < carry);  // true iff underflow
 
-        PRINT_DBG("  D6: j=%zd  U[j+n]=%016llx - carry=%016llx(+%u) -> %016llx  borrow_out=%u\n",
+        PRINT_DBG("  D6: j=%zd  U[j+n]=%016" PRIx64 " - carry=%016" PRIx64 "(+%u) -> %016" PRIx64 "  borrow_out=%u\n",
                j,
                (unsigned long long)(uint64_t)ujmw,
                (unsigned long long)(uint64_t)carry,
@@ -1318,7 +1318,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
 
         // D7: if we subtracted too much, add V back and decrement qhat
         if (borrow_out) {
-            PRINT_DBG("  D7: add-back (qhat too large): qhat=%016llx -> %016llx\n",
+            PRINT_DBG("  D7: add-back (qhat too large): qhat=%016" PRIx64 " -> %016" PRIx64 "\n",
                    (unsigned long long)qhat, (unsigned long long)(qhat - 1));
             qhat--;
 
@@ -1327,16 +1327,16 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
                 uint128_t ssum = (uint128_t)U.limb[j + i] + V.limb[i] + c;
                 U.limb[j + i] = (uint64_t)ssum;
                 c = (uint64_t)(ssum >> 64);
-                PRINT_DBG("    add-back: i=%zu  U+=V+c -> U=%016llx  c=%016llx\n",
+                PRINT_DBG("    add-back: i=%zu  U+=V+c -> U=%016" PRIx64 "  c=%016" PRIx64 "\n",
                        i, (unsigned long long)U.limb[j + i], (unsigned long long)c);
             }
             U.limb[j + n] += c;
-            PRINT_DBG("    add-back: U[j+n]+=c -> %016llx\n",
+            PRINT_DBG("    add-back: U[j+n]+=c -> %016" PRIx64 "\n",
                    (unsigned long long)U.limb[j + n]);
         }
 
         Q.limb[j] = qhat;
-        PRINT_DBG("  => Q[%zd] = %016llx\n", j, (unsigned long long)qhat);
+        PRINT_DBG("  => Q[%zd] = %016" PRIx64 "\n", j, (unsigned long long)qhat);
     }
 
     // D8: Unnormalize remainder: r = (U[0..n-1] >> s)
