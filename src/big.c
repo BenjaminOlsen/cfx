@@ -215,15 +215,11 @@ void cfx_big_from_u64(cfx_big_t* b, uint64_t v) {
 
 
 static inline void _mul_sm_fast(cfx_big_t* b, uint64_t m) {
-    uint64_t* p = b->limb;
     size_t    n = b->n;
+    cfx_big_reserve(b, n + 1);
+    uint64_t* p = b->limb;
 #if defined(__x86_64__) && defined(__BMI2__) || defined(__INTELLISENSE__) /* FU!!!! */
 #pragma message "Compiling with instrinsics!! "
-
-    if (b->cap <= n) {
-        cfx_big_reserve(b, n + 1);
-        p = b->limb;
-    }
 
     uint64_t carry = 0;
     for (size_t i = 0; i < n; ++i) {
@@ -420,8 +416,6 @@ void cfx_big_sq(cfx_big_t* b) {
     if (n == 0) {
         return;
     }
-
-    size_t cnt = 0;
     
     cfx_big_reserve(&ret, 2*n);
     memset(ret.limb, 0, 2*n * sizeof(uint64_t));

@@ -171,6 +171,7 @@ static void test_factorial_to_100(int quiet) {
         cfx_big_free(&b);
         free(s);
     }
+    cfx_vec_free(&primes);
     assert(aok);
 }
 
@@ -257,7 +258,7 @@ static void test_fac_from_u64(void) {
 
 }
 
-int main() {
+int main(void) {
     int quiet = 0;
     
     test_init();
