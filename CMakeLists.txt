@@ -46,7 +46,7 @@ target_include_directories(cfx
     $<INSTALL_INTERFACE:include>
 )
 
-include(cmake/CfxCompileFlags.cmake)
+include(cmake/cfxCompileFlags.cmake)
 
 add_library(cfx::cfx ALIAS cfx)
 

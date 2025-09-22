@@ -689,22 +689,22 @@ void test_mul(cfx_big_t* b, const cfx_big_t* m) {
     
 }
 
-static void write_string_wrapped(const char* s, const char* fn, size_t w) {
-    FILE* f = fopen(fn, "w");
-    if (!f) {
-        perror("fopen");
-        return;
-    }
-    size_t len = strlen(s);
-    for (size_t i = 0; i < len; i += w) {
-        fprintf(f, "\"");
-        for (size_t j = i; j < i + w && j < len; ++j) {
-            fputc(s[j], f);
-        }
-        fprintf(f, "\"\n");
-    }
-    fclose(f);
-}
+// static void write_string_wrapped(const char* s, const char* fn, size_t w) {
+//     FILE* f = fopen(fn, "w");
+//     if (!f) {
+//         perror("fopen");
+//         return;
+//     }
+//     size_t len = strlen(s);
+//     for (size_t i = 0; i < len; i += w) {
+//         fprintf(f, "\"");
+//         for (size_t j = i; j < i + w && j < len; ++j) {
+//             fputc(s[j], f);
+//         }
+//         fprintf(f, "\"\n");
+//     }
+//     fclose(f);
+// }
 
 static void test_known_squares(void) {
     cfx_big_t b;

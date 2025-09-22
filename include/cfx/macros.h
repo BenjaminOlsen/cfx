@@ -44,9 +44,9 @@
 
 #define PRINT_BIG(s, b) \
 do { \
+    printf(".................\n"); \
     printf("%s, cap: %zu, n: %zu, limb %p\n", s, (b)->cap, (b)->n, (void*)(b)->limb); \
-    if((b)->n) printf("--- "); \
-    for(size_t i=0; i<(b)->n; ++i) {printf("limb[%zu]=0x%llx ", i, (b)->limb[i]);} \
+    for(size_t i=(b)->n; i--;) {printf("    limb[%zu]=0x%016llx\n", i, (b)->limb[i]);} \
     if((b)->n) printf("\n"); \
 } while(0)
 
