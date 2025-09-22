@@ -122,6 +122,8 @@ void cfx_big_disable_cache(cfx_big_t* b);
 
 /* Multiply by p^e by repeated squaring using small chunks to avoid overflow */
 void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e);
+/* out = n ^ p*/
+void cfx_big_pow(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p);
 
 void cfx_big_from_limbs(cfx_big_t* b, const uint64_t* limbs, size_t n);
 void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t* f);

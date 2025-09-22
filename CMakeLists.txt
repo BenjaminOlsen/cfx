@@ -64,6 +64,7 @@ if(CFX_BUILD_EXAMPLES)
     primes
     fread
     div
+    pow
   )
   foreach(example_name IN LISTS EXAMPLE_NAMES)
     add_executable(${example_name} examples/${example_name}.c)
