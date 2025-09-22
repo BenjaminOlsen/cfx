@@ -1,6 +1,7 @@
 // test_mul_csa_pthreads.c
 
 #include "cfx/big.h"
+#include "cfx/fmt.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -68,7 +69,7 @@ static void print_limbs(const char* tag, const cfx_big_t* x, size_t upto) {
     fprintf(stderr, "%s: [", tag);
     for (size_t i = 0; i < upto; ++i) {
         uint64_t v = (i < x->n) ? x->limb[i] : 0;
-        fprintf(stderr, "%s%llu", (i ? ", " : ""), (unsigned long long)v);
+        fprintf(stderr, "%s"U64F"", (i ? ", " : ""), (unsigned long long)v);
     }
     fprintf(stderr, "]\n");
 }

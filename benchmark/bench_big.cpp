@@ -2,6 +2,7 @@
 #include <benchmark/benchmark.h>
 #include <cstdint>
 #include <cfx/big.h>
+#include <cfx/fmt.h>
 
 static void BM_InitFree(benchmark::State& state) {
     for (auto _ : state) {
@@ -121,13 +122,13 @@ cfx_big_t sq1(const cfx_big_t* b) {
             prod += ret.limb[i+j];
             ret.limb[i+j] = (uint64_t)prod;
             carry = prod >> 64;
-            // printf("doubling term i: %zu, j: %zu; prod: %llu, carry: %llu\n", i, j, prod, (uint64_t)carry);
+            // printf("doubling term i: %zu, j: %zu; prod: "U64F", carry: "U64F"\n", i, j, prod, (uint64_t)carry);
         }
         uint128_t sq = bi*bi;
         sq += ret.limb[2*i];
         uint64_t lo = (uint64_t)sq;
         uint128_t c2 = sq >> 64;
-        // printf("squaring term i: %zu, lo: %llu, carry: %llu\n", i, lo, (uint64_t)carry);
+        // printf("squaring term i: %zu, lo: "U64F", carry: "U64F"\n", i, lo, (uint64_t)carry);
 
         // propagate carry from cross terms into next limb
         uint128_t u = (uint128_t)ret.limb[i + n] + carry + c2;
@@ -139,7 +140,7 @@ cfx_big_t sq1(const cfx_big_t* b) {
         if (k) {
             size_t idx = i + n + 1;
             while (k) {
-                printf("carry continues %llu\n", (uint64_t)k);
+                printf("carry continues "U64F"\n", (uint64_t)k);
                 if (idx >= szout) break;
                 uint128_t w = (uint128_t)ret.limb[idx] + (uint64_t)k;
                 ret.limb[idx] = (uint64_t)w;

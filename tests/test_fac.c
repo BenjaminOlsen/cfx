@@ -1,8 +1,9 @@
 #include "cfx/fac.h"
-#include "cfx/vector.h"
-#include "cfx/algo.h"
+#include "cfx/fmt.h"
 #include "cfx/big.h"
+#include "cfx/algo.h"
 #include "cfx/error.h"
+#include "cfx/vector.h"
 #include "cfx/macros.h"
 
 #include <assert.h>
@@ -227,7 +228,7 @@ static void test_facs(cfx_fac_t* f, uint64_t primes[], uint64_t exps[], size_t n
     assert(ok);
     assert(f->len == nprimes);
     for (size_t i = 0; i < nprimes; ++i) {
-        printf("p: %llu, e: %llu\n", f->data[i].p, f->data[i].e);
+        printf("p: "U64F", e: "U64F"\n", f->data[i].p, f->data[i].e);
         assert(f->data[i].p == primes[i]);
         assert(f->data[i].e == exps[i]);
     }

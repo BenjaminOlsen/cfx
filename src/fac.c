@@ -1,7 +1,8 @@
 #include "cfx/fac.h"
-#include "cfx/vector.h"
+#include "cfx/fmt.h"
 #include "cfx/algo.h"
 #include "cfx/error.h"
+#include "cfx/vector.h"
 #include "cfx/macros.h"
 #include "cfx/primes.h"
 
@@ -13,10 +14,10 @@ void cfx_fac_print(cfx_fac_t* f) {
     printf("f: %p, cap: %zu, len: %zu: ", (void*)f, f->cap, f->len);
     for (size_t k = 0; k < f->len-1; ++k) {
         cfx_pf_t* pf = &f->data[k];
-        printf("%llu^%llu * ", pf->p, pf->e);
+        printf(""U64F"^"U64F" * ", pf->p, pf->e);
     }
     cfx_pf_t* pf = &f->data[f->len-1];
-    printf("%llu^%llu\n", pf->p, pf->e);
+    printf(""U64F"^"U64F"\n", pf->p, pf->e);
 }
 
 void cfx_fac_init(cfx_fac_t* f) {

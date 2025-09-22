@@ -2,8 +2,9 @@
 #define CFX_BIG_H
 
 #include "cfx/fac.h"
-#include "cfx/types.h"
+#include "cfx/fmt.h"
 #include "cfx/algo.h"
+#include "cfx/types.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -18,7 +19,7 @@ extern "C" {
 #define CFX_BIG_PRINT_LIMBS(bg) \
     do { \
         for (size_t i = 0; i < bg.n; ++i) { \
-            printf("limb[%zu] = %llu\n", i, bg.limb[i]); \
+            printf("limb[%zu] = "U64F"\n", i, bg.limb[i]); \
         } \
     } while (0)
 

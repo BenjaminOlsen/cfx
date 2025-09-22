@@ -1,4 +1,5 @@
 #include "cfx/fac.h"
+#include "cfx/fmt.h"
 #include "cfx/big.h"
 #include "cfx/algo.h"
 
@@ -21,10 +22,10 @@ int main(int argc, char* argv[]) {
     }
     
     uint64_t n = (uint64_t)strtol(argv[1], NULL, 10);
-    printf("%llu\n", n);
+    printf(""U64F"\n", n);
     
     cfx_vec_t primes = cfx_sieve_primes(n);
-    printf("found %zu primes to %llu\n", primes.size, n);
+    printf("found %zu primes to "U64F"\n", primes.size, n);
     
     cfx_fac_t fac;
     cfx_fac_init(&fac);
@@ -47,7 +48,7 @@ int main(int argc, char* argv[]) {
         s = cfx_big_to_str(&b, &sz);
     }
     
-    printf("%llu! = %s\ndigits: %zu\nlimbs: %zu\n", n, s, sz, b.n);
+    printf(""U64F"! = %s\ndigits: %zu\nlimbs: %zu\n", n, s, sz, b.n);
     free(s);
     cfx_big_free(&b);
     cfx_fac_free(&fac);

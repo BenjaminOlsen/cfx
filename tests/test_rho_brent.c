@@ -1,5 +1,6 @@
 #include "cfx/algo.h"
 #include "cfx/types.h"
+#include "cfx/fmt.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -18,7 +19,7 @@ static void expect_factor(uint64_t n) {
         // Just ensure it *doesn't* falsely report a composite factor.
         uint64_t d = cfx_rho_brent(n);
         if (is_valid_factor(n, d)) {
-            fprintf(stderr, "cfx_rho_brent returned a nontrivial factor for prime %llu\n",
+            fprintf(stderr, "cfx_rho_brent returned a nontrivial factor for prime "U64F"\n",
                     (unsigned long long)n);
             assert(0);
         }
@@ -31,7 +32,7 @@ static void expect_factor(uint64_t n) {
     // Try a few times in case the internal random choices hit a bad cycle
     for (int attempts = 0; attempts < 5; ++attempts) {
         uint64_t d = cfx_rho_brent(n);
-        printf("cfx_rho_brent(%llu) = %llu\n", n, d);
+        printf("cfx_rho_brent("U64F") = "U64F"\n", n, d);
         if (is_valid_factor(n, d)) {
             // ? verify cofactor primality or at least correctness
             uint64_t m = n / d;
@@ -41,7 +42,7 @@ static void expect_factor(uint64_t n) {
         }
         srand(123456u + (unsigned)attempts + 1);
     }
-    fprintf(stderr, "cfx_rho_brent failed to find a factor for %llu\n",
+    fprintf(stderr, "cfx_rho_brent failed to find a factor for "U64F"\n",
             (unsigned long long)n);
     assert(0);
 }

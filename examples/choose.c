@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "cfx/fac.h"
+#include "cfx/fmt.h"
 #include "cfx/big.h"
 #include "cfx/algo.h"
 
@@ -18,7 +19,7 @@ static void print_binom(uint64_t n, uint64_t k){
     cfx_big_from_fac(&B, &f);
     char *s = cfx_big_to_str(&B, NULL);
     size_t sz = strlen(s);
-    printf("C(%llu, %llu) = %s\nlen: %zu\n", n, k, s, sz);
+    printf("C("U64F", "U64F") = %s\nlen: %zu\n", n, k, s, sz);
     free(s);
     cfx_big_free(&B);
     cfx_fac_free(&f);

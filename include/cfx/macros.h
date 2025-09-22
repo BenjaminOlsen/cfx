@@ -1,10 +1,11 @@
 #ifndef CFX_MACROS_H
 #define CFX_MACROS_H
 
+#include "cfx/fmt.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-
 /* removes folders from __FILE__ path */
 #define __FILENAME__ \
     (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -36,7 +37,7 @@
 #define PRINT_ARR(A, na) do { \
     printf("["); \
     for (size_t i = na; i--;) { \
-        printf("%llu", A[i]); \
+        printf(""U64F"", A[i]); \
         if (i == 0) printf("]\n"); \
         else printf(", "); \
     } \

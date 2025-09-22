@@ -1,4 +1,5 @@
 #include "cfx/big.h"
+#include "cfx/fmt.h"
 #include "cfx/macros.h"
 
 /* (a*b) % n with 128-bit scalar for ground truth */
@@ -59,7 +60,7 @@ void test_mont_mul_matches_scalar(void) {
     /* read back as u64 */
     uint64_t got = (out.n ? out.limb[0] : 0);
     uint64_t expect = mulmod_u64(a64, b64, n64);
-    printf(">>>>>>>>>>>>>>>>> test_mont_mul_matches_scalar: got: 0x%llx, expect: 0x%llx (diff %llu)\n",
+    printf(">>>>>>>>>>>>>>>>> test_mont_mul_matches_scalar: got: 0x"X64F", expect: 0x"X64F" (diff "U64F")\n",
         got, expect, got > expect? got-expect : expect-got);
     //CFX_ASSERT_PRINT(got == expect);
 
@@ -164,7 +165,7 @@ int main(void) {
     CFX_TEST(test_mont_modexp_matches_scalar);
     CFX_TEST(test_mont_roundtrip_1);
     CFX_TEST(test_mont_aliasing_safe);
-    
+
     puts("ok!\n");
     return 0;
 }

@@ -1,5 +1,6 @@
 #include "cfx/big.h"
 #include "cfx/fac.h"
+#include "cfx/fmt.h"
 #include "cfx/algo.h"
 #include "cfx/types.h"
 #include "cfx/macros.h"
@@ -263,7 +264,7 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
         t *= 2u;
     }
     /* now t is the largest s.t. p^t <= lim */
-    CFX_PRINT_DBG("multiplying by %llu^%llu by breaking it into (%llu^%llu)^(%llu/%llu) \n", p, e, p, t, e, t);
+    CFX_PRINT_DBG("multiplying by "U64F"^"U64F" by breaking it into ("U64F"^"U64F")^("U64F"/"U64F") \n", p, e, p, t, e, t);
 
     /* Now multiply by (p^t)^(e/t) and then the remainder */
     /* Compute p^t */
@@ -321,13 +322,13 @@ void cfx_big_sq(cfx_big_t* b) {
             prod += ret.limb[i+j];
             ret.limb[i+j] = (uint64_t)prod;
             carry = prod >> 64;
-            // printf("doubling term i: %zu, j: %zu; prod: %llu, carry: %llu\n", i, j, prod, (uint64_t)carry);
+            // printf("doubling term i: %zu, j: %zu; prod: "U64F", carry: "U64F"\n", i, j, prod, (uint64_t)carry);
         }
         uint128_t sq = bi*bi;
         sq += ret.limb[2*i];
         uint64_t lo = (uint64_t)sq;
         uint128_t c2 = sq >> 64;
-        // printf("squaring term i: %zu, lo: %llu, carry: %llu\n", i, lo, (uint64_t)carry);
+        // printf("squaring term i: %zu, lo: "U64F", carry: "U64F"\n", i, lo, (uint64_t)carry);
 
         // propagate carry from cross terms into next limb
         uint128_t u = (uint128_t)ret.limb[i + n] + carry + c2;
@@ -339,7 +340,7 @@ void cfx_big_sq(cfx_big_t* b) {
         if (k) {
             size_t idx = i + n + 1;
             while (k) {
-                printf("carry continues %llu\n", (uint64_t)k);
+                printf("carry continues "U64F"\n", (uint64_t)k);
                 if (idx >= szout) break;
                 uint128_t w = (uint128_t)ret.limb[idx] + (uint64_t)k;
                 ret.limb[idx] = (uint64_t)w;
@@ -1090,7 +1091,7 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
             uint64_t lo = a->limb[i];
             p->limb[i + limb_shift] = (lo << bit_shift) | carry;
             carry = (r ? (lo >> r) : 0);
-            // printf("s: %u, bit_shift: %u, limb_shift: %u, lo: %llx, carry: %zx, i: %llx\n", s, bit_shift, limb_shift, lo, i, carry);
+            // printf("s: %u, bit_shift: %u, limb_shift: %u, lo: "X64F", carry: %zx, i: "X64F"\n", s, bit_shift, limb_shift, lo, i, carry);
         }
         p->limb[limb_shift + a->n] = carry;
         p->n = limb_shift + a->n + (carry ? 1 : 0);
@@ -1453,7 +1454,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
         uint128_t top = ((uint128_t)U.limb[j + m] << 64) | U.limb[j + m - 1];
         uint64_t qhat = (uint64_t)(top / v1);
         uint64_t rhat = (uint64_t)(top % v1);
-        printf("top: [%llx, %llx] / %llx -> qhat: %llx, rhat: %llx\n", 
+        printf("top: ["X64F", "X64F"] / "X64F" -> qhat: "X64F", rhat: "X64F"\n", 
             U.limb[j + m], U.limb[j + m-1], v1, qhat, rhat);
 
         /* debug */
@@ -1464,14 +1465,14 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
         /* Adjust qhat if necessary (Knuth step D3) */
         if (qhat == UINT64_MAX ||
             (uint128_t)qhat * v2 > (((uint128_t)rhat << 64) | U.limb[j + m - 2])) {
-            printf("adjusting qhat: qhat %llx -> %llx, rhat: %llx -> %llx\n",
+            printf("adjusting qhat: qhat "X64F" -> "X64F", rhat: "X64F" -> "X64F"\n",
                 qhat, qhat-1, rhat, rhat + v1);
             qhat--;
             rhat += v1;
             /* only try a second decrement if rhat did NOT overflow base b */
             if (rhat >= v1 &&
                 (uint128_t)qhat * v2 > (((uint128_t)rhat << 64) | U.limb[j + m - 2])) {
-                printf("adjusting qhat AGAIN: qhat %llx -> %llx, rhat: %llx -> %llx\n",
+                printf("adjusting qhat AGAIN: qhat "X64F" -> "X64F", rhat: "X64F" -> "X64F"\n",
                     qhat, qhat-1, rhat, rhat + v1);
                 qhat--;
                 rhat += v1;
@@ -1492,7 +1493,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
 
             // Propagate to next limb in *128 bits* so t_hi + borrow cannot overflow.
             carry = ( (uint128_t)t_hi + borrow );
-            printf("t_hi, t_lo: %llx, %llx carry: %llx, %llx\n", t_hi, t_lo, (uint64_t)(carry >> 64), (uint64_t)carry);
+            printf("t_hi, t_lo: "X64F", "X64F" carry: "X64F", "X64F"\n", t_hi, t_lo, (uint64_t)(carry >> 64), (uint64_t)carry);
         }
 
         /* subtract final carry from U[j+m] */
@@ -1509,7 +1510,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
 
         if (borrow_out) {
             /* Too big: qhat--, add V back */
-            printf("Too big: qhat: %llu, U.limb[j + m]: %llu\n", qhat, U.limb[j + m]);
+            printf("Too big: qhat: "U64F", U.limb[j + m]: "U64F"\n", qhat, U.limb[j + m]);
             qhat--;
             uint64_t c = 0;
             for (size_t i = 0; i < m; ++i) {
@@ -1521,7 +1522,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
         }
 
         QT.limb[j] = qhat;
-        printf(">>>>>>>>>>>> QT.limb[%zu] = 0x%llx\n", j, qhat);
+        printf(">>>>>>>>>>>> QT.limb[%zu] = 0x"X64F"\n", j, qhat);
     }
 
     /* Unnormalize remainder: R = (U[0..m-1] >> s) */
@@ -1913,7 +1914,7 @@ int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base) {
     uint64_t cnt = 0;
     while ((nread = fread(buf, 1, sizeof(buf), fp)) > 0) {
         cnt += nread;
-        printf("read %llu characters..... \n", cnt);
+        printf("read "U64F" characters..... \n", cnt);
         for (size_t i = 0; i < nread; ++i) {
             unsigned char c = buf[i];
 

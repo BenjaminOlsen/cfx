@@ -1,3 +1,4 @@
+#include "cfx/fmt.h"
 #include "cfx/algo.h"
 #include "cfx/primes.h"
 #include "cfx/macros.h"
@@ -29,13 +30,13 @@ static void test_primality_test(void) {
         uint64_t p2 = cfx_primes[i+1];
         int isprime = cfx_is_prime_u64(p1);
         fpos += (1 - isprime);
-        // CFX_PRINT_DBG("%llu is prime: %d\n", p1, isprime);
+        // CFX_PRINT_DBG(""U64F" is prime: %d\n", p1, isprime);
         assert(isprime == 1);
 
         for (uint64_t n = p1 + 1; n < p2; ++n) {
             int iscomp = !cfx_is_prime_u64(n);
             fneg += (1 - iscomp);
-            // CFX_PRINT_DBG("%llu is prime: %d\n", n, !iscomp);
+            // CFX_PRINT_DBG(""U64F" is prime: %d\n", n, !iscomp);
             assert(iscomp == 1);
         }
     }

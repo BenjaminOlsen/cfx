@@ -1,4 +1,5 @@
 #include "cfx/big.h"
+#include "cfx/fmt.h"
 #include "cfx/macros.h"
 #include "cfx/error.h"
 
@@ -160,12 +161,12 @@ static void test_sub_sm(void) {
     for (uint64_t n = 0; n < 2; ++n) {
         uint128_t s = (uint128_t)b.limb[0] + q;
         cfx_big_add_sm(&b, q);
-        CFX_BIG_PRINTF(&b, "add %llu: ", q);
+        CFX_BIG_PRINTF(&b, "add "U64F": ", q);
         assert(b.limb[0] == (uint64_t)s);
         assert(b.n > 1);
         assert(b.limb[1] == (uint64_t)(s >> 64));
         cfx_big_sub_sm(&b, q);
-        CFX_BIG_PRINTF(&b, "sub %llu: ", q);
+        CFX_BIG_PRINTF(&b, "sub "U64F": ", q);
         assert(b.limb[0] == orig);
     }
     PRINT_TEST(1);
@@ -864,7 +865,7 @@ static void test_known_squares(void) {
     assert(strcmp(sanity, expect) == 0);
 
     for (size_t i = 0; i < b.n; ++i) {
-        printf("calculated: b.limb[%zu]: %llu; correct: B.limb[%zu]: %llu: %s: diff %d\n",
+        printf("calculated: b.limb[%zu]: "U64F"; correct: B.limb[%zu]: "U64F": %s: diff %d\n",
         i, b.limb[i], i, B.limb[i], b.limb[i] == B.limb[i] ? "ok" : "--- NOT OK",
         (int)(b.limb[i] & 0xFFFF) - (int)(B.limb[i] & 0xFFFF));
     }
@@ -896,7 +897,7 @@ static void test_known_squares(void) {
     // printf("mul %d len: %zu \n", ++cnt, b.n);
 
     // for (size_t i = 0; i < b.n; ++i) {
-    //     printf("calculated: b.limb[%zu]: %llu (0x%llx)\n", i, b.limb[i], b.limb[i]);
+    //     printf("calculated: b.limb[%zu]: "U64F" (0x"X64F")\n", i, b.limb[i], b.limb[i]);
     // }
     
     char* huge = cfx_big_to_hex(&b, NULL);
@@ -1015,7 +1016,7 @@ static void test_known_squares_2(void) {
     assert(strcmp(sanity, expect) == 0);
 
     for (size_t i = 0; i < b.n; ++i) {
-        printf("calculated: b.limb[%zu]: %llu; correct: B.limb[%zu]: %llu: %s: diff %d\n",
+        printf("calculated: b.limb[%zu]: "U64F"; correct: B.limb[%zu]: "U64F": %s: diff %d\n",
         i, b.limb[i], i, B.limb[i], b.limb[i] == B.limb[i] ? "ok" : "--- NOT OK",
         (int)(b.limb[i] & 0xFFFF) - (int)(B.limb[i] & 0xFFFF));
     }
@@ -1046,7 +1047,7 @@ static void test_known_squares_2(void) {
     // printf("mul csa %d len: %zu \n", ++cnt, b.n);
 
     // for (size_t i = 0; i < b.n; ++i) {
-    //     printf("calculated: b.limb[%zu]: %llu (0x%llx)\n", i, b.limb[i], b.limb[i]);
+    //     printf("calculated: b.limb[%zu]: "U64F" (0x"X64F")\n", i, b.limb[i], b.limb[i]);
     // }
     
     char* huge = cfx_big_to_hex(&b, NULL);
