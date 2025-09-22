@@ -29,7 +29,6 @@ int main(int argc, char* argv[]) {
 
     /* Parse flags */
     int argi = 1;
-    
     int base = 10; /* default */
 
     if (strcmp(argv[argi], "-x") == 0) {
@@ -38,7 +37,8 @@ int main(int argc, char* argv[]) {
         print_hex = 0; argi++;
     } else if (strcmp(argv[argi], "-b") == 0) {
         print_bin = 1; argi++;
-    } else if (strcmp(argv[argi], "-ix") == 0) {
+    } 
+    if (strcmp(argv[argi], "-ix") == 0) {
         base = 16; argi++;
     } else if (strcmp(argv[argi], "-id") == 0) {
         base = 10; argi++;
@@ -51,7 +51,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-
     fname = argv[argi];
 
     FILE* fp = fopen(fname, "rb");

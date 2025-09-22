@@ -300,6 +300,10 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
 }
 
 void cfx_big_pow(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p) {
+    if (cfx_big_is_zero(p))  { cfx_big_from_u64(out, 1); return; }
+    if (cfx_big_is_zero(n))  { cfx_big_from_u64(out, 0); return; }
+    if (cfx_big_eq_sm(n, 1)) { cfx_big_from_u64(out, 1); return; }
+
     cfx_big_t acc, pp, np; /* accumulator, p copy, n^p*/
     cfx_big_init(&acc);
     cfx_big_init(&pp);
@@ -312,7 +316,7 @@ void cfx_big_pow(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p) {
             cfx_big_mul_auto(&np, &acc);
         }
         cfx_big_shr_bits(&pp, &pp, 1);
-        cfx_big_mul_auto(&acc, &acc);
+        if (!cfx_big_is_zero(&pp)) cfx_big_mul_auto(&acc, &acc);
     }
     cfx_big_move(out, &np);
     cfx_big_free(&np);
