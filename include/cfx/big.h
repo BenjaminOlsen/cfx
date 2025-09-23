@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -144,12 +145,39 @@ int cfx_big_from_hex(cfx_big_t* out, const char* s);
 int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base);
 
 /* ================== Montgomery ================== */
+/**
+ * Montgomery arithmetic context for a fixed odd modulus n.
+ *
+ * Let b = 2^64 and k = number of 64-bit limbs of n. Define R = b^k.
+ * This context precomputes the constants needed for CIOS Montgomery
+ * reduction and the Montgomory “to/from” transforms:
+ *
+ *   n      : modulus (normalized, odd)
+ *   k      : limb count of n; also defines R = b^k
+ *   n0inv  : (-n[0])^{-1} mod b, i.e. n[0] * n0inv ≡ -1 (mod b)
+ *   rr     : R^2 mod n  (used to convert x → xR mod n via MontMul)
+ *   // Additional caches:
+ *   // R1  : R mod n    (the Montgomery representation of 1)
+ *   // mu  : floor(b^(2k)/n) for Barrett reduction of large inputs
+ *
+ * With this context:
+ *   MontMul(a,b) = a * b * R^{-1} mod n   (for 0 ≤ a,b < n)
+ *   MontTo(x)    = MontMul(x, rr)  = xR mod n
+ *   MontFrom(x)  = MontMul(x, 1)   = xR^{-1} mod n
+ *
+ * Requirements/notes:
+ * - n must be odd.
+ * - Operands are assumed reduced (0 ≤ x < n) unless you explicitly
+ *   reduce them before MontTo.
+ * - The context is immutable after init and may be shared across threads.
+ */
 
 typedef struct {
     cfx_big_t n;        /* modulus (odd), normalized */
     size_t    k;        /* limb count of n (R = 2^(64*k)) */
     uint64_t  n0inv;    /* -n^{-1} mod 2^64 (requires n.limb[0] odd) */
     cfx_big_t rr;       /* R^2 mod n */
+    cfx_big_t R1;       /* R mod n -- (Montgomery "1") */
 } cfx_big_mont_ctx_t;
 
 int cfx_big_mont_ctx_init(cfx_big_mont_ctx_t* ctx, const cfx_big_t* n);
@@ -160,12 +188,44 @@ int cfx_big_mont_to   (cfx_big_t* out, const cfx_big_t* a,  const cfx_big_mont_c
 int cfx_big_mont_from (cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_ctx_t* ctx); /* out = aR*R^-1 */
 
 /* Core Montgomery ops (operands/results in Montgomery domain) */
+/**
+ * Montgomery product (CIOS): out = a * b * R^{-1} mod n
+ *
+ * Base b = 2^64, R = b^k where k = ctx->k (number of 64-bit limbs of n).
+ * Uses the Coarsely Integrated Operand Scanning (CIOS) algorithm:
+ *   for i = 0..k-1:
+ *     T += a * b[i]
+ *     m = (T[0] * n0inv) mod b        // n0inv ≡ -n[0]^{-1} (mod b)
+ *     T += m * n
+ *     T >>= 64                        // drop least-significant limb
+ * Final step does a conditional subtraction so that 0 ≤ out < n.
+ *
+ * Preconditions:
+ *   - ctx is initialized for an odd modulus n (ctx->n), with ctx->k, ctx->n0inv, ctx->rr set.
+ *   - Inputs are reduced: 0 ≤ a,b < n (i.e., at most k limbs). Higher limbs are NOT consumed.
+ *
+ * Postconditions:
+ *   - out holds (a·b·R^{-1}) mod n in canonical form (no leading zero limbs), 0 ≤ out < n.
+ *   - alias-safe: out may alias a or b.
+ *
+ * Complexity / resources:
+ *   - Time: O(k^2) word multiplies/adds.
+ *   - Space: O(k) temporaries (internal accumulator T of k+2 limbs).
+ *
+ * Side-channel note:
+ *   - Loop bounds and memory access are fixed; the final conditional subtraction is value-dependent.
+ *     Replace with a masked subtraction if strict constant-time behavior is required.
+ *
+ * Returns 1 on success, 0 on invalid arguments or internal errors.
+ */
+
 int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_t* bR, const cfx_big_mont_ctx_t* ctx);
 static inline int cfx_big_mont_sqr(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_ctx_t* ctx) {
     return cfx_big_mont_mul(out, aR, aR, ctx);
 }
 
-/* Ergonomic one-liners that hide the context internally */
+
+/* Ergonomic one liners that use montgomery internally */
 int cfx_big_sqr_mod (cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* n);
 int cfx_big_modexp  (cfx_big_t* out, const cfx_big_t* base, const cfx_big_t* exp, const cfx_big_t* n);
 

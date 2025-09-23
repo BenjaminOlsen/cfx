@@ -187,7 +187,7 @@ static token_vec_t to_rpn(const token_vec_t* in) {
 }
 
 static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, char op) {
-    
+
     if (op=='+') { 
         cfx_big_t tmp;
         cfx_big_init(&tmp);
@@ -208,7 +208,7 @@ static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, cha
         cfx_big_t tmp;
         cfx_big_init(&tmp);
         cfx_big_copy(&tmp, A);
-        cfx_big_mul(&tmp, B);
+        cfx_big_mul_auto(&tmp, B);
         cfx_big_move(out, &tmp);
         return;
     }
@@ -252,9 +252,9 @@ static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, cha
         while (cfx_big_cmp(&e, &zero) > 0) {
             cfx_big_divrem(&q, &r, &e, &two);
             if (!cfx_big_is_zero(&r)) {
-                cfx_big_mul(&res, &base);
+                cfx_big_mul_auto(&res, &base);
             }
-            cfx_big_mul(&base,&base);
+            cfx_big_mul_auto(&base,&base);
             cfx_big_copy(&e,&q);
         }
         cfx_big_copy(out,&res);
@@ -405,12 +405,14 @@ int main(int argc, char** argv) {
     eval_rpn(&rpn, &res, inb);
 
     char* out = NULL;
+    size_t digits;
     switch(outb){
-        case BASE_DEC: out = cfx_big_to_str(&res, NULL); break;
-        case BASE_HEX: out = cfx_big_to_hex(&res, NULL); break;
-        case BASE_BIN: out = cfx_big_to_bin(&res, NULL); break;
+        case BASE_DEC: out = cfx_big_to_str(&res, &digits); break;
+        case BASE_HEX: out = cfx_big_to_hex(&res, &digits); break;
+        case BASE_BIN: out = cfx_big_to_bin(&res, &digits); break;
     }
     puts(out);
+    printf("digits: %zu\n", digits);
 
     if(mode != MODE_RPN) free(tv.v);  // tv == rpn when MODE_RPN
     free(rpn.v);
