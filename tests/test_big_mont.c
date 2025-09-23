@@ -140,8 +140,9 @@ void test_mont_aliasing_safe(void) {
     cfx_big_init(&b);
     cfx_big_init(&aR);
     cfx_big_init(&bR);
-    cfx_big_from_u64(&a, 12345);
-    cfx_big_from_u64(&b, 67890);
+    cfx_big_from_hex(&a, "123234f6876877ff6a6e45");
+    cfx_big_from_hex(&b, "67ff09f518fabfff812390");
+
     CFX_ASSERT_PRINT(cfx_big_mont_to(&aR, &a, &C));
     CFX_ASSERT_PRINT(cfx_big_mont_to(&bR, &b, &C));
 
@@ -151,6 +152,17 @@ void test_mont_aliasing_safe(void) {
 
     /* alias: overwrite aR with product */
     CFX_ASSERT_PRINT(cfx_big_mont_mul(&aR, &aR, &bR, &C));
+    
+    /* sanity */
+    CFX_ASSERT_PRINT(cfx_big_cmp(&aR, &aR) == 0);
+
+    // printf("ref.n=%zu aR.n=%zu (k=%zu)\n", ref.n, aR.n, C.k);
+    // for (size_t i = 0; i < C.k; ++i) {
+    //     uint64_t rv = (i < ref.n) ? ref.limb[i] : 0;
+    //     uint64_t av = (i < aR.n)  ? aR.limb[i]  : 0;
+    //     printf("[%zu] ref=%016" PRIx64 "  aR=%016" PRIx64 "%s\n",
+    //         i, rv, av, (rv==av?"":"  << mismatch"));
+    // }
     CFX_ASSERT_PRINT(cfx_big_cmp(&aR, &ref) == 0);
 
     cfx_big_free(&ref);

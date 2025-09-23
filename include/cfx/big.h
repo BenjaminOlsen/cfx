@@ -160,8 +160,6 @@ int cfx_big_mont_to   (cfx_big_t* out, const cfx_big_t* a,  const cfx_big_mont_c
 int cfx_big_mont_from (cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_ctx_t* ctx); /* out = aR*R^-1 */
 
 /* Core Montgomery ops (operands/results in Montgomery domain) */
-int cfx_big_mont_mul1(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_t* bR, const cfx_big_mont_ctx_t* ctx);
-int cfx_big_mont_mul2(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_mont_ctx_t* ctx);
 int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_t* bR, const cfx_big_mont_ctx_t* ctx);
 static inline int cfx_big_mont_sqr(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_ctx_t* ctx) {
     return cfx_big_mont_mul(out, aR, aR, ctx);

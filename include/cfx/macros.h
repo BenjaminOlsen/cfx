@@ -57,10 +57,17 @@ do { \
 #define CFX_PRINT_TEST_COND(cond) printf("[%s] cond: '%s' - %s\n", __func__,  STR(cond), cond ? "OK" : ">>>> NOT OK <<<<")
 
 #ifdef CFX_DEBUG
-#define CFX_ASSERT_PRINT(cond) \
-    do { \
-        CFX_PRINT_TEST_COND(cond); \
-        assert(cond); \
+#define CFX_ASSERT_PRINT(EXPR)                                      \
+    do {                                                            \
+        int _cfx_assert_expr_ok_ = (EXPR); /* <<< evaluate ONCE */  \
+        if (!(_cfx_assert_expr_ok_)) {                              \
+            fprintf(stderr, "[%s] cond: '%s' - >>>> NOT OK <<<<\n", \
+                    __func__, #EXPR);                               \
+            assert(_cfx_assert_expr_ok_);                           \
+        } else {                                                    \
+            fprintf(stdout, "[%s] cond: '%s' - OK\n",               \
+                    __func__, #EXPR);                               \
+        }                                                           \
     } while (0)
 #else
 #define CFX_ASSERT_PRINT(cond) CFX_PRINT_TEST_COND(cond)

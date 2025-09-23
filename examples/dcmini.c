@@ -28,8 +28,8 @@ typedef enum {
 
 typedef struct {
     token_type_t t;
-    char op;          // for T_OP
-    char *num;        // malloc'd string for T_NUM
+    char op;          // for when token type = T_OP
+    char *num;        // malloc'd string for when token type = T_NUM
 } token_t;
 
 typedef struct {
@@ -37,7 +37,7 @@ typedef struct {
     size_t n, cap;
 } token_vec_t;
 
-static void token_vec_init(token_vec_t* t) {
+static void tv_init(token_vec_t* t) {
     memset(t, 0, sizeof(*t));
 }
 
@@ -71,7 +71,7 @@ static int is_num_char(char c, base_t b){
 
 static token_vec_t tokenize(const char* s, base_t inb) {
     token_vec_t tv;
-    token_vec_init(&tv);
+    tv_init(&tv);
     for (size_t i = 0; s[i]; ) {
         if (isspace((unsigned char)s[i])) {
             ++i;
@@ -80,8 +80,9 @@ static token_vec_t tokenize(const char* s, base_t inb) {
         if (is_num_char(s[i], inb)) {
             size_t j = i;
             while (is_num_char(s[j], inb)) ++j;
-            token_t tk = (token_t){ .t = T_NUM, .op=0, .num=strndup(s+i, j-i) };
-            tv_push(&tv, tk); i = j; continue;
+            token_t tk = {.t = T_NUM, .op = 0, .num = strndup(s+i, j-i) };
+            tv_push(&tv, tk); i = j;
+            continue;
         }
         if (strchr("+-*/%^", s[i])) {
             token_t tk = {.t = T_OP, .op = s[i], .num = NULL};
@@ -107,8 +108,9 @@ static token_vec_t tokenize(const char* s, base_t inb) {
 }
 
 static token_vec_t tokenize_rpn(const char* s, base_t inb){
+    (void)inb; // todo!
     token_vec_t tv;
-    token_vec_init(&tv);
+    tv_init(&tv);
     const char* p = s;
     while (*p) {
         while (isspace((unsigned char)*p)) ++p;
@@ -128,16 +130,23 @@ static token_vec_t tokenize_rpn(const char* s, base_t inb){
     return tv;
 }
 
-
-#define PUSH_OP(tk) do{if(top==cap){cap=cap?cap*2:32;opstack=realloc(opstack,cap*sizeof(token_t));}opstack[top++]=(tk);}while(0)
-#define POP_OP()(opstack[--top])
-
 // convert infix tokens to RPN using shunting-yard
 static token_vec_t to_rpn(const token_vec_t* in) {
     token_vec_t out = {0};
     token_t* opstack = NULL;
     size_t top = 0, cap = 0;
+    
+    #define PUSH_OP(tk) \
+        do { \
+            if (top == cap) { \
+                cap = cap ? (cap*2) : 32; \
+                opstack = realloc(opstack, cap * sizeof(token_t)); \
+            } \
+            opstack[top++] = (tk); \
+        } while(0)
 
+    #define POP_OP() (opstack[--top])
+    
     for (size_t i = 0; i < in->n; i++) {
         token_t tk = in->v[i];
         if (tk.t == T_NUM) {
@@ -172,13 +181,13 @@ static token_vec_t to_rpn(const token_vec_t* in) {
     }
     free(opstack);
     return out;
+
+    #undef PUSH_OP
+    #undef POP_OP
 }
 
-static void apply_op(cfx_big_t* out,
-                     const cfx_big_t* A,
-                     const cfx_big_t* B,
-                     char op)
-{
+static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, char op) {
+    
     if (op=='+') { 
         cfx_big_t tmp;
         cfx_big_init(&tmp);
@@ -222,7 +231,7 @@ static void apply_op(cfx_big_t* out,
         return;
     }
     if (op == '^') {
-        // plain pow (no mod). if you want ^ to be powmod only when followed by % m, keep this.
+        // plain pow (no mod). 
         // Here we implement a^b with b as non-negative.
         // For huge exponents you’ll almost always want (a^b) % m written with % in expr.
         cfx_big_t e;
@@ -266,8 +275,23 @@ static void eval_rpn(const token_vec_t* rpn, cfx_big_t* result, base_t inb) {
     cfx_big_t* st = NULL;
     size_t n = 0, cap = 0;
 
-    #define PUSH()do{if(n==cap){cap=cap?cap*2:32;st=realloc(st,cap*sizeof(cfx_big_t));}cfx_big_init(&st[n]);++n;}while(0)
-    #define POP(dst)do{if(n==0){fprintf(stderr,"stack underflow\n");exit(1);}--n;cfx_big_copy((dst),&st[n]);cfx_big_free(&st[n]);}while(0)
+    #define PUSH() \
+        do { \
+            if (n == cap) { \
+                cap = cap ? (cap * 2) : 32; \
+                st = realloc(st, cap * sizeof(cfx_big_t)); \
+            } \
+            cfx_big_init(&st[n]); \
+            ++n; \
+        } while (0)
+
+    #define POP(dst) \
+        do { \
+            if (n == 0) { fprintf(stderr, "stack underflow\n"); exit(1); } \
+            --n; \
+            cfx_big_copy((dst), &st[n]); \
+            cfx_big_free(&st[n]); \
+        } while (0)
 
     for (size_t i = 0; i < rpn->n; i++) {
         token_t tk = rpn->v[i];
@@ -276,7 +300,8 @@ static void eval_rpn(const token_vec_t* rpn, cfx_big_t* result, base_t inb) {
             switch (inb) {
                 case BASE_DEC: cfx_big_from_str(&st[n-1], tk.num); break;
                 case BASE_HEX: cfx_big_from_hex(&st[n-1], tk.num); break;
-                // case BASE_BIN: cfx_big_from_bin(&st[n-1], tk.num); break;
+                case BASE_BIN: break; /* TODO: cfx_big_from_bin(&st[n-1], tk.num); */ 
+                default: break;
             }
             free(tk.num);
         } else if (tk.t == T_OP) {
@@ -300,9 +325,12 @@ static void eval_rpn(const token_vec_t* rpn, cfx_big_t* result, base_t inb) {
     }
     cfx_big_copy(result, &st[0]);
     cfx_big_free(&st[0]); free(st);
+    
+    #undef PUSH
+    #undef POP
 }
 
-static void usage(const char* prog){
+static void usage(const char* prog) {
     fprintf(stderr,
         "usage: %s [opts] EXPR...\n"
         "  input base : -id (dec, default) | -ix (hex)\n" // | -ib (bin)\n"
@@ -317,7 +345,7 @@ static void usage(const char* prog){
 
 
 
-static char* join_args(int argc, char** argv, int start){
+static char* join_args(int argc, char** argv, int start) {
     size_t len = 0;
     for(int i=start;i<argc;i++) len += strlen(argv[i]) + 1;
     char* s = malloc(len + 1);
@@ -330,12 +358,14 @@ static char* join_args(int argc, char** argv, int start){
     return s;
 }
 
-static int parse_flags(int argc, char** argv,
-                       base_t* inb, base_t* outb, input_mode_t* mode, int* expr_index)
-{
-    *inb = BASE_DEC; *outb = BASE_DEC; *mode = MODE_INFIX;
+static int parse_flags(int argc, char** argv, base_t* inb, base_t* outb,
+                       input_mode_t* mode, int* expr_index) {
+    *inb = BASE_DEC;
+    *outb = BASE_DEC;
+    *mode = MODE_INFIX;
+
     int i = 1;
-    for(; i<argc; ++i){
+    for (; i < argc; ++i) {
         const char* a = argv[i];
         if(a[0] != '-') break;
         if(strcmp(a,"-id")==0) *inb = BASE_DEC;
@@ -348,7 +378,7 @@ static int parse_flags(int argc, char** argv,
         else if(strcmp(a,"-h")==0 || strcmp(a,"--help")==0){ usage(argv[0]); return 0; }
         else { fprintf(stderr,"unknown option: %s\n", a); usage(argv[0]); return 0; }
     }
-    if(i>=argc){ usage(argv[0]); return 0; }
+    if (i >= argc) { usage(argv[0]); return 0; }
     *expr_index = i;
     return 1;
 }
@@ -357,7 +387,10 @@ static int parse_flags(int argc, char** argv,
 
 int main(int argc, char** argv) {
     
-    base_t inb, outb; input_mode_t mode; int idx;
+    base_t inb, outb;
+    input_mode_t mode;
+    int idx;
+    
     if(!parse_flags(argc, argv, &inb, &outb, &mode, &idx)) return 2;
 
     char* expr = join_args(argc, argv, idx);
