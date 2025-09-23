@@ -84,8 +84,8 @@ int cfx_big_is_zero(const cfx_big_t* b) {
     return (b->n == 0) || (b->n == 1 && b->limb[0] == 0);
 }
 
-int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n) {
-    return b->n == 1 && b->limb[0] == n;
+int cfx_big_eq_u64(const cfx_big_t* b, uint64_t n) {
+    return (n == 0 && cfx_big_is_zero(b)) || (b->n == 1 && b->limb[0] == n);
 }
 
 int cfx_big_eq(const cfx_big_t* a, const cfx_big_t* b) {
@@ -192,26 +192,37 @@ static inline void cfx_clear_cache(cfx_big_t* b) {
     }
 }
 
+static inline void cfx_big_set_zero(cfx_big_t* b) {
+    b->n = 0;
+    if (b->cap) b->limb[0] = 0;   // belt-and-suspenders for sloppy callers
+    cfx_clear_cache(b);
+}
+
 /* assumes b is already initted */
-void cfx_big_from_u64(cfx_big_t* b, uint64_t v) {
+int cfx_big_from_u64(cfx_big_t* b, uint64_t v) {
     if (v == 0) {
-        b->n = 0;
-        if (b->cap) b->limb[0] = 0;
-        cfx_clear_cache(b);
-        return;
+        cfx_big_set_zero(b);
+        return 0;
     }
 
     if (b->cap < 1) {
         int rc = cfx_big_reserve(b, 1);
-        if (rc) /* error */ return;
+        if (rc) return rc;  // leave b unchanged on failure
     }
 
     b->limb[0] = v;
-    if (b->n > 1) { /* hygiene: zero out any higher limbs, if they exist */
-        memset(b->limb + 1, 0, (b->n-1) * sizeof(*b->limb));
+
+    // If the old value had more limbs, wipe them for hygiene
+    if (b->n > 1) {
+        memset(b->limb + 1, 0, (b->n - 1) * sizeof(*b->limb));
     }
+
     b->n = 1;
     cfx_clear_cache(b);
+
+    // cheap invariant
+    // CFX_ASSERT(b->n == 1 && b->limb[0] != 0);
+    return 0;
 }
 
 
@@ -252,7 +263,7 @@ static inline void _mul_sm_fast(cfx_big_t* b, uint64_t m) {
 }
 
 /* Multiply by p^e by repeated squaring using small chunks to avoid u32 overflow */
-void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
+void cfx_big_expmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
     
     /* Find largest t so that p^t fits in 32 bits -> p^2t fits in 64 */
     uint64_t t = 1;
@@ -299,10 +310,59 @@ void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e) {
     if (rempow != 1) _mul_sm_fast(b, rempow);
 }
 
-void cfx_big_pow(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p) {
+void cfx_big_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p) {
+    if (cfx_big_is_zero(p))  { cfx_big_from_u64(out, 1); return; }
+    if (cfx_big_is_zero(n))  { PRINT_BIG(">>>>>>>>>> n is zero!", n); cfx_big_from_u64(out, 0); return; }
+    if (cfx_big_eq_u64(n, 1)) { cfx_big_from_u64(out, 1); return; }
+
+    cfx_big_t acc, pp, np; /* accumulator, p copy, n^p*/
+    cfx_big_init(&acc);
+    cfx_big_init(&pp);
+    cfx_big_init(&np);
+    
+    cfx_big_from_u64(&np, 1);
+    cfx_big_copy(&pp, p);
+    cfx_big_copy(&acc, n); 
+
+    while (!cfx_big_is_zero(&pp)) {
+        if (pp.n && (pp.limb[0] & 1)) {
+            cfx_big_mul_auto(&np, &acc);
+        }
+        cfx_big_shr_bits(&pp, &pp, 1);
+        if (!cfx_big_is_zero(&pp)) cfx_big_mul_auto(&acc, &acc);
+    }
+    cfx_big_move(out, &np);
+    cfx_big_free(&np);
+    cfx_big_free(&pp);
+    cfx_big_free(&acc);
+}
+
+void cfx_big_exp_u64(cfx_big_t* out, const cfx_big_t* n, uint64_t p) {
+    if (p == 0)              { cfx_big_from_u64(out, 1); return; }
+    if (cfx_big_is_zero(n))  { cfx_big_from_u64(out, 0); return; }
+    if (cfx_big_eq_u64(n, 1)) { cfx_big_from_u64(out, 1); return; }
+
+    cfx_big_t acc, np; /* accumulator, p copy, n^p*/
+    cfx_big_init(&acc);
+    cfx_big_init(&np);
+    cfx_big_from_u64(&np, 1);
+    cfx_big_copy(&acc, n); 
+    while (p) {
+        if (p & 1) {
+            cfx_big_mul_auto(&np, &acc);
+        }
+        p >>= 1;
+        if (p) cfx_big_mul_auto(&acc, &acc);
+    }
+    cfx_big_move(out, &np);
+    cfx_big_free(&np);
+    cfx_big_free(&acc);
+}
+
+void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, const cfx_big_t* m) {
     if (cfx_big_is_zero(p))  { cfx_big_from_u64(out, 1); return; }
     if (cfx_big_is_zero(n))  { cfx_big_from_u64(out, 0); return; }
-    if (cfx_big_eq_sm(n, 1)) { cfx_big_from_u64(out, 1); return; }
+    if (cfx_big_eq_u64(n, 1)) { cfx_big_from_u64(out, 1); return; }
 
     cfx_big_t acc, pp, np; /* accumulator, p copy, n^p*/
     cfx_big_init(&acc);
@@ -314,6 +374,7 @@ void cfx_big_pow(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p) {
     while (!cfx_big_is_zero(&pp)) {
         if (pp.n && (pp.limb[0] & 1)) {
             cfx_big_mul_auto(&np, &acc);
+            cfx_big_mod(&np, &np, m);
         }
         cfx_big_shr_bits(&pp, &pp, 1);
         if (!cfx_big_is_zero(&pp)) cfx_big_mul_auto(&acc, &acc);
@@ -704,7 +765,7 @@ void cfx_big_from_limbs(cfx_big_t* b, const uint64_t* limbs, size_t n) {
 void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t *f) {
     cfx_big_from_u64(b, 1);
     for (size_t i = 0; i < f->len; i++){
-        cfx_big_powmul_prime(b, f->data[i].p, f->data[i].e);
+        cfx_big_expmul_prime(b, f->data[i].p, f->data[i].e);
     }
 }
 
@@ -1573,7 +1634,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
 int cfx_big_div_out(cfx_big_t* q, const cfx_big_t* u, const cfx_big_t* v) {
     return cfx_big_divrem(q, NULL, u, v);
 }
-int cfx_big_mod_out(cfx_big_t* r, const cfx_big_t* u, const cfx_big_t* v) {
+int cfx_big_mod(cfx_big_t* r, const cfx_big_t* u, const cfx_big_t* v) {
     return cfx_big_divrem(NULL, r, u, v);
 }
 

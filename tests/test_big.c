@@ -194,7 +194,7 @@ static void test_sub(void) {
     cfx_big_copy(&t, &a);
     cfx_big_add_sm(&t, 0xFABADA);
     cfx_big_sub(&t, &a);
-    assert(cfx_big_eq_sm(&t, 0xFABADA));
+    assert(cfx_big_eq_u64(&t, 0xFABADA));
 
     cfx_big_copy(&t, &a);
     cfx_big_mul_sm(&t, 2);
@@ -1281,7 +1281,7 @@ void test_big_div_quotient_only_and_remainder_only(void) {
     assert(cfx_big_eq(&q, &a));
 
     // remainder only
-    assert(cfx_big_mod_out(&r, &n, &b) == 0);
+    assert(cfx_big_mod(&r, &n, &b) == 0);
     assert(cfx_big_eq(&r, &b_minus_1));
 
     cfx_big_free(&a);
@@ -1469,6 +1469,161 @@ static void test_shr_mixed_cases(void) {
 }
 
 /* ------------------------------------------------------------------ */
+static void expect_limb_pattern(const cfx_big_t* a, size_t n,
+                                uint64_t l2, uint64_t l1, uint64_t l0) {
+    assert(a->n == n);
+    if (n >= 1) assert(a->limb[0] == l0);
+    if (n >= 2) assert(a->limb[1] == l1);
+    if (n >= 3) assert(a->limb[2] == l2);
+}
+
+void test_exp_edge_cases(void) {
+    cfx_big_t n, p, out;
+    cfx_big_init(&n); cfx_big_init(&p); cfx_big_init(&out);
+
+    // 0^0 := 1
+    cfx_big_from_u64(&n, 0);
+    cfx_big_from_u64(&p, 0);
+    cfx_big_exp(&out, &n, &p);
+    assert(cfx_big_eq_u64(&out, 1));
+
+    // 0^k = 0 (k>0)
+    cfx_big_from_u64(&n, 0);
+    cfx_big_from_u64(&p, 5);
+    cfx_big_exp(&out, &n, &p);
+    assert(cfx_big_eq_u64(&out, 0));
+
+    // 1^p = 1
+    cfx_big_from_u64(&n, 1);
+    cfx_big_from_u64(&p, 1234567);
+    cfx_big_exp(&out, &n, &p);
+    assert(cfx_big_eq_u64(&out, 1));
+
+    // n^0 = 1
+    cfx_big_from_u64(&n, 42);
+    cfx_big_from_u64(&p, 0);
+    cfx_big_exp(&out, &n, &p);
+    assert(cfx_big_eq_u64(&out, 1));
+
+    cfx_big_free(&out); cfx_big_free(&p); cfx_big_free(&n);
+}
+
+void test_exp_small_values(void) {
+    cfx_big_t n, p, out;
+    cfx_big_init(&n); cfx_big_init(&p); cfx_big_init(&out);
+
+    // n^1 = n
+    cfx_big_from_u64(&n, 123456789);
+    cfx_big_from_u64(&p, 1);
+    cfx_big_exp(&out, &n, &p);
+    assert(out.n == 1 && out.limb[0] == 123456789ULL);
+
+    // 2^10 = 1024
+    cfx_big_from_u64(&n, 2);
+    cfx_big_from_u64(&p, 10);
+    cfx_big_exp(&out, &n, &p);
+    assert(cfx_big_eq_u64(&out, 1024ULL));
+
+    // 3^5 = 243
+    cfx_big_from_u64(&n, 3);
+    cfx_big_from_u64(&p, 5);
+    cfx_big_exp(&out, &n, &p);
+    assert(cfx_big_eq_u64(&out, 243ULL));
+
+    cfx_big_free(&out); cfx_big_free(&p); cfx_big_free(&n);
+}
+
+void test_exp_powers_of_two_boundaries(void) {
+    cfx_big_t n, p, out;
+    cfx_big_init(&n); cfx_big_init(&p); cfx_big_init(&out);
+
+    // 2^64 = 1<<64 -> limbs [0]=0, [1]=1
+    cfx_big_from_u64(&n, 2);
+    cfx_big_from_u64(&p, 64);
+    cfx_big_exp(&out, &n, &p);
+    assert(out.n == 2);
+    expect_limb_pattern(&out, 2, 0, 1, 0);
+
+    // 2^128 = 1<<128 -> limbs [0]=0, [1]=0, [2]=1
+    cfx_big_from_u64(&p, 128);
+    cfx_big_exp(&out, &n, &p);
+    assert(out.n == 3);
+    expect_limb_pattern(&out, 3, 1, 0, 0);
+
+    // 2^127 -> highest bit in limb[1], limb[0]=0
+    cfx_big_from_u64(&p, 127);
+    cfx_big_exp(&out, &n, &p);
+    assert(out.n == 2);
+    assert(out.limb[0] == 0);
+    assert(out.limb[1] == (1ULL << 63));
+
+    cfx_big_free(&out); cfx_big_free(&p); cfx_big_free(&n);
+}
+
+void test_exp_aliasing(void) {
+    cfx_big_t n, p;
+    cfx_big_init(&n); cfx_big_init(&p);
+
+    // out aliases base (out == n)
+    cfx_big_from_u64(&n, 7);
+    cfx_big_from_u64(&p, 6);      // 7^6 = 117,649
+    cfx_big_exp(&n, &n, &p);
+    assert(n.n == 2 || n.n == 1);
+    // 117,649 fits in 64 bits
+    assert(n.n == 1 && n.limb[0] == 117649ULL);
+
+    // out aliases exponent (out == p)
+    cfx_big_from_u64(&n, 2);
+    cfx_big_from_u64(&p, 80);     // 2^80 -> limbs [0]=0, [1]=0x1000000000000000, [2]=0x0000000000000001
+    cfx_big_exp(&p, &n, &p);
+    assert(p.n == 2 || p.n == 3);
+    // exact check:
+    assert(p.n == 2 || p.n == 3); // (library may trim leading zero limbs)
+    if (p.n == 2) {
+        // 2^80 = 1<<80 => limb[0]=0, limb[1]=1<<16
+        assert(p.limb[0] == 0);
+        assert(p.limb[1] == (1ULL << 16));
+    } else {
+        // If your representation keeps a third limb for carry, adjust accordingly.
+        assert(0 && "Unexpected limb count for 2^80");
+    }
+
+    cfx_big_free(&p); cfx_big_free(&n);
+}
+
+void test_exp_compare_with_naive_mul(void) {
+    cfx_big_t n, p, out1, out2;
+    cfx_big_init(&n); cfx_big_init(&p);
+    cfx_big_init(&out1); cfx_big_init(&out2);
+
+    // Random-ish small cases to avoid huge numbers; compare against repeated multiply.
+    uint64_t bases[] = {2,3,5,10,17,1234567};
+    uint64_t exps[]  = {2,3,4,5,8,16};
+
+    for (size_t i=0;i<sizeof(bases)/sizeof(bases[0]);++i) {
+        for (size_t j=0;j<sizeof(exps)/sizeof(exps[0]);++j) {
+            cfx_big_from_u64(&n, bases[i]);
+            cfx_big_from_u64(&p, exps[j]);
+
+            // exp under test
+            cfx_big_exp(&out1, &n, &p);
+
+            // naive: res=1; repeat e times: res*=n
+            cfx_big_from_u64(&out2, 1);
+            uint64_t e = exps[j];
+            while (e--) {
+                cfx_big_mul_auto(&out2, &n);
+            }
+
+            assert(cfx_big_cmp(&out1, &out2) == 0);
+        }
+    }
+
+    cfx_big_free(&out2); cfx_big_free(&out1);
+    cfx_big_free(&p); cfx_big_free(&n);
+}
+
+/* ------------------------------------------------------------------ */
 
 int main(void) {
     CFX_TEST(test_cfx_big_assign);
@@ -1527,6 +1682,12 @@ int main(void) {
     CFX_TEST(test_shr_to_zero);
     CFX_TEST(test_shr_cross_limb_carry_6bits);
     CFX_TEST(test_shr_mixed_cases);
+
+    CFX_TEST(test_exp_edge_cases);
+    CFX_TEST(test_exp_small_values);
+    CFX_TEST(test_exp_powers_of_two_boundaries);
+    CFX_TEST(test_exp_aliasing);
+    CFX_TEST(test_exp_compare_with_naive_mul);
     puts("OK");
     return 0;
 }

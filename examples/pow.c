@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
 
     cfx_big_t np;
     cfx_big_init(&np);
-    cfx_big_pow(&np, &n, &p);
+    cfx_big_exp(&np, &n, &p);
 
     char* npstr;
     size_t sz;

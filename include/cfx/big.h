@@ -72,12 +72,12 @@ void cfx_big_assign(cfx_big_t* dst, const cfx_big_t* src);
 int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src);
 void cfx_big_move(cfx_big_t* dst, cfx_big_t* src);
 int cfx_big_is_zero(const cfx_big_t* b);
-int cfx_big_eq_sm(const cfx_big_t* b, uint64_t n);
+int cfx_big_eq_u64(const cfx_big_t* b, uint64_t n);
 int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
 int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
 
-void cfx_big_from_u64(cfx_big_t* b, uint64_t v);
+int cfx_big_from_u64(cfx_big_t* b, uint64_t v);
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
 void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
 void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m);
@@ -99,13 +99,17 @@ void cfx_big_mul_sm(cfx_big_t* b, uint64_t m);
 int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r, const cfx_big_t* u, const cfx_big_t* v);
 
 int cfx_big_div_out(cfx_big_t* q, const cfx_big_t* n, const cfx_big_t* d);
-int cfx_big_mod_out(cfx_big_t* r, const cfx_big_t* n, const cfx_big_t* d);
+
 /* In-place: b := floor(b/d); optional remainder r. Alias-safe for any combination. */
 int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r /*nullable*/);
 
 uint64_t cfx_big_div_sm(cfx_big_t* b, uint64_t d);
 uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d);
+/* returns b % m*/
 uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m);
+
+/* out = n % m */
+int cfx_big_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* m);
 
 /* Bitshift operations */
 /* b >>= s */
@@ -121,9 +125,12 @@ void cfx_big_enable_cache(cfx_big_t* b);
 void cfx_big_disable_cache(cfx_big_t* b);
 
 /* Multiply by p^e by repeated squaring using small chunks to avoid overflow */
-void cfx_big_powmul_prime(cfx_big_t* b, uint64_t p, uint64_t e);
+void cfx_big_expmul_prime(cfx_big_t* b, uint64_t p, uint64_t e);
 /* out = n ^ p*/
-void cfx_big_pow(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p);
+void cfx_big_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p);
+void cfx_big_exp_u64(cfx_big_t* out, const cfx_big_t* n, uint64_t p);
+/* out = (n^p) mod m */
+void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, const cfx_big_t* m); 
 
 void cfx_big_from_limbs(cfx_big_t* b, const uint64_t* limbs, size_t n);
 void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t* f);
