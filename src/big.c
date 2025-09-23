@@ -2253,15 +2253,26 @@ int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, con
 
 /* Convert to Montgomery: aR mod n = MontMul(a, R^2) */
 int cfx_big_mont_to(cfx_big_t* out, const cfx_big_t* a, const cfx_big_mont_ctx_t* ctx) {
-    if (!out || !a || !ctx) return 0;
-    /* If your inputs may be >> n, call your real mod here. For now, quick reduce by repeated sub when a < few*n. */
-    cfx_big_t ared;
-    cfx_big_init(&ared);
-    cfx_big_assign(&ared, a);
-    while (cfx_big_cmp(&ared, &ctx->n) >= 0) cfx_big_sub(&ared, &ctx->n);
+    // fast path: if a fits and < n, skip the mod
+    if (a->n <= ctx->k) {
+        if (cfx_big_cmp(a, &ctx->n) >= 0) {
+            cfx_big_t t; cfx_big_init(&t);
+            cfx_big_assign(&t, a);
+            // At most a couple subs when a.n == k
+            do { cfx_big_sub(&t, &ctx->n); } while (cfx_big_cmp(&t, &ctx->n) >= 0);
+            int ok = cfx_big_mont_mul(out, &t, &ctx->rr, ctx);
+            cfx_big_free(&t);
+            return ok;
+        }
+        return cfx_big_mont_mul(out, a, &ctx->rr, ctx);
+    }
 
-    int ok = cfx_big_mont_mul(out, &ared, &ctx->rr, ctx);
-    cfx_big_free(&ared);
+    //  a is larger than k limbs, take remainder once
+    cfx_big_t rem;
+    cfx_big_init(&rem);
+    cfx_big_mod(&rem, a, &ctx->n);          // Knuth D remainder (u mod n)
+    int ok = cfx_big_mont_mul(out, &rem, &ctx->rr, ctx);
+    cfx_big_free(&rem);
     return ok;
 }
 

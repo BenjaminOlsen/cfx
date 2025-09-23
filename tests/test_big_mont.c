@@ -140,8 +140,8 @@ void test_mont_aliasing_safe(void) {
     cfx_big_init(&b);
     cfx_big_init(&aR);
     cfx_big_init(&bR);
-    cfx_big_from_hex(&a, "123234f6876877ff6a6e45");
-    cfx_big_from_hex(&b, "67ff09f518fabfff812390");
+    cfx_big_from_hex(&a, "123234912837409128347019238471029384710293487120394871234f6876877ffffff6a6e45");
+    cfx_big_from_hex(&b, "67ff09f0987f09870987e0987e0987ad0987eb987d98f51ffff8fabfff812390");
 
     CFX_ASSERT_PRINT(cfx_big_mont_to(&aR, &a, &C));
     CFX_ASSERT_PRINT(cfx_big_mont_to(&bR, &b, &C));
