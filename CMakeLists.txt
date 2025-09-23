@@ -59,8 +59,9 @@ add_library(cfx::cfx ALIAS cfx)
 if(CFX_BUILD_EXAMPLES)
 
   set(EXAMPLE_NAMES
-    choose
     factorial
+    dcmini
+    choose
     primes
     fread
     div

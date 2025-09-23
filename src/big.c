@@ -2272,10 +2272,10 @@ int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, con
 
     cfx_big_t T;
     cfx_big_init(&T);
-    cfx_big_reserve(&T, k + 1);
+    cfx_big_reserve(&T, k + 2);
     /* >>>> reserve zeros the newly added limbs, so this is unnecessary >>>> */
-    memset(T.limb, 0, (k + 1) * sizeof(uint64_t));
-    T.n = k + 1;
+    memset(T.limb, 0, (k + 2) * sizeof(uint64_t));
+    T.n = k + 2;
 
     const uint64_t* an = a->limb;
     const uint64_t* bn = b->limb;
@@ -2295,6 +2295,7 @@ int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, con
         }
         uint128_t top = (uint128_t)T.limb[k] + carry;
         T.limb[k] = (uint64_t)top;
+        T.limb[k + 1] += (uint64_t)(top >> 64);
 
         /* m = T[0]*n0inv mod 2^64 */
         const uint64_t m = T.limb[0] * n0inv;
@@ -2309,10 +2310,11 @@ int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, con
         }
         uint128_t top2 = (uint128_t)T.limb[k] + carry2;
         T.limb[k] = (uint64_t)top2;
+        T.limb[k + 1] += (uint64_t)(top2 >> 64);
 
         /* T = (T + m*n) / R : drop limb 0 */
         memmove(&T.limb[0], &T.limb[1], k * sizeof(uint64_t));
-        T.limb[k] = 0; /* scratch for next iter */
+        T.limb[k+1] = 0; /* scratch for next iter */
     }
 
     T.n = k;

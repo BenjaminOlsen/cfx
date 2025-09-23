@@ -300,14 +300,13 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n) {
 }
 
 
-
 /* Add a 128-bit value (add_hi:add_lo) into one accumulator cell */
-static inline void csa_add128_into(csa128_t* acc, uint64_t add_lo, uint64_t add_hi) {
-    // 128-bit add: (acc_hi:acc_lo) += (add_hi:add_lo)   without leaking carries to neighbors
-    uint128_t t  = (uint128_t)acc->lo + add_lo;
-    acc->lo        = (uint64_t)t;
-    acc->hi       += add_hi + (uint64_t)(t >> 64);  // keep the carry in the local 'hi' word
-}
+// static inline void csa_add128_into(csa128_t* acc, uint64_t add_lo, uint64_t add_hi) {
+//     // 128-bit add: (acc_hi:acc_lo) += (add_hi:add_lo)   without leaking carries to neighbors
+//     uint128_t t  = (uint128_t)acc->lo + add_lo;
+//     acc->lo        = (uint64_t)t;
+//     acc->hi       += add_hi + (uint64_t)(t >> 64);  // keep the carry in the local 'hi' word
+// }
 
 // Zero only the first `nout` entries that the multiplication will touch
 void cfx_mul_scratch_zero(cfx_mul_scratch_t* s, size_t nout) {
