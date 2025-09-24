@@ -20,15 +20,15 @@ static void ensure_cap(cfx_big_t* b, size_t need) {
 
 static void fill_zero(cfx_big_t* b, size_t nlimbs) {
     ensure_cap(b, nlimbs);
-    memset(b->limb, 0, nlimbs * sizeof(uint64_t));
+    memset(b->limb, 0, nlimbs * sizeof(cfx_u64_t));
     b->n = nlimbs ? 1 : 0; // canonical zero usually n=0, but harmless if 1 with limb[0]==0
     if (nlimbs) b->limb[0] = 0;
     b->n = 0; // prefer canonical zero
 }
 
-static void fill_val(cfx_big_t* b, size_t nlimbs, uint64_t v) {
+static void fill_val(cfx_big_t* b, size_t nlimbs, cfx_u64_t v) {
     ensure_cap(b, nlimbs);
-    memset(b->limb, 0, nlimbs * sizeof(uint64_t));
+    memset(b->limb, 0, nlimbs * sizeof(cfx_u64_t));
     if (nlimbs == 0) { b->n = 0; return; }
     b->limb[0] = v;
     b->n = (v == 0) ? 0 : 1;
@@ -40,16 +40,16 @@ static void fill_ones(cfx_big_t* b, size_t nlimbs) {
     b->n = nlimbs;
 }
 
-static uint64_t xorshift64(uint64_t* s) {
-    uint64_t x = *s;
+static cfx_u64_t xorshift64(cfx_u64_t* s) {
+    cfx_u64_t x = *s;
     x ^= x << 13; x ^= x >> 7; x ^= x << 17;
     *s = x;
     return x;
 }
 
-static void fill_rand(cfx_big_t* b, size_t nlimbs, uint64_t seed) {
+static void fill_rand(cfx_big_t* b, size_t nlimbs, cfx_u64_t seed) {
     ensure_cap(b, nlimbs);
-    uint64_t s = seed ? seed : 0x123456789abcdef0ULL;
+    cfx_u64_t s = seed ? seed : 0x123456789abcdef0ULL;
     for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = xorshift64(&s);
     if (nlimbs) b->limb[nlimbs-1] |= (1ULL << 63); // avoid leading zeros
     b->n = nlimbs;
@@ -58,8 +58,8 @@ static void fill_rand(cfx_big_t* b, size_t nlimbs, uint64_t seed) {
 static int big_equal(const cfx_big_t* a, const cfx_big_t* b, size_t upto /*nlimbs*/) {
     size_t n = upto;
     for (size_t i = 0; i < n; ++i) {
-        uint64_t av = (i < a->n) ? a->limb[i] : 0;
-        uint64_t bv = (i < b->n) ? b->limb[i] : 0;
+        cfx_u64_t av = (i < a->n) ? a->limb[i] : 0;
+        cfx_u64_t bv = (i < b->n) ? b->limb[i] : 0;
         if (av != bv) return 0;
     }
     return 1;
@@ -68,7 +68,7 @@ static int big_equal(const cfx_big_t* a, const cfx_big_t* b, size_t upto /*nlimb
 static void print_limbs(const char* tag, const cfx_big_t* x, size_t upto) {
     fprintf(stderr, "%s: [", tag);
     for (size_t i = 0; i < upto; ++i) {
-        uint64_t v = (i < x->n) ? x->limb[i] : 0;
+        cfx_u64_t v = (i < x->n) ? x->limb[i] : 0;
         fprintf(stderr, "%s"U64F"", (i ? ", " : ""), (unsigned long long)v);
     }
     fprintf(stderr, "]\n");
@@ -198,8 +198,8 @@ static void test_powers_of_two_alignment(void) {
     cfx_big_init(&m);
 
     // b = 2^128 + 1, m = 2^65
-    ensure_cap(&b, 3); memset(b.limb, 0, 3*sizeof(uint64_t)); b.limb[0]=1; b.limb[2]=1; b.n=3;
-    ensure_cap(&m, 2); memset(m.limb, 0, 2*sizeof(uint64_t)); m.limb[1]=2; m.n=2;
+    ensure_cap(&b, 3); memset(b.limb, 0, 3*sizeof(cfx_u64_t)); b.limb[0]=1; b.limb[2]=1; b.n=3;
+    ensure_cap(&m, 2); memset(m.limb, 0, 2*sizeof(cfx_u64_t)); m.limb[1]=2; m.n=2;
 
     run_case("power2_align_t1", &b, &m, 1);
     run_case("power2_align_t8", &b, &m, 8);
@@ -232,7 +232,7 @@ static void test_small_fuzz(void) {
     cfx_big_t b, m;
     cfx_big_init(&b);
     cfx_big_init(&m);
-    uint64_t seed = 0xCAFEBABE12345678ULL;
+    cfx_u64_t seed = 0xCAFEBABE12345678ULL;
 
     for (int t = 0; t < 20; ++t) {
         size_t nb = 1 + (xorshift64(&seed) % 6);   // 1..6 limbs

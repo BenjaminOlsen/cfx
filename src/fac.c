@@ -62,7 +62,7 @@ int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
     return CFX_OK;
 }
 
-int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint64_t e) {
+int cfx_fac_push(cfx_fac_t* f, cfx_u64_t p, cfx_u64_t e) {
     if (e == 0) return -1;
     int ret = cfx_fac_reserve(f, f->len + 1);
     if (ret != CFX_OK) return -1;
@@ -109,8 +109,8 @@ void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src) {
             ++j;
         } else {
             // p is in src and dst
-            uint64_t p = pf1->p;
-            uint64_t e = pf1->e + pf2->e;
+            cfx_u64_t p = pf1->p;
+            cfx_u64_t e = pf1->e + pf2->e;
             if (e) cfx_fac_push(&out, p, e);
             ++i; 
             ++j;
@@ -144,8 +144,8 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
             j++;
         } else {
             // p is in both src and dst:
-            uint64_t p = pf1->p;
-            uint64_t e;
+            cfx_u64_t p = pf1->p;
+            cfx_u64_t e;
             if (pf1->e > pf2->e) { // dst divides src
                 e = pf1->e - pf2->e;
                 cfx_fac_push(&out, p, e);
@@ -165,16 +165,16 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
 * we pass in a list of primes to not have to calculate it on every call of this function -
 * precondition: primes is sorted strictly increasing! 
 */
-int cfx_fac_factorial(cfx_fac_t *f, uint64_t n, const cfx_vec_t *primes) {
+int cfx_fac_factorial(cfx_fac_t *f, cfx_u64_t n, const cfx_vec_t *primes) {
     int ret = CFX_OK;
     if (n == 0) {
         cfx_fac_init(f);
         goto end;
     }
     for (size_t i = 0; i < primes->size; ++i) {
-        uint64_t p = primes->data[i];
+        cfx_u64_t p = primes->data[i];
         if (p > n) break;
-        uint64_t e = cfx_legendre(n, p); 
+        cfx_u64_t e = cfx_legendre(n, p); 
         if (e) {
             ret = cfx_fac_push(f, p, e);
             if (ret != CFX_OK) goto end;
@@ -185,7 +185,7 @@ end:
 }
 
 /* Factorization of C(n,k) = n! / (k! (n-k)!) */
-cfx_fac_t cfx_fac_binom(uint64_t n, uint64_t k){
+cfx_fac_t cfx_fac_binom(cfx_u64_t n, cfx_u64_t k){
     if (k > n) { 
         cfx_fac_t z;
         cfx_fac_init(&z);
@@ -208,9 +208,9 @@ cfx_fac_t cfx_fac_binom(uint64_t n, uint64_t k){
     return fn; /* sorted, coalesced */
 }
 
-// Public entry: factor n (uint64_t) into fac (coalesced).
+// Public entry: factor n (cfx_u64_t) into fac (coalesced).
 // Returns 1 on success; 0 for n==0 (degenerate) or allocation failures.
-int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n) {
+int cfx_fac_from_u64(cfx_fac_t* fac, cfx_u64_t n) {
     if (n == 0) return 0;
     if (n == 1) return 1;
 

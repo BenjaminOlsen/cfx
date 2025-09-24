@@ -3,20 +3,20 @@
 #include "cfx/macros.h"
 
 /* (a*b) % n with 128-bit scalar for ground truth */
-static uint64_t mulmod_u64(uint64_t a, uint64_t b, uint64_t n) {
-    __uint128_t p = (__uint128_t)a * b;
-    return (uint64_t)(p % n);
+static cfx_u64_t mulmod_u64(cfx_u64_t a, cfx_u64_t b, cfx_u64_t n) {
+    cfx_u128_t p = (cfx_u128_t)a * b;
+    return (cfx_u64_t)(p % n);
 }
 
 /* a^e % n (scalar) */
-static uint64_t powmod_u64(uint64_t a, uint64_t e, uint64_t n) {
-    __uint128_t r = 1, x = a % n;
+static cfx_u64_t powmod_u64(cfx_u64_t a, cfx_u64_t e, cfx_u64_t n) {
+    cfx_u128_t r = 1, x = a % n;
     while (e) {
         if (e & 1) r = (r * x) % n;
         x = (x * x) % n;
         e >>= 1;
     }
-    return (uint64_t)r;
+    return (cfx_u64_t)r;
 }
 
 void test_mont_ctx_rejects_even_n(void) {
@@ -29,9 +29,9 @@ void test_mont_ctx_rejects_even_n(void) {
 }
 
 void test_mont_mul_matches_scalar(void) {
-    uint64_t n64 = 0xffffffff00000001ull; /* odd */
-    uint64_t a64 = 0x123456789abcdef0ull % n64;
-    uint64_t b64 = 0x0fedcba987654321ull % n64;
+    cfx_u64_t n64 = 0xffffffff00000001ull; /* odd */
+    cfx_u64_t a64 = 0x123456789abcdef0ull % n64;
+    cfx_u64_t b64 = 0x0fedcba987654321ull % n64;
 
     cfx_big_t n,a,b;
     cfx_big_init(&n);
@@ -58,8 +58,8 @@ void test_mont_mul_matches_scalar(void) {
     
 
     /* read back as u64 */
-    uint64_t got = (out.n ? out.limb[0] : 0);
-    uint64_t expect = mulmod_u64(a64, b64, n64);
+    cfx_u64_t got = (out.n ? out.limb[0] : 0);
+    cfx_u64_t expect = mulmod_u64(a64, b64, n64);
     printf(">>>>>>>>>>>>>>>>> test_mont_mul_matches_scalar: got: 0x"X64F", expect: 0x"X64F" (diff "U64F")\n",
         got, expect, got > expect? got-expect : expect-got);
     // CFX_ASSERT_PRINT(got == expect);
@@ -74,9 +74,9 @@ void test_mont_mul_matches_scalar(void) {
 }
 
 void test_mont_modexp_matches_scalar(void) {
-    uint64_t n64 = 0xffffffff00000001ull; /* odd */
-    uint64_t a64 = 0xdeadbeefcafebabeull % n64;
-    uint64_t e64 = 0x1d; /* 29 */
+    cfx_u64_t n64 = 0xffffffff00000001ull; /* odd */
+    cfx_u64_t a64 = 0xdeadbeefcafebabeull % n64;
+    cfx_u64_t e64 = 0x1d; /* 29 */
 
     cfx_big_t n,a,e,r;
     cfx_big_init(&n);
@@ -88,8 +88,8 @@ void test_mont_modexp_matches_scalar(void) {
     cfx_big_from_u64(&e, e64);
 
     CFX_ASSERT_PRINT(cfx_big_modexp(&r, &a, &e, &n));
-    uint64_t got = (r.n ? r.limb[0] : 0);
-    uint64_t expect = powmod_u64(a64, e64, n64);
+    cfx_u64_t got = (r.n ? r.limb[0] : 0);
+    cfx_u64_t expect = powmod_u64(a64, e64, n64);
     printf(">>>>>>>>>>>>>>>>> test_mont_modexp_matches_scalar: got: 0x"X64F", expect: 0x"X64F" (diff "U64F")\n",
         got, expect, got > expect? got-expect : expect-got);
     // CFX_ASSERT_PRINT(got == powmod_u64(a64, e64, n64));
@@ -158,8 +158,8 @@ void test_mont_aliasing_safe(void) {
 
     // printf("ref.n=%zu aR.n=%zu (k=%zu)\n", ref.n, aR.n, C.k);
     // for (size_t i = 0; i < C.k; ++i) {
-    //     uint64_t rv = (i < ref.n) ? ref.limb[i] : 0;
-    //     uint64_t av = (i < aR.n)  ? aR.limb[i]  : 0;
+    //     cfx_u64_t rv = (i < ref.n) ? ref.limb[i] : 0;
+    //     cfx_u64_t av = (i < aR.n)  ? aR.limb[i]  : 0;
     //     printf("[%zu] ref=%016" PRIx64 "  aR=%016" PRIx64 "%s\n",
     //         i, rv, av, (rv==av?"":"  << mismatch"));
     // }
@@ -183,8 +183,8 @@ static void EXPECT_EQ_BIG(const cfx_big_t* A, const cfx_big_t* B) {
         fprintf(stderr, "BIG mismatch (cmp=%d)\n", cmp);
         fprintf(stderr, "A.n=%zu B.n=%zu\n", A->n, B->n);
         for (size_t i = 0; i < (A->n > B->n ? A->n : B->n); ++i) {
-            uint64_t av = (i < A->n) ? A->limb[i] : 0;
-            uint64_t bv = (i < B->n) ? B->limb[i] : 0;
+            cfx_u64_t av = (i < A->n) ? A->limb[i] : 0;
+            cfx_u64_t bv = (i < B->n) ? B->limb[i] : 0;
             fprintf(stderr, "  [%zu] A=%016" PRIx64 "  B=%016" PRIx64 "%s\n",
                     i, av, bv, (av==bv? "":"  <<"));
         }
@@ -192,27 +192,27 @@ static void EXPECT_EQ_BIG(const cfx_big_t* A, const cfx_big_t* B) {
     }
 }
 
-static inline uint64_t rand64(void) {
-    uint64_t x = (uint64_t)rand();
-    x = (x << 31) ^ (uint64_t)rand();
-    x = (x << 31) ^ (uint64_t)rand();
+static inline cfx_u64_t rand64(void) {
+    cfx_u64_t x = (cfx_u64_t)rand();
+    x = (x << 31) ^ (cfx_u64_t)rand();
+    x = (x << 31) ^ (cfx_u64_t)rand();
     return x;
 }
 
 /* 64-bit reference: powmod via binary exp using 128-bit intermediates */
-static uint64_t powmod_u64_ref(uint64_t a, uint64_t e, uint64_t n) {
+static cfx_u64_t powmod_u64_ref(cfx_u64_t a, cfx_u64_t e, cfx_u64_t n) {
     if (n == 1) return 0;
-    __uint128_t A = a % n, R = 1 % n;
+    cfx_u128_t A = a % n, R = 1 % n;
     while (e) {
         if (e & 1) R = (R * A) % n;
         A = (A * A) % n;
         e >>= 1;
     }
-    return (uint64_t)R;
+    return (cfx_u64_t)R;
 }
 
 /* Init a mont ctx for 64-bit odd n */
-static void init_ctx_u64(cfx_big_mont_ctx_t* C, cfx_big_t* n, uint64_t n64) {
+static void init_ctx_u64(cfx_big_mont_ctx_t* C, cfx_big_t* n, cfx_u64_t n64) {
     cfx_big_init(n);
     cfx_big_from_u64(n, n64 | 1ull);    // ensure odd
     int ok = cfx_big_mont_ctx_init(C, n);
@@ -220,13 +220,13 @@ static void init_ctx_u64(cfx_big_mont_ctx_t* C, cfx_big_t* n, uint64_t n64) {
 }
 
 /* Convert a u64 to cfx_big */
-static void big_from_u64(cfx_big_t* x, uint64_t v) {
+static void big_from_u64(cfx_big_t* x, cfx_u64_t v) {
     cfx_big_init(x);
     cfx_big_from_u64(x, v);
 }
 
 /* Read cfx_big as u64 (only for tests where we know it fits) */
-static uint64_t big_as_u64(const cfx_big_t* x) {
+static cfx_u64_t big_as_u64(const cfx_big_t* x) {
     return x->n ? x->limb[0] : 0;
 }
 
@@ -235,8 +235,8 @@ static void big_shl_limbs_inplace(cfx_big_t* x, size_t L) {
     if (x->n == 0 || L == 0) return;
     size_t newn = x->n + L;
     if (x->cap < newn) cfx_big_reserve(x, newn);
-    memmove(x->limb + L, x->limb, x->n * sizeof(uint64_t));
-    memset(x->limb, 0, L * sizeof(uint64_t));
+    memmove(x->limb + L, x->limb, x->n * sizeof(cfx_u64_t));
+    memset(x->limb, 0, L * sizeof(cfx_u64_t));
     x->n = newn;
 }
 
@@ -293,14 +293,14 @@ void test_modexp_binary_matches_u64_ref(void) {
     srand(777);
 
     for (int t = 0; t < 200; ++t) {
-        uint64_t n64;
+        cfx_u64_t n64;
         do { n64 = (rand64() | 1ull); } while (n64 < 3);  // odd, >1
         cfx_big_t n; cfx_big_mont_ctx_t C;
         init_ctx_u64(&C, &n, n64);
 
-        uint64_t a64 = rand64() % n64;
-        uint64_t e64 = rand64();          // any exponent
-        uint64_t expect = powmod_u64_ref(a64, e64, n64);
+        cfx_u64_t a64 = rand64() % n64;
+        cfx_u64_t e64 = rand64();          // any exponent
+        cfx_u64_t expect = powmod_u64_ref(a64, e64, n64);
 
         cfx_big_t a,e,out; 
         cfx_big_init(&a);
@@ -310,7 +310,7 @@ void test_modexp_binary_matches_u64_ref(void) {
         int ok = cfx_big_modexp_binary(&out, &a, &e, &C);
         assert(ok);
 
-        uint64_t got = big_as_u64(&out);
+        cfx_u64_t got = big_as_u64(&out);
         if (got != expect) {
             fprintf(stderr, "Mismatch: a=%" PRIu64 " e=%" PRIu64 " n=%" PRIu64
                             " got=%" PRIu64 " exp=%" PRIu64 "\n",
@@ -356,7 +356,7 @@ void test_modexp_binary_aliasing(void) {
    For 1 <= a < p, a^(p-1) ≡ 1 (mod p).
 */
 void test_modexp_binary_fermat_mersenne61(void) {
-    const uint64_t p = ((1ull << 61) - 1ull);
+    const cfx_u64_t p = ((1ull << 61) - 1ull);
 
     cfx_big_t n;
     cfx_big_init(&n);
@@ -371,7 +371,7 @@ void test_modexp_binary_fermat_mersenne61(void) {
     big_from_u64(&e, p - 1ull);
 
     for (int t = 0; t < 100; ++t) {
-        uint64_t a64;
+        cfx_u64_t a64;
         do { a64 = rand64() % p; } while (a64 == 0);
 
         cfx_big_t a; big_from_u64(&a, a64);
@@ -388,7 +388,7 @@ void test_modexp_binary_fermat_mersenne61(void) {
 /* Exponent reduction mod (p-1): for prime p, a^e ≡ a^(e + k*(p-1)) (mod p).
    We build a two-limb exponent by adding a large multiple of (p-1). */
 void test_modexp_binary_exponent_reduction(void) {
-    const uint64_t p = ((1ull << 61) - 1ull);
+    const cfx_u64_t p = ((1ull << 61) - 1ull);
 
     cfx_big_t n; cfx_big_mont_ctx_t C;
     init_ctx_u64(&C, &n, p);

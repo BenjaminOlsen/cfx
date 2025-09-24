@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
         print_hex = 1;
     }
     
-    uint64_t n = (uint64_t)strtol(argv[1], NULL, 10);
+    cfx_u64_t n = (cfx_u64_t)strtol(argv[1], NULL, 10);
     printf(""U64F"\n", n);
     
     cfx_vec_t primes = cfx_sieve_primes(n);

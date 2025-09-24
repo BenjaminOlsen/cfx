@@ -13,10 +13,10 @@
 
 // ---- Tiny helpers -----------------------------------------------------------
 
-static void big_set_limbs(cfx_big_t* x, const uint64_t* limbs, size_t n)
+static void big_set_limbs(cfx_big_t* x, const cfx_u64_t* limbs, size_t n)
 {
     cfx_big_reserve(x, n);
-    if (n) memcpy(x->limb, limbs, n * sizeof(uint64_t));
+    if (n) memcpy(x->limb, limbs, n * sizeof(cfx_u64_t));
     x->n = n;
     // Normalize: trim leading zeros in case caller passed any
     while (x->n && x->limb[x->n - 1] == 0) x->n--;
@@ -44,22 +44,22 @@ static void big_print(const char* tag, const cfx_big_t* x)
 static void big_mul_ref(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
 {
     cfx_big_reserve(out, a->n + b->n + 1);
-    memset(out->limb, 0, (a->n + b->n + 1) * sizeof(uint64_t));
+    memset(out->limb, 0, (a->n + b->n + 1) * sizeof(cfx_u64_t));
     out->n = a->n + b->n + 1;
 
 #if defined(__SIZEOF_INT128__)
     for (size_t j = 0; j < b->n; ++j) {
-        __uint128_t carry = 0;
+        cfx_u128_t carry = 0;
         for (size_t i = 0; i < a->n; ++i) {
-            __uint128_t t = (__uint128_t)a->limb[i] * b->limb[j]
+            cfx_u128_t t = (cfx_u128_t)a->limb[i] * b->limb[j]
                           + out->limb[i + j] + carry;
-            out->limb[i + j] = (uint64_t)t;
+            out->limb[i + j] = (cfx_u64_t)t;
             carry = t >> 64;
         }
         size_t k = a->n + j;
         while (carry) {
-            __uint128_t t = (__uint128_t)out->limb[k] + carry;
-            out->limb[k] = (uint64_t)t;
+            cfx_u128_t t = (cfx_u128_t)out->limb[k] + carry;
+            out->limb[k] = (cfx_u64_t)t;
             carry = t >> 64;
             ++k;
         }
@@ -73,14 +73,14 @@ static void big_mul_ref(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
 }
 
 // Deterministic PRNG (SplitMix64)
-static uint64_t splitmix64(uint64_t* s) {
-    uint64_t z = (*s += 0x9e3779b97f4a7c15ULL);
+static cfx_u64_t splitmix64(cfx_u64_t* s) {
+    cfx_u64_t z = (*s += 0x9e3779b97f4a7c15ULL);
     z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
     z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
     return z ^ (z >> 31);
 }
 
-static void big_rand(cfx_big_t* x, size_t n, uint64_t* seed)
+static void big_rand(cfx_big_t* x, size_t n, cfx_u64_t* seed)
 {
     cfx_big_reserve(x, n);
     for (size_t i = 0; i < n; ++i) x->limb[i] = splitmix64(seed);
@@ -108,7 +108,7 @@ static void test_mul_zero_x(void)
     cfx_big_t a, b;
     cfx_big_init(&a); cfx_big_init(&b);
     cfx_big_from_u64(&a, 0);
-    uint64_t one = 123456789ULL;
+    cfx_u64_t one = 123456789ULL;
     big_set_limbs(&b, &one, 1);
 
     cfx_big_mul_rows_pthreads(&a, &b, 4);
@@ -120,7 +120,7 @@ static void test_mul_x_zero(void)
 {
     cfx_big_t a, b;
     cfx_big_init(&a); cfx_big_init(&b);
-    uint64_t one = 987654321ULL;
+    cfx_u64_t one = 987654321ULL;
     big_set_limbs(&a, &one, 1);
     cfx_big_from_u64(&b, 0);
 
@@ -134,7 +134,7 @@ static void test_mul_by_one(void)
     cfx_big_t a, m, ref;
     cfx_big_init(&a); cfx_big_init(&m); cfx_big_init(&ref);
 
-    uint64_t limbs[] = {0x0123456789abcdefULL, 0xfedcba9876543210ULL};
+    cfx_u64_t limbs[] = {0x0123456789abcdefULL, 0xfedcba9876543210ULL};
     big_set_limbs(&a, limbs, 2);
     cfx_big_from_u64(&m, 1);
 
@@ -153,11 +153,11 @@ static void test_cross_limb_carry_small(void)
     cfx_big_t a, m, ref;
     cfx_big_init(&a); cfx_big_init(&m); cfx_big_init(&ref);
 
-    uint64_t max = ~0ULL;
+    cfx_u64_t max = ~0ULL;
     big_set_limbs(&a, &max, 1);
     big_set_limbs(&m, &max, 1);
 
-    uint64_t expect[] = { 0x0000000000000001ULL, 0xfffffffffffffffeULL };
+    cfx_u64_t expect[] = { 0x0000000000000001ULL, 0xfffffffffffffffeULL };
     big_set_limbs(&ref, expect, 2);
 
     cfx_big_mul_rows_pthreads(&a, &m, 1);
@@ -172,11 +172,11 @@ static void test_small_vector_known(void)
     cfx_big_t a, m, ref;
     cfx_big_init(&a); cfx_big_init(&m); cfx_big_init(&ref);
 
-    uint64_t v[] = {1ULL, 1ULL};
+    cfx_u64_t v[] = {1ULL, 1ULL};
     big_set_limbs(&a, v, 2);
     big_set_limbs(&m, v, 2);
 
-    uint64_t expect[] = {1ULL, 2ULL, 1ULL};
+    cfx_u64_t expect[] = {1ULL, 2ULL, 1ULL};
     big_set_limbs(&ref, expect, 3);
 
     cfx_big_mul_rows_pthreads(&a, &m, 3);
@@ -185,12 +185,12 @@ static void test_small_vector_known(void)
     cfx_big_free(&a); cfx_big_free(&m); cfx_big_free(&ref);
 }
 
-static void test_random_compare_ref(size_t na, size_t nb, int threads, uint64_t seed_init, char* msg)
+static void test_random_compare_ref(size_t na, size_t nb, int threads, cfx_u64_t seed_init, char* msg)
 {
     cfx_big_t a, b, ref, tmpa;
     cfx_big_init(&a); cfx_big_init(&b); cfx_big_init(&ref); cfx_big_init(&tmpa);
 
-    uint64_t seed = seed_init;
+    cfx_u64_t seed = seed_init;
     big_rand(&a, na, &seed);
     big_rand(&b, nb, &seed);
 
@@ -223,7 +223,7 @@ static void test_thread_counts_agree(void)
     cfx_big_init(&t8);
     cfx_big_init(&t32);
 
-    uint64_t seed = 12345;
+    cfx_u64_t seed = 12345;
     big_rand(&a, 764, &seed);
     big_rand(&b, 857, &seed);
 

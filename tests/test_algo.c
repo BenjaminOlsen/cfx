@@ -26,14 +26,14 @@ static void test_primality_test(void) {
     int fneg = 0;
     CFX_PRINT_DBG("cfx_primes_len: %zu\n", cfx_primes_len);
     for (size_t i = 0; i < cfx_primes_len - 1; ++i) {
-        uint64_t p1 = cfx_primes[i];
-        uint64_t p2 = cfx_primes[i+1];
+        cfx_u64_t p1 = cfx_primes[i];
+        cfx_u64_t p2 = cfx_primes[i+1];
         int isprime = cfx_is_prime_u64(p1);
         fpos += (1 - isprime);
         // CFX_PRINT_DBG(""U64F" is prime: %d\n", p1, isprime);
         assert(isprime == 1);
 
-        for (uint64_t n = p1 + 1; n < p2; ++n) {
+        for (cfx_u64_t n = p1 + 1; n < p2; ++n) {
             int iscomp = !cfx_is_prime_u64(n);
             fneg += (1 - iscomp);
             // CFX_PRINT_DBG(""U64F" is prime: %d\n", n, !iscomp);
@@ -57,9 +57,9 @@ static void test_mulmod_basic(void) {
     assert(cfx_mulmod_u64(UINT64_C(123), UINT64_C(456), UINT64_C(1)) == 0);
 
     // large operands, prime modulus near 2^64
-    const uint64_t p = UINT64_C(18446744073709551557); // known 64-bit prime
-    uint64_t a = UINT64_C(18446744073709551615) - 12345;
-    uint64_t b = UINT64_C(18446744073709551615) - 67890;
+    const cfx_u64_t p = UINT64_C(18446744073709551557); // known 64-bit prime
+    cfx_u64_t a = UINT64_C(18446744073709551615) - 12345;
+    cfx_u64_t b = UINT64_C(18446744073709551615) - 67890;
     assert(cfx_mulmod_u64(a,b,p) == 833451784);
 }
 
@@ -74,24 +74,24 @@ static void test_powmod_edges(void) {
     assert(cfx_powmod_u64(2, 10, 1000) == 24); // 1024 % 1000
     assert(cfx_powmod_u64(3, 12345, 67891) == 31627);
 
-    const uint64_t p = UINT64_C(18446744073709551557);
-    uint64_t a = UINT64_C(18446744073709551615) - 424242;
-    uint64_t e = UINT64_C(1234567890123456789);
+    const cfx_u64_t p = UINT64_C(18446744073709551557);
+    cfx_u64_t a = UINT64_C(18446744073709551615) - 424242;
+    cfx_u64_t e = UINT64_C(1234567890123456789);
     assert(cfx_powmod_u64(a,e,p) == UINT64_C(14322199550612880112));
 }
 
 static void test_fermat_primes(void) {
-    const uint64_t primes[] = {
+    const cfx_u64_t primes[] = {
         2, 3, 5, 17, 257, 65537, UINT64_C(18446744073709551557)
     };
     for (size_t i = 0; i < sizeof(primes)/sizeof(primes[0]); ++i) {
-        uint64_t p = primes[i];
+        cfx_u64_t p = primes[i];
         if (p == 2) {
             // pick a = 1
             assert(cfx_powmod_u64(1, p-1, p) == 1 % p);
         } else {
             // a not divisible by p
-            uint64_t a = 2;
+            cfx_u64_t a = 2;
             if (p % 2 == 0) a = 3;
             assert(cfx_powmod_u64(a, p-1, p) == 1);
         }
@@ -100,25 +100,25 @@ static void test_fermat_primes(void) {
 
 
 /* --- simple reference multiply with carry propagation --- */
-static void mul_ref(const uint64_t* A, size_t na,
-                    const uint64_t* B, size_t nb,
-                    uint64_t* R) {
+static void mul_ref(const cfx_u64_t* A, size_t na,
+                    const cfx_u64_t* B, size_t nb,
+                    cfx_u64_t* R) {
     size_t nout = na + nb;
-    memset(R, 0, nout * sizeof(uint64_t));
+    memset(R, 0, nout * sizeof(cfx_u64_t));
 
     for (size_t i = 0; i < na; ++i) {
-        __uint128_t carry = 0;
+        cfx_u128_t carry = 0;
         for (size_t j = 0; j < nb; ++j) {
-            __uint128_t cur = (__uint128_t)A[i] * B[j]
-                            + (__uint128_t)R[i + j]
+            cfx_u128_t cur = (cfx_u128_t)A[i] * B[j]
+                            + (cfx_u128_t)R[i + j]
                             + carry;
-            R[i + j] = (uint64_t)cur;
+            R[i + j] = (cfx_u64_t)cur;
             carry    = cur >> 64;
         }
         size_t k = i + nb;
         while (carry) {
-            __uint128_t t = (__uint128_t)R[k] + carry;
-            R[k]   = (uint64_t)t;
+            cfx_u128_t t = (cfx_u128_t)R[k] + carry;
+            R[k]   = (cfx_u64_t)t;
             carry  = t >> 64;
             ++k;
         }
@@ -132,17 +132,17 @@ static void mul_ref(const uint64_t* A, size_t na,
 }
 
 /* --- helpers --- */
-static void assert_eq_arr(const uint64_t* X, const uint64_t* Y, size_t n) {
+static void assert_eq_arr(const cfx_u64_t* X, const cfx_u64_t* Y, size_t n) {
     for (size_t i = 0; i < n; ++i) {
         assert(X[i] == Y[i]);
     }
 }
 
 static void test_zero(void) {
-    uint64_t A[] = {0};
-    uint64_t B[] = {0, 0, 0};
+    cfx_u64_t A[] = {0};
+    cfx_u64_t B[] = {0, 0, 0};
     size_t na = 1, nb = 3, nout = na + nb;
-    uint64_t R1[4], R2[4];
+    cfx_u64_t R1[4], R2[4];
 
     cfx_mul_csa_portable(A, na, B, nb, R1);
     mul_ref(A, na, B, nb, R2);
@@ -151,10 +151,10 @@ static void test_zero(void) {
 }
 
 static void test_one_by_small(void) {
-    uint64_t A[] = {1};
-    uint64_t B[] = {0x0123456789abcdefULL, 0xfedcba9876543210ULL};
+    cfx_u64_t A[] = {1};
+    cfx_u64_t B[] = {0x0123456789abcdefULL, 0xfedcba9876543210ULL};
     size_t na = 1, nb = 2, nout = na + nb;
-    uint64_t R1[3], R2[3];
+    cfx_u64_t R1[3], R2[3];
 
     cfx_mul_csa_portable(A, na, B, nb, R1);
     mul_ref(A, na, B, nb, R2);
@@ -163,10 +163,10 @@ static void test_one_by_small(void) {
 }
 
 static void test_single_limb_carry(void) {
-    uint64_t A[] = {0xffffffffffffffffULL};
-    uint64_t B[] = {0xffffffffffffffffULL};
+    cfx_u64_t A[] = {0xffffffffffffffffULL};
+    cfx_u64_t B[] = {0xffffffffffffffffULL};
     size_t na = 1, nb = 1, nout = na + nb;
-    uint64_t R1[2], R2[2];
+    cfx_u64_t R1[2], R2[2];
 
     cfx_mul_csa_portable(A, na, B, nb, R1);
     mul_ref(A, na, B, nb, R2);
@@ -175,10 +175,10 @@ static void test_single_limb_carry(void) {
 }
 
 static void test_mixed_lengths(void) {
-    uint64_t A[] = {0x0000000000000001ULL, 0x0000000000000000ULL, 0x0000000000000001ULL}; // 2^128 + 1
-    uint64_t B[] = {0x0000000000000000ULL, 0x0000000000000002ULL};                         // 2^65
+    cfx_u64_t A[] = {0x0000000000000001ULL, 0x0000000000000000ULL, 0x0000000000000001ULL}; // 2^128 + 1
+    cfx_u64_t B[] = {0x0000000000000000ULL, 0x0000000000000002ULL};                         // 2^65
     size_t na = 3, nb = 2, nout = na + nb;
-    uint64_t R1[5], R2[5];
+    cfx_u64_t R1[5], R2[5];
 
     cfx_mul_csa_portable(A, na, B, nb, R1);
     mul_ref(A, na, B, nb, R2);
@@ -188,10 +188,10 @@ static void test_mixed_lengths(void) {
 
 static void test_all_ones_multi(void) {
     /* (2^192 - 1) * (2^128 - 1) */
-    uint64_t A[] = {0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL};
-    uint64_t B[] = {0xffffffffffffffffULL, 0xffffffffffffffffULL};
+    cfx_u64_t A[] = {0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL};
+    cfx_u64_t B[] = {0xffffffffffffffffULL, 0xffffffffffffffffULL};
     size_t na = 3, nb = 2, nout = na + nb;
-    uint64_t R1[5], R2[5];
+    cfx_u64_t R1[5], R2[5];
 
     cfx_mul_csa_portable(A, na, B, nb, R1);
     mul_ref(A, na, B, nb, R2);
@@ -201,10 +201,10 @@ static void test_all_ones_multi(void) {
 
 static void test_power_of_two_alignment(void) {
     /* A = 2^64 + 1, B = 2^128 + 2^64 + 1 */
-    uint64_t A[] = {1ULL, 1ULL};
-    uint64_t B[] = {1ULL, 1ULL, 1ULL};
+    cfx_u64_t A[] = {1ULL, 1ULL};
+    cfx_u64_t B[] = {1ULL, 1ULL, 1ULL};
     size_t na = 2, nb = 3, nout = na + nb;
-    uint64_t R1[5], R2[5];
+    cfx_u64_t R1[5], R2[5];
 
     cfx_mul_csa_portable(A, na, B, nb, R1);
     mul_ref(A, na, B, nb, R2);
@@ -213,18 +213,18 @@ static void test_power_of_two_alignment(void) {
 }
 
 /* a tiny deterministic fuzz */
-static uint64_t xorshift64(uint64_t* s) {
-    uint64_t x = *s;
+static cfx_u64_t xorshift64(cfx_u64_t* s) {
+    cfx_u64_t x = *s;
     x ^= x << 13; x ^= x >> 7; x ^= x << 17;
     *s = x;
     return x;
 }
 static void test_fuzz_small(void) {
-    uint64_t seed = 0x123456789abcdef0ULL;
+    cfx_u64_t seed = 0x123456789abcdef0ULL;
     for (int t = 0; t < 100; ++t) {
         size_t na = 1 + (xorshift64(&seed) % 4);
         size_t nb = 1 + (xorshift64(&seed) % 4);
-        uint64_t A[4], B[4], R1[8], R2[8];
+        cfx_u64_t A[4], B[4], R1[8], R2[8];
 
         for (size_t i = 0; i < na; ++i) A[i] = xorshift64(&seed);
         for (size_t j = 0; j < nb; ++j) B[j] = xorshift64(&seed);

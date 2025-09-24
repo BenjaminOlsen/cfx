@@ -14,13 +14,13 @@
 
 // ----------------------- helpers -----------------------
 
-static inline void random_fill_limbs(uint64_t* p, size_t n, std::mt19937_64& rng) {
+static inline void random_fill_limbs(cfx_u64_t* p, size_t n, std::mt19937_64& rng) {
     for (size_t i = 0; i < n; ++i) p[i] = rng();
 }
 
 static void make_random_big(cfx_big_t* out, size_t limbs, std::mt19937_64& rng) {
-    std::vector<uint64_t> vec(limbs, 0);
-    std::generate(vec.begin(), vec.end(), [&rng]() -> uint64_t {return rng();});
+    std::vector<cfx_u64_t> vec(limbs, 0);
+    std::generate(vec.begin(), vec.end(), [&rng]() -> cfx_u64_t {return rng();});
     cfx_big_from_limbs(out, vec.data(), vec.size());
 }
 

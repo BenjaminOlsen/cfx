@@ -26,8 +26,8 @@
     fprintf(stderr, "[%s] - %s\n", __func__, buf);               \
 } while (0)
 
-#define U128_HI(x) (uint64_t)((x>>64)&0xFFFFFFFFFFFFFFFF)
-#define U128_LO(x) (uint64_t)((x)&0xFFFFFFFFFFFFFFFF)
+#define U128_HI(x) (cfx_u64_t)((x>>64)&0xFFFFFFFFFFFFFFFF)
+#define U128_LO(x) (cfx_u64_t)((x)&0xFFFFFFFFFFFFFFFF)
 
 #define PRINT_TEST(ok) \
     do { \

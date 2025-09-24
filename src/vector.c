@@ -14,7 +14,7 @@ void cfx_vec_init(cfx_vec_t *v) {
 int cfx_vec_reserve(cfx_vec_t* v, size_t need) {
     if (need < v->cap) return 0;
     
-    const size_t max_size = SIZE_MAX / sizeof(uint64_t);
+    const size_t max_size = SIZE_MAX / sizeof(cfx_u64_t);
     if (need > max_size) return -1;
 
     size_t new_cap = v->cap ? 2 * v->cap : CFX_VEC_MIN_CAP;
@@ -23,16 +23,16 @@ int cfx_vec_reserve(cfx_vec_t* v, size_t need) {
         new_cap *= 2;
     }
 
-    void *p = realloc(v->data, new_cap * sizeof(uint64_t));
+    void *p = realloc(v->data, new_cap * sizeof(cfx_u64_t));
     if (!p) return -1;
 
-    v->data = (uint64_t*)p;
+    v->data = (cfx_u64_t*)p;
     v->cap = new_cap;
     // CFX_PRINT_DBG("reserved cap %zu\n", new_cap);
     return 0;
 }
 
-int cfx_vec_resize(cfx_vec_t* v, size_t sz, uint64_t fill) {
+int cfx_vec_resize(cfx_vec_t* v, size_t sz, cfx_u64_t fill) {
     if (sz > v->cap) {
         if (cfx_vec_reserve(v, sz) != 0) return -1;
     }
@@ -45,7 +45,7 @@ int cfx_vec_resize(cfx_vec_t* v, size_t sz, uint64_t fill) {
     return 0;
 }
 
-int cfx_vec_push(cfx_vec_t* v, uint64_t x) {
+int cfx_vec_push(cfx_vec_t* v, cfx_u64_t x) {
     if (v->size == v->cap) {
         if (cfx_vec_reserve(v, v->size + 1) != 0) return -1;
     }

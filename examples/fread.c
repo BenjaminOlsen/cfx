@@ -6,7 +6,6 @@
 
 #include "cfx/big.h"
 
-
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s [-x|-d] [-ix|-id|ib] file\n", prog);
     fprintf(stderr, "   -x : print in hex\n");
