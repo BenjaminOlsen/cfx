@@ -99,6 +99,7 @@ void cfx_big_mul_sm(cfx_big_t* b, uint64_t m);
 /* Knuth's long division from TAOCP Vol. 2, 4.3.1 */
 int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r, const cfx_big_t* u, const cfx_big_t* v);
 
+/* q = floor(n/d)*/
 int cfx_big_div_out(cfx_big_t* q, const cfx_big_t* n, const cfx_big_t* d);
 
 /* In-place: b := floor(b/d); optional remainder r. Alias-safe for any combination. */
@@ -106,11 +107,13 @@ int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r /*nullable*/);
 
 uint64_t cfx_big_div_sm(cfx_big_t* b, uint64_t d);
 uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d);
-/* returns b % m*/
-uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m);
 
 /* out = n % m */
 int cfx_big_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* m);
+
+/* returns b % m */
+uint64_t cfx_big_mod_sm(cfx_big_t* b, uint64_t m);
+
 
 /* Bitshift operations */
 /* b >>= s */
@@ -220,9 +223,12 @@ int cfx_big_mont_from (cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_c
  */
 
 int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_t* bR, const cfx_big_mont_ctx_t* ctx);
+int cfx_big_modexp_binary(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* e, const cfx_big_mont_ctx_t* ctx);
+
 static inline int cfx_big_mont_sqr(cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_ctx_t* ctx) {
     return cfx_big_mont_mul(out, aR, aR, ctx);
 }
+
 
 
 /* Ergonomic one liners that use montgomery internally */

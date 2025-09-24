@@ -212,7 +212,7 @@ static void test_power_of_two_alignment(void) {
     PRINT_TEST(1);
 }
 
-/* optional: a tiny deterministic fuzz */
+/* a tiny deterministic fuzz */
 static uint64_t xorshift64(uint64_t* s) {
     uint64_t x = *s;
     x ^= x << 13; x ^= x >> 7; x ^= x << 17;

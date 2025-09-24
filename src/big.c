@@ -762,16 +762,8 @@ void cfx_big_mul_sm(cfx_big_t* b, uint64_t m) {
     _mul_sm_fast(b, m);
 }
 
-uint64_t cfx_big_mod_small(const cfx_big_t* n, uint64_t p) {
-    uint128_t acc = 0;
-    for (size_t i = n->n; i-- > 0;) {
-        acc = ((acc << 64) + n->limb[i] ) % p;
-    }
-    return (uint64_t)acc;
-}
-
 void cfx_big_from_limbs(cfx_big_t* b, const uint64_t* limbs, size_t n) {
-    cfx_big_init(b);
+    cfx_big_free(b);
     cfx_big_reserve(b, n);
     memcpy(b->limb, limbs, n * sizeof(uint64_t));
     b->n = n;
@@ -2164,6 +2156,7 @@ int cfx_big_mont_ctx_init(cfx_big_mont_ctx_t* ctx, const cfx_big_t* n_in) {
 
     cfx_big_init(&ctx->n);
     cfx_big_init(&ctx->rr);
+    cfx_big_init(&ctx->R1);
 
     cfx_big_assign(&ctx->n, n_in);
     cfx_big_trim(&ctx->n);
@@ -2173,10 +2166,19 @@ int cfx_big_mont_ctx_init(cfx_big_mont_ctx_t* ctx, const cfx_big_t* n_in) {
 
     ctx->n0inv = mont_n0inv_(ctx->n.limb[0]);
 
+
     if (!compute_rr_(&ctx->rr, &ctx->n, ctx->k)) {
         cfx_big_mont_ctx_free(ctx);
         return 0;
     }
+    /* R1 calculation */
+    cfx_big_t one;
+    cfx_big_init(&one);
+    cfx_big_from_u64(&one, 1);
+    int ok = cfx_big_mont_to(&ctx->R1, &one, ctx); // R1 = 1*RR/R mod n
+    cfx_big_free(&one);
+
+    if (!ok) return 0;
     return 1;
 }
 
@@ -2248,6 +2250,51 @@ int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, con
     cfx_big_move(out, &T);
     // cfx_big_free(&T);
     return 1;
+}
+
+/* out = a^e mod n (normal domain). n must be odd. */
+int cfx_big_modexp_binary(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* e, const cfx_big_mont_ctx_t* ctx) {
+    // e == 0 -> 1 mod n
+    if (e->n == 0) {
+        return cfx_big_mont_from(out, &ctx->R1, ctx); // MontFrom(R1) == 1
+    }
+
+    cfx_big_t baseR, accR;
+    cfx_big_init(&baseR);
+    cfx_big_init(&accR);
+
+    if (!cfx_big_mont_to(&baseR, a, ctx)) goto FAIL;   // a in Montgomery
+    cfx_big_assign(&accR, &ctx->R1);                   // acc = 1 (Montgomery)
+
+    // msb index of e
+    size_t msb;
+    {
+        uint64_t top = e->limb[e->n - 1];
+        unsigned lz  = _clz64(top);
+        msb = (e->n * 64u) - 1u - lz;
+    }
+
+    // LTR binary exponentiation
+    for (size_t i = msb + 1; i-- > 0; ) {
+        // square every round
+        if (!cfx_big_mont_mul(&accR, &accR, &accR, ctx)) goto FAIL;
+
+        // conditional multiply when bit is 1
+        size_t limb = i >> 6, bit = i & 63;
+        if (limb < e->n && ((e->limb[limb] >> bit) & 1u)) {
+            if (!cfx_big_mont_mul(&accR, &accR, &baseR, ctx)) goto FAIL;
+        }
+    }
+
+    // back to normal domain
+    if (!cfx_big_mont_from(out, &accR, ctx)) goto FAIL;
+    cfx_big_free(&baseR);
+    cfx_big_free(&accR);
+    return 1;
+FAIL:
+    cfx_big_free(&baseR);
+    cfx_big_free(&accR);
+    return 0;
 }
 
 

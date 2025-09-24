@@ -12,8 +12,10 @@ option(CFX_BUILD_TESTS  "Build tests" ON)
 option(CFX_BUILD_EXAMPLES "Build examples" ON)
 
 set(CFX_HEADERS
+    include/cfx/cfx.h
     include/cfx/big.h
     include/cfx/fac.h
+    include/cfx/fmt.h
     include/cfx/algo.h
     include/cfx/error.h
     include/cfx/types.h

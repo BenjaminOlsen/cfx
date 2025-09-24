@@ -81,9 +81,12 @@ static void run_case(const char* name,
 {
     printf("\n------------------- %s -------------------\n", name);
     // Make working copies
-    cfx_big_t b_ref; cfx_big_init(&b_ref);
-    cfx_big_t b_pt;  cfx_big_init(&b_pt);
-    cfx_big_t m_copy; cfx_big_init(&m_copy);
+    cfx_big_t b_ref;
+    cfx_big_init(&b_ref);
+    cfx_big_t b_pt;
+    cfx_big_init(&b_pt);
+    cfx_big_t m_copy;
+    cfx_big_init(&m_copy);
 
     // Capacity for outputs: up to nout = nb + nm
     const size_t nout = b0_in->n + m_in->n;
@@ -134,7 +137,9 @@ static void run_case(const char* name,
 /* --- Individual tests (happy paths) --- */
 
 static void test_zero_cases(void) {
-    cfx_big_t b, m; cfx_big_init(&b); cfx_big_init(&m);
+    cfx_big_t b, m;
+    cfx_big_init(&b);
+    cfx_big_init(&m);
 
     // 0 * X
     fill_zero(&b, 0);
@@ -148,11 +153,14 @@ static void test_zero_cases(void) {
     run_case("rand_times_zero", &b, &m, 1);
     run_case("rand_times_zero_t3", &b, &m, 3);
 
-    cfx_big_free(&b); cfx_big_free(&m);
+    cfx_big_free(&b);
+    cfx_big_free(&m);
 }
 
 static void test_one_cases(void) {
-    cfx_big_t b, m; cfx_big_init(&b); cfx_big_init(&m);
+    cfx_big_t b, m;
+    cfx_big_init(&b);
+    cfx_big_init(&m);
 
     // 1 * X
     fill_val(&b, 1, 1);
@@ -166,22 +174,28 @@ static void test_one_cases(void) {
     run_case("rand_times_one", &b, &m, 1);
     run_case("rand_times_one_t2", &b, &m, 2);
 
-    cfx_big_free(&b); cfx_big_free(&m);
+    cfx_big_free(&b);
+    cfx_big_free(&m);
 }
 
 static void test_all_ones_small(void) {
-    cfx_big_t b, m; cfx_big_init(&b); cfx_big_init(&m);
+    cfx_big_t b, m; 
+    cfx_big_init(&b);
+    cfx_big_init(&m);
 
     fill_ones(&b, 3); // (2^192 - 1)
     fill_ones(&m, 2); // (2^128 - 1)
     run_case("all_ones_3x2_t1", &b, &m, 1);
     run_case("all_ones_3x2_t4", &b, &m, 4);
 
-    cfx_big_free(&b); cfx_big_free(&m);
+    cfx_big_free(&b);
+    cfx_big_free(&m);
 }
 
 static void test_powers_of_two_alignment(void) {
-    cfx_big_t b, m; cfx_big_init(&b); cfx_big_init(&m);
+    cfx_big_t b, m;
+    cfx_big_init(&b);
+    cfx_big_init(&m);
 
     // b = 2^128 + 1, m = 2^65
     ensure_cap(&b, 3); memset(b.limb, 0, 3*sizeof(uint64_t)); b.limb[0]=1; b.limb[2]=1; b.n=3;
@@ -190,11 +204,14 @@ static void test_powers_of_two_alignment(void) {
     run_case("power2_align_t1", &b, &m, 1);
     run_case("power2_align_t8", &b, &m, 8);
 
-    cfx_big_free(&b); cfx_big_free(&m);
+    cfx_big_free(&b);
+    cfx_big_free(&m);
 }
 
 static void test_asymmetric_sizes(void) {
-    cfx_big_t b, m; cfx_big_init(&b); cfx_big_init(&m);
+    cfx_big_t b, m;
+    cfx_big_init(&b);
+    cfx_big_init(&m);
 
     fill_rand(&b, 7, 0xEE);
     fill_rand(&m, 2, 0xAD);
@@ -206,12 +223,15 @@ static void test_asymmetric_sizes(void) {
     run_case("asym_2x9_t1", &b, &m, 1);
     run_case("asym_2x9_t4", &b, &m, 4);
 
-    cfx_big_free(&b); cfx_big_free(&m);
+    cfx_big_free(&b);
+    cfx_big_free(&m);
 }
 
 static void test_small_fuzz(void) {
     const int threads_vec[] = {1,2,3,4};
-    cfx_big_t b, m; cfx_big_init(&b); cfx_big_init(&m);
+    cfx_big_t b, m;
+    cfx_big_init(&b);
+    cfx_big_init(&m);
     uint64_t seed = 0xCAFEBABE12345678ULL;
 
     for (int t = 0; t < 20; ++t) {
@@ -225,18 +245,22 @@ static void test_small_fuzz(void) {
         }
     }
 
-    cfx_big_free(&b); cfx_big_free(&m);
+    cfx_big_free(&b);
+    cfx_big_free(&m);
 }
 
-/* Optional: a medium case to shake out nout handling (kept modest for speed) */
+/* a medium case to shake out nout handling */
 static void test_medium_case_128x128(void) {
-    cfx_big_t b, m; cfx_big_init(&b); cfx_big_init(&m);
+    cfx_big_t b, m;
+    cfx_big_init(&b);
+    cfx_big_init(&m);
     fill_rand(&b, 128, 0x1111);
     fill_rand(&m, 128, 0x2222);
     run_case("medium_128x128_t1",  &b, &m, 1);
     run_case("medium_128x128_t4",  &b, &m, 4);
     run_case("medium_128x128_t12", &b, &m, 12);
-    cfx_big_free(&b); cfx_big_free(&m);
+    cfx_big_free(&b); 
+    cfx_big_free(&m);
 }
 
 /* --- main --- */

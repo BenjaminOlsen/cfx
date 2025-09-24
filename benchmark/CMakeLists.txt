@@ -6,14 +6,15 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(benchmark REQUIRED)
 find_package(cfx REQUIRED)
 
-add_executable(bench_big bench_big.cpp)
-target_compile_options(bench_big PRIVATE -O1 -march=native)
-target_link_libraries(bench_big PRIVATE benchmark::benchmark cfx::cfx)
+set(CFX_BENCHMARKS
+    bench_big
+    bench_mul_vs_csa
+    bench_row_mul
+    bench_monty
+)
 
-add_executable(bench_mul_vs_csa bench_mul_vs_csa.cpp)
-target_compile_options(bench_mul_vs_csa PRIVATE -O1 -march=native)
-target_link_libraries(bench_mul_vs_csa PRIVATE benchmark::benchmark pthread cfx::cfx)
-
-add_executable(bench_row_mul bench_row_mul.cpp)
-target_compile_options(bench_row_mul PRIVATE -O1 -march=native)
-target_link_libraries(bench_row_mul PRIVATE benchmark::benchmark pthread cfx::cfx)
+foreach(bench_name IN LISTS CFX_BENCHMARKS)
+    add_executable(${bench_name} ${bench_name}.cpp)
+    target_compile_options(${bench_name} PRIVATE -O1 -march=native)
+    target_link_libraries(${bench_name} PRIVATE benchmark::benchmark cfx::cfx pthread)
+endforeach()

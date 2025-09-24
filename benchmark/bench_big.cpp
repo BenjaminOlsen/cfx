@@ -140,7 +140,7 @@ cfx_big_t sq1(const cfx_big_t* b) {
         if (k) {
             size_t idx = i + n + 1;
             while (k) {
-                printf("carry continues "U64F"\n", (uint64_t)k);
+                printf("carry continues " U64F "\n", (uint64_t)k);
                 if (idx >= szout) break;
                 uint128_t w = (uint128_t)ret.limb[idx] + (uint64_t)k;
                 ret.limb[idx] = (uint64_t)w;
