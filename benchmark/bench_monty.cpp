@@ -177,15 +177,117 @@ static void BM_ModMul_Auto(benchmark::State& state) {
     cfx_big_free(&n);
 }
 
-// ----------------------- registration -----------------------
+static void BM_ModExpCore_Mont(benchmark::State& state) {
+    size_t limbs = state.range(0);
+    std::mt19937_64 rng(0x5EED);
 
+    cfx_big_t n, base, acc, baseM, accM;
+    cfx_big_init(&n);
+    cfx_big_init(&base);
+    cfx_big_init(&acc);
+    cfx_big_init(&baseM);
+    cfx_big_init(&accM);
+
+    make_random_odd_modulus(&n, limbs, rng);
+    cfx_big_mont_ctx_t ctx;
+    cfx_big_mont_ctx_init(&ctx, &n);
+
+    make_random_big(&base, limbs, rng);
+    cfx_big_from_u64(&acc, 1);
+
+    cfx_big_mont_to(&baseM, &base, &ctx);
+    cfx_big_mont_to(&accM,  &acc,  &ctx);
+
+    for (auto _ : state) {
+        // simulate a windowless modexp core: 1024 chained muls
+        for (int i = 0; i < 1024; ++i)
+            cfx_big_mont_mul(&accM, &accM, &baseM, &ctx);
+        benchmark::ClobberMemory();
+    }
+
+    state.SetItemsProcessed(state.iterations());
+    state.counters["limbs"] = static_cast<double>(limbs);
+    state.counters["bits"] = static_cast<double>(limbs*64);
+
+    cfx_big_mont_ctx_free(&ctx);
+    cfx_big_free(&accM);
+    cfx_big_free(&baseM);
+    cfx_big_free(&acc);
+    cfx_big_free(&base);
+    cfx_big_free(&n);
+}
+
+
+static void BM_ModExpCore_Plain(benchmark::State& state) {
+
+    size_t limbs = state.range(0);
+    std::mt19937_64 rng(0xC10C);
+
+    cfx_big_t n, base, acc;
+    cfx_big_init(&n);
+    cfx_big_init(&base);
+    cfx_big_init(&acc);
+    make_random_odd_modulus(&n, limbs, rng);
+    make_random_big(&base, limbs, rng);
+    cfx_big_from_u64(&acc, 1);
+
+    for (auto _ : state) {
+        for (int i = 0; i < 1024; ++i)
+            modmul_plain(&acc, &acc, &base, &n);
+        benchmark::ClobberMemory();
+    }
+
+    state.SetItemsProcessed(state.iterations());
+    state.counters["limbs"] = static_cast<double>(limbs);
+    state.counters["bits"] = static_cast<double>(limbs*64);
+
+    cfx_big_free(&acc);
+    cfx_big_free(&base);
+    cfx_big_free(&n);
+}
+
+static void BM_ModExpCore_Auto(benchmark::State& state) {
+
+    size_t limbs = state.range(0);
+    std::mt19937_64 rng(0xC10C);
+
+    cfx_big_t n, base, acc;
+    cfx_big_init(&n);
+    cfx_big_init(&base);
+    cfx_big_init(&acc);
+    make_random_odd_modulus(&n, limbs, rng);
+    make_random_big(&base, limbs, rng);
+    cfx_big_from_u64(&acc, 1);
+
+    for (auto _ : state) {
+        for (int i = 0; i < 1024; ++i)
+            modmul_auto(&acc, &acc, &base, &n);
+        benchmark::ClobberMemory();
+    }
+
+    state.SetItemsProcessed(state.iterations());
+    state.counters["limbs"] = static_cast<double>(limbs);
+    state.counters["bits"] = static_cast<double>(limbs*64);
+
+    cfx_big_free(&acc);
+    cfx_big_free(&base);
+    cfx_big_free(&n);
+}
+
+// ----------------------- registration -----------------------
 BENCHMARK(BM_ModMul_Plain)
-    ->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512)->Arg(1024)->Arg(2048)->Arg(4096);
+    ->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512)->Arg(1024)->Arg(2048);
 
 BENCHMARK(BM_ModMul_Auto)
-    ->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512)->Arg(1024)->Arg(2048)->Arg(4096);
+    ->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512)->Arg(1024)->Arg(2048);
 
 BENCHMARK(BM_MontMul)
-    ->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512)->Arg(1024)->Arg(2048)->Arg(4096);;
+    ->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512)->Arg(1024)->Arg(2048);
+
+BENCHMARK(BM_ModExpCore_Plain)->Arg(256)->Arg(512)->Arg(1024)->Arg(2048);
+
+BENCHMARK(BM_ModExpCore_Mont)->Arg(256)->Arg(512)->Arg(1024)->Arg(2048);
+
+BENCHMARK(BM_ModExpCore_Auto)->Arg(256)->Arg(512)->Arg(1024)->Arg(2048);
 
 BENCHMARK_MAIN();
