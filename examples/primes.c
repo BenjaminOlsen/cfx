@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-int dec_digits(cfx_u64_t n) {
+int dec_digits(cfx_limb_t n) {
     if (n < 10ULL) return 1;
     if (n < 100ULL) return 2;
     if (n < 1000ULL) return 3;
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
     int dmax = INT32_MAX;
     if (argc == 3) dmax = (size_t)strtol(argv[2], NULL, 10);
 
-    cfx_u64_t n = (cfx_u64_t)strtol(argv[1], NULL, 10);
+    cfx_limb_t n = (cfx_limb_t)strtol(argv[1], NULL, 10);
     cfx_vec_t primes = cfx_sieve_primes(n);
     int dcnt = 0;
     for (size_t k = 0; k < primes.size-1; ++k) {

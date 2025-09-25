@@ -4,7 +4,7 @@
 #include "cfx/fac.h"
 #include "cfx/fmt.h"
 #include "cfx/algo.h"
-#include "cfx/types.h"
+#include "cfx/num.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -40,7 +40,7 @@ typedef struct cfx_fac_cache cfx_fac_cache_t;
  * >>>>> Always call cfx_big_init after declaring a cfx_big_t ! 
  **/
 typedef struct {
-    cfx_u64_t* limb; /* the 'digits' of the number with base BIG_BASE*/
+    cfx_limb_t* limb; /* the 'digits' of the number with base BIG_BASE*/
     size_t n;
     size_t cap;
     cfx_fac_cache_t* cache;  /* == NULL if prime factor caching disabled */
@@ -60,7 +60,7 @@ struct cfx_fac_cache {
     cfx_fac_t primes;      /* your (p, exp) list; can be sorted & coalesced */
     cfx_big_t cofactor;    /* remaining unfactored part (>= 1) */
     cfx_fac_state_e state;
-    cfx_u64_t bnd;           /* proven “B-smoothness” bound:
+    cfx_limb_t bnd;           /* proven “B-smoothness” bound:
                              * "all primes <= bnd have been factored out of cofactor already"
                              */
 };
@@ -73,12 +73,12 @@ void cfx_big_assign(cfx_big_t* dst, const cfx_big_t* src);
 int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src);
 void cfx_big_move(cfx_big_t* dst, cfx_big_t* src);
 int cfx_big_is_zero(const cfx_big_t* b);
-int cfx_big_eq_u64(const cfx_big_t* b, cfx_u64_t n);
+int cfx_big_eq_u64(const cfx_big_t* b, cfx_limb_t n);
 int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
 int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
 
-int cfx_big_from_u64(cfx_big_t* b, cfx_u64_t v);
+int cfx_big_from_u64(cfx_big_t* b, cfx_limb_t v);
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
 void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
 void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m);
@@ -91,10 +91,10 @@ void cfx_big_mul_auto(cfx_big_t* b, const cfx_big_t* m);
 void cfx_big_sq(cfx_big_t* b);
 int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r remainder. */
 void cfx_big_add(cfx_big_t* b, const cfx_big_t* a);
-void cfx_big_add_sm(cfx_big_t* b, cfx_u64_t n);
+void cfx_big_add_sm(cfx_big_t* b, cfx_limb_t n);
 void cfx_big_sub(cfx_big_t* a, const cfx_big_t* b);
-void cfx_big_sub_sm(cfx_big_t* b, cfx_u64_t n);
-void cfx_big_mul_sm(cfx_big_t* b, cfx_u64_t m);
+void cfx_big_sub_sm(cfx_big_t* b, cfx_limb_t n);
+void cfx_big_mul_sm(cfx_big_t* b, cfx_limb_t m);
 
 /* Knuth's long division from TAOCP Vol. 2, 4.3.1 */
 int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r, const cfx_big_t* u, const cfx_big_t* v);
@@ -105,14 +105,14 @@ int cfx_big_div_out(cfx_big_t* q, const cfx_big_t* n, const cfx_big_t* d);
 /* In-place: b := floor(b/d); optional remainder r. Alias-safe for any combination. */
 int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r /*nullable*/);
 
-cfx_u64_t cfx_big_div_sm(cfx_big_t* b, cfx_u64_t d);
+cfx_limb_t cfx_big_div_sm(cfx_big_t* b, cfx_limb_t d);
 uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d);
 
 /* out = n % m */
 int cfx_big_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* m);
 
 /* returns b % m */
-cfx_u64_t cfx_big_mod_sm(cfx_big_t* b, cfx_u64_t m);
+cfx_limb_t cfx_big_mod_sm(cfx_big_t* b, cfx_limb_t m);
 
 
 /* Bitshift operations */
@@ -129,14 +129,14 @@ void cfx_big_enable_cache(cfx_big_t* b);
 void cfx_big_disable_cache(cfx_big_t* b);
 
 /* Multiply by p^e by repeated squaring using small chunks to avoid overflow */
-void cfx_big_expmul_prime(cfx_big_t* b, cfx_u64_t p, cfx_u64_t e);
+void cfx_big_expmul_prime(cfx_big_t* b, cfx_limb_t p, cfx_limb_t e);
 /* out = n ^ p*/
 void cfx_big_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p);
-void cfx_big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_u64_t p);
+void cfx_big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_limb_t p);
 /* out = (n^p) mod m */
 void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, const cfx_big_t* m); 
 
-void cfx_big_from_limbs(cfx_big_t* b, const cfx_u64_t* limbs, size_t n);
+void cfx_big_from_limbs(cfx_big_t* b, const cfx_limb_t* limbs, size_t n);
 void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t* f);
 void cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b);
 
@@ -178,7 +178,7 @@ int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base);
 typedef struct {
     cfx_big_t n;        /* modulus (odd), normalized */
     size_t    k;        /* limb count of n (R = 2^(64*k)) */
-    cfx_u64_t  n0inv;    /* -n^{-1} mod 2^64 (requires n.limb[0] odd) */
+    cfx_limb_t  n0inv;    /* -n^{-1} mod 2^64 (requires n.limb[0] odd) */
     cfx_big_t rr;       /* R^2 mod n */
     cfx_big_t R1;       /* R mod n -- (Montgomery "1") */
 } cfx_big_mont_ctx_t;

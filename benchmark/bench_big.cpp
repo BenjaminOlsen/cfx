@@ -66,7 +66,7 @@ static void BM_DivSm(benchmark::State& state) {
         cfx_big_t tmp;
         cfx_big_init(&tmp);
         cfx_big_copy(&tmp, &a);
-        cfx_u64_t rem = cfx_big_div_sm(&tmp, 7);
+        cfx_limb_t rem = cfx_big_div_sm(&tmp, 7);
         benchmark::DoNotOptimize(rem);
         cfx_big_free(&tmp);
     }
@@ -112,38 +112,38 @@ cfx_big_t sq1(const cfx_big_t* b) {
     ret.n = szout;
 
     for (size_t i = 0; i < n; ++i) {
-        cfx_u128_t carry = 0;
-        cfx_u128_t bi = b->limb[i];
+        cfx_acc_t carry = 0;
+        cfx_acc_t bi = b->limb[i];
         /* terms ij == terms ji -> iterate over half the terms but double them*/
         for (size_t j = i+1; j < n; ++j) {
-            cfx_u128_t prod = bi * b->limb[j];
+            cfx_acc_t prod = bi * b->limb[j];
             prod <<= 1; /* double */
             prod |= carry;
             prod += ret.limb[i+j];
-            ret.limb[i+j] = (cfx_u64_t)prod;
+            ret.limb[i+j] = (cfx_limb_t)prod;
             carry = prod >> 64;
-            // printf("doubling term i: %zu, j: %zu; prod: "U64F", carry: "U64F"\n", i, j, prod, (cfx_u64_t)carry);
+            // printf("doubling term i: %zu, j: %zu; prod: "U64F", carry: "U64F"\n", i, j, prod, (cfx_limb_t)carry);
         }
-        cfx_u128_t sq = bi*bi;
+        cfx_acc_t sq = bi*bi;
         sq += ret.limb[2*i];
-        cfx_u64_t lo = (cfx_u64_t)sq;
-        cfx_u128_t c2 = sq >> 64;
-        // printf("squaring term i: %zu, lo: "U64F", carry: "U64F"\n", i, lo, (cfx_u64_t)carry);
+        cfx_limb_t lo = (cfx_limb_t)sq;
+        cfx_acc_t c2 = sq >> 64;
+        // printf("squaring term i: %zu, lo: "U64F", carry: "U64F"\n", i, lo, (cfx_limb_t)carry);
 
         // propagate carry from cross terms into next limb
-        cfx_u128_t u = (cfx_u128_t)ret.limb[i + n] + carry + c2;
-        ret.limb[i + n] = (cfx_u64_t)u;
+        cfx_acc_t u = (cfx_acc_t)ret.limb[i + n] + carry + c2;
+        ret.limb[i + n] = (cfx_limb_t)u;
         // store fixed lower
         ret.limb[2 * i] = lo;
         // carry continues if u overflowed 64 bits
-        cfx_u128_t k = u >> 64;
+        cfx_acc_t k = u >> 64;
         if (k) {
             size_t idx = i + n + 1;
             while (k) {
-                printf("carry continues " U64F "\n", (cfx_u64_t)k);
+                printf("carry continues " U64F "\n", (cfx_limb_t)k);
                 if (idx >= szout) break;
-                cfx_u128_t w = (cfx_u128_t)ret.limb[idx] + (cfx_u64_t)k;
-                ret.limb[idx] = (cfx_u64_t)w;
+                cfx_acc_t w = (cfx_acc_t)ret.limb[idx] + (cfx_limb_t)k;
+                ret.limb[idx] = (cfx_limb_t)w;
                 k = w >> 64;
                 ++idx;
             }
@@ -160,42 +160,42 @@ cfx_big_t sq2(const cfx_big_t* b) {
     size_t n = b->n;
     size_t out_n = 2 * n;
     // temp buffer initialized to zero
-    cfx_u64_t* tmp = (cfx_u64_t*)calloc(out_n, sizeof(cfx_u64_t));
+    cfx_limb_t* tmp = (cfx_limb_t*)calloc(out_n, sizeof(cfx_limb_t));
     if (!tmp) { /* OOM handling as per your policy */ return ret; }
 
     for (size_t i = 0; i < n; ++i) {
-        cfx_u128_t carry = 0;
+        cfx_acc_t carry = 0;
 
         // cross terms j > i counted twice
         size_t j = i + 1;
         for (; j < n; ++j) {
-            cfx_u128_t t = (cfx_u128_t)b->limb[i] * (cfx_u128_t)b->limb[j];
+            cfx_acc_t t = (cfx_acc_t)b->limb[i] * (cfx_acc_t)b->limb[j];
             t <<= 1; // times 2
             t += tmp[i + j];
             t += carry;
-            tmp[i + j] = (cfx_u64_t)t;
+            tmp[i + j] = (cfx_limb_t)t;
             carry = t >> 64;
         }
 
         // add the square term (i,i)
-        cfx_u128_t t2 = (cfx_u128_t)b->limb[i] * (cfx_u128_t)b->limb[i];
+        cfx_acc_t t2 = (cfx_acc_t)b->limb[i] * (cfx_acc_t)b->limb[i];
         t2 += tmp[2 * i];
-        cfx_u64_t lo = (cfx_u64_t)t2;
-        cfx_u128_t c2 = t2 >> 64;
+        cfx_limb_t lo = (cfx_limb_t)t2;
+        cfx_acc_t c2 = t2 >> 64;
 
         // propagate carry from cross terms into next limb
-        cfx_u128_t u = (cfx_u128_t)tmp[i + n] + carry + c2;
-        tmp[i + n] = (cfx_u64_t)u;
+        cfx_acc_t u = (cfx_acc_t)tmp[i + n] + carry + c2;
+        tmp[i + n] = (cfx_limb_t)u;
         // store fixed lower
         tmp[2 * i] = lo;
         // carry continues if u overflowed 64 bits
-        cfx_u128_t k = u >> 64;
+        cfx_acc_t k = u >> 64;
         if (k) {
             size_t idx = i + n + 1;
             while (k) {
                 if (idx >= out_n) break;
-                cfx_u128_t w = (cfx_u128_t)tmp[idx] + (cfx_u64_t)k;
-                tmp[idx] = (cfx_u64_t)w;
+                cfx_acc_t w = (cfx_acc_t)tmp[idx] + (cfx_limb_t)k;
+                tmp[idx] = (cfx_limb_t)w;
                 k = w >> 64;
                 ++idx;
             }
@@ -204,7 +204,7 @@ cfx_big_t sq2(const cfx_big_t* b) {
 
     // move tmp into ret
     cfx_big_reserve(&ret, out_n);
-    memcpy(ret.limb, tmp, out_n * sizeof(cfx_u64_t));
+    memcpy(ret.limb, tmp, out_n * sizeof(cfx_limb_t));
     ret.n = out_n;
     // _trim_leading_zeros(ret);
     free(tmp);
@@ -224,27 +224,27 @@ cfx_big_t sq3(const cfx_big_t* b) {
     size_t cnt = 0;
     
     cfx_big_reserve(&ret, 2*n);
-    memset(ret.limb, 0, 2*n * sizeof(cfx_u64_t));
+    memset(ret.limb, 0, 2*n * sizeof(cfx_limb_t));
     ret.n = 2*n;
 
     // 1) Cross terms: for i < j, add 2*b[i]*b[j] into ret[i+j]
     for (size_t i = 0; i < n; ++i) {
-        cfx_u128_t carry = 0;
+        cfx_acc_t carry = 0;
         for (size_t j = i + 1; j < n; ++j) {
-            cfx_u128_t p = (cfx_u128_t)b->limb[i] * b->limb[j];
+            cfx_acc_t p = (cfx_acc_t)b->limb[i] * b->limb[j];
 
             // add p once
-            cfx_u128_t t = (cfx_u128_t)ret.limb[i + j]
-                            + (cfx_u64_t)p
-                            + (cfx_u64_t)carry;
-            ret.limb[i + j] = (cfx_u64_t)t;
+            cfx_acc_t t = (cfx_acc_t)ret.limb[i + j]
+                            + (cfx_limb_t)p
+                            + (cfx_limb_t)carry;
+            ret.limb[i + j] = (cfx_limb_t)t;
             carry = (carry >> 64) + (t >> 64) + (p >> 64);
 
             // add p again (to double) -- same carry rule
-            t = (cfx_u128_t)ret.limb[i + j]
-                + (cfx_u64_t)p
-                + (cfx_u64_t)carry;
-            ret.limb[i + j] = (cfx_u64_t)t;
+            t = (cfx_acc_t)ret.limb[i + j]
+                + (cfx_limb_t)p
+                + (cfx_limb_t)carry;
+            ret.limb[i + j] = (cfx_limb_t)t;
             carry = (carry >> 64) + (t >> 64) + (p >> 64);
             cnt++;
         }
@@ -252,8 +252,8 @@ cfx_big_t sq3(const cfx_big_t* b) {
         // propagate whatever is left in 'carry'
         size_t k = i + n; // next column after the last updated (i + (n-1))
         while (carry) {
-            cfx_u128_t t = (cfx_u128_t)ret.limb[k] + (cfx_u64_t)carry;
-            ret.limb[k] = (cfx_u64_t)t;
+            cfx_acc_t t = (cfx_acc_t)ret.limb[k] + (cfx_limb_t)carry;
+            ret.limb[k] = (cfx_limb_t)t;
             carry = (carry >> 64) + (t >> 64);
             ++k;
             cnt++;
@@ -262,17 +262,17 @@ cfx_big_t sq3(const cfx_big_t* b) {
 
     // 2) Diagonals: add b[i]^2 once at ret[2*i]
     for (size_t i = 0; i < n; ++i) {
-        cfx_u128_t sq = (cfx_u128_t)b->limb[i] * b->limb[i];
+        cfx_acc_t sq = (cfx_acc_t)b->limb[i] * b->limb[i];
 
-        cfx_u128_t t = (cfx_u128_t)ret.limb[2*i] + (cfx_u64_t)sq;
-        ret.limb[2*i] = (cfx_u64_t)t;
-        cfx_u128_t c = (t >> 64) + (sq >> 64);
+        cfx_acc_t t = (cfx_acc_t)ret.limb[2*i] + (cfx_limb_t)sq;
+        ret.limb[2*i] = (cfx_limb_t)t;
+        cfx_acc_t c = (t >> 64) + (sq >> 64);
 
         size_t k = 2*i + 1;
         cnt++;
         while (c) {
-            t = (cfx_u128_t)ret.limb[k] + (cfx_u64_t)c;
-            ret.limb[k] = (cfx_u64_t)t;
+            t = (cfx_acc_t)ret.limb[k] + (cfx_limb_t)c;
+            ret.limb[k] = (cfx_limb_t)t;
             c = (c >> 64) + (t >> 64);
             ++k;
         }

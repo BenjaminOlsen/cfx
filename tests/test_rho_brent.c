@@ -1,5 +1,5 @@
 #include "cfx/algo.h"
-#include "cfx/types.h"
+#include "cfx/num.h"
 #include "cfx/fmt.h"
 
 #include <assert.h>
@@ -8,16 +8,16 @@
 #include <stdlib.h>
 
 
-static int is_valid_factor(cfx_u64_t n, cfx_u64_t d) {
+static int is_valid_factor(cfx_limb_t n, cfx_limb_t d) {
     return (d > 1) && (d < n) && (n % d == 0);
 }
 
-static void expect_factor(cfx_u64_t n) {
+static void expect_factor(cfx_limb_t n) {
     // Rho is only defined/useful for composites; guard primes
     if (cfx_is_prime_u64(n)) {
         // For primes, cfx_rho_brent may return n or 0, but we don't require anything.
         // Just ensure it *doesn't* falsely report a composite factor.
-        cfx_u64_t d = cfx_rho_brent(n);
+        cfx_limb_t d = cfx_rho_brent(n);
         if (is_valid_factor(n, d)) {
             fprintf(stderr, "cfx_rho_brent returned a nontrivial factor for prime "U64F"\n",
                     (unsigned long long)n);
@@ -31,11 +31,11 @@ static void expect_factor(cfx_u64_t n) {
 
     // Try a few times in case the internal random choices hit a bad cycle
     for (int attempts = 0; attempts < 5; ++attempts) {
-        cfx_u64_t d = cfx_rho_brent(n);
+        cfx_limb_t d = cfx_rho_brent(n);
         printf("cfx_rho_brent("U64F") = "U64F"\n", n, d);
         if (is_valid_factor(n, d)) {
             // ? verify cofactor primality or at least correctness
-            cfx_u64_t m = n / d;
+            cfx_limb_t m = n / d;
             assert(n == d * m);
             // Either side may still be composite; that's fine (we only test rho’s split)
             return;
@@ -60,20 +60,20 @@ static void test_carmichael_and_square_semiprimes(void) {
 }
 
 static void test_repeated_prime_powers(void) {
-    cfx_u64_t n1 = 1;
+    cfx_limb_t n1 = 1;
     for (int i = 0; i < 10; ++i) n1 *= 3ULL;
     expect_factor(n1);
 
-    cfx_u64_t n2 = 1ULL << 40;
+    cfx_limb_t n2 = 1ULL << 40;
     expect_factor(n2);
 }
 
 static void test_large_64bit_semiprime(void) {
-    const cfx_u64_t p = 4294967291ULL; // 2^32 - 5, prime
-    const cfx_u64_t q = 4294967279ULL; // 2^32 - 17, prime
+    const cfx_limb_t p = 4294967291ULL; // 2^32 - 5, prime
+    const cfx_limb_t q = 4294967279ULL; // 2^32 - 17, prime
 
-    cfx_u128_t prod = ( cfx_u128_t)p * ( cfx_u128_t)q;
-    cfx_u64_t n = (cfx_u64_t)prod; // still < 2^64
+    cfx_acc_t prod = ( cfx_acc_t)p * ( cfx_acc_t)q;
+    cfx_limb_t n = (cfx_limb_t)prod; // still < 2^64
 
     expect_factor(n);
 }
@@ -87,10 +87,10 @@ static void test_primes_do_not_yield_factors(void) {
 
     // cfx_rho_brent may return 0 or n — both are acceptable “no factor” signals.
     // We only assert it does NOT return a valid factor.
-    cfx_u64_t primes[] = {29, 97, 257, 65537};
+    cfx_limb_t primes[] = {29, 97, 257, 65537};
     for (size_t i = 0; i < sizeof(primes)/sizeof(primes[0]); ++i) {
         srand(42u);
-        cfx_u64_t d = cfx_rho_brent(primes[i]);
+        cfx_limb_t d = cfx_rho_brent(primes[i]);
         assert(!is_valid_factor(primes[i], d));
     }
 }

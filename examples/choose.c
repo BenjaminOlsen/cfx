@@ -12,7 +12,7 @@
 
 /* ---------- Demo: compute C(n,k) ---------- */
 
-static void print_binom(cfx_u64_t n, cfx_u64_t k){
+static void print_binom(cfx_limb_t n, cfx_limb_t k){
     cfx_fac_t f = cfx_fac_binom(n,k);
     cfx_big_t B;
     cfx_big_init(&B);
@@ -26,18 +26,18 @@ static void print_binom(cfx_u64_t n, cfx_u64_t k){
 }
 
 int main(int argc, char* argv[]) {
-    cfx_u64_t n, k;
+    cfx_limb_t n, k;
     if (argc == 2) {
-        n = (cfx_u64_t)strtol(argv[1], NULL, 10);
-        for (cfx_u64_t i = 1; i <= n; ++i) {
-            for (cfx_u64_t j = 0; j <= i; ++j) {
+        n = (cfx_limb_t)strtol(argv[1], NULL, 10);
+        for (cfx_limb_t i = 1; i <= n; ++i) {
+            for (cfx_limb_t j = 0; j <= i; ++j) {
                 print_binom(i, j);
             }
             printf(".....\n");
         }
     } else if (argc == 3) {
-        n = (cfx_u64_t)strtol(argv[1], NULL, 10);
-        k = (cfx_u64_t)strtol(argv[2], NULL, 10);
+        n = (cfx_limb_t)strtol(argv[1], NULL, 10);
+        k = (cfx_limb_t)strtol(argv[2], NULL, 10);
         print_binom(n, k);
     }
 /*

@@ -216,9 +216,9 @@ static void test_big_factorial_to_100(int quiet) {
 }
 
 /* primes[] must be in strictly increasing order! */
-static void test_facs(cfx_fac_t* f, cfx_u64_t primes[], cfx_u64_t exps[], size_t nprimes) {
+static void test_facs(cfx_fac_t* f, cfx_limb_t primes[], cfx_limb_t exps[], size_t nprimes) {
     cfx_fac_init(f);
-    cfx_u64_t n = 1;
+    cfx_limb_t n = 1;
     for (size_t i = 0; i < nprimes; ++i) {
         size_t e = exps[i]; 
         while(e-->0) { n *= primes[i]; }
@@ -238,20 +238,20 @@ static void test_facs(cfx_fac_t* f, cfx_u64_t primes[], cfx_u64_t exps[], size_t
 static void test_fac_from_u64(void) {
     cfx_fac_t f;
     cfx_fac_init(&f);
-    cfx_u64_t p1[] = {2, 3, 5, 7, 11};
-    cfx_u64_t e1[] = {1, 2, 3, 4, 5};
-    printf("sizeof(p1)/sizeof(cfx_u64_t): %zu\n", sizeof(p1)/sizeof(cfx_u64_t));
-    test_facs(&f, p1, e1, sizeof(p1)/sizeof(cfx_u64_t));
+    cfx_limb_t p1[] = {2, 3, 5, 7, 11};
+    cfx_limb_t e1[] = {1, 2, 3, 4, 5};
+    printf("sizeof(p1)/sizeof(cfx_limb_t): %zu\n", sizeof(p1)/sizeof(cfx_limb_t));
+    test_facs(&f, p1, e1, sizeof(p1)/sizeof(cfx_limb_t));
 
-    cfx_u64_t p2[] = {4294967279ULL, 4294967291ULL};
-    cfx_u64_t e2[] = {1, 1};
-    test_facs(&f, p2, e2, sizeof(p2)/sizeof(cfx_u64_t));
+    cfx_limb_t p2[] = {4294967279ULL, 4294967291ULL};
+    cfx_limb_t e2[] = {1, 1};
+    test_facs(&f, p2, e2, sizeof(p2)/sizeof(cfx_limb_t));
 
-    cfx_u64_t p3[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31};
-    cfx_u64_t e3[] = {1, 1, 1, 1, 1,  1,  1,  1,  1,  1,  1 };
-    test_facs(&f, p3, e3, sizeof(p3)/sizeof(cfx_u64_t));
+    cfx_limb_t p3[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31};
+    cfx_limb_t e3[] = {1, 1, 1, 1, 1,  1,  1,  1,  1,  1,  1 };
+    test_facs(&f, p3, e3, sizeof(p3)/sizeof(cfx_limb_t));
 
-    cfx_u64_t n4 = 0xFFFFFFFFFFFFFFFFllu;
+    cfx_limb_t n4 = 0xFFFFFFFFFFFFFFFFllu;
     int ok = cfx_fac_from_u64(&f, n4);
     cfx_fac_print(&f);
     assert(ok);

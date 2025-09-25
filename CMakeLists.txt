@@ -18,7 +18,7 @@ set(CFX_HEADERS
     include/cfx/fmt.h
     include/cfx/algo.h
     include/cfx/error.h
-    include/cfx/types.h
+    include/cfx/num.h
     include/cfx/primes.h
     include/cfx/vector.h
     include/cfx/macros.h
