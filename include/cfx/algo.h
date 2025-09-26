@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-/* Accumulator holds a value as:  (acc_hi << 64) + acc_lo
+/* Accumulator holds a value as:  (acc_hi << CFX_LIMB_BITS) + acc_lo
    No cross-limb carry is propagated while accumulating. */
 typedef struct {
     cfx_limb_t lo;  // sum bits

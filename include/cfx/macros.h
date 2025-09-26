@@ -26,8 +26,6 @@
     fprintf(stderr, "[%s] - %s\n", __func__, buf);               \
 } while (0)
 
-#define U128_HI(x) (cfx_limb_t)((x>>64)&0xFFFFFFFFFFFFFFFF)
-#define U128_LO(x) (cfx_limb_t)((x)&0xFFFFFFFFFFFFFFFF)
 
 #define PRINT_TEST(ok) \
     do { \
@@ -37,7 +35,7 @@
 #define PRINT_ARR(A, na) do { \
     printf("["); \
     for (size_t i = na; i--;) { \
-        printf(""U64F"", A[i]); \
+        printf(""CFX_PRIuLIMB"", A[i]); \
         if (i == 0) printf("]\n"); \
         else printf(", "); \
     } \

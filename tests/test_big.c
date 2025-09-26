@@ -161,12 +161,12 @@ static void test_sub_sm(void) {
     for (cfx_limb_t n = 0; n < 2; ++n) {
         cfx_acc_t s = (cfx_acc_t)b.limb[0] + q;
         cfx_big_add_sm(&b, q);
-        CFX_BIG_PRINTF(&b, "add "U64F": ", q);
+        CFX_BIG_PRINTF(&b, "add "CFX_PRIuLIMB": ", q);
         assert(b.limb[0] == (cfx_limb_t)s);
         assert(b.n > 1);
-        assert(b.limb[1] == (cfx_limb_t)(s >> 64));
+        assert(b.limb[1] == (cfx_limb_t)(s >> CFX_LIMB_BITS));
         cfx_big_sub_sm(&b, q);
-        CFX_BIG_PRINTF(&b, "sub "U64F": ", q);
+        CFX_BIG_PRINTF(&b, "sub "CFX_PRIuLIMB": ", q);
         assert(b.limb[0] == orig);
     }
     PRINT_TEST(1);
@@ -865,7 +865,7 @@ static void test_known_squares(void) {
     assert(strcmp(sanity, expect) == 0);
 
     for (size_t i = 0; i < b.n; ++i) {
-        printf("calculated: b.limb[%zu]: "U64F"; correct: B.limb[%zu]: "U64F": %s: diff %d\n",
+        printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB"; correct: B.limb[%zu]: "CFX_PRIuLIMB": %s: diff %d\n",
         i, b.limb[i], i, B.limb[i], b.limb[i] == B.limb[i] ? "ok" : "--- NOT OK",
         (int)(b.limb[i] & 0xFFFF) - (int)(B.limb[i] & 0xFFFF));
     }
@@ -897,7 +897,7 @@ static void test_known_squares(void) {
     // printf("mul %d len: %zu \n", ++cnt, b.n);
 
     // for (size_t i = 0; i < b.n; ++i) {
-    //     printf("calculated: b.limb[%zu]: "U64F" (0x"X64F")\n", i, b.limb[i], b.limb[i]);
+    //     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"X64F")\n", i, b.limb[i], b.limb[i]);
     // }
     
     char* huge = cfx_big_to_hex(&b, NULL);
@@ -1016,7 +1016,7 @@ static void test_known_squares_2(void) {
     assert(strcmp(sanity, expect) == 0);
 
     for (size_t i = 0; i < b.n; ++i) {
-        printf("calculated: b.limb[%zu]: "U64F"; correct: B.limb[%zu]: "U64F": %s: diff %d\n",
+        printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB"; correct: B.limb[%zu]: "CFX_PRIuLIMB": %s: diff %d\n",
         i, b.limb[i], i, B.limb[i], b.limb[i] == B.limb[i] ? "ok" : "--- NOT OK",
         (int)(b.limb[i] & 0xFFFF) - (int)(B.limb[i] & 0xFFFF));
     }
@@ -1047,7 +1047,7 @@ static void test_known_squares_2(void) {
     // printf("mul csa %d len: %zu \n", ++cnt, b.n);
 
     // for (size_t i = 0; i < b.n; ++i) {
-    //     printf("calculated: b.limb[%zu]: "U64F" (0x"X64F")\n", i, b.limb[i], b.limb[i]);
+    //     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"X64F")\n", i, b.limb[i], b.limb[i]);
     // }
     
     char* huge = cfx_big_to_hex(&b, NULL);
@@ -1439,7 +1439,7 @@ static void test_shr_basic_identity(void) {
 
 static void test_shr_drop_whole_limb(void) {
     /* exact 64-bit drops */
-    CHECK_SHR_CASE("10000000000000000", 64, "1");         // 2^64 >> 64
+    CHECK_SHR_CASE("10000000000000000", 64, "1");         // 2^64 >> CFX_LIMB_BITS
     CHECK_SHR_CASE("100000000000000000", 68, "1");       // (2^68) >> 68
 }
 

@@ -305,7 +305,7 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n) {
 //     // 128-bit add: (acc_hi:acc_lo) += (add_hi:add_lo)   without leaking carries to neighbors
 //     cfx_acc_t t  = (cfx_acc_t)acc->lo + add_lo;
 //     acc->lo        = (cfx_limb_t)t;
-//     acc->hi       += add_hi + (cfx_limb_t)(t >> 64);  // keep the carry in the local 'hi' word
+//     acc->hi       += add_hi + (cfx_limb_t)(t >> CFX_LIMB_BITS);  // keep the carry in the local 'hi' word
 // }
 
 // Zero only the first `nout` entries that the multiplication will touch
@@ -354,18 +354,18 @@ void cfx_mul_csa_portable_fast(const cfx_limb_t* A, size_t na,
         for (size_t j = 0; j < nb; ++j) {
             cfx_acc_t p  = (cfx_acc_t)ai * (cfx_acc_t)B[j];
             cfx_limb_t add_lo = (cfx_limb_t)p;
-            cfx_limb_t add_hi = (cfx_limb_t)(p >> 64);
+            cfx_limb_t add_hi = (cfx_limb_t)(p >> CFX_LIMB_BITS);
             size_t k = i + j;
 
             cfx_acc_t t = (cfx_acc_t)acc[k].lo + add_lo;
-            cfx_limb_t c0   = (cfx_limb_t)(t >> 64);
+            cfx_limb_t c0   = (cfx_limb_t)(t >> CFX_LIMB_BITS);
             acc[k].lo     = (cfx_limb_t)t;
 
             cfx_acc_t u = (cfx_acc_t)acc[k].hi + add_hi + c0;
             acc[k].hi     = (cfx_limb_t)u;
 
             // Defer the overflow of acc[k].hi into a 1-bit counter for next diagonal.
-            spill[k + 1] += (cfx_limb_t)(u >> 64);  // 0 or 1
+            spill[k + 1] += (cfx_limb_t)(u >> CFX_LIMB_BITS);  // 0 or 1
         }
     }
 
@@ -375,7 +375,7 @@ void cfx_mul_csa_portable_fast(const cfx_limb_t* A, size_t na,
     for (size_t k = 0; k < nout; ++k) {
         cfx_acc_t h = (cfx_acc_t)acc[k].hi + c;
         acc[k].hi = (cfx_limb_t)h;
-        c = (cfx_limb_t)(h >> 64);
+        c = (cfx_limb_t)(h >> CFX_LIMB_BITS);
         // carry from adding c merges with next diagonal’s spill counter
         spill[k + 1] += c;   // safe: spill has nout entries; spill[nout] is ignored later
         c = spill[k + 1];
@@ -384,10 +384,10 @@ void cfx_mul_csa_portable_fast(const cfx_limb_t* A, size_t na,
     // --- Final normalization (single carry-propagating pass across limbs) ---
     cfx_acc_t carry = 0;
     for (size_t k = 0; k < nout; ++k) {
-        cfx_acc_t wide = (((cfx_acc_t)acc[k].hi) << 64) | acc[k].lo;
+        cfx_acc_t wide = (((cfx_acc_t)acc[k].hi) << CFX_LIMB_BITS) | acc[k].lo;
         wide += carry;
         R[k]  = (cfx_limb_t)wide;
-        carry = wide >> 64;
+        carry = wide >> CFX_LIMB_BITS;
     }
     // By construction carry==0 for na+nb limbs.
 }
@@ -407,25 +407,25 @@ void cfx_mul_csa_portable(const cfx_limb_t* A, size_t na,
         for (size_t j = 0; j < nb; ++j) {
             cfx_acc_t p  = (cfx_acc_t)ai * (cfx_acc_t)B[j];
             cfx_limb_t add_lo = (cfx_limb_t)p;
-            cfx_limb_t add_hi = (cfx_limb_t)(p >> 64);
+            cfx_limb_t add_hi = (cfx_limb_t)(p >> CFX_LIMB_BITS);
             size_t k = i + j;
 
             // (acc_hi:acc_lo) += (add_hi:add_lo)
             cfx_acc_t t = (cfx_acc_t)acc[k].lo + add_lo;
             cfx_limb_t new_lo = (cfx_limb_t)t;
-            cfx_limb_t c0     = (cfx_limb_t)(t >> 64);
+            cfx_limb_t c0     = (cfx_limb_t)(t >> CFX_LIMB_BITS);
 
             cfx_acc_t u = (cfx_acc_t)acc[k].hi + add_hi + c0;
             acc[k].lo = new_lo;
             acc[k].hi = (cfx_limb_t)u;
 
             // *** spill overflow of the diagonal's hi into the NEXT diagonal's hi ***
-            cfx_limb_t spill = (cfx_limb_t)(u >> 64);   // 0 or 1
+            cfx_limb_t spill = (cfx_limb_t)(u >> CFX_LIMB_BITS);   // 0 or 1
             size_t kk = k + 1;
             while (spill && kk < nout) {
                 cfx_acc_t w = (cfx_acc_t)acc[kk].hi + spill;
                 acc[kk].hi = (cfx_limb_t)w;
-                spill = (cfx_limb_t)(w >> 64);        // might ripple further
+                spill = (cfx_limb_t)(w >> CFX_LIMB_BITS);        // might ripple further
                 ++kk;
             }
             // If spill is still nonzero here, it would be beyond the m+n limb bound.
@@ -437,10 +437,10 @@ void cfx_mul_csa_portable(const cfx_limb_t* A, size_t na,
     // Final single carry-propagation across limbs
     cfx_acc_t carry = 0;
     for (size_t k = 0; k < nout; ++k) {
-        cfx_acc_t wide = (((cfx_acc_t)acc[k].hi) << 64) | acc[k].lo;
+        cfx_acc_t wide = (((cfx_acc_t)acc[k].hi) << CFX_LIMB_BITS) | acc[k].lo;
         wide += carry;
         R[k]  = (cfx_limb_t)wide;
-        carry = wide >> 64;
+        carry = wide >> CFX_LIMB_BITS;
     }
 
     // By construction, carry should be 0 here for na+nb limbs.
@@ -465,17 +465,17 @@ void cfx_mul_csa_portable_fast_rows(const cfx_limb_t* A, size_t ia, size_t na_ro
         for (size_t j = 0; j < nb; ++j) {
             cfx_acc_t p  = (cfx_acc_t)ai * (cfx_acc_t)B[j];
             cfx_limb_t add_lo = (cfx_limb_t)p;
-            cfx_limb_t add_hi = (cfx_limb_t)(p >> 64);
+            cfx_limb_t add_hi = (cfx_limb_t)(p >> CFX_LIMB_BITS);
             size_t k = i + j;
 
             cfx_acc_t t = (cfx_acc_t)acc[k].lo + add_lo;
-            cfx_limb_t c0   = (cfx_limb_t)(t >> 64);
+            cfx_limb_t c0   = (cfx_limb_t)(t >> CFX_LIMB_BITS);
             acc[k].lo     = (cfx_limb_t)t;
 
             cfx_acc_t u = (cfx_acc_t)acc[k].hi + add_hi + c0;
             acc[k].hi     = (cfx_limb_t)u;
 
-            spill[k + 1] += (cfx_limb_t)(u >> 64);
+            spill[k + 1] += (cfx_limb_t)(u >> CFX_LIMB_BITS);
         }
     }
 }
@@ -488,15 +488,15 @@ void cfx_mul_csa_fold_and_normalize(csa128_t* acc, cfx_limb_t* spill,
     for (size_t k = 0; k < nout; ++k) {
         cfx_acc_t h = (cfx_acc_t)acc[k].hi + pending;
         acc[k].hi = (cfx_limb_t)h;
-        pending = (cfx_limb_t)(h >> 64);
+        pending = (cfx_limb_t)(h >> CFX_LIMB_BITS);
         pending += spill[k + 1]; // spill sized nout+1
     }
     // Final normalization
     cfx_acc_t carry = 0;
     for (size_t k = 0; k < nout; ++k) {
-        cfx_acc_t w = (((cfx_acc_t)acc[k].hi) << 64) | acc[k].lo;
+        cfx_acc_t w = (((cfx_acc_t)acc[k].hi) << CFX_LIMB_BITS) | acc[k].lo;
         w += carry;
         R[k]  = (cfx_limb_t)w;
-        carry = (cfx_limb_t)(w >> 64);
+        carry = (cfx_limb_t)(w >> CFX_LIMB_BITS);
     }
 }

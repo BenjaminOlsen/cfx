@@ -121,14 +121,14 @@ cfx_big_t sq1(const cfx_big_t* b) {
             prod |= carry;
             prod += ret.limb[i+j];
             ret.limb[i+j] = (cfx_limb_t)prod;
-            carry = prod >> 64;
-            // printf("doubling term i: %zu, j: %zu; prod: "U64F", carry: "U64F"\n", i, j, prod, (cfx_limb_t)carry);
+            carry = prod >> CFX_LIMB_BITS;
+            // printf("doubling term i: %zu, j: %zu; prod: "CFX_PRIuLIMB", carry: "CFX_PRIuLIMB"\n", i, j, prod, (cfx_limb_t)carry);
         }
         cfx_acc_t sq = bi*bi;
         sq += ret.limb[2*i];
         cfx_limb_t lo = (cfx_limb_t)sq;
-        cfx_acc_t c2 = sq >> 64;
-        // printf("squaring term i: %zu, lo: "U64F", carry: "U64F"\n", i, lo, (cfx_limb_t)carry);
+        cfx_acc_t c2 = sq >> CFX_LIMB_BITS;
+        // printf("squaring term i: %zu, lo: "CFX_PRIuLIMB", carry: "CFX_PRIuLIMB"\n", i, lo, (cfx_limb_t)carry);
 
         // propagate carry from cross terms into next limb
         cfx_acc_t u = (cfx_acc_t)ret.limb[i + n] + carry + c2;
@@ -136,15 +136,15 @@ cfx_big_t sq1(const cfx_big_t* b) {
         // store fixed lower
         ret.limb[2 * i] = lo;
         // carry continues if u overflowed 64 bits
-        cfx_acc_t k = u >> 64;
+        cfx_acc_t k = u >> CFX_LIMB_BITS;
         if (k) {
             size_t idx = i + n + 1;
             while (k) {
-                printf("carry continues " U64F "\n", (cfx_limb_t)k);
+                printf("carry continues " CFX_PRIuLIMB "\n", (cfx_limb_t)k);
                 if (idx >= szout) break;
                 cfx_acc_t w = (cfx_acc_t)ret.limb[idx] + (cfx_limb_t)k;
                 ret.limb[idx] = (cfx_limb_t)w;
-                k = w >> 64;
+                k = w >> CFX_LIMB_BITS;
                 ++idx;
             }
         }
@@ -174,14 +174,14 @@ cfx_big_t sq2(const cfx_big_t* b) {
             t += tmp[i + j];
             t += carry;
             tmp[i + j] = (cfx_limb_t)t;
-            carry = t >> 64;
+            carry = t >> CFX_LIMB_BITS;
         }
 
         // add the square term (i,i)
         cfx_acc_t t2 = (cfx_acc_t)b->limb[i] * (cfx_acc_t)b->limb[i];
         t2 += tmp[2 * i];
         cfx_limb_t lo = (cfx_limb_t)t2;
-        cfx_acc_t c2 = t2 >> 64;
+        cfx_acc_t c2 = t2 >> CFX_LIMB_BITS;
 
         // propagate carry from cross terms into next limb
         cfx_acc_t u = (cfx_acc_t)tmp[i + n] + carry + c2;
@@ -189,14 +189,14 @@ cfx_big_t sq2(const cfx_big_t* b) {
         // store fixed lower
         tmp[2 * i] = lo;
         // carry continues if u overflowed 64 bits
-        cfx_acc_t k = u >> 64;
+        cfx_acc_t k = u >> CFX_LIMB_BITS;
         if (k) {
             size_t idx = i + n + 1;
             while (k) {
                 if (idx >= out_n) break;
                 cfx_acc_t w = (cfx_acc_t)tmp[idx] + (cfx_limb_t)k;
                 tmp[idx] = (cfx_limb_t)w;
-                k = w >> 64;
+                k = w >> CFX_LIMB_BITS;
                 ++idx;
             }
         }
@@ -238,14 +238,14 @@ cfx_big_t sq3(const cfx_big_t* b) {
                             + (cfx_limb_t)p
                             + (cfx_limb_t)carry;
             ret.limb[i + j] = (cfx_limb_t)t;
-            carry = (carry >> 64) + (t >> 64) + (p >> 64);
+            carry = (carry >> CFX_LIMB_BITS) + (t >> CFX_LIMB_BITS) + (p >> CFX_LIMB_BITS);
 
             // add p again (to double) -- same carry rule
             t = (cfx_acc_t)ret.limb[i + j]
                 + (cfx_limb_t)p
                 + (cfx_limb_t)carry;
             ret.limb[i + j] = (cfx_limb_t)t;
-            carry = (carry >> 64) + (t >> 64) + (p >> 64);
+            carry = (carry >> CFX_LIMB_BITS) + (t >> CFX_LIMB_BITS) + (p >> CFX_LIMB_BITS);
             cnt++;
         }
 
@@ -254,7 +254,7 @@ cfx_big_t sq3(const cfx_big_t* b) {
         while (carry) {
             cfx_acc_t t = (cfx_acc_t)ret.limb[k] + (cfx_limb_t)carry;
             ret.limb[k] = (cfx_limb_t)t;
-            carry = (carry >> 64) + (t >> 64);
+            carry = (carry >> CFX_LIMB_BITS) + (t >> CFX_LIMB_BITS);
             ++k;
             cnt++;
         }
@@ -266,14 +266,14 @@ cfx_big_t sq3(const cfx_big_t* b) {
 
         cfx_acc_t t = (cfx_acc_t)ret.limb[2*i] + (cfx_limb_t)sq;
         ret.limb[2*i] = (cfx_limb_t)t;
-        cfx_acc_t c = (t >> 64) + (sq >> 64);
+        cfx_acc_t c = (t >> CFX_LIMB_BITS) + (sq >> CFX_LIMB_BITS);
 
         size_t k = 2*i + 1;
         cnt++;
         while (c) {
             t = (cfx_acc_t)ret.limb[k] + (cfx_limb_t)c;
             ret.limb[k] = (cfx_limb_t)t;
-            c = (c >> 64) + (t >> 64);
+            c = (c >> CFX_LIMB_BITS) + (t >> CFX_LIMB_BITS);
             ++k;
         }
     }

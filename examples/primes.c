@@ -49,11 +49,11 @@ int main(int argc, char* argv[]) {
         } else {
             dcnt += c;
         }
-        printf(""U64F", ", primes.data[k]);
+        printf(""CFX_PRIuLIMB", ", primes.data[k]);
     }
-    printf(""U64F"\n", primes.data[primes.size-1]);
+    printf(""CFX_PRIuLIMB"\n", primes.data[primes.size-1]);
 
-    printf("found %zu primes until "U64F" (0x"X64F")\n", primes.size, n, n);
+    printf("found %zu primes until "CFX_PRIuLIMB" (0x"X64F")\n", primes.size, n, n);
 
     cfx_vec_free(&primes);
     return 0;

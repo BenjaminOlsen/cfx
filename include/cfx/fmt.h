@@ -23,7 +23,7 @@
 
 /* 64-bit */
 #define D64F "%" PRId64
-#define U64F "%" PRIu64
+#define CFX_PRIuLIMB "%" PRIu64
 #define X64F "%" PRIx64
 #define X64F_UP "%" PRIX64
 

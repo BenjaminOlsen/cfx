@@ -69,7 +69,7 @@ static void print_limbs(const char* tag, const cfx_big_t* x, size_t upto) {
     fprintf(stderr, "%s: [", tag);
     for (size_t i = 0; i < upto; ++i) {
         cfx_limb_t v = (i < x->n) ? x->limb[i] : 0;
-        fprintf(stderr, "%s"U64F"", (i ? ", " : ""), (unsigned long long)v);
+        fprintf(stderr, "%s"CFX_PRIuLIMB"", (i ? ", " : ""), (unsigned long long)v);
     }
     fprintf(stderr, "]\n");
 }

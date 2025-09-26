@@ -54,13 +54,13 @@ static void big_mul_ref(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
             cfx_acc_t t = (cfx_acc_t)a->limb[i] * b->limb[j]
                           + out->limb[i + j] + carry;
             out->limb[i + j] = (cfx_limb_t)t;
-            carry = t >> 64;
+            carry = t >> CFX_LIMB_BITS;
         }
         size_t k = a->n + j;
         while (carry) {
             cfx_acc_t t = (cfx_acc_t)out->limb[k] + carry;
             out->limb[k] = (cfx_limb_t)t;
-            carry = t >> 64;
+            carry = t >> CFX_LIMB_BITS;
             ++k;
         }
     }

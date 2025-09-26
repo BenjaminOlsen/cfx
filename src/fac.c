@@ -14,10 +14,10 @@ void cfx_fac_print(cfx_fac_t* f) {
     printf("f: %p, cap: %zu, len: %zu: ", (void*)f, f->cap, f->len);
     for (size_t k = 0; k < f->len-1; ++k) {
         cfx_pf_t* pf = &f->data[k];
-        printf(""U64F"^"U64F" * ", pf->p, pf->e);
+        printf(""CFX_PRIuLIMB"^"CFX_PRIuLIMB" * ", pf->p, pf->e);
     }
     cfx_pf_t* pf = &f->data[f->len-1];
-    printf(""U64F"^"U64F"\n", pf->p, pf->e);
+    printf(""CFX_PRIuLIMB"^"CFX_PRIuLIMB"\n", pf->p, pf->e);
 }
 
 void cfx_fac_init(cfx_fac_t* f) {

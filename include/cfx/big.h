@@ -20,7 +20,7 @@ extern "C" {
 #define CFX_BIG_PRINT_LIMBS(bg) \
     do { \
         for (size_t i = 0; i < bg.n; ++i) { \
-            printf("limb[%zu] = "U64F"\n", i, bg.limb[i]); \
+            printf("limb[%zu] = "CFX_PRIuLIMB"\n", i, bg.limb[i]); \
         } \
     } while (0)
 

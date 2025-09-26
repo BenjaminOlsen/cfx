@@ -228,7 +228,7 @@ static void test_facs(cfx_fac_t* f, cfx_limb_t primes[], cfx_limb_t exps[], size
     assert(ok);
     assert(f->len == nprimes);
     for (size_t i = 0; i < nprimes; ++i) {
-        printf("p: "U64F", e: "U64F"\n", f->data[i].p, f->data[i].e);
+        printf("p: "CFX_PRIuLIMB", e: "CFX_PRIuLIMB"\n", f->data[i].p, f->data[i].e);
         assert(f->data[i].p == primes[i]);
         assert(f->data[i].e == exps[i]);
     }

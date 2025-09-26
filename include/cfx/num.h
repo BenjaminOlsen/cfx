@@ -42,6 +42,24 @@
   #endif
 #endif
 
+/* -------- print formats, sqrt max etc -------- */
+#if (CFX_LIMB_BITS == 64)
+  #define CFX_SQRT_ACC_MAX 0xFFFFFFFFFFFFFFFFllu   /* floor(sqrt(UINT128_MAX+1)) - 1 */
+  #define CFX_PRIxLIMB "%" PRIx64
+  #define CFX_PRIuLIMB "%" PRIu64
+  #define CFX_PRI0xLIMB "%016" PRIx64
+  #define CFX_PRI0uLIMB "%016" PRIu64
+#elif (CFX_LIMB_BITS == 32)
+  #define CFX_SQRT_ACC_MAX 0xFFFFFFFFllu           /* floor(sqrt(UINT64_MAX+1)) - 1 */
+  #define CFX_PRIxLIMB "%" PRIx32
+  #define CFX_PRIuLIMB "%" PRIu32
+  #define CFX_PRI0xLIMB "%08" PRIx32
+  #define CFX_PRI0uLIMB "%08" PRIu32
+#else
+/* todo - choose defaults or error  */
+#endif 
+
+
 /* -------- accumulator selection: 2x limb width --------
  * If limb=64 and native 128 exists and not forced to struct -> use __uint128_t.
  * Else use a portable {lo,hi} struct with limb-size halves.
@@ -51,6 +69,7 @@
   #define CFX_ACC_NATIVE 1
 #else
   typedef struct { cfx_limb_t lo, hi; } cfx_acc_t;
+  #define CFX_SQRT_ACC_MAX 0xFFFFFFFFllu           /* floor(sqrt(UINT64_MAX+1)) - 1 */
 #endif
 
 /* -------- API: constructors / accessors -------- */
@@ -95,7 +114,7 @@ CFX_INLINE void cfx_mul_wide(cfx_limb_t x, cfx_limb_t y,
   /* 64×64→128: use native when present (even if acc is struct) */
   __uint128_t p = ( (__uint128_t)x * (__uint128_t)y );
   *lo = (cfx_limb_t)p;
-  *hi = (cfx_limb_t)(p >> 64);
+  *hi = (cfx_limb_t)(p >> CFX_LIMB_BITS);
 #elif (CFX_LIMB_BITS == 64)
   /* Portable 64×64→128 via 32-bit halves */
   const uint64_t x0 = (uint32_t)x, x1 = (uint64_t)x >> 32;

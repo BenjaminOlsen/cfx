@@ -19,7 +19,7 @@ static void print_binom(cfx_limb_t n, cfx_limb_t k){
     cfx_big_from_fac(&B, &f);
     char *s = cfx_big_to_str(&B, NULL);
     size_t sz = strlen(s);
-    printf("C("U64F", "U64F") = %s\nlen: %zu\n", n, k, s, sz);
+    printf("C("CFX_PRIuLIMB", "CFX_PRIuLIMB") = %s\nlen: %zu\n", n, k, s, sz);
     free(s);
     cfx_big_free(&B);
     cfx_fac_free(&f);

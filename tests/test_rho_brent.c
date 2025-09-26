@@ -19,8 +19,8 @@ static void expect_factor(cfx_limb_t n) {
         // Just ensure it *doesn't* falsely report a composite factor.
         cfx_limb_t d = cfx_rho_brent(n);
         if (is_valid_factor(n, d)) {
-            fprintf(stderr, "cfx_rho_brent returned a nontrivial factor for prime "U64F"\n",
-                    (unsigned long long)n);
+            fprintf(stderr, "cfx_rho_brent returned a nontrivial factor for prime "CFX_PRIuLIMB"\n",
+                    n);
             assert(0);
         }
         return;
@@ -32,7 +32,7 @@ static void expect_factor(cfx_limb_t n) {
     // Try a few times in case the internal random choices hit a bad cycle
     for (int attempts = 0; attempts < 5; ++attempts) {
         cfx_limb_t d = cfx_rho_brent(n);
-        printf("cfx_rho_brent("U64F") = "U64F"\n", n, d);
+        printf("cfx_rho_brent("CFX_PRIuLIMB") = "CFX_PRIuLIMB"\n", n, d);
         if (is_valid_factor(n, d)) {
             // ? verify cofactor primality or at least correctness
             cfx_limb_t m = n / d;
@@ -42,8 +42,8 @@ static void expect_factor(cfx_limb_t n) {
         }
         srand(123456u + (unsigned)attempts + 1);
     }
-    fprintf(stderr, "cfx_rho_brent failed to find a factor for "U64F"\n",
-            (unsigned long long)n);
+    fprintf(stderr, "cfx_rho_brent failed to find a factor for "CFX_PRIuLIMB"\n",
+            n);
     assert(0);
 }
 

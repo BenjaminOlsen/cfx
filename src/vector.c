@@ -68,7 +68,7 @@ void cfx_vec_clear(cfx_vec_t* v) {
 void cfx_vec_print(const cfx_vec_t* v) {
     CFX_PRINT_DBG("v: %p, size: %zu\n", (void*)v, v->size);
     for (size_t i = 0; i < v->size; ++i) {
-        CFX_PRINT_DBG(""U64F" ", v->data[i]);
+        CFX_PRINT_DBG(""CFX_PRIuLIMB" ", v->data[i]);
     }
     CFX_PRINT_DBG("\n");
 }

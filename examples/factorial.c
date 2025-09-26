@@ -22,10 +22,10 @@ int main(int argc, char* argv[]) {
     }
     
     cfx_limb_t n = (cfx_limb_t)strtol(argv[1], NULL, 10);
-    printf(""U64F"\n", n);
+    printf(""CFX_PRIuLIMB"\n", n);
     
     cfx_vec_t primes = cfx_sieve_primes(n);
-    printf("found %zu primes to "U64F"\n", primes.size, n);
+    printf("found %zu primes to "CFX_PRIuLIMB"\n", primes.size, n);
     
     cfx_fac_t fac;
     cfx_fac_init(&fac);
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
         s = cfx_big_to_str(&b, &sz);
     }
     
-    printf(""U64F"! = %s\ndigits: %zu\nlimbs: %zu\n", n, s, sz, b.n);
+    printf(""CFX_PRIuLIMB"! = %s\ndigits: %zu\nlimbs: %zu\n", n, s, sz, b.n);
     free(s);
     cfx_big_free(&b);
     cfx_fac_free(&fac);
