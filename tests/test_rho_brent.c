@@ -1,6 +1,5 @@
 #include "cfx/algo.h"
 #include "cfx/num.h"
-#include "cfx/fmt.h"
 
 #include <assert.h>
 #include <stdint.h>

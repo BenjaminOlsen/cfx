@@ -160,7 +160,7 @@ void test_mont_aliasing_safe(void) {
     // for (size_t i = 0; i < C.k; ++i) {
     //     cfx_limb_t rv = (i < ref.n) ? ref.limb[i] : 0;
     //     cfx_limb_t av = (i < aR.n)  ? aR.limb[i]  : 0;
-    //     printf("[%zu] ref=%016" PRIx64 "  aR=%016" PRIx64 "%s\n",
+    //     printf("[%zu] ref=" CFX_PRI0xLIMB "  aR=" CFX_PRI0xLIMB "%s\n",
     //         i, rv, av, (rv==av?"":"  << mismatch"));
     // }
     CFX_ASSERT_PRINT(cfx_big_cmp(&aR, &ref) == 0);
@@ -185,7 +185,7 @@ static void EXPECT_EQ_BIG(const cfx_big_t* A, const cfx_big_t* B) {
         for (size_t i = 0; i < (A->n > B->n ? A->n : B->n); ++i) {
             cfx_limb_t av = (i < A->n) ? A->limb[i] : 0;
             cfx_limb_t bv = (i < B->n) ? B->limb[i] : 0;
-            fprintf(stderr, "  [%zu] A=%016" PRIx64 "  B=%016" PRIx64 "%s\n",
+            fprintf(stderr, "  [%zu] A=" CFX_PRI0xLIMB "  B=" CFX_PRI0xLIMB "%s\n",
                     i, av, bv, (av==bv? "":"  <<"));
         }
         assert(0 && "EXPECT_EQ_BIG failed");

@@ -34,7 +34,7 @@ static void big_print(const char* tag, const cfx_big_t* x)
 {
     printf("%s n=%zu [", tag, x->n);
     for (size_t i = x->n; i-- > 0;) {
-        printf("%016" PRIx64 "", (unsigned long long)x->limb[i]);
+        printf("" CFX_PRI0xLIMB "", x->limb[i]);
         if (i) printf("_");
     }
     printf("]\n");
