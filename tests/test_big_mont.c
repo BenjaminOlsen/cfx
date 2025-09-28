@@ -1,5 +1,4 @@
 #include "cfx/big.h"
-#include "cfx/fmt.h"
 #include "cfx/macros.h"
 
 /* (a*b) % n with 128-bit scalar for ground truth */

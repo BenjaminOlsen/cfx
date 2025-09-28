@@ -2,7 +2,6 @@
 #define CFX_BIG_H
 
 #include "cfx/fac.h"
-#include "cfx/fmt.h"
 #include "cfx/algo.h"
 #include "cfx/num.h"
 
@@ -143,6 +142,8 @@ void cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b);
 char* cfx_big_to_str(const cfx_big_t* b, size_t *sz_out);
 char* cfx_big_to_hex(const cfx_big_t* src, size_t *sz_out);
 char* cfx_big_to_bin(const cfx_big_t* b, size_t *sz_out);
+int cfx_big_to_sci(const cfx_big_t* x, unsigned base, int sig_digits, char* out, size_t outsz);
+
 int cfx_big_from_str(cfx_big_t* b, const char* str);
 int cfx_big_from_hex(cfx_big_t* out, const char* s);
 int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base);
@@ -230,11 +231,11 @@ static inline int cfx_big_mont_sqr(cfx_big_t* out, const cfx_big_t* aR, const cf
 }
 
 
-
 /* Ergonomic one liners that use montgomery internally */
 int cfx_big_sqr_mod (cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* n);
 int cfx_big_modexp  (cfx_big_t* out, const cfx_big_t* base, const cfx_big_t* exp, const cfx_big_t* n);
 
+double cfx_big_log(const cfx_big_t* b, double base);
 
 /**
  *  args: cfx_big_t * b : ptr to big

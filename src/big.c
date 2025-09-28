@@ -1,18 +1,18 @@
 #include "cfx/big.h"
 #include "cfx/fac.h"
-#include "cfx/fmt.h"
 #include "cfx/algo.h"
 #include "cfx/num.h"
 #include "cfx/macros.h"
 
-#include <pthread.h>
+#include <math.h>
+#include <stdio.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <pthread.h>
 #include <assert.h>
-#include <ctype.h>
 #include <inttypes.h>
 
 // x86-64 BMI2/ADX fast path
@@ -2400,4 +2400,64 @@ int cfx_big_modexp(cfx_big_t* out, const cfx_big_t* base, const cfx_big_t* exp, 
     cfx_big_free(&X);
     cfx_big_mont_ctx_free(&C);
     return ok;
+}
+
+
+
+double cfx_big_log(const cfx_big_t* b, double base) {
+    size_t l = b->n;
+    cfx_limb_t hi = b->limb[l-1];
+    double ln_base = log(base);
+    double ln_hi = log(hi);
+    double ln_B = 64 * log(2.0);
+    return ((l - 1) * ln_B + ln_hi) / ln_base;
+}
+
+int cfx_big_to_sci(const cfx_big_t* x, unsigned base, 
+                                int sig_digits, char* out, size_t outsz) {
+
+    if (!x || !out || outsz == 0 || base < 2) return 0;
+
+    // zero?
+    if (x->n == 0) {
+        snprintf(out, outsz, "0");
+        return 1;
+    }
+
+    // find top nonzero limb (defensive)
+    size_t k = x->n;
+    while (k > 0 && x->limb[k-1] == 0) --k;
+    if (k == 0) { snprintf(out, outsz, "0"); return 1; }
+
+    uint64_t hi = x->limb[k-1];
+
+    const long double lnB   = (long double)CFX_LIMB_BITS * logl(2.0L);
+    const long double lnb   = logl((long double)base);
+
+    // ln(n) ≈ (k-1)*ln(B) + ln(hi)
+    long double ln_n = ((long double)(k - 1)) * lnB + logl((long double)hi);
+
+    // e = floor( ln(n) / ln(b) )
+    long double logb_n = ln_n / lnb;
+    long long e = (long long) floorl(logb_n);
+
+    // mantissa m = b^( fractional part )
+    long double frac = logb_n - (long double)e;
+    long double m = expl(frac * lnb);   // == powl(base, frac);  guarantees 1 <= m < b (up to rounding)
+
+    // rounding guard: if m rounds to exactly b, bump e and renormalize
+    if (!(m < (long double)base)) { m /= (long double)base; ++e; }
+
+    // format: decimal mantissa × base^e
+    if (sig_digits < 1) sig_digits = 1;
+    int after_decimal = sig_digits - 1;
+
+    if (base == 10) {
+        // 3.236e8930
+        snprintf(out, outsz, "%.*Lf" "e%lld", after_decimal, m, e);
+    } else {
+        // 3.236 × 7^12345
+        snprintf(out, outsz, "%.*Lf x %u^%lld", after_decimal, m, base, e);
+    }
+    return 1;
 }

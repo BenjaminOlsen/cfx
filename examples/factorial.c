@@ -1,5 +1,4 @@
 #include "cfx/fac.h"
-#include "cfx/fmt.h"
 #include "cfx/big.h"
 #include "cfx/algo.h"
 
@@ -49,6 +48,18 @@ int main(int argc, char* argv[]) {
     }
     
     printf(""CFX_PRIuLIMB"! = %s\ndigits: %zu\nlimbs: %zu\n", n, s, sz, b.n);
+    double lg = cfx_big_log(&b, 10);
+    printf("log10("CFX_PRIuLIMB"!) = %.4f\n", n, lg);
+    char sci[128];
+    cfx_big_to_sci(&b, 10, 5, sci, sizeof(sci));
+    printf("%s\n", sci); 
+    char sci2[128];
+    cfx_big_to_sci(&b, 100, 3, sci2, sizeof(sci2));
+    printf("%s\n", sci2); 
+
+    char sci3[128];
+    cfx_big_to_sci(&b, 3, 4, sci3, sizeof(sci2));
+    printf("%s\n", sci3); 
     free(s);
     cfx_big_free(&b);
     cfx_fac_free(&fac);

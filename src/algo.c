@@ -73,7 +73,7 @@ cfx_vec_t cfx_sieve_primes(cfx_limb_t n) {
 }
 
 
-/* uses legendre's formula to give th power of p that divides n! */
+/* uses legendre's formula to give the power of p that divides n! */
 cfx_limb_t cfx_legendre(cfx_limb_t n, cfx_limb_t p) {
     cfx_limb_t e = 0;
     while (n) {

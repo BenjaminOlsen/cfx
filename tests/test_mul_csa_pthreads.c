@@ -1,7 +1,6 @@
 // test_mul_csa_pthreads.c
 
 #include "cfx/big.h"
-#include "cfx/fmt.h"
 
 #include <assert.h>
 #include <stdint.h>

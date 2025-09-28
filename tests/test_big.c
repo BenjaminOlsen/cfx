@@ -1,5 +1,4 @@
 #include "cfx/big.h"
-#include "cfx/fmt.h"
 #include "cfx/macros.h"
 #include "cfx/error.h"
 

@@ -2,7 +2,6 @@
 #include <benchmark/benchmark.h>
 #include <cstdint>
 #include <cfx/big.h>
-#include <cfx/fmt.h>
 
 static void BM_InitFree(benchmark::State& state) {
     for (auto _ : state) {

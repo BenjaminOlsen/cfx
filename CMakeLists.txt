@@ -15,7 +15,6 @@ set(CFX_HEADERS
     include/cfx/cfx.h
     include/cfx/big.h
     include/cfx/fac.h
-    include/cfx/fmt.h
     include/cfx/algo.h
     include/cfx/error.h
     include/cfx/num.h

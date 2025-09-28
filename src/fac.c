@@ -1,5 +1,4 @@
 #include "cfx/fac.h"
-#include "cfx/fmt.h"
 #include "cfx/algo.h"
 #include "cfx/error.h"
 #include "cfx/vector.h"

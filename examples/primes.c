@@ -1,5 +1,4 @@
 #include "cfx/algo.h"
-#include "cfx/fmt.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -53,7 +52,7 @@ int main(int argc, char* argv[]) {
     }
     printf(""CFX_PRIuLIMB"\n", primes.data[primes.size-1]);
 
-    printf("found %zu primes until "CFX_PRIuLIMB" (0x"X64F")\n", primes.size, n, n);
+    printf("found %zu primes until "CFX_PRIuLIMB" (0x"CFX_PRIuLIMB")\n", primes.size, n, n);
 
     cfx_vec_free(&primes);
     return 0;
