@@ -896,7 +896,7 @@ static void test_known_squares(void) {
     // printf("mul %d len: %zu \n", ++cnt, b.n);
 
     // for (size_t i = 0; i < b.n; ++i) {
-    //     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"X64F")\n", i, b.limb[i], b.limb[i]);
+    //     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"CFX_PRI0xLIMB")\n", i, b.limb[i], b.limb[i]);
     // }
     
     char* huge = cfx_big_to_hex(&b, NULL);
@@ -1046,7 +1046,7 @@ static void test_known_squares_2(void) {
     // printf("mul csa %d len: %zu \n", ++cnt, b.n);
 
     // for (size_t i = 0; i < b.n; ++i) {
-    //     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"X64F")\n", i, b.limb[i], b.limb[i]);
+    //     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"CFX_PRI0xLIMB")\n", i, b.limb[i], b.limb[i]);
     // }
     
     char* huge = cfx_big_to_hex(&b, NULL);

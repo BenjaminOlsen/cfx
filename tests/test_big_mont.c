@@ -59,7 +59,7 @@ void test_mont_mul_matches_scalar(void) {
     /* read back as u64 */
     cfx_limb_t got = (out.n ? out.limb[0] : 0);
     cfx_limb_t expect = mulmod_u64(a64, b64, n64);
-    printf(">>>>>>>>>>>>>>>>> test_mont_mul_matches_scalar: got: 0x"X64F", expect: 0x"X64F" (diff "CFX_PRIuLIMB")\n",
+    printf(">>>>>>>>>>>>>>>>> test_mont_mul_matches_scalar: got: 0x"CFX_PRI0xLIMB", expect: 0x"CFX_PRI0xLIMB" (diff "CFX_PRIuLIMB")\n",
         got, expect, got > expect? got-expect : expect-got);
     // CFX_ASSERT_PRINT(got == expect);
 
@@ -89,7 +89,7 @@ void test_mont_modexp_matches_scalar(void) {
     CFX_ASSERT_PRINT(cfx_big_modexp(&r, &a, &e, &n));
     cfx_limb_t got = (r.n ? r.limb[0] : 0);
     cfx_limb_t expect = powmod_u64(a64, e64, n64);
-    printf(">>>>>>>>>>>>>>>>> test_mont_modexp_matches_scalar: got: 0x"X64F", expect: 0x"X64F" (diff "CFX_PRIuLIMB")\n",
+    printf(">>>>>>>>>>>>>>>>> test_mont_modexp_matches_scalar: got: 0x"CFX_PRI0xLIMB", expect: 0x"CFX_PRI0xLIMB" (diff "CFX_PRIuLIMB")\n",
         got, expect, got > expect? got-expect : expect-got);
     // CFX_ASSERT_PRINT(got == powmod_u64(a64, e64, n64));
 

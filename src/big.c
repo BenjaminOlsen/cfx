@@ -1177,7 +1177,7 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
             cfx_limb_t lo = a->limb[i];
             p->limb[i + limb_shift] = (lo << bit_shift) | carry;
             carry = (r ? (lo >> r) : 0);
-            // printf("s: %u, bit_shift: %u, limb_shift: %u, lo: "X64F", carry: %zx, i: "X64F"\n", s, bit_shift, limb_shift, lo, i, carry);
+            // printf("s: %u, bit_shift: %u, limb_shift: %u, lo: "CFX_PRI0xLIMB", carry: %zx, i: "CFX_PRI0xLIMB"\n", s, bit_shift, limb_shift, lo, i, carry);
         }
         p->limb[limb_shift + a->n] = carry;
         p->n = limb_shift + a->n + (carry ? 1 : 0);
@@ -1540,7 +1540,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
         cfx_acc_t top = ((cfx_acc_t)U.limb[j + m] << CFX_LIMB_BITS) | U.limb[j + m - 1];
         cfx_limb_t qhat = (cfx_limb_t)(top / v1);
         cfx_limb_t rhat = (cfx_limb_t)(top % v1);
-        printf("top: ["X64F", "X64F"] / "X64F" -> qhat: "X64F", rhat: "X64F"\n", 
+        printf("top: ["CFX_PRI0xLIMB", "CFX_PRI0xLIMB"] / "CFX_PRI0xLIMB" -> qhat: "CFX_PRI0xLIMB", rhat: "CFX_PRI0xLIMB"\n", 
             U.limb[j + m], U.limb[j + m-1], v1, qhat, rhat);
 
         /* debug */
@@ -1551,14 +1551,14 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
         /* Adjust qhat if necessary (Knuth step D3) */
         if (qhat == UINT64_MAX ||
             (cfx_acc_t)qhat * v2 > (((cfx_acc_t)rhat << CFX_LIMB_BITS) | U.limb[j + m - 2])) {
-            printf("adjusting qhat: qhat "X64F" -> "X64F", rhat: "X64F" -> "X64F"\n",
+            printf("adjusting qhat: qhat "CFX_PRI0xLIMB" -> "CFX_PRI0xLIMB", rhat: "CFX_PRI0xLIMB" -> "CFX_PRI0xLIMB"\n",
                 qhat, qhat-1, rhat, rhat + v1);
             qhat--;
             rhat += v1;
             /* only try a second decrement if rhat did NOT overflow base b */
             if (rhat >= v1 &&
                 (cfx_acc_t)qhat * v2 > (((cfx_acc_t)rhat << CFX_LIMB_BITS) | U.limb[j + m - 2])) {
-                printf("adjusting qhat AGAIN: qhat "X64F" -> "X64F", rhat: "X64F" -> "X64F"\n",
+                printf("adjusting qhat AGAIN: qhat "CFX_PRI0xLIMB" -> "CFX_PRI0xLIMB", rhat: "CFX_PRI0xLIMB" -> "CFX_PRI0xLIMB"\n",
                     qhat, qhat-1, rhat, rhat + v1);
                 qhat--;
                 rhat += v1;
@@ -1579,7 +1579,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
 
             // Propagate to next limb in *128 bits* so t_hi + borrow cannot overflow.
             carry = ( (cfx_acc_t)t_hi + borrow );
-            printf("t_hi, t_lo: "X64F", "X64F" carry: "X64F", "X64F"\n", t_hi, t_lo, (cfx_limb_t)(carry >> CFX_LIMB_BITS), (cfx_limb_t)carry);
+            printf("t_hi, t_lo: "CFX_PRI0xLIMB", "CFX_PRI0xLIMB" carry: "CFX_PRI0xLIMB", "CFX_PRI0xLIMB"\n", t_hi, t_lo, (cfx_limb_t)(carry >> CFX_LIMB_BITS), (cfx_limb_t)carry);
         }
 
         /* subtract final carry from U[j+m] */
@@ -1608,7 +1608,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
         }
 
         QT.limb[j] = qhat;
-        printf(">>>>>>>>>>>> QT.limb[%zu] = 0x"X64F"\n", j, qhat);
+        printf(">>>>>>>>>>>> QT.limb[%zu] = 0x"CFX_PRI0xLIMB"\n", j, qhat);
     }
 
     /* Unnormalize remainder: R = (U[0..m-1] >> s) */
