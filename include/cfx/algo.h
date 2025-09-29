@@ -69,6 +69,61 @@ void cfx_mul_csa_portable_fast_rows(const cfx_limb_t* A, size_t ia, size_t na_ro
 void cfx_mul_csa_fold_and_normalize(csa128_t* acc, cfx_limb_t* spill,
                                     size_t nout, cfx_limb_t* R);
 
+
+CFX_INLINE
+unsigned cfx_clz(cfx_limb_t x) {
+#if defined(__GNUC__) || defined(__clang__)
+    #if CFX_LIMB_BITS == 64
+        return x ? (unsigned)__builtin_clzll((unsigned long long)x) : 64;
+    #elif CFX_LIMB_BITS == 32
+        return x ? (unsigned)__builtin_clz((unsigned)x) : 32;
+    #endif
+#else
+    // Portable fallback
+    if (!x) return (unsigned)(8*sizeof(x));
+    unsigned c = 0, 
+    unsigned B = (unsigned)(8u * sizeof(cfx_limb_t));
+    cfx_limb_t m = (cfx_limb_t)1 << (B - 1);
+    while (m && (x & m) == 0) { c++; m >>= 1; }
+    return c;
+#endif
+}
+
+/* This is a nice, very fast way of calculating sqrt using newton's method
+ * (Newton-Raphson Method) */
+CFX_INLINE
+cfx_limb_t cfx_isqrt_nr(cfx_limb_t n) {
+    if (n == 0) return 0;
+    const unsigned B = (unsigned)(8u * sizeof(cfx_limb_t));
+    unsigned bitlen = B - cfx_clz(n);
+    // x0 ≈ 2^{ceil(bitlen/2)}
+    cfx_limb_t x = (cfx_limb_t)1 << ((bitlen + 1u) >> 1);
+
+    // Newton step: x_{k+1} = floor((x_k + floor(n / x_k)) / 2)
+    // This uses only division and addition; no x*x overflow risk.
+    for (;;) {
+        cfx_limb_t y = (x + n / x) >> 1;
+        if (y >= x) return x;  // converged (floor)
+        x = y;
+    }
+}
+
+#if !defined(CFX_NO_FP)
+#include <math.h>
+CFX_INLINE
+cfx_limb_t cfx_isqrt_fp(cfx_limb_t n) {
+    if (!n) return 0;
+    double d = (double)n;
+    cfx_limb_t x = (cfx_limb_t)floor(sqrt(d));   // seed
+
+    // upward correction (no overflow: compare via division)
+    while ((cfx_limb_t)(x + 1) != 0 && (cfx_limb_t)(x + 1) <= n / (cfx_limb_t)(x + 1)) ++x;
+    // downward correction if overshot
+    while (x && x > n / x) --x;
+    return x;
+}
+#endif 
+
 #ifdef __cplusplus
 }
 #endif

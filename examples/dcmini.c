@@ -7,7 +7,8 @@
 #include <string.h>
 #include <assert.h>
 
-
+/* each token in the string is either a numerical, operator, left paren or right paren */
+/* TODO: allow funciton calls */
 typedef enum {
     T_NUM,
     T_OP,
@@ -42,6 +43,7 @@ static void tv_init(token_vec_t* t) {
 }
 
 static void tv_push(token_vec_t* tv, token_t tk) { 
+    // printf("tv push: tk.t: %d, tk.op: %c, tk.num: %s\n", tk.t, tk.op, tk.num);
     if (tv->n == tv->cap) {
         tv->cap = tv->cap ? tv->cap * 2 : 32;
         tv->v = realloc(tv->v, tv->cap * sizeof(token_t));
@@ -61,12 +63,12 @@ static int precedence(char op) {
 static int right_assoc(char op) { return op=='^'; }
 
 static int is_num_char(char c, base_t b){
-    if(b == BASE_DEC) return (c>='0' && c<='9');
+    if(b == BASE_DEC) return (c >= '0' && c <= '9');
     // if(b == BASE_BIN) return (c=='0' || c=='1');
     /* hex */
-    return (c>='0' && c<='9') ||
-           (c>='a' && c<='f') ||
-           (c>='A' && c<='F');
+    return (c >= '0' && c <= '9') ||
+           (c >= 'a' && c <= 'f') ||
+           (c >= 'A' && c <= 'F');
 }
 
 static token_vec_t tokenize(const char* s, base_t inb) {
@@ -114,7 +116,7 @@ static token_vec_t tokenize_rpn(const char* s, base_t inb){
     const char* p = s;
     while (*p) {
         while (isspace((unsigned char)*p)) ++p;
-        if (!*p) break;
+        // if (!*p) break;
         const char* start = p;
         while (*p && !isspace((unsigned char)*p)) ++p;
         size_t len = (size_t)(p - start);
@@ -143,6 +145,7 @@ static token_vec_t to_rpn(const token_vec_t* in) {
                 opstack = realloc(opstack, cap * sizeof(token_t)); \
             } \
             opstack[top++] = (tk); \
+            printf("push op '%c'\n", tk.op); \
         } while(0)
 
     #define POP_OP() (opstack[--top])

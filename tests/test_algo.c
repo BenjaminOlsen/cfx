@@ -236,6 +236,31 @@ static void test_fuzz_small(void) {
     PRINT_TEST(1);
 }
 
+static void test_cfz(void) {
+    cfx_limb_t l0 = 0;
+    assert(cfx_clz(l0) == CFX_LIMB_BITS);
+    cfx_limb_t l1 = 1;
+    assert(cfx_clz(l1) == CFX_LIMB_BITS-1);
+    for (size_t k = 2; k < CFX_LIMB_BITS-1; ++k) {
+        l1 <<= 1;
+        assert(cfx_clz(l1) == CFX_LIMB_BITS-k);
+    }
+
+    PRINT_TEST(1);
+}
+
+static void test_sqrt(void) {
+    assert (cfx_isqrt_nr(100) == 10);
+    assert (cfx_isqrt_nr(25) == 5);
+    assert (cfx_isqrt_nr(0) == 0);
+    // printf("cfx_isqrt_nr(0xFFFFFFFFFFFFFF) = " CFX_PRIuLIMB "\n", cfx_isqrt_nr(0xFFFFFFFFFFFFFF));
+    assert (cfx_isqrt_nr(0xFFFFFFFFFFFFFF) == 268435455);
+    assert (cfx_isqrt_nr(0xFFFFFFF0000000) == 268435455);
+    assert (cfx_isqrt_nr(0xabcdefabada) == 3436031);
+
+    PRINT_TEST(1);
+}
+
 int main(void) {
     test_prime_sieve();
     test_primality_test();
@@ -250,6 +275,8 @@ int main(void) {
     test_all_ones_multi();
     test_power_of_two_alignment();
     test_fuzz_small();
+    test_cfz();
+    test_sqrt();
     puts("OK: cfx_mul_csa_portable tests passed.\n");
     return 0;
 }
