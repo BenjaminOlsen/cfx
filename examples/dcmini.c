@@ -60,11 +60,11 @@ static int precedence(char op) {
     }
 }
 
-static int right_assoc(char op) { return op=='^'; }
+static int right_assoc(char op) { return op == '^'; }
 
-static int is_num_char(char c, base_t b){
-    if(b == BASE_DEC) return (c >= '0' && c <= '9');
-    // if(b == BASE_BIN) return (c=='0' || c=='1');
+static int is_num_char(char c, base_t b) {
+    if (b == BASE_DEC) return (c >= '0' && c <= '9');
+    // if (b == BASE_BIN) return (c == '0' || c == '1');
     /* hex */
     return (c >= '0' && c <= '9') ||
            (c >= 'a' && c <= 'f') ||
@@ -109,7 +109,7 @@ static token_vec_t tokenize(const char* s, base_t inb) {
     return tv;
 }
 
-static token_vec_t tokenize_rpn(const char* s, base_t inb){
+static token_vec_t tokenize_rpn(const char* s, base_t inb) {
     (void)inb; // todo!
     token_vec_t tv;
     tv_init(&tv);
@@ -146,7 +146,7 @@ static token_vec_t to_rpn(const token_vec_t* in) {
             } \
             opstack[top++] = (tk); \
             printf("push op '%c'\n", tk.op); \
-        } while(0)
+        } while (0)
 
     #define POP_OP() (opstack[--top])
     
@@ -157,29 +157,39 @@ static token_vec_t to_rpn(const token_vec_t* in) {
             continue;
         }
         if (tk.t == T_OP) {
-            while (top>0 && opstack[top-1].t==T_OP) {
-                char o2=opstack[top-1].op, o1=tk.op;
+            while (top > 0 && opstack[top-1].t == T_OP) {
+                char o2 = opstack[top-1].op;
+                char o1 = tk.op;
                 if ( (right_assoc(o1) ? precedence(o1) < precedence(o2)
                                       : precedence(o1) <= precedence(o2)) ) {
                     tv_push(&out, POP_OP());
                 } else break;
             }
             PUSH_OP(tk);
-        } else if (tk.t==T_LP) {
+        } else if (tk.t == T_LP) {
             PUSH_OP(tk);
-        } else if (tk.t==T_RP) {
-            int found=0;
-            while (top>0) {
-                token_t t2=POP_OP();
-                if (t2.t==T_LP) { found=1; break; }
+        } else if (tk.t == T_RP) {
+            int found = 0;
+            while (top > 0) {
+                token_t t2 = POP_OP();
+                if (t2.t == T_LP) { 
+                    found = 1;
+                    break;
+                }
                 tv_push(&out, t2);
             }
-            if (!found) { fprintf(stderr,"mismatched parentheses\n"); exit(1); }
+            if (!found) {
+                fprintf(stderr,"mismatched parentheses\n");
+                exit(1);
+            }
         }
     }
-    while (top>0) {
-        token_t t2=POP_OP();
-        if (t2.t==T_LP) { fprintf(stderr,"mismatched parentheses\n"); exit(1); }
+    while (top > 0) {
+        token_t t2 = POP_OP();
+        if (t2.t == T_LP) {
+            fprintf(stderr,"mismatched parentheses\n");
+            exit(1);
+        }
         tv_push(&out, t2);
     }
     free(opstack);
@@ -191,7 +201,7 @@ static token_vec_t to_rpn(const token_vec_t* in) {
 
 static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, char op) {
 
-    if (op=='+') { 
+    if (op == '+') { 
         cfx_big_t tmp;
         cfx_big_init(&tmp);
         cfx_big_copy(&tmp, A);
@@ -199,7 +209,7 @@ static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, cha
         cfx_big_move(out, &tmp);
         return;
     }
-    if (op=='-') { 
+    if (op == '-') { 
         cfx_big_t tmp;
         cfx_big_init(&tmp);
         cfx_big_copy(&tmp, A);
@@ -207,7 +217,7 @@ static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, cha
         cfx_big_move(out, &tmp);
         return;
     }
-    if (op=='*') {
+    if (op == '*') {
         cfx_big_t tmp;
         cfx_big_init(&tmp);
         cfx_big_copy(&tmp, A);
@@ -215,7 +225,7 @@ static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, cha
         cfx_big_move(out, &tmp);
         return;
     }
-    if (op=='/') {
+    if (op == '/') {
         cfx_big_t q, r;
         cfx_big_init(&q);
         cfx_big_init(&r);
@@ -236,7 +246,6 @@ static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, cha
     if (op == '^') {
         // plain pow (no mod). 
         // Here we implement a^b with b as non-negative.
-        // For huge exponents you’ll almost always want (a^b) % m written with % in expr.
         cfx_big_t e;
         cfx_big_init(&e);
         cfx_big_copy(&e,B);
@@ -350,12 +359,12 @@ static void usage(const char* prog) {
 
 static char* join_args(int argc, char** argv, int start) {
     size_t len = 0;
-    for(int i=start;i<argc;i++) len += strlen(argv[i]) + 1;
+    for (int i = start; i < argc; i++) len += strlen(argv[i]) + 1;
     char* s = malloc(len + 1);
-    if(!s) return NULL;
+    if (!s) return NULL;
     s[0] = '\0';
-    for(int i=start;i<argc;i++){
-        if(i>start) strcat(s, " ");
+    for (int i = start; i < argc; i++) {
+        if (i > start) strcat(s, " ");
         strcat(s, argv[i]);
     }
     return s;
@@ -370,15 +379,15 @@ static int parse_flags(int argc, char** argv, base_t* inb, base_t* outb,
     int i = 1;
     for (; i < argc; ++i) {
         const char* a = argv[i];
-        if(a[0] != '-') break;
-        if(strcmp(a,"-id")==0) *inb = BASE_DEC;
-        else if(strcmp(a,"-ix")==0) *inb = BASE_HEX;
-        // else if(strcmp(a,"-ib")==0) *inb = BASE_BIN;
-        else if(strcmp(a,"-od")==0) *outb = BASE_DEC;
-        else if(strcmp(a,"-ox")==0) *outb = BASE_HEX;
-        else if(strcmp(a,"-ob")==0) *outb = BASE_BIN;
-        else if(strcmp(a,"-rpn")==0) *mode = MODE_RPN;
-        else if(strcmp(a,"-h")==0 || strcmp(a,"--help")==0){ usage(argv[0]); return 0; }
+        if (a[0] != '-') break;
+        if (strcmp(a,"-id") == 0) *inb = BASE_DEC;
+        else if (strcmp(a,"-ix") == 0) *inb = BASE_HEX;
+        // else if (strcmp(a,"-ib") == 0) *inb = BASE_BIN;
+        else if (strcmp(a,"-od") == 0) *outb = BASE_DEC;
+        else if (strcmp(a,"-ox") == 0) *outb = BASE_HEX;
+        else if (strcmp(a,"-ob") == 0) *outb = BASE_BIN;
+        else if (strcmp(a,"-rpn") == 0) *mode = MODE_RPN;
+        else if (strcmp(a,"-h") == 0 || strcmp(a,"--help") == 0) { usage(argv[0]); return 0; }
         else { fprintf(stderr,"unknown option: %s\n", a); usage(argv[0]); return 0; }
     }
     if (i >= argc) { usage(argv[0]); return 0; }
@@ -394,10 +403,10 @@ int main(int argc, char** argv) {
     input_mode_t mode;
     int idx;
     
-    if(!parse_flags(argc, argv, &inb, &outb, &mode, &idx)) return 2;
+    if (!parse_flags(argc, argv, &inb, &outb, &mode, &idx)) return 2;
 
     char* expr = join_args(argc, argv, idx);
-    if(!expr){ fprintf(stderr,"OOM\n"); return 1; }
+    if (!expr) { fprintf(stderr,"OOM\n"); return 1; }
 
     token_vec_t tv = (mode == MODE_RPN) ? tokenize_rpn(expr, inb)
                                         : tokenize(expr, inb);
@@ -409,7 +418,7 @@ int main(int argc, char** argv) {
 
     char* out = NULL;
     size_t digits;
-    switch(outb){
+    switch (outb) {
         case BASE_DEC: out = cfx_big_to_str(&res, &digits); break;
         case BASE_HEX: out = cfx_big_to_hex(&res, &digits); break;
         case BASE_BIN: out = cfx_big_to_bin(&res, &digits); break;
@@ -417,7 +426,7 @@ int main(int argc, char** argv) {
     puts(out);
     printf("digits: %zu\n", digits);
 
-    if(mode != MODE_RPN) free(tv.v);  // tv == rpn when MODE_RPN
+    if (mode != MODE_RPN) free(tv.v);  // tv == rpn when MODE_RPN
     free(rpn.v);
     cfx_big_free(&res);
     free(out);
