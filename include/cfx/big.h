@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
+
 #ifndef CFX_BIG_H
 #define CFX_BIG_H
 
@@ -39,7 +41,7 @@ typedef struct cfx_fac_cache cfx_fac_cache_t;
  * >>>>> Always call cfx_big_init after declaring a cfx_big_t ! 
  **/
 typedef struct {
-    cfx_limb_t* limb; /* the 'digits' of the number with base BIG_BASE*/
+    cfx_limb_t* limb; /* the 'digits' of the number with base BIG_BASE */
     size_t n;
     size_t cap;
     cfx_fac_cache_t* cache;  /* == NULL if prime factor caching disabled */

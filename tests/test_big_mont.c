@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
+
 #include "cfx/big.h"
 #include "cfx/macros.h"
 

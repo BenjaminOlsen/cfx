@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
+
 #ifndef CFX_MACROS_H
 #define CFX_MACROS_H
 
@@ -54,16 +56,16 @@ do { \
 #define CFX_PRINT_TEST_COND(cond) printf("[%s] cond: '%s' - %s\n", __func__,  STR(cond), cond ? "OK" : ">>>> NOT OK <<<<")
 
 #ifdef CFX_DEBUG
-#define CFX_ASSERT_PRINT(EXPR)                                      \
+#define CFX_ASSERT_PRINT(x)                                         \
     do {                                                            \
-        int _cfx_assert_expr_ok_ = (EXPR); /* <<< evaluate ONCE */  \
-        if (!(_cfx_assert_expr_ok_)) {                              \
+        int assert_expr_ok_ = (x); /* <<< evaluate ONCE */          \
+        if (!(assert_expr_ok_)) {                                   \
             fprintf(stderr, "[%s] cond: '%s' - >>>> NOT OK <<<<\n", \
-                    __func__, #EXPR);                               \
-            assert(_cfx_assert_expr_ok_);                           \
+                    __func__, #x);                                  \
+            assert(assert_expr_ok_);                                \
         } else {                                                    \
             fprintf(stdout, "[%s] cond: '%s' - OK\n",               \
-                    __func__, #EXPR);                               \
+                    __func__, #x);                                  \
         }                                                           \
     } while (0)
 #else
@@ -76,7 +78,13 @@ do { \
   #define PRINT_DBG(...) do { } while (0)
 #endif
 
-
-#define CFX_ASSERT(cond) assert(cond)
+#ifdef CFX_DEBUG
+#define CFX_ASSERT(x) assert(x)
+#else
+#define CFX_ASSERT(x) do {          \
+    int assert_expr_ok = (x);       \
+    if (!assert_expr_ok) return 0;  \
+} while (0)
+#endif
 
 #endif /* CFX_MACROS_H */

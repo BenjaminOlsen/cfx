@@ -1,10 +1,12 @@
-/* cfx_num.h : C compile-time polymorphism for limb/accumulator
-*
-* Configure (optional):
+/* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
+
+/*
+* Compile with these (optional) flags to force limb sizes:
 *   -DCFX_FORCE_LIMB_32    or  -DCFX_FORCE_LIMB_64
-*   -DCFX_FORCE_ACC_STRUCT (use {lo,hi} even if native wide exists)
+*   -DCFX_FORCE_ACC_STRUCT (use {lo,hi} accumulator struct even if native wide exists)
 *   -DCFX_FORCE_NO_UINT128 (pretend no __uint128_t)
 */
+
 #ifndef CFX_NUM_H
 #define CFX_NUM_H
 
@@ -15,6 +17,18 @@
 #if !defined(CFX_FORCE_NO_UINT128) && defined(__SIZEOF_INT128__)
   #define CFX_HAS_UINT128 1
 #endif
+
+#if !defined(CFX_NO_FP)
+  #include <float.h>
+  #if defined(__STDC_IEC_559__) && DBL_MANT_DIG == 53
+    #define CFX_USE_FP_ISQRT 1
+  #else
+    #define CFX_USE_FP_ISQRT 0
+  #endif
+#else
+  #define CFX_USE_FP_ISQRT 0
+#endif
+
 
 /* -------- always_inline helper -------- */
 #if defined(_MSC_VER)
@@ -43,7 +57,7 @@
   #endif
 #endif
 
-/* -------- print formats, sqrt max etc -------- */
+/* -------- print formats -------- */
 #if (CFX_LIMB_BITS == 64)
   #define CFX_SQRT_ACC_MAX 0xFFFFFFFFFFFFFFFFllu   /* floor(sqrt(UINT128_MAX+1)) - 1 */
   #define CFX_PRIxLIMB "%" PRIx64
@@ -109,8 +123,7 @@ CFX_INLINE cfx_limb_t cfx_acc_hi(cfx_acc_t a) {
 
 /* -------- primitive: limb×limb -> {hi,lo} (each limb-sized) -------- */
 CFX_INLINE void cfx_mul_wide(cfx_limb_t x, cfx_limb_t y,
-                             cfx_limb_t* hi, cfx_limb_t* lo)
-{
+                             cfx_limb_t* hi, cfx_limb_t* lo) {
 #if (CFX_LIMB_BITS == 64) && CFX_HAS_UINT128
   /* 64×64→128: use native when present (even if acc is struct) */
   __uint128_t p = ( (__uint128_t)x * (__uint128_t)y );
@@ -138,8 +151,7 @@ CFX_INLINE void cfx_mul_wide(cfx_limb_t x, cfx_limb_t y,
 }
 
 /* -------- primitive: acc += low limb -------- */
-CFX_INLINE void cfx_acc_add_lo(cfx_acc_t* acc, cfx_limb_t add)
-{
+CFX_INLINE void cfx_acc_add_lo(cfx_acc_t* acc, cfx_limb_t add) {
 #if defined(CFX_ACC_NATIVE)
   *acc += (cfx_acc_t)add;
 #else
@@ -150,8 +162,7 @@ CFX_INLINE void cfx_acc_add_lo(cfx_acc_t* acc, cfx_limb_t add)
 }
 
 /* -------- primitive: acc += high limb (i.e., add at +LIMB_BITS) -------- */
-CFX_INLINE void cfx_acc_add_hi(cfx_acc_t* acc, cfx_limb_t add_hi)
-{
+CFX_INLINE void cfx_acc_add_hi(cfx_acc_t* acc, cfx_limb_t add_hi) {
 #if defined(CFX_ACC_NATIVE)
   *acc += ( (cfx_acc_t)add_hi << CFX_LIMB_BITS );
 #else
@@ -163,8 +174,7 @@ CFX_INLINE void cfx_acc_add_hi(cfx_acc_t* acc, cfx_limb_t add_hi)
 }
 
 /* -------- primitive: acc += x*y -------- */
-CFX_INLINE void cfx_acc_mac(cfx_acc_t* acc, cfx_limb_t x, cfx_limb_t y)
-{
+CFX_INLINE void cfx_acc_mac(cfx_acc_t* acc, cfx_limb_t x, cfx_limb_t y) {
 #if defined(CFX_ACC_NATIVE) && (CFX_LIMB_BITS == 64)
   *acc += ( (__uint128_t)x * (__uint128_t)y );
 #else

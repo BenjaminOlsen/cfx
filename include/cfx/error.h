@@ -1,4 +1,5 @@
-// cfx_error.h
+/* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
+
 #ifndef CFX_ERROR_H
 #define CFX_ERROR_H
 

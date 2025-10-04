@@ -1,5 +1,7 @@
-#ifndef CFX_FACTORIZATION_H
-#define CFX_FACTORIZATION_H
+/* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
+
+#ifndef CFX_FAC_H
+#define CFX_FAC_H
 
 #include "cfx/vector.h"
 #include "cfx/num.h"

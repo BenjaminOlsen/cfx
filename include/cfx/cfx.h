@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
+
 #ifndef _CFX_H
 #define _CFX_H
 

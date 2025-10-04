@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
+
 #include "cfx/algo.h"
 #include "cfx/num.h"
 
@@ -18,14 +20,14 @@ static void expect_factor(cfx_limb_t n) {
         // Just ensure it *doesn't* falsely report a composite factor.
         cfx_limb_t d = cfx_rho_brent(n);
         if (is_valid_factor(n, d)) {
-            fprintf(stderr, "cfx_rho_brent returned a nontrivial factor for prime "CFX_PRIuLIMB"\n",
-                    n);
+            fprintf(stderr, 
+                "cfx_rho_brent returned a nontrivial factor for prime "CFX_PRIuLIMB"\n",
+                n);
             assert(0);
         }
         return;
     }
 
-    // Rho is randomized; fix seed for reproducibility
     srand(123456u);
 
     // Try a few times in case the internal random choices hit a bad cycle

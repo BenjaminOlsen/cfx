@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
+
 #include "cfx/fac.h"
 #include "cfx/algo.h"
 #include "cfx/error.h"

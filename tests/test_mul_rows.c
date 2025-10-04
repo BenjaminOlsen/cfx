@@ -1,4 +1,4 @@
-// test_mul_rows.c
+/* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
 
 #include <assert.h>
 #include <stdint.h>
