@@ -15,38 +15,38 @@
 static void test_init(void) {
     cfx_fac_t f;
     cfx_fac_init(&f);
-    assert(f.data == NULL);
-    assert(f.cap == 0);
-    assert(f.len == 0);
+    CFX_ASSERT(f.data == NULL);
+    CFX_ASSERT(f.cap == 0);
+    CFX_ASSERT(f.len == 0);
 }
 
 static void test_reserve(void) {
     cfx_fac_t f;
     cfx_fac_init(&f);
     const size_t cap1 = 123;
-    assert(cfx_fac_reserve(&f, cap1) == CFX_OK);
-    assert(f.len == 0);
-    assert(f.cap == cap1);
-    assert(f.data != NULL);
+    CFX_ASSERT(cfx_fac_reserve(&f, cap1) == CFX_OK);
+    CFX_ASSERT(f.len == 0);
+    CFX_ASSERT(f.cap == cap1);
+    CFX_ASSERT(f.data != NULL);
     const size_t cap2 = cap1 / 2;
     cfx_fac_reserve(&f, cap2);
-    assert(f.cap == cap1);  /* shouldn't have changed */
+    CFX_ASSERT(f.cap == cap1);  /* shouldn't have changed */
     cfx_fac_free(&f);
 }
 
 static void test_push(void) {
     cfx_fac_t f;
     cfx_fac_init(&f);
-    assert(f.cap == 0);
+    CFX_ASSERT(f.cap == 0);
     cfx_fac_push(&f, 2, 1);
-    assert(f.len == 1);
-    assert(f.cap != 0);
+    CFX_ASSERT(f.len == 1);
+    CFX_ASSERT(f.cap != 0);
     cfx_fac_push(&f, 3, 30);
-    assert(f.len == 2);
+    CFX_ASSERT(f.len == 2);
     cfx_fac_push(&f, 5, 10000);
-    assert(f.len == 3);
+    CFX_ASSERT(f.len == 3);
     cfx_fac_push(&f, 5, 800);
-    assert(f.len == 4);
+    CFX_ASSERT(f.len == 4);
     cfx_fac_free(&f);
 }
 
@@ -174,7 +174,7 @@ static void test_factorial_to_100(int quiet) {
         free(s);
     }
     cfx_vec_free(&primes);
-    assert(aok);
+    CFX_ASSERT(aok);
 }
 
 static void fac(cfx_big_t* out, const cfx_big_t* in) {
@@ -213,7 +213,7 @@ static void test_big_factorial_to_100(int quiet) {
         cfx_big_free(&b);
         cfx_big_free(&f);
     }
-    assert(aok);
+    CFX_ASSERT(aok);
 }
 
 /* primes[] must be in strictly increasing order! */
@@ -226,12 +226,12 @@ static void test_facs(cfx_fac_t* f, cfx_limb_t primes[], cfx_limb_t exps[], size
     }
         
     int ok = cfx_fac_from_u64(f, n);
-    assert(ok);
-    assert(f->len == nprimes);
+    CFX_ASSERT(ok);
+    CFX_ASSERT(f->len == nprimes);
     for (size_t i = 0; i < nprimes; ++i) {
         printf("p: "CFX_PRIuLIMB", e: "CFX_PRIuLIMB"\n", f->data[i].p, f->data[i].e);
-        assert(f->data[i].p == primes[i]);
-        assert(f->data[i].e == exps[i]);
+        CFX_ASSERT(f->data[i].p == primes[i]);
+        CFX_ASSERT(f->data[i].e == exps[i]);
     }
     cfx_fac_free(f);
 }
@@ -255,7 +255,7 @@ static void test_fac_from_u64(void) {
     cfx_limb_t n4 = 0xFFFFFFFFFFFFFFFFllu;
     int ok = cfx_fac_from_u64(&f, n4);
     cfx_fac_print(&f);
-    assert(ok);
+    CFX_ASSERT(ok);
     cfx_fac_free(&f);
 
 }

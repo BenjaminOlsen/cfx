@@ -118,13 +118,13 @@ static void run_case(const char* name,
         print_limbs("m   ", m_in,  m_in->n);
         print_limbs("ref ", &b_ref, nout);
         print_limbs("pth ", &b_pt,  nout);
-        assert(0 && "mismatch between reference and pthreads CSA");
+        CFX_ASSERT(0 && "mismatch between reference and pthreads CSA");
     }
 
     // Ensure m was not modified
     if (!big_equal(&m_copy, m_in, m_in->n)) {
         fprintf(stderr, "[FAIL] %s: multiplicand was modified!\n", name);
-        assert(0 && "multiplicand modified");
+        CFX_ASSERT(0 && "multiplicand modified");
     }
 
     cfx_big_free(&b_ref);

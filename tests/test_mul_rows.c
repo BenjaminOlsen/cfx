@@ -99,7 +99,7 @@ static void test_mul_zero_zero(void)
     cfx_big_from_u64(&b, 0);
 
     cfx_big_mul_rows_pthreads(&a, &b, 1);
-    assert(a.n == 0 || (a.n == 1 && a.limb[0] == 0));
+    CFX_ASSERT(a.n == 0 && (a.n == 1 && a.limb[0] == 0));
     cfx_big_free(&a); cfx_big_free(&b);
 }
 
@@ -112,7 +112,7 @@ static void test_mul_zero_x(void)
     big_set_limbs(&b, &one, 1);
 
     cfx_big_mul_rows_pthreads(&a, &b, 4);
-    assert(a.n == 0 || (a.n == 1 && a.limb[0] == 0));
+    CFX_ASSERT(a.n == 0 || (a.n == 1 && a.limb[0] == 0));
     cfx_big_free(&a); cfx_big_free(&b);
 }
 
@@ -125,7 +125,7 @@ static void test_mul_x_zero(void)
     cfx_big_from_u64(&b, 0);
 
     cfx_big_mul_rows_pthreads(&a, &b, 2);
-    assert(a.n == 0 || (a.n == 1 && a.limb[0] == 0));
+    CFX_ASSERT(a.n == 0 || (a.n == 1 && a.limb[0] == 0));
     cfx_big_free(&a); cfx_big_free(&b);
 }
 
@@ -142,7 +142,7 @@ static void test_mul_by_one(void)
     big_set_limbs(&ref, limbs, 2);
 
     cfx_big_mul_rows_pthreads(&a, &m, 8);
-    assert(big_equal(&a, &ref));
+    CFX_ASSERT(big_equal(&a, &ref));
 
     cfx_big_free(&a); cfx_big_free(&m); cfx_big_free(&ref);
 }
@@ -161,7 +161,7 @@ static void test_cross_limb_carry_small(void)
     big_set_limbs(&ref, expect, 2);
 
     cfx_big_mul_rows_pthreads(&a, &m, 1);
-    assert(big_equal(&a, &ref));
+    CFX_ASSERT(big_equal(&a, &ref));
 
     cfx_big_free(&a); cfx_big_free(&m); cfx_big_free(&ref);
 }
@@ -180,7 +180,7 @@ static void test_small_vector_known(void)
     big_set_limbs(&ref, expect, 3);
 
     cfx_big_mul_rows_pthreads(&a, &m, 3);
-    assert(big_equal(&a, &ref));
+    CFX_ASSERT(big_equal(&a, &ref));
 
     cfx_big_free(&a); cfx_big_free(&m); cfx_big_free(&ref);
 }
@@ -208,7 +208,7 @@ static void test_random_compare_ref(size_t na, size_t nb, int threads, cfx_limb_
         big_print("REF", &ref);
         big_print("GOT", &tmpa);
     }
-    assert(big_equal(&tmpa, &ref));
+    CFX_ASSERT(big_equal(&tmpa, &ref));
     if (msg) printf("%s\n", msg);
     cfx_big_free(&a); cfx_big_free(&b); cfx_big_free(&ref); cfx_big_free(&tmpa);
 }
@@ -240,9 +240,9 @@ static void test_thread_counts_agree(void)
     big_set_limbs(&t32, a.limb, a.n);
     cfx_big_mul_rows_pthreads(&t32, &b, 32);
 
-    assert(big_equal(&t0, &t1));
-    assert(big_equal(&t1, &t8));
-    assert(big_equal(&t32, &t8));
+    CFX_ASSERT(big_equal(&t0, &t1));
+    CFX_ASSERT(big_equal(&t1, &t8));
+    CFX_ASSERT(big_equal(&t32, &t8));
 
     cfx_big_free(&a);
     cfx_big_free(&b);

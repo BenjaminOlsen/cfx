@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 
 /* removes folders from __FILE__ path */
 #define __FILENAME__ \
@@ -75,16 +76,15 @@ do { \
 #ifdef CFX_DEBUG
   #define PRINT_DBG(...) printf(__VA_ARGS__)
 #else
-  #define PRINT_DBG(...) do { } while (0)
+  #define PRINT_DBG(...) ((void)0)
 #endif
 
-#ifdef CFX_DEBUG
-#define CFX_ASSERT(x) assert(x)
-#else
-#define CFX_ASSERT(x) do {          \
-    int assert_expr_ok = (x);       \
-    if (!assert_expr_ok) return 0;  \
+#define CFX_ASSERT(expr) do {           \
+    if (!(expr))  {                     \
+        fprintf(stderr, "CFX_ASSERT failed: (%s) at %s:%d\n", #expr, __FILENAME__, __LINE__); \
+        fflush(stderr);                 \
+        abort();                        \
+    }                                   \
 } while (0)
-#endif
 
 #endif /* CFX_MACROS_H */

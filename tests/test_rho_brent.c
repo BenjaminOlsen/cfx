@@ -2,6 +2,7 @@
 
 #include "cfx/algo.h"
 #include "cfx/num.h"
+#include "cfx/macros.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -23,7 +24,7 @@ static void expect_factor(cfx_limb_t n) {
             fprintf(stderr, 
                 "cfx_rho_brent returned a nontrivial factor for prime "CFX_PRIuLIMB"\n",
                 n);
-            assert(0);
+            CFX_ASSERT(0);
         }
         return;
     }
@@ -37,7 +38,7 @@ static void expect_factor(cfx_limb_t n) {
         if (is_valid_factor(n, d)) {
             // ? verify cofactor primality or at least correctness
             cfx_limb_t m = n / d;
-            assert(n == d * m);
+            CFX_ASSERT(n == d * m);
             // Either side may still be composite; that's fine (we only test rho’s split)
             return;
         }
@@ -45,7 +46,7 @@ static void expect_factor(cfx_limb_t n) {
     }
     fprintf(stderr, "cfx_rho_brent failed to find a factor for "CFX_PRIuLIMB"\n",
             n);
-    assert(0);
+    CFX_ASSERT(0);
 }
 
 static void test_small_semiprimes(void) {
@@ -81,18 +82,18 @@ static void test_large_64bit_semiprime(void) {
 
 static void test_primes_do_not_yield_factors(void) {
     // These should NOT yield nontrivial factors
-    assert(cfx_is_prime_u64(29));
-    assert(cfx_is_prime_u64(97));
-    assert(cfx_is_prime_u64(257));
-    assert(cfx_is_prime_u64(65537));
+    CFX_ASSERT(cfx_is_prime_u64(29));
+    CFX_ASSERT(cfx_is_prime_u64(97));
+    CFX_ASSERT(cfx_is_prime_u64(257));
+    CFX_ASSERT(cfx_is_prime_u64(65537));
 
     // cfx_rho_brent may return 0 or n — both are acceptable “no factor” signals.
-    // We only assert it does NOT return a valid factor.
+    // We only CFX_ASSERT it does NOT return a valid factor.
     cfx_limb_t primes[] = {29, 97, 257, 65537};
     for (size_t i = 0; i < sizeof(primes)/sizeof(primes[0]); ++i) {
         srand(42u);
         cfx_limb_t d = cfx_rho_brent(primes[i]);
-        assert(!is_valid_factor(primes[i], d));
+        CFX_ASSERT(!is_valid_factor(primes[i], d));
     }
 }
 

@@ -189,7 +189,7 @@ static void EXPECT_EQ_BIG(const cfx_big_t* A, const cfx_big_t* B) {
             fprintf(stderr, "  [%zu] A=" CFX_PRI0xLIMB "  B=" CFX_PRI0xLIMB "%s\n",
                     i, av, bv, (av==bv? "":"  <<"));
         }
-        assert(0 && "EXPECT_EQ_BIG failed");
+        CFX_ASSERT(0 && "EXPECT_EQ_BIG failed");
     }
 }
 
@@ -217,7 +217,7 @@ static void init_ctx_u64(cfx_big_mont_ctx_t* C, cfx_big_t* n, cfx_limb_t n64) {
     cfx_big_init(n);
     cfx_big_from_u64(n, n64 | 1ull);    // ensure odd
     int ok = cfx_big_mont_ctx_init(C, n);
-    assert(ok);
+    CFX_ASSERT(ok);
 }
 
 /* Convert a u64 to cfx_big */
@@ -264,25 +264,25 @@ void test_modexp_binary_trivial(void) {
     big_from_u64(&a, 0);
     cfx_big_assign(&e, &zero);
     int ok = cfx_big_modexp_binary(&out, &a, &e, &C);
-    assert(ok);
+    CFX_ASSERT(ok);
     EXPECT_EQ_BIG(&out, &one);
 
     big_from_u64(&a, 123456789);
     ok = cfx_big_modexp_binary(&out, &a, &e, &C);
-    assert(ok);
+    CFX_ASSERT(ok);
     EXPECT_EQ_BIG(&out, &one);
 
     /* a == 1 -> 1 for any e */
     big_from_u64(&a, 1);
     big_from_u64(&e, 0xdeadbeefcafef00dull);
     ok = cfx_big_modexp_binary(&out, &a, &e, &C);
-    assert(ok); EXPECT_EQ_BIG(&out, &one);
+    CFX_ASSERT(ok); EXPECT_EQ_BIG(&out, &one);
 
     /* (n-1)^2 == 1 mod n */
     cfx_big_free(&a); big_from_u64(&a, 0xffffffff00000000ull); /* n-1 */
     big_from_u64(&e, 2);
     ok = cfx_big_modexp_binary(&out, &a, &e, &C);
-    assert(ok); EXPECT_EQ_BIG(&out, &one);
+    CFX_ASSERT(ok); EXPECT_EQ_BIG(&out, &one);
 
     cfx_big_free(&out); cfx_big_free(&e); cfx_big_free(&a);
     cfx_big_free(&one); cfx_big_free(&zero);
@@ -309,14 +309,14 @@ void test_modexp_binary_matches_u64_ref(void) {
         cfx_big_init(&out);
         big_from_u64(&a, a64); big_from_u64(&e, e64);
         int ok = cfx_big_modexp_binary(&out, &a, &e, &C);
-        assert(ok);
+        CFX_ASSERT(ok);
 
         cfx_limb_t got = big_as_u64(&out);
         if (got != expect) {
             fprintf(stderr, "Mismatch: a=%" PRIu64 " e=%" PRIu64 " n=%" PRIu64
                             " got=%" PRIu64 " exp=%" PRIu64 "\n",
                     a64, e64, n64, got, expect);
-            assert(0);
+            CFX_ASSERT(0);
         }
 
         cfx_big_free(&out); cfx_big_free(&e); cfx_big_free(&a);
@@ -341,11 +341,11 @@ void test_modexp_binary_aliasing(void) {
 
     /* reference into separate out */
     int ok = cfx_big_modexp_binary(&ref, &a, &e, &C);
-    assert(ok);
+    CFX_ASSERT(ok);
 
     /* alias: write back into a */
     ok = cfx_big_modexp_binary(&a, &a, &e, &C);
-    assert(ok);
+    CFX_ASSERT(ok);
 
     EXPECT_EQ_BIG(&a, &ref);
 
@@ -377,7 +377,7 @@ void test_modexp_binary_fermat_mersenne61(void) {
 
         cfx_big_t a; big_from_u64(&a, a64);
         int ok = cfx_big_modexp_binary(&out, &a, &e, &C);
-        assert(ok);
+        CFX_ASSERT(ok);
         EXPECT_EQ_BIG(&out, &one);
         cfx_big_free(&a);
     }
@@ -423,7 +423,7 @@ void test_modexp_binary_exponent_reduction(void) {
     cfx_big_init(&r2);
     int ok1 = cfx_big_modexp_binary(&r1, &a, &e1, &C);
     int ok2 = cfx_big_modexp_binary(&r2, &a, &e2, &C);
-    assert(ok1 && ok2);
+    CFX_ASSERT(ok1 && ok2);
     EXPECT_EQ_BIG(&r1, &r2);
 
     cfx_big_free(&r1); cfx_big_free(&r2);
