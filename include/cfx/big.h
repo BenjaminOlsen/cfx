@@ -71,12 +71,15 @@ void cfx_big_clear(cfx_big_t* b);
 void cfx_big_free(cfx_big_t* b);
 int cfx_big_reserve(cfx_big_t* b, size_t need);
 void cfx_big_assign(cfx_big_t* dst, const cfx_big_t* src);
+void cfx_big_assign_sm(cfx_big_t* dst, const cfx_limb_t src);
 int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src);
 void cfx_big_move(cfx_big_t* dst, cfx_big_t* src);
 int cfx_big_is_zero(const cfx_big_t* b);
+int cfx_big_is_one(const cfx_big_t* b);
 int cfx_big_eq_u64(const cfx_big_t* b, cfx_limb_t n);
 int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
 int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
+int cfx_big_cmp_sm(const cfx_big_t* a, cfx_limb_t n);
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
 
 int cfx_big_from_u64(cfx_big_t* b, cfx_limb_t v);
@@ -113,7 +116,7 @@ uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d);
 int cfx_big_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* m);
 
 /* returns b % m */
-cfx_limb_t cfx_big_mod_sm(cfx_big_t* b, cfx_limb_t m);
+cfx_limb_t cfx_big_mod_sm(const cfx_big_t* b, cfx_limb_t m);
 
 
 /* Bitshift operations */
@@ -134,8 +137,14 @@ void cfx_big_expmul_prime(cfx_big_t* b, cfx_limb_t p, cfx_limb_t e);
 /* out = n ^ p*/
 void cfx_big_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p);
 void cfx_big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_limb_t p);
+
 /* out = (n^p) mod m */
 void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, const cfx_big_t* m); 
+
+/* out = (a*b) mod m*/
+int cfx_big_mulmod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_t* m);
+
+int cfx_big_is_prime(const cfx_big_t* b);
 
 void cfx_big_from_limbs(cfx_big_t* b, const cfx_limb_t* limbs, size_t n);
 void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t* f);

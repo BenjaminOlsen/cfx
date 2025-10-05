@@ -60,6 +60,7 @@ add_library(cfx::cfx ALIAS cfx)
 if(CFX_BUILD_EXAMPLES)
 
   set(EXAMPLE_NAMES
+    prime_test
     factorial
     dcmini
     choose

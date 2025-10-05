@@ -70,12 +70,25 @@ void cfx_big_assign(cfx_big_t* dst, const cfx_big_t* src) {
     if (dst == src) return;
     if (src->n == 0) {
         dst->n = 0;
-        if (dst->cap) memset(dst->limb, 0, dst->cap*sizeof(cfx_limb_t));
+        if (dst->cap) memset(dst->limb, 0, dst->cap * sizeof(cfx_limb_t));
     }
     cfx_big_reserve(dst, src->n);
     memcpy(dst->limb, src->limb, src->n * sizeof(cfx_limb_t));
     dst->n = src->n;
     cfx_big_trim(dst);
+}
+
+void cfx_big_assign_sm(cfx_big_t* dst, const cfx_limb_t src) {
+    if (src == 0) {
+        dst->n = 0;
+        if (dst->cap) memset(dst->limb, 0, dst->cap * sizeof(cfx_limb_t));
+    }
+
+    cfx_big_reserve(dst, 1); /* todo: error if != 0 */
+    
+    memset(dst->limb, 0, dst->cap * sizeof(cfx_limb_t));
+    dst->n = 1;
+    dst->limb[0] = src;
 }
 
 void cfx_big_move(cfx_big_t* dst, cfx_big_t* src) {
@@ -87,6 +100,10 @@ void cfx_big_move(cfx_big_t* dst, cfx_big_t* src) {
 
 int cfx_big_is_zero(const cfx_big_t* b) {
     return (b->n == 0) || (b->n == 1 && b->limb[0] == 0);
+}
+
+int cfx_big_is_one(const cfx_big_t* b) {
+    return (b->n == 1 && b->limb[0] == 1);
 }
 
 int cfx_big_eq_u64(const cfx_big_t* b, cfx_limb_t n) {
@@ -124,6 +141,19 @@ int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b) {
         if (a->limb[i] != b->limb[i]) return (a->limb[i] < b->limb[i]) ? -1 : 1;
     }
     return 0;
+}
+
+/** compare a big and a small: - 
+ * returns: 
+ * -1 if a < b
+ * 0 if a == b
+ * 1 if a > b
+ */
+int cfx_big_cmp_sm(const cfx_big_t* a, cfx_limb_t b) {
+    if (a->n == 0) /* a == 0 */ return b == 0 ? 0 : -1;
+    if (a->n > 1) return 1;
+    if (a->limb[0] != b) return (a->limb[0] < b) ? -1 : 1;
+    return 0; 
 }
 
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b) {
@@ -394,6 +424,121 @@ void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, con
     cfx_big_free(&np);
     cfx_big_free(&pp);
     cfx_big_free(&acc);
+}
+
+int cfx_big_is_even(const cfx_big_t* n) {
+    return ((n->n >=1) && !(n->limb[0] & 0x1));
+}
+
+/* out = (a^e) mod m */
+static void powmod_u64_base(cfx_big_t* out, uint64_t a, const cfx_big_t* e, const cfx_big_t* mod) {
+    // out = a^e mod mod, with small base a and big exponent e
+    cfx_big_t base, res, ee;
+    cfx_big_init(&base);
+    cfx_big_init(&res);
+    cfx_big_init(&ee);
+    cfx_big_assign_sm(&base, a);
+    cfx_big_mod(&base, &base, mod);
+
+    cfx_big_assign_sm(&res, 1);
+    cfx_big_copy(&ee, e);
+
+    /* square & multiply */
+    while (!cfx_big_is_zero(&ee)) {
+        if (!cfx_big_is_even(&ee)) {  // if (ee.limb[0] & 1)
+            cfx_big_mulmod(&res, &res, &base, mod);
+        }
+        cfx_big_mulmod(&base, &base, &base, mod);
+        cfx_big_shr_bits_eq(&ee, 1);
+    }
+    cfx_big_copy(out, &res);
+    cfx_big_free(&ee);
+    cfx_big_free(&res);
+    cfx_big_free(&base);
+
+}
+
+static int miller_rabin_once(const cfx_big_t* n, uint64_t a,
+                             const cfx_big_t* d, uint64_t s) {
+    // Handle a % n == 0 (i.e., a is multiple of n) => base is ineffective; skip as "pass"
+    // We can check with n mod a, but since a < 2^64 and n is big, just do (a % p == 0 && n == p) cases via small sieve.
+    // Compute x = a^d mod n
+    cfx_big_t x, nm1;
+    cfx_big_init(&x);
+    cfx_big_init(&nm1);
+    powmod_u64_base(&x, a, d, n);
+
+    // if x == 1 or x == n-1 => base passes
+    // Compute n-1
+    cfx_big_copy(&nm1, n);
+    cfx_big_sub_sm(&nm1, 1);
+
+    // Compare x == 1
+    if (cfx_big_is_one(&x)) return 1;
+    // Compare x == n-1
+    if (cfx_big_cmp(&x, &nm1) == 0) return 1;
+
+    // Repeat s-1 times: x = x^2 mod n; if x == n-1 => pass
+    for (uint64_t r = 1; r < s; ++r) {
+        cfx_big_mulmod(&x, &x, &x, n);
+        if (cfx_big_cmp(&x, &nm1) == 0) return 1;
+    }
+    return 0;     // witness: composite
+}
+
+/* Does miller - rabin's primality test on a big */
+int cfx_big_is_prime(const cfx_big_t* n) {
+    // 1) n < 2 => composite
+    if (cfx_big_cmp_sm(n, 2) < 0) return 0;
+
+    // 2) Small primes trial division (and exact equality)
+    static const uint32_t small[] = {
+        2,3,5,7,11,13,17,19,23,29,31,37,
+        41,43,47,53,59,61,67,71,73,79,83,89,97,0
+    };
+    for (int i = 0; small[i]; ++i) {
+        uint32_t p = small[i];
+        // If n == p
+        // Implement big_eq_u32 or compare (n< p, n==p) via big_cmp_u64:
+        int c = cfx_big_cmp_sm(n, p);
+        if (c == 0) return 1;
+        // If divisible by p
+        if (cfx_big_mod_sm(n, p) == 0) return 0;
+    }
+
+    // 3) Even check
+    if (cfx_big_is_even(n)) return 0;
+
+    // 4) Write n-1 = d * 2^s with d odd
+    cfx_big_t d;
+    cfx_big_init(&d);
+    uint64_t s = 0;
+    cfx_big_copy(&d, n);
+    cfx_big_sub_sm(&d, 1);                    // d = n-1
+    while (!cfx_big_is_zero(&d) && cfx_big_is_even(&d)) {
+        cfx_big_shr_bits_eq(&d, 1);
+        ++s;
+    }
+    // If d == 0 (i.e., n == 1), we already handled earlier, but guard anyway:
+    if (cfx_big_is_zero(&d)) return 0;
+
+    // 5) Choose bases
+    // For 64-bit n you'd use the "Sinclair 7". For big n, we’ll use a conservative set of bases
+    // that works well in practice: small primes as u64 bases.
+    // You can randomize or increase rounds for very high assurance (e.g., 12–16 rounds).
+    static const uint64_t bases[] = {
+        2ULL, 3ULL, 5ULL, 7ULL, 11ULL, 13ULL, 17ULL, 19ULL, 23ULL, 29ULL, 31ULL, 37ULL, 0
+    };
+
+    for (size_t i = 0; bases[i]; ++i) {
+        // Skip if base and n share a factor (already handled by small trial division)
+        if (!miller_rabin_once(n, bases[i], &d, s)) return 0;
+    }
+
+    /* todo: for “crypto grade”, add random bases:
+    for (k extra rounds) pick random a in [2, n-2] and call miller_rabin_once. */
+
+    return 1;  /* probably prime! */
 }
 
 void cfx_big_sq(cfx_big_t* b) {
@@ -811,7 +956,7 @@ acc2 = acc1*B + an-3 .. etc
 and each step, take % m because the remainder of the sum div m 
 is the sum of the remainders modulo m
 */
-cfx_limb_t cfx_big_mod_sm(cfx_big_t* b, cfx_limb_t m) {
+cfx_limb_t cfx_big_mod_sm(const cfx_big_t* b, cfx_limb_t m) {
     if (b->n == 0) return 0;
     cfx_acc_t acc = 0;
     for (size_t i = b->n; i--;) {
@@ -1465,8 +1610,20 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
 int cfx_big_div_out(cfx_big_t* q, const cfx_big_t* u, const cfx_big_t* v) {
     return cfx_big_divrem(q, NULL, u, v);
 }
+
 int cfx_big_mod(cfx_big_t* r, const cfx_big_t* u, const cfx_big_t* v) {
     return cfx_big_divrem(NULL, r, u, v);
+}
+
+
+int cfx_big_mulmod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_t* m) {
+    cfx_big_t tmp;
+    cfx_big_init(&tmp);
+    cfx_big_copy(&tmp, a);
+    cfx_big_mul(&tmp, b);
+    int ret = cfx_big_mod(out, &tmp, m);
+    cfx_big_free(&tmp);
+    return ret;
 }
 
 /* In-place: u := floor(u/v); optional remainder r. Alias-safe for any combination. */
