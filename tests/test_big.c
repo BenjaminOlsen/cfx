@@ -3,6 +3,7 @@
 #include "cfx/big.h"
 #include "cfx/macros.h"
 #include "cfx/error.h"
+#include "cfx/primes.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -1624,8 +1625,36 @@ void test_exp_compare_with_naive_mul(void) {
     cfx_big_free(&p); cfx_big_free(&n);
 }
 
-/* ------------------------------------------------------------------ */
+void test_big_prime(void) {
+    extern const size_t cfx_primes_len;
+    extern const uint32_t cfx_primes[];
+    
+    cfx_big_t b1, b2;
+    cfx_big_init(&b1);
+    cfx_big_init(&b2);
 
+    unsigned cnt = 0;
+    for (size_t i = 0; i < cfx_primes_len; i += 100) {
+        ++cnt;
+        cfx_limb_t val = (cfx_limb_t)cfx_primes[i];
+        cfx_big_assign_sm(&b1, val);
+        cfx_big_copy(&b2, &b1);
+        cfx_big_add_sm(&b2, 1);
+        char *s1 = cfx_big_to_str(&b1, NULL);
+        char *s2 = cfx_big_to_str(&b2, NULL);
+        if (!(i % 1000)) printf("[%u] %zu/%zu: %s - %s\n", cnt, i, cfx_primes_len, s1, s2);
+        CFX_ASSERT(cfx_big_is_prime(&b1) == 1);
+        if(b2.limb[0] != 3) CFX_ASSERT(cfx_big_is_prime(&b2) == 0);
+        free(s1);
+        free(s2);
+
+    }
+
+    cfx_big_free(&b2);
+    cfx_big_free(&b1);
+}
+
+/* ------------------------------------------------------------------ */
 int main(void) {
     CFX_TEST(test_cfx_big_assign);
     CFX_TEST(test_copy_swap);
@@ -1689,6 +1718,8 @@ int main(void) {
     CFX_TEST(test_exp_powers_of_two_boundaries);
     CFX_TEST(test_exp_aliasing);
     CFX_TEST(test_exp_compare_with_naive_mul);
+    CFX_TEST(test_big_prime);
+
     puts("OK");
     return 0;
 }

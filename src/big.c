@@ -163,6 +163,13 @@ void cfx_big_swap(cfx_big_t* a, cfx_big_t* b) {
     *b = tmp;
 }
 
+size_t cfx_big_bitlen(const cfx_big_t* b) {
+    // assumes b->limb[b->n - 1] != 0
+    cfx_limb_t v = b->limb[b->n - 1];
+    size_t lz = cfx_clz(v);
+    return (8-lz) + (b->n - 1) * sizeof(cfx_limb_t) * 8;
+}
+
 /* returns 0 on success, -1 on failure (errno set) */
 int cfx_big_reserve(cfx_big_t* b, size_t need) {
     if (need <= b->cap) return 0;
@@ -263,6 +270,51 @@ int cfx_big_from_u64(cfx_big_t* b, cfx_limb_t v) {
 
     // cheap invariant
     // CFX_ASSERT(b->n == 1 && b->limb[0] != 0);
+    return 0;
+}
+
+// copy big endian bytes into cfx_big_t.
+// - be[0] is the most-significant byte
+// - trims any leading zero bytes
+// Returns 0 on success, nonzero on allocation/argument error.
+int cfx_big_from_bytes_be(cfx_big_t* out, const uint8_t* be, size_t len) {
+    if (!out || (!be && len)) return -1;
+
+    size_t off = 0;
+    while (off < len && be[off] == 0) ++off;
+
+    if (off == len) {
+        // value == 0
+        // If you have a clear/zero function, call it; else:
+        if (cfx_big_reserve(out, 0) != 0) return -2;
+        return 0;
+    }
+
+    const size_t nbytes = len - off;
+    const size_t lb     = sizeof(cfx_limb_t);
+    const size_t nlimbs = (nbytes + lb - 1) / lb;
+
+    if (cfx_big_reserve(out, nlimbs) != 0) return -3;
+
+    // pack bytes into (little-endian) limbs
+    // For limb i (0 = least significant), we read up to lb bytes from the end.
+    size_t src_end = len; // one-past-the-last valid index
+    for (size_t i = 0; i < nlimbs; ++i) {
+        cfx_limb_t limb = 0;
+        size_t     take = (src_end > off) ? ((src_end - off) < lb ? (src_end - off) : lb) : 0;
+
+        // copy 'take' bytes into this limb, least significant byte last in BE stream
+        for (size_t j = 0; j < take; ++j) {
+            uint8_t b = be[src_end - 1 - j];
+            limb |= (cfx_limb_t)b << (8u * j);
+        }
+
+        out->limb[i] = limb;
+        src_end  -= take;
+    }
+
+    out->n = nlimbs;
+    cfx_big_trim(out);
     return 0;
 }
 
@@ -431,7 +483,7 @@ int cfx_big_is_even(const cfx_big_t* n) {
 }
 
 /* out = (a^e) mod m */
-static void powmod_u64_base(cfx_big_t* out, uint64_t a, const cfx_big_t* e, const cfx_big_t* mod) {
+static void powmod_u64_base(cfx_big_t* out, cfx_limb_t a, const cfx_big_t* e, const cfx_big_t* mod) {
     // out = a^e mod mod, with small base a and big exponent e
     cfx_big_t base, res, ee;
     cfx_big_init(&base);
@@ -458,8 +510,8 @@ static void powmod_u64_base(cfx_big_t* out, uint64_t a, const cfx_big_t* e, cons
 
 }
 
-static int miller_rabin_once(const cfx_big_t* n, uint64_t a,
-                             const cfx_big_t* d, uint64_t s) {
+static int miller_rabin_once(const cfx_big_t* n, cfx_limb_t a,
+                             const cfx_big_t* d, cfx_limb_t s) {
     // Handle a % n == 0 (i.e., a is multiple of n) => base is ineffective; skip as "pass"
     // We can check with n mod a, but since a < 2^64 and n is big, just do (a % p == 0 && n == p) cases via small sieve.
     // Compute x = a^d mod n
@@ -479,7 +531,7 @@ static int miller_rabin_once(const cfx_big_t* n, uint64_t a,
     if (cfx_big_cmp(&x, &nm1) == 0) return 1;
 
     // Repeat s-1 times: x = x^2 mod n; if x == n-1 => pass
-    for (uint64_t r = 1; r < s; ++r) {
+    for (cfx_limb_t r = 1; r < s; ++r) {
         cfx_big_mulmod(&x, &x, &x, n);
         if (cfx_big_cmp(&x, &nm1) == 0) return 1;
     }
@@ -488,31 +540,25 @@ static int miller_rabin_once(const cfx_big_t* n, uint64_t a,
 
 /* Does miller - rabin's primality test on a big */
 int cfx_big_is_prime(const cfx_big_t* n) {
-    // 1) n < 2 => composite
-    if (cfx_big_cmp_sm(n, 2) < 0) return 0;
 
-    // 2) Small primes trial division (and exact equality)
+    if (cfx_big_cmp_sm(n, 2) < 0) { return 0; }
+
     static const uint32_t small[] = {
         2,3,5,7,11,13,17,19,23,29,31,37,
         41,43,47,53,59,61,67,71,73,79,83,89,97,0
     };
     for (int i = 0; small[i]; ++i) {
         uint32_t p = small[i];
-        // If n == p
-        // Implement big_eq_u32 or compare (n< p, n==p) via big_cmp_u64:
-        int c = cfx_big_cmp_sm(n, p);
-        if (c == 0) return 1;
-        // If divisible by p
-        if (cfx_big_mod_sm(n, p) == 0) return 0;
+        if (cfx_big_cmp_sm(n, p) == 0) { return 1; }
+        if (cfx_big_mod_sm(n, p) == 0) { return 0; }
     }
 
-    // 3) Even check
     if (cfx_big_is_even(n)) return 0;
 
-    // 4) Write n-1 = d * 2^s with d odd
+    // Write n-1 = d * 2^s with d odd
     cfx_big_t d;
     cfx_big_init(&d);
-    uint64_t s = 0;
+    cfx_limb_t s = 0;
     cfx_big_copy(&d, n);
     cfx_big_sub_sm(&d, 1);                    // d = n-1
     while (!cfx_big_is_zero(&d) && cfx_big_is_even(&d)) {
@@ -520,19 +566,15 @@ int cfx_big_is_prime(const cfx_big_t* n) {
         ++s;
     }
     // If d == 0 (i.e., n == 1), we already handled earlier, but guard anyway:
-    if (cfx_big_is_zero(&d)) return 0;
+    if (cfx_big_is_zero(&d)) { return 0; }
 
-    // 5) Choose bases
-    // For 64-bit n you'd use the "Sinclair 7". For big n, we’ll use a conservative set of bases
-    // that works well in practice: small primes as u64 bases.
-    // You can randomize or increase rounds for very high assurance (e.g., 12–16 rounds).
-    static const uint64_t bases[] = {
+    static const cfx_limb_t bases[] = {
         2ULL, 3ULL, 5ULL, 7ULL, 11ULL, 13ULL, 17ULL, 19ULL, 23ULL, 29ULL, 31ULL, 37ULL, 0
     };
 
     for (size_t i = 0; bases[i]; ++i) {
         // Skip if base and n share a factor (already handled by small trial division)
-        if (!miller_rabin_once(n, bases[i], &d, s)) return 0;
+        if (!miller_rabin_once(n, bases[i], &d, s)) { return 0; }
     }
 
     /* todo: for “crypto grade”, add random bases:
@@ -1162,7 +1204,7 @@ char* cfx_big_to_str(const cfx_big_t* src, size_t *sz_out) {
         }
         chunks[k++] = cfx_big_div_sm_u32(&tmp, CHUNK_BASE);
     }
-    printf("\n");
+    // printf("\n");
     cfx_big_free(&tmp);
 
     // build string
@@ -2412,7 +2454,7 @@ int cfx_big_to_sci(const cfx_big_t* x, unsigned base,
     while (k > 0 && x->limb[k-1] == 0) --k;
     if (k == 0) { snprintf(out, outsz, "0"); return 1; }
 
-    uint64_t hi = x->limb[k-1];
+    cfx_limb_t hi = x->limb[k-1];
 
     const long double lnB   = (long double)CFX_LIMB_BITS * logl(2.0L);
     const long double lnb   = logl((long double)base);

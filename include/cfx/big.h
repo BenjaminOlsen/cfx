@@ -81,8 +81,10 @@ int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
 int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
 int cfx_big_cmp_sm(const cfx_big_t* a, cfx_limb_t n);
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
+size_t cfx_big_bitlen(const cfx_big_t* b);
 
 int cfx_big_from_u64(cfx_big_t* b, cfx_limb_t v);
+int cfx_big_from_bytes_be(cfx_big_t* out, const uint8_t* be, size_t len);
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
 void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
 void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m);
