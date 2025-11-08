@@ -251,7 +251,7 @@ void test_modexp_binary_trivial(void) {
     cfx_big_mont_ctx_t C;
     init_ctx_u64(&C, &n, 0xffffffff00000001ull);
 
-    cfx_big_t a,e,out,one,zero;
+    cfx_big_t a, e, out, one, zero;
     cfx_big_init(&a);
     cfx_big_init(&e);
     cfx_big_init(&out);
@@ -276,17 +276,24 @@ void test_modexp_binary_trivial(void) {
     big_from_u64(&a, 1);
     big_from_u64(&e, 0xdeadbeefcafef00dull);
     ok = cfx_big_modexp_binary(&out, &a, &e, &C);
-    CFX_ASSERT(ok); EXPECT_EQ_BIG(&out, &one);
+    CFX_ASSERT(ok);
+    EXPECT_EQ_BIG(&out, &one);
 
     /* (n-1)^2 == 1 mod n */
-    cfx_big_free(&a); big_from_u64(&a, 0xffffffff00000000ull); /* n-1 */
+    cfx_big_free(&a);
+    big_from_u64(&a, 0xffffffff00000000ull); /* n-1 */
     big_from_u64(&e, 2);
     ok = cfx_big_modexp_binary(&out, &a, &e, &C);
-    CFX_ASSERT(ok); EXPECT_EQ_BIG(&out, &one);
+    CFX_ASSERT(ok);
+    EXPECT_EQ_BIG(&out, &one);
 
-    cfx_big_free(&out); cfx_big_free(&e); cfx_big_free(&a);
-    cfx_big_free(&one); cfx_big_free(&zero);
-    cfx_big_mont_ctx_free(&C); cfx_big_free(&n);
+    cfx_big_free(&out);
+    cfx_big_free(&e);
+    cfx_big_free(&a);
+    cfx_big_free(&one);
+    cfx_big_free(&zero);
+    cfx_big_mont_ctx_free(&C);
+    cfx_big_free(&n);
 }
 
 /* Random cross-check vs 64-bit reference for many small odd moduli */
@@ -296,7 +303,8 @@ void test_modexp_binary_matches_u64_ref(void) {
     for (int t = 0; t < 200; ++t) {
         cfx_limb_t n64;
         do { n64 = (rand64() | 1ull); } while (n64 < 3);  // odd, >1
-        cfx_big_t n; cfx_big_mont_ctx_t C;
+        cfx_big_t n; 
+        cfx_big_mont_ctx_t C;
         init_ctx_u64(&C, &n, n64);
 
         cfx_limb_t a64 = rand64() % n64;
@@ -307,7 +315,8 @@ void test_modexp_binary_matches_u64_ref(void) {
         cfx_big_init(&a);
         cfx_big_init(&e);
         cfx_big_init(&out);
-        big_from_u64(&a, a64); big_from_u64(&e, e64);
+        big_from_u64(&a, a64);
+        big_from_u64(&e, e64);
         int ok = cfx_big_modexp_binary(&out, &a, &e, &C);
         CFX_ASSERT(ok);
 
@@ -319,8 +328,11 @@ void test_modexp_binary_matches_u64_ref(void) {
             CFX_ASSERT(0);
         }
 
-        cfx_big_free(&out); cfx_big_free(&e); cfx_big_free(&a);
-        cfx_big_mont_ctx_free(&C); cfx_big_free(&n);
+        cfx_big_free(&out);
+        cfx_big_free(&e); 
+        cfx_big_free(&a);
+        cfx_big_mont_ctx_free(&C); 
+        cfx_big_free(&n);
     }
 }
 
@@ -349,8 +361,11 @@ void test_modexp_binary_aliasing(void) {
 
     EXPECT_EQ_BIG(&a, &ref);
 
-    cfx_big_free(&ref); cfx_big_free(&e); cfx_big_free(&a);
-    cfx_big_mont_ctx_free(&C); cfx_big_free(&n);
+    cfx_big_free(&ref);
+    cfx_big_free(&e);
+    cfx_big_free(&a);
+    cfx_big_mont_ctx_free(&C);
+    cfx_big_free(&n);
 }
 
 /* Fermat check with a known 64-bit prime p = 2^61 - 1 (Mersenne prime):
@@ -382,8 +397,11 @@ void test_modexp_binary_fermat_mersenne61(void) {
         cfx_big_free(&a);
     }
 
-    cfx_big_free(&out); cfx_big_free(&e); cfx_big_free(&one);
-    cfx_big_mont_ctx_free(&C); cfx_big_free(&n);
+    cfx_big_free(&out);
+    cfx_big_free(&e);
+    cfx_big_free(&one);
+    cfx_big_mont_ctx_free(&C);
+    cfx_big_free(&n);
 }
 
 /* Exponent reduction mod (p-1): for prime p, a^e ≡ a^(e + k*(p-1)) (mod p).
@@ -395,10 +413,12 @@ void test_modexp_binary_exponent_reduction(void) {
     init_ctx_u64(&C, &n, p);
 
     /* base a in [1..p-1] */
-    cfx_big_t a; big_from_u64(&a, (rand64() % (p - 1ull)) + 1ull);
+    cfx_big_t a; 
+    big_from_u64(&a, (rand64() % (p - 1ull)) + 1ull);
 
     /* e1 small, e2 = e1 + (p-1)<<(64) (two-limb) */
-    cfx_big_t e1, e2; big_from_u64(&e1, 0x123456789abcdef0ull % (p-1));
+    cfx_big_t e1, e2; 
+    big_from_u64(&e1, 0x123456789abcdef0ull % (p-1));
     cfx_big_init(&e2);
     cfx_big_assign(&e2, &e1);
 
@@ -426,11 +446,15 @@ void test_modexp_binary_exponent_reduction(void) {
     CFX_ASSERT(ok1 && ok2);
     EXPECT_EQ_BIG(&r1, &r2);
 
-    cfx_big_free(&r1); cfx_big_free(&r2);
-    cfx_big_free(&tmp); cfx_big_free(&phi);
-    cfx_big_free(&e1); cfx_big_free(&e2);
+    cfx_big_free(&r1);
+    cfx_big_free(&r2);
+    cfx_big_free(&tmp);
+    cfx_big_free(&phi);
+    cfx_big_free(&e1);
+    cfx_big_free(&e2);
     cfx_big_free(&a);
-    cfx_big_mont_ctx_free(&C); cfx_big_free(&n);
+    cfx_big_mont_ctx_free(&C);
+    cfx_big_free(&n);
 }
 
 /*..........................................................*/

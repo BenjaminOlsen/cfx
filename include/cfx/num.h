@@ -57,6 +57,13 @@
   #endif
 #endif
 
+#if (CFX_LIMB_BITS == 64)
+#define CFX_LIMB_DIGITS_DEC 19u /* log_10(2^64) = 19.26.. -> 10^19 fits in cfx_limb_t */
+#define CFX_LIMB_DIGITS_HEX 15u /* log_16(2^64) = 16. 16^15 = 2^60 fits in cfx_limb_t */
+#elif (CFX_LIMB_BITS == 32)
+
+#endif
+
 /* -------- print formats -------- */
 #if (CFX_LIMB_BITS == 64)
   #define CFX_SQRT_ACC_MAX 0xFFFFFFFFFFFFFFFFllu   /* floor(sqrt(UINT128_MAX+1)) - 1 */
@@ -74,7 +81,6 @@
 /* todo - choose defaults or error  */
 #endif 
 
-
 /* -------- accumulator selection: 2x limb width --------
  * If limb=64 and native 128 exists and not forced to struct -> use __uint128_t.
  * Else use a portable {lo,hi} struct with limb-size halves.
@@ -87,7 +93,8 @@
   #define CFX_SQRT_ACC_MAX 0xFFFFFFFFllu           /* floor(sqrt(UINT64_MAX+1)) - 1 */
 #endif
 
-/* -------- API: constructors / accessors -------- */
+
+
 CFX_INLINE cfx_acc_t cfx_acc_zero(void) {
 #if defined(CFX_ACC_NATIVE)
   return (cfx_acc_t)0;
@@ -121,6 +128,27 @@ CFX_INLINE cfx_limb_t cfx_acc_hi(cfx_acc_t a) {
 #endif
 }
 
+CFX_INLINE void cfx_acc_mul(cfx_acc_t* out, cfx_limb_t x, cfx_limb_t y) {
+#if (CFX_LIMB_BITS == 64) && CFX_HAS_UINT128
+  *out = (__uint128_t)x * (__uint128_t)y;
+#elif (CFX_LIMB_BITS == 64)
+  const uint64_t x0 = (uint32_t)x;
+  const uint64_t x1 = (uint64_t)x >> 32;
+  const uint64_t y0 = (uint32_t)y;
+  const uint64_t y1 = (uint64_t)y >> 32;
+
+  uint64_t p00 = x0 * y0;
+  uint64_t p01 = x0 * y1;
+  uint64_t p10 = x1 * y0;
+  uint64_t p11 = x1 * y1;
+
+  uint64_t mid = (p00 >> 32) + (p01 & 0xffffffffu) + (p10 & 0xffffffffu);
+  out->lo = (cfx_limb_t)((p00 & 0xffffffffu) | (mid << 32))
+  out->hi = (cfx_limb_t)((p11 + (p01 >)))
+#else /* CFX_LIMB_BITS == 32 */
+#endif
+}
+
 /* -------- primitive: limb×limb -> {hi,lo} (each limb-sized) -------- */
 CFX_INLINE void cfx_mul_wide(cfx_limb_t x, cfx_limb_t y,
                              cfx_limb_t* hi, cfx_limb_t* lo) {
@@ -131,8 +159,10 @@ CFX_INLINE void cfx_mul_wide(cfx_limb_t x, cfx_limb_t y,
   *hi = (cfx_limb_t)(p >> CFX_LIMB_BITS);
 #elif (CFX_LIMB_BITS == 64)
   /* Portable 64×64→128 via 32-bit halves */
-  const uint64_t x0 = (uint32_t)x, x1 = (uint64_t)x >> 32;
-  const uint64_t y0 = (uint32_t)y, y1 = (uint64_t)y >> 32;
+  const uint64_t x0 = (uint32_t)x;
+  const uint64_t x1 = (uint64_t)x >> 32;
+  const uint64_t y0 = (uint32_t)y;
+  const uint64_t y1 = (uint64_t)y >> 32;
 
   uint64_t p00 = x0 * y0;
   uint64_t p01 = x0 * y1;

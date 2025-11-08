@@ -63,6 +63,7 @@ if(CFX_BUILD_EXAMPLES)
     find_prime
     prime_test
     factorial
+    factor
     dcmini
     choose
     primes
@@ -142,5 +143,5 @@ install(FILES
 # ---------------- benchmarking:::::
 option(CFX_BUILD_BENCHMARKS "Build microbenchmarks" OFF)
 if (CFX_BUILD_BENCHMARKS)
-    add_subdirectory(benchmarking)
+    add_subdirectory(benchmark)
 endif()

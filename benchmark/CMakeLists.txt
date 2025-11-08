@@ -11,6 +11,7 @@ set(CFX_BENCHMARKS
     bench_mul_vs_csa
     bench_row_mul
     bench_monty
+    bench_isqrt
 )
 
 foreach(bench_name IN LISTS CFX_BENCHMARKS)

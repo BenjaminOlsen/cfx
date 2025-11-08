@@ -355,8 +355,8 @@ void cfx_mul_csa_portable_fast(const cfx_limb_t* A, size_t na,
         cfx_limb_t ai = A[i];
         for (size_t j = 0; j < nb; ++j) {
             cfx_acc_t p  = (cfx_acc_t)ai * (cfx_acc_t)B[j];
-            cfx_limb_t add_lo = (cfx_limb_t)p;
-            cfx_limb_t add_hi = (cfx_limb_t)(p >> CFX_LIMB_BITS);
+            cfx_limb_t add_lo = cfx_acc_lo(p);  // (cfx_limb_t)p; 
+            cfx_limb_t add_hi = cfx_acc_hi(p);  // (cfx_limb_t)(p >> CFX_LIMB_BITS);
             size_t k = i + j;
 
             cfx_acc_t t = (cfx_acc_t)acc[k].lo + add_lo;

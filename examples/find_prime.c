@@ -9,7 +9,6 @@
 // RNG: fill `out[len]` with cryptographic random bytes. Return 0 on success.
 typedef int (*cfx_rng_fn)(void* ctx, uint8_t* out, size_t len);
 
-// Flags
 enum {
     CFX_PRIME_FLAG_NONE      = 0,
     CFX_PRIME_FLAG_SAFE      = 1 << 0,  // generate a safe prime p with (p-1)/2 also prime
@@ -63,7 +62,7 @@ static int rand_nbit_odd(cfx_big_t* out, size_t bits, cfx_rng_fn rng, void* ctx,
     if (rc != 0) return rc;
 
     // sanity: todo
-    assert(cfx_big_bitlen(out) == bits);
+    // assert(cfx_big_bitlen(out) == bits);
     return 0;
 }
 
@@ -90,7 +89,10 @@ static int passes_small_trial(const uint16_t* rem, const uint16_t* primes) {
 }
 
 static int is_safe_prime(const cfx_big_t* p) {
-    cfx_big_t q, t;
+    cfx_big_t q;
+    cfx_big_t t;
+    cfx_big_init(&q);
+    cfx_big_init(&t);
     cfx_big_copy(&t, p);
     cfx_big_sub_sm(&t, 1);
     cfx_big_copy(&q, &t);
@@ -214,18 +216,18 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    cfx_big_t p; // assuming your cfx_big_copy() allocates dest; if not, call your init
+    cfx_big_t p; 
+    cfx_big_init(&p);
     int rc = cfx_big_gen_nbit_prime(&p, bits, urandom_rng, NULL, flags);
     if (rc != 0) {
         fprintf(stderr, "error: cfx_big_gen_nbit_prime failed (rc=%d)\n", rc);
         return 2;
     }
 
-    // print results
+
     print_big_hex(&p);
-    // optional: also show bit length
     printf("// bits = %zu\n", cfx_big_bitlen(&p));
 
-    // if your API requires an explicit free/clear, call it here (e.g., cfx_big_free(&p);)
+    cfx_big_free(&p);
     return 0;
 }

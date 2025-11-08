@@ -54,7 +54,7 @@ int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src) {
     if (src->n) {
         if (cfx_big_reserve(&tmp, src->n) != 0) {
             cfx_big_free(&tmp);
-            return -1; // OOM
+            return -1;   // OOM
         }
         memcpy(tmp.limb, src->limb, src->n * sizeof(*src->limb));
         tmp.n = src->n;
@@ -1944,17 +1944,11 @@ void cfx_big_mul_auto(cfx_big_t* b, const cfx_big_t* m) {
     }
 }
 
-#ifndef CFX_DEC_CHUNK_DIG
-#define CFX_DEC_CHUNK_DIG 18u /* 10^18 fits in cfx_limb_t */
-#endif
 
-#ifndef CFX_HEX_CHUNK_DIG
-#define CFX_HEX_CHUNK_DIG 15u /* 16^15 = 2^60 fits in cfx_limb_t */
-#endif
 
 
 /* Precomputed 10^k for k=0..18 */
-static const cfx_limb_t POW10U64[CFX_DEC_CHUNK_DIG + 1] = {
+static const cfx_limb_t POW10U64[CFX_LIMB_DIGITS_DEC + 1] = {
     1ULL,
     10ULL,
     100ULL,
@@ -1974,13 +1968,13 @@ static const cfx_limb_t POW10U64[CFX_DEC_CHUNK_DIG + 1] = {
     10000000000000000ULL,
     100000000000000000ULL,
     1000000000000000000ULL,
+    //10000000000000000000ULL
 };
 
 static void flush_chunk(cfx_big_t* out, unsigned base, cfx_limb_t* chunk_val, unsigned* chunk_len) {
     if (*chunk_len == 0) return;
 
     if (base == 10) {
-        extern const cfx_limb_t POW10U64[]; /* from earlier */
         cfx_big_mul_sm(out, POW10U64[*chunk_len]);
         cfx_big_add_sm(out, *chunk_val);
     } else if (base == 16) {
@@ -2017,8 +2011,8 @@ int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base) {
     cfx_limb_t chunk_val = 0;
     unsigned chunk_len = 0; /* digits in current chunk */
 
-    unsigned dec_chunk_max = CFX_DEC_CHUNK_DIG;
-    unsigned hex_chunk_max = CFX_HEX_CHUNK_DIG;
+    unsigned dec_chunk_max = CFX_LIMB_DIGITS_DEC;
+    unsigned hex_chunk_max = CFX_LIMB_DIGITS_HEX;
 
     unsigned char buf[64 * 1024];
     size_t nread;
