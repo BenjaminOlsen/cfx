@@ -99,7 +99,7 @@ static void test_mul_zero_zero(void)
     cfx_big_from_u64(&b, 0);
 
     cfx_big_mul_rows_pthreads(&a, &b, 1);
-    CFX_ASSERT(a.n == 0 && (a.n == 1 && a.limb[0] == 0));
+    CFX_ASSERT(a.n == 0 || (a.n == 1 && a.limb[0] == 0));
     cfx_big_free(&a); cfx_big_free(&b);
 }
 
