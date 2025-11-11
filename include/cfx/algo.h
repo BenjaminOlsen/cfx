@@ -40,7 +40,10 @@ cfx_limb_t cfx_mulmod_u64(cfx_limb_t a, cfx_limb_t b, cfx_limb_t m);
 cfx_limb_t cfx_powmod_u64(cfx_limb_t a, cfx_limb_t e, cfx_limb_t m);
 
 cfx_limb_t cfx_gcd_u64(cfx_limb_t a, cfx_limb_t b);
-cfx_limb_t cfx_rho_brent(cfx_limb_t n);
+
+/* returns a non-trivial factor of n (probabilistic) */
+cfx_limb_t cfx_pollard_rho_brent(cfx_limb_t n);
+
 int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n);
 
 /* A * B -> R  (schoolbook) with carry-save accumulation.
@@ -81,7 +84,6 @@ unsigned cfx_clz(cfx_limb_t x) {
         return x ? (unsigned)__builtin_clz((unsigned)x) : 32;
     #endif
 #else
-    // Portable fallback
     if (!x) return (unsigned)(8*sizeof(x));
     unsigned c = 0, 
     unsigned B = (unsigned)(8u * sizeof(cfx_limb_t));

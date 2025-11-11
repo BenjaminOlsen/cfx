@@ -87,4 +87,6 @@ do { \
     }                                   \
 } while (0)
 
+#define CFX_FAIL() CFX_ASSERT(0)
+
 #endif /* CFX_MACROS_H */

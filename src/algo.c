@@ -16,15 +16,14 @@
 
 static inline cfx_limb_t isqrt_u64(cfx_limb_t n) {
     // Integer sqrt via double for speed, then correct by adjustment.
-    // No UB and avoids i*i overflow checks in loops.
     double d = (double)n;
     cfx_limb_t x = (cfx_limb_t)(d > 0 ? __builtin_floor(__builtin_sqrt(d)) : 0);
-    while ((x+1) > 0 && (x+1) <= n / (x+1)) ++x;
+    while ((x + 1) > 0 && (x + 1) <= n / (x+1)) ++x;
     while (x > 0 && x > n / x) --x;
     return x;
 }
 
-/* Sieve of Eratosthenes (odd-only, bitset), primes up to and including n */
+/* Sieve of Eratosthenes */
 cfx_vec_t cfx_sieve_primes(cfx_limb_t n) {
     cfx_vec_t primes = {0};
     if (n < 2) return primes;
@@ -32,7 +31,7 @@ cfx_vec_t cfx_sieve_primes(cfx_limb_t n) {
     // Map odds only: index k (0..m-1) corresponds to value p = 2*k + 3
     cfx_limb_t m = (n >= 3) ? ((n - 3) >> 1) + 1 : 0;      // #odd candidates in [3..n]
     size_t bytes = (size_t)((m + 7) >> 3);
-    uint8_t *mark = (uint8_t*)calloc(bytes ? bytes : 1, 1);
+    uint8_t* mark = (uint8_t*)calloc(bytes ? bytes : 1, 1);
     if (!mark) return primes;
 
     cfx_limb_t r = isqrt_u64(n);
@@ -50,7 +49,7 @@ cfx_vec_t cfx_sieve_primes(cfx_limb_t n) {
             cfx_limb_t kj = (j - 3) >> 1;
             for (; kj < m; kj += step >> 1) { // step/2 in bit-index space
                 BIT_SET(mark, kj);
-                j += step; // (not strictly needed since we advance kj directly)
+                j += step;  // (not strictly needed since we advance kj directly)
             }
         }
     }
@@ -60,7 +59,6 @@ cfx_vec_t cfx_sieve_primes(cfx_limb_t n) {
     count += 1; // prime 2
     for (cfx_limb_t k = 0; k < m; ++k) if (!BIT_GET(mark, k)) ++count;
 
-    // Emit primes
     primes.data = (cfx_limb_t*)malloc(count * sizeof(cfx_limb_t));
     if (!primes.data) { free(mark); return (cfx_vec_t){0}; }
     size_t pos = 0;
@@ -160,10 +158,14 @@ cfx_limb_t cfx_gcd_u64(cfx_limb_t a, cfx_limb_t b) {
     return a;
 }
 
-cfx_limb_t cfx_rho_brent(cfx_limb_t n) {
+/* Pollard's rho method of finding a non-trivial factor of some
+integer n. It uses the fact that if there is some divisor p (not necessarily prime)
+of n, then  */
+cfx_limb_t cfx_pollard_rho_brent(cfx_limb_t n) {
     if ((n & 1) == 0) return 2;
     cfx_limb_t y = (cfx_limb_t)rand() % (n-1) + 1;
     cfx_limb_t c = (cfx_limb_t)rand() % (n-1) + 1;
+    /*we must choose c != 0, but less evidently we must also choose c != −2 because (y + 1/y)2 − 2 = y2 + 1/y2 */
     cfx_limb_t m = 128;
 
     cfx_limb_t g = 1, r = 1, q = 1, x, ys;
@@ -175,10 +177,10 @@ cfx_limb_t cfx_rho_brent(cfx_limb_t n) {
         cfx_limb_t k = 0;
         while (k < r && g == 1) {
             ys = y;
-            cfx_limb_t lim = (m < (r-k)) ? m : (r-k);
-            for (cfx_limb_t i=0; i<lim; ++i) {
-                y = (_cfx_mulmod_u64(y,y,n) + c) % n;
-                cfx_limb_t diff = x>y ? x-y : y-x;
+            cfx_limb_t lim = (m < (r - k)) ? m : (r - k);
+            for (cfx_limb_t i = 0; i < lim; ++i) {
+                y = (_cfx_mulmod_u64(y, y, n) + c) % n;
+                cfx_limb_t diff = x > y ? x - y : y - x;
                 q = _cfx_mulmod_u64(q, diff, n);
             }
             g = cfx_gcd_u64(q, n);
@@ -189,8 +191,8 @@ cfx_limb_t cfx_rho_brent(cfx_limb_t n) {
 
     if (g == n) {
         do {
-            ys = (_cfx_mulmod_u64(ys,ys,n) + c) % n;
-            cfx_limb_t diff = x>ys ? x-ys : ys-x;
+            ys = (_cfx_mulmod_u64(ys, ys, n) + c) % n;
+            cfx_limb_t diff = x > ys ? x - ys : ys - x;
             g = cfx_gcd_u64(diff, n);
         } while (g == 1);
     }
@@ -236,7 +238,8 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n) {
 
         // If small enough, finish by trial division quickly
         if (m < 1ull<<20) {
-            // trial divide from 3 upward (skip even—shouldn’t be even here often)
+            // trial divide from 3 upward (skip even-shouldn’t be even here often)
+
             for (cfx_limb_t p = 3; p*p <= m; p += 2) {
                 while ((m % p) == 0) {
                     cfx_vec_push(&v, p); m /= p;
@@ -256,7 +259,7 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n) {
         for (int tries = 0; tries < 8; ++tries) {
             // If your rho_brent uses rand(), reseed to diversify:
             srand(0xC0FFEEu + tries);
-            d = cfx_rho_brent(m);
+            d = cfx_pollard_rho_brent(m);
             if (d > 1 && d < m && (m % d) == 0) break;
             d = 0;
         }

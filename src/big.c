@@ -1891,12 +1891,11 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
     if (rn == 0) { cfx_big_from_u64(b, 0); }
     else {
         cfx_big_reserve(b, rn);
-        // (Assumes cfx_big_reserve zeros new space; if not, it's fine—we overwrite.)
+        // (Assumes cfx_big_reserve zeros new space; if not, it's fine we overwrite.)
         memcpy(b->limb, out, rn * sizeof(cfx_limb_t));
         b->n = rn;
     }
 
-    // Cleanup
     free(out);
     free(acc);
     for (int t = 0; t < threads; ++t) free(locals[t]);

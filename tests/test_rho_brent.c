@@ -17,14 +17,14 @@ static int is_valid_factor(cfx_limb_t n, cfx_limb_t d) {
 static void expect_factor(cfx_limb_t n) {
     // Rho is only defined/useful for composites; guard primes
     if (cfx_is_prime_u64(n)) {
-        // For primes, cfx_rho_brent may return n or 0, but we don't require anything.
+        // For primes, cfx_pollard_rho_brent may return n or 0, but we don't require anything.
         // Just ensure it *doesn't* falsely report a composite factor.
-        cfx_limb_t d = cfx_rho_brent(n);
+        cfx_limb_t d = cfx_pollard_rho_brent(n);
         if (is_valid_factor(n, d)) {
             fprintf(stderr, 
-                "cfx_rho_brent returned a nontrivial factor for prime "CFX_PRIuLIMB"\n",
+                "cfx_pollard_rho_brent returned a nontrivial factor for prime "CFX_PRIuLIMB"\n",
                 n);
-            CFX_ASSERT(0);
+            CFX_FAIL();
         }
         return;
     }
@@ -33,8 +33,8 @@ static void expect_factor(cfx_limb_t n) {
 
     // Try a few times in case the internal random choices hit a bad cycle
     for (int attempts = 0; attempts < 5; ++attempts) {
-        cfx_limb_t d = cfx_rho_brent(n);
-        printf("cfx_rho_brent("CFX_PRIuLIMB") = "CFX_PRIuLIMB"\n", n, d);
+        cfx_limb_t d = cfx_pollard_rho_brent(n);
+        printf("cfx_pollard_rho_brent("CFX_PRIuLIMB") = "CFX_PRIuLIMB"\n", n, d);
         if (is_valid_factor(n, d)) {
             // ? verify cofactor primality or at least correctness
             cfx_limb_t m = n / d;
@@ -44,7 +44,7 @@ static void expect_factor(cfx_limb_t n) {
         }
         srand(123456u + (unsigned)attempts + 1);
     }
-    fprintf(stderr, "cfx_rho_brent failed to find a factor for "CFX_PRIuLIMB"\n",
+    fprintf(stderr, "cfx_pollard_rho_brent failed to find a factor for "CFX_PRIuLIMB"\n",
             n);
     CFX_ASSERT(0);
 }
@@ -87,12 +87,12 @@ static void test_primes_do_not_yield_factors(void) {
     CFX_ASSERT(cfx_is_prime_u64(257));
     CFX_ASSERT(cfx_is_prime_u64(65537));
 
-    // cfx_rho_brent may return 0 or n — both are acceptable “no factor” signals.
+    // cfx_pollard_rho_brent may return 0 or n — both are acceptable “no factor” signals.
     // We only CFX_ASSERT it does NOT return a valid factor.
     cfx_limb_t primes[] = {29, 97, 257, 65537};
     for (size_t i = 0; i < sizeof(primes)/sizeof(primes[0]); ++i) {
         srand(42u);
-        cfx_limb_t d = cfx_rho_brent(primes[i]);
+        cfx_limb_t d = cfx_pollard_rho_brent(primes[i]);
         CFX_ASSERT(!is_valid_factor(primes[i], d));
     }
 }
@@ -104,6 +104,6 @@ int main(void) {
     test_large_64bit_semiprime();
     test_primes_do_not_yield_factors();
 
-    puts("cfx_rho_brent tests: OK");
+    puts("cfx_pollard_rho_brent tests: OK");
     return 0;
 }
