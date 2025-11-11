@@ -2,10 +2,12 @@
 
 cfx is a C library for performing a host of arithmetic computations with arbitrary precision integers.
 
-cfx used to mean one thing, something around 'Factorization into prime eXponents in C', but it's constantly changing so forget about what it means - its just cfx...
+cfx used to mean one thing, something around 'Factorization into prime eXponents in C', but it's constantly changing so forget about what it means - its just cfx... It's a work in progress for exploring algorithms in number theory, cryptography, and algebra.
+
 
 ## License
-The cfx big integer library is dual-licensed.
+The cfx library is dual-licensed.
+
 You may choose to use it under either of the following licenses:
 
 LGPL v3 (or later) — the GNU Lesser General Public License.
