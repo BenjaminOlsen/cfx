@@ -26,6 +26,20 @@ void turn(enum direction* d) {
     }
 }
 
+/* little trick for calculating the number of base 10 digits quickly */
+unsigned digits10(uint32_t v) {
+    static const uint32_t powers_of_10[] = {
+        1U, 10U, 100U, 1000U, 10000U, 100000U,
+        1000000U, 10000000U, 100000000U, 1000000000U
+    };
+
+    /* approximate lg(v): 32 - clz(v) == ~lg(v) */
+    /* approximate log10(2) == ~0.3010299956639812 */
+    /* integer approx of log10(2): log10(2) * 4096 / 4096 == 1233 >> 12 */
+    unsigned t = (32 - __builtin_clz(v | 1)) * 1233 >> 12;
+    return t + (v >= powers_of_10[t]); /* corrects off-by-one error */
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         usage(argv[0]);
@@ -33,8 +47,8 @@ int main(int argc, char** argv) {
     }
     int console = 0;
     const char* outfile = "ulam.pbm";
-    int scale = 1;
-    int w = 0;
+    unsigned scale = 1;
+    unsigned w = 0;
 
     /* cmd line */
     for (int i = 1; i < argc; ++i) {
@@ -72,7 +86,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
     
-    int* values = (int*)calloc((size_t)w*w, sizeof(*values));
+    unsigned* values = (unsigned*)calloc((size_t)w*w, sizeof(*values));
     unsigned char* prime = (unsigned char*)calloc((size_t)w*w, 1);
 
     /*
@@ -81,14 +95,14 @@ int main(int argc, char** argv) {
     turn: right->up->left->down->right (D4 :P)
     */
 
-    int row = (int)(w/2);
-    int col = row;
-    int curstep = 1;
+    unsigned row = (unsigned)(w/2);
+    unsigned col = row;
+    unsigned curstep = 1;
     enum direction d = RIGHT;
-    int sides_before_inc = 2;  /* every 2 sides of the spiral we increment the segments per side */
-    int segs_left = curstep;
+    unsigned sides_before_inc = 2;  /* every 2 sides of the spiral we increment the segments per side */
+    unsigned segs_left = curstep;
 
-    for (int k = 1; k <= w*w; ++k) {
+    for (unsigned k = 1; k <= w*w; ++k) {
         values[col+w*row] = k;
         prime[col+w*row] = cfx_is_prime_u64(k) ? (unsigned char)1 : (unsigned char)0;
         // printf("values[%d][%d] = %d%c\n", col, row, k,
@@ -104,25 +118,24 @@ int main(int argc, char** argv) {
         --segs_left;
         if (!segs_left) {
             turn(&d);
-            // printf("turn!\n");
             segs_left = curstep;
             --sides_before_inc;
         }
         if (!sides_before_inc) {
             curstep++;
-            // printf("curstep: %d\n", curstep);
             segs_left++;
             sides_before_inc = 2;
         }
     }
 
-    // console out:
     if (console) {
-        for (int row = 0; row < w; ++row) {
-            for (int col = 0; col < w; ++col) {
+        unsigned max_digits = digits10(w*w);
+
+        for (unsigned row = 0; row < w; ++row) {
+            for (unsigned col = 0; col < w; ++col) {
                 cfx_limb_t val = (cfx_limb_t)values[col+w*row];
-                if (val == 1) printf("O");
-                else if (cfx_is_prime_u64(val)) printf("%3d ", values[col+w*row]);
+                if (val == 1) printf("X");
+                else if (cfx_is_prime_u64(val)) printf("%*d ", max_digits, values[col+w*row]);
                 else printf("%c ", ' ');
             }
             printf("\n");
@@ -137,16 +150,16 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    int W = w * scale;
-    int H = w * scale;
+    unsigned W = w * scale;
+    unsigned H = w * scale;
     fprintf(f, "P1\n%d %d\n", W, H);
 
-    /* make the .pbm pixels*/
-    for (int row = 0; row < w; ++row) {
-        for (int vrep = 0; vrep < scale; ++vrep) {  /* vertical */
-            for (int col = 0; col < w; ++col) {
-                int bit = prime[(size_t)row * (size_t)w + (size_t)col] ? 1 : 0;
-                for (int hrep = 0; hrep < scale; ++hrep) { /* horizontal */
+    /* make the .pbm pixels */
+    for (unsigned row = 0; row < w; ++row) {
+        for (unsigned vrep = 0; vrep < scale; ++vrep) {  /* vertical */
+            for (unsigned col = 0; col < w; ++col) {
+                unsigned bit = prime[(size_t)row * (size_t)w + (size_t)col] ? 1 : 0;
+                for (unsigned hrep = 0; hrep < scale; ++hrep) { /* horizontal */
                     fputc(bit ? '1' : '0', f);
                     fputc(' ', f);
                 }
