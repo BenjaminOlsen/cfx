@@ -8,9 +8,11 @@ static void usage(const char* prog) {
     fprintf(stderr,
         "Usage: %s [-c] [-o <outputfilename>] [-s <scale>] size \n"
         "  Creates a PBM (P1 ASCII) image of an Ulam spiral of width & height 'size'.\n"
-        "  -c (optional flag) console output\n"
+        "  -c (optional) console output\n"
+        "  -d (optional) just dots to console output\n"
         "  -o (optional) specify filename\n"
-        "  -s scale (optional) >=1 scales each cell to SxS pixels (default 1)\n",
+        "  -s scale (optional) >=1 scales each cell to SxS pixels (default 1)\n"
+        "  size (required) - to make a size x size spiral\n",
         prog);
 }
 
@@ -49,6 +51,7 @@ int main(int argc, char** argv) {
     const char* outfile = "ulam.pbm";
     unsigned scale = 1;
     unsigned w = 0;
+    int dots = 0;
 
     /* cmd line */
     for (int i = 1; i < argc; ++i) {
@@ -69,6 +72,8 @@ int main(int argc, char** argv) {
             }
             scale = atoi(argv[++i]);
             if (scale <= 0) scale = 1;
+        } else if (strcmp(argv[i], "-d") == 0) {
+            dots = 1;
         } else if (argv[i][0] == '-') {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
             usage(argv[0]);
@@ -134,9 +139,13 @@ int main(int argc, char** argv) {
         for (unsigned row = 0; row < w; ++row) {
             for (unsigned col = 0; col < w; ++col) {
                 cfx_limb_t val = (cfx_limb_t)values[col+w*row];
-                if (val == 1) printf("X");
-                else if (cfx_is_prime_u64(val)) printf("%*d ", max_digits, values[col+w*row]);
-                else printf("%c ", ' ');
+                if (cfx_is_prime_u64(val)) {
+                    if (dots) printf("·");
+                    else printf("%*d ", max_digits, values[col+w*row]);
+                } else {
+                    if (dots) printf(" ");
+                    else printf("%*c ", max_digits, ' ');
+                }
             }
             printf("\n");
         }
