@@ -174,12 +174,8 @@ static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s <bits> [--safe] [--top2]\n", prog);
     fprintf(stderr, "  Generate an N-bit prime (optionally safe) and print it in hex.\n");
 }
-
-// tiny hex printer (assumes cfx_big_t uses b->limb[] little-endian limbs)
 static void print_big_hex(const cfx_big_t* b) {
     if (b->n == 0) { puts("0x0"); return; }
-
-    // print most-significant limb without zero padding
     size_t i = b->n - 1;
     printf("0x%llx", (unsigned long long)b->limb[i]);
 

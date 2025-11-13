@@ -2,6 +2,7 @@
 
 #include "cfx/big.h"
 #include "cfx/macros.h"
+#include "cfx/rand.h"
 
 /* (a*b) % n with 128-bit scalar for ground truth */
 static cfx_limb_t mulmod_u64(cfx_limb_t a, cfx_limb_t b, cfx_limb_t n) {
@@ -194,9 +195,9 @@ static void EXPECT_EQ_BIG(const cfx_big_t* A, const cfx_big_t* B) {
 }
 
 static inline cfx_limb_t rand64(void) {
-    cfx_limb_t x = (cfx_limb_t)rand();
-    x = (x << 31) ^ (cfx_limb_t)rand();
-    x = (x << 31) ^ (cfx_limb_t)rand();
+    cfx_limb_t x = cfx_rand_limb();
+    x = (x << 31) ^ cfx_rand_limb();
+    x = (x << 31) ^ cfx_rand_limb();
     return x;
 }
 

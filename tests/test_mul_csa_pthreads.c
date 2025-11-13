@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
 
 #include "cfx/big.h"
+#include "cfx/rand.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -39,17 +40,10 @@ static void fill_ones(cfx_big_t* b, size_t nlimbs) {
     b->n = nlimbs;
 }
 
-static cfx_limb_t xorshift64(cfx_limb_t* s) {
-    cfx_limb_t x = *s;
-    x ^= x << 13; x ^= x >> 7; x ^= x << 17;
-    *s = x;
-    return x;
-}
-
 static void fill_rand(cfx_big_t* b, size_t nlimbs, cfx_limb_t seed) {
     ensure_cap(b, nlimbs);
     cfx_limb_t s = seed ? seed : 0x123456789abcdef0ULL;
-    for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = xorshift64(&s);
+    for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = cfx_rand_xorshift64(&s);
     if (nlimbs) b->limb[nlimbs-1] |= (1ULL << 63); // avoid leading zeros
     b->n = nlimbs;
 }

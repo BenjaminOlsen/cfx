@@ -79,7 +79,6 @@ int main(int argc, char** argv) {
             usage(argv[0]);
             return EXIT_FAILURE;
         } else {
-
             w = atoi(argv[i]);
         }
     }
@@ -141,17 +140,20 @@ int main(int argc, char** argv) {
                 cfx_limb_t val = (cfx_limb_t)values[col+w*row];
                 if (cfx_is_prime_u64(val)) {
                     if (dots) printf("·");
-                    else printf("%*d ", max_digits, values[col+w*row]);
+                    else printf("%*d", max_digits, values[col+w*row]);
                 } else {
                     if (dots) printf(" ");
-                    else printf("%*c ", max_digits, ' ');
+                    else printf("%*c", max_digits, 'x');
                 }
             }
             printf("\n");
         }
     }
 
-    // file out: PBM (P1) ascii old school
+    /* file out: PBM (P1) ascii old school
+        ref: https://web.archive.org/web/20250331225117/https://oceancolor.gsfc.nasa.gov/staff/norman/seawifs_image_cookbook/faux_shuttle/pbm.html
+    */
+
     FILE* f = fopen(outfile, "w");
     if (!f) {
         perror("fopen");

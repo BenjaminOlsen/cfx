@@ -18,6 +18,7 @@ set(CFX_HEADERS
     include/cfx/algo.h
     include/cfx/error.h
     include/cfx/num.h
+    include/cfx/rand.h
     include/cfx/primes.h
     include/cfx/vector.h
     include/cfx/macros.h
@@ -28,6 +29,7 @@ set(CFX_SOURCES
     src/big.c
     src/fac.c
     src/algo.c
+    src/rand.c
     src/error.c
     src/primes.c
     src/vector.c

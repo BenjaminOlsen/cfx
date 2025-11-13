@@ -61,7 +61,8 @@
 #define CFX_LIMB_DIGITS_DEC 19u /* log_10(2^64) = 19.26.. -> 10^19 fits in cfx_limb_t */
 #define CFX_LIMB_DIGITS_HEX 15u /* log_16(2^64) = 16. 16^15 = 2^60 fits in cfx_limb_t */
 #elif (CFX_LIMB_BITS == 32)
-
+#define CFX_LIMB_DIGITS_DEC 9u /* log_10(2^32) = 9.63*/
+#define CFX_LIMB_DIGITS_HEX
 #endif
 
 /* -------- print formats -------- */

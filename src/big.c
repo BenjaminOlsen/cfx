@@ -1827,7 +1827,7 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
     const size_t acc_len = ncols;          // acc arrays length
     const size_t out_len = ncols + 4;      // room for expansion + final carry
 
-    // Allocate per-thread local accumulators
+    // per-thread local accumulators
     acc128p_t** locals = (acc128p_t**)malloc(threads * sizeof(acc128p_t*));
     rc_worker_args_t* args = (rc_worker_args_t*)malloc(threads * sizeof(rc_worker_args_t));
     pthread_t* tids = (pthread_t*)malloc(threads * sizeof(pthread_t));
@@ -1854,12 +1854,10 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
         args[t].local_acc = locals[t];
         args[t].ncols = ncols;
 
-        // spawn
         int rc = pthread_create(&tids[t], NULL, worker_rowblock, &args[t]);
         if (rc != 0) { abort(); }
     }
 
-    // Join all workers
     for (int t = 0; t < threads; ++t) {
         pthread_join(tids[t], NULL);
     }
@@ -1899,9 +1897,9 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
     free(out);
     free(acc);
     for (int t = 0; t < threads; ++t) free(locals[t]);
+    free(tids);
     free(locals);
     free(args);
-    free(tids);
     free(a_copy);
 }
 

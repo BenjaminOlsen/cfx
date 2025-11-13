@@ -4,6 +4,7 @@
 #include "cfx/num.h"
 #include "cfx/macros.h"
 #include "cfx/primes.h"
+#include "cfx/rand.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -163,8 +164,8 @@ integer n. It uses the fact that if there is some divisor p (not necessarily pri
 of n, then  */
 cfx_limb_t cfx_pollard_rho_brent(cfx_limb_t n) {
     if ((n & 1) == 0) return 2;
-    cfx_limb_t y = (cfx_limb_t)rand() % (n-1) + 1;
-    cfx_limb_t c = (cfx_limb_t)rand() % (n-1) + 1;
+    cfx_limb_t y =  cfx_rand_limb() % (n-1) + 1;
+    cfx_limb_t c = cfx_rand_limb() % (n-1) + 1;
     /*we must choose c != 0, but less evidently we must also choose c != −2 because (y + 1/y)2 − 2 = y2 + 1/y2 */
     cfx_limb_t m = 128;
 
@@ -257,8 +258,7 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n) {
         // 3) Split with Brent–Rho; allow a few retries with different seeds
         cfx_limb_t d = 0;
         for (int tries = 0; tries < 8; ++tries) {
-            // If your rho_brent uses rand(), reseed to diversify:
-            srand(0xC0FFEEu + tries);
+            cfx_srand(0xC0FFEEu + tries);
             d = cfx_pollard_rho_brent(m);
             if (d > 1 && d < m && (m % d) == 0) break;
             d = 0;
