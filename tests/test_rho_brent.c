@@ -98,11 +98,11 @@ static void test_primes_do_not_yield_factors(void) {
 }
 
 int main(void) {
-    test_small_semiprimes();
-    test_carmichael_and_square_semiprimes();
-    test_repeated_prime_powers();
-    test_large_64bit_semiprime();
-    test_primes_do_not_yield_factors();
+    CFX_TEST(test_small_semiprimes);
+    CFX_TEST(test_carmichael_and_square_semiprimes);
+    CFX_TEST(test_repeated_prime_powers);
+    CFX_TEST(test_large_64bit_semiprime);
+    CFX_TEST(test_primes_do_not_yield_factors);
 
     puts("cfx_pollard_rho_brent tests: OK");
     return 0;

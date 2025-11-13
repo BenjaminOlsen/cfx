@@ -91,6 +91,7 @@ if(CFX_BUILD_TESTS)
     test_algo
     test_rho_brent
     test_mul_rows
+    test_chacha20
   )
 
   foreach(test_name IN LISTS TEST_NAMES)

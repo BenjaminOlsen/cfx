@@ -263,21 +263,20 @@ static void test_sqrt(void) {
 }
 
 int main(void) {
-    test_prime_sieve();
-    test_primality_test();
-    test_mulmod_basic();
-    test_powmod_edges();
-    test_fermat_primes();
-    // csa tests:
-    test_zero();
-    test_one_by_small();
-    test_single_limb_carry();
-    test_mixed_lengths();
-    test_all_ones_multi();
-    test_power_of_two_alignment();
-    test_fuzz_small();
-    test_cfz();
-    test_sqrt();
+    CFX_TEST(test_prime_sieve);
+    CFX_TEST(test_primality_test);
+    CFX_TEST(test_mulmod_basic);
+    CFX_TEST(test_powmod_edges);
+    CFX_TEST(test_fermat_primes);
+    CFX_TEST(test_zero);
+    CFX_TEST(test_one_by_small);
+    CFX_TEST(test_single_limb_carry);
+    CFX_TEST(test_mixed_lengths);
+    CFX_TEST(test_all_ones_multi);
+    CFX_TEST(test_power_of_two_alignment);
+    CFX_TEST(test_fuzz_small);
+    CFX_TEST(test_cfz);
+    CFX_TEST(test_sqrt);
     puts("OK: cfx_mul_csa_portable tests passed.\n");
     return 0;
 }

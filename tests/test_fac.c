@@ -263,10 +263,10 @@ static void test_fac_from_u64(void) {
 int main(void) {
     int quiet = 0;
     
-    test_init();
-    test_reserve();
-    test_push();
-    test_fac_from_u64();
+    CFX_TEST(test_init);
+    CFX_TEST(test_reserve);
+    CFX_TEST(test_push);
+    CFX_TEST(test_fac_from_u64);
     test_factorial_to_100(quiet);
     test_big_factorial_to_100(quiet);
     return 0;

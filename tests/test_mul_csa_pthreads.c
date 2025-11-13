@@ -2,6 +2,7 @@
 
 #include "cfx/big.h"
 #include "cfx/rand.h"
+#include "cfx/macros.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -258,13 +259,13 @@ static void test_medium_case_128x128(void) {
 
 /* --- main --- */
 int main(void) {
-    test_zero_cases();
-    test_one_cases();
-    test_all_ones_small();
-    test_powers_of_two_alignment();
-    test_asymmetric_sizes();
-    test_small_fuzz();
-    test_medium_case_128x128();
+    CFX_TEST(test_zero_cases);
+    CFX_TEST(test_one_cases);
+    CFX_TEST(test_all_ones_small);
+    CFX_TEST(test_powers_of_two_alignment);
+    CFX_TEST(test_asymmetric_sizes);
+    CFX_TEST(test_small_fuzz);
+    CFX_TEST(test_medium_case_128x128);
     puts("OK: cfx_big_mul_csa_pthreads happy-path tests passed.");
     return 0;
 }

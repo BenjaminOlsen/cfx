@@ -1,8 +1,8 @@
 # cfx
 
-cfx is a C library for performing a host of arithmetic computations with arbitrary precision integers.
+cfx is a C library for performing a host of arithmetic computations with arbitrary precision integers. It's a work in progress for exploring algorithms in number theory, cryptography, and algebra.
 
-cfx used to mean one thing, something around 'Factorization into prime eXponents in C', but it's constantly changing so forget about what it means - its just cfx... It's a work in progress for exploring algorithms in number theory, cryptography, and algebra.
+cfx used to mean one thing, something around 'Factorization into prime eXponents in C', but it's constantly changing so forget about what it means - its just cfx... 
 
 
 ## License
