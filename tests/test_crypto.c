@@ -1,4 +1,4 @@
-#include "cfx/rand.h"
+#include "cfx/crypto.h"
 #include "cfx/macros.h"
 
 #include <stdint.h>

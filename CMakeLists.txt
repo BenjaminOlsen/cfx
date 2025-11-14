@@ -14,14 +14,16 @@ option(CFX_BUILD_EXAMPLES "Build examples" ON)
 set(CFX_HEADERS
     include/cfx/cfx.h
     include/cfx/big.h
+    include/cfx/num.h
     include/cfx/fac.h
     include/cfx/algo.h
-    include/cfx/error.h
-    include/cfx/num.h
     include/cfx/rand.h
+    include/cfx/error.h
+    include/cfx/crypto.h
     include/cfx/primes.h
     include/cfx/vector.h
     include/cfx/macros.h
+    include/cfx/memory.h
     include/cfx/version.h
 )
 
@@ -31,6 +33,8 @@ set(CFX_SOURCES
     src/algo.c
     src/rand.c
     src/error.c
+    src/crypto.c
+    src/memory.c
     src/primes.c
     src/vector.c
 )
@@ -91,7 +95,7 @@ if(CFX_BUILD_TESTS)
     test_algo
     test_pollard_rho
     test_mul_rows
-    test_chacha20
+    test_crypto
     test_mul_csa_pthreads
   )
 
