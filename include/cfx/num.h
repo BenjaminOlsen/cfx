@@ -13,6 +13,16 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+/* --- x86 intrinsics include --- */
+
+#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) \
+    && (defined(__has_include) && __has_include(<immintrin.h>))
+  #include <immintrin.h>
+  #define CFX_USE_X86_INTRINSICS 1
+#else
+  #define CFX_USE_X86_INTRINSICS 0
+#endif
+
 /* -------- feature detection -------- */
 #if !defined(CFX_FORCE_NO_UINT128) && defined(__SIZEOF_INT128__)
   #define CFX_HAS_UINT128 1
