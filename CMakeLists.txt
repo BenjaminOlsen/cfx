@@ -89,7 +89,7 @@ if(CFX_BUILD_TESTS)
     test_big_mont
     test_fac
     test_algo
-    test_rho_brent
+    test_pollard_rho_brent
     test_mul_rows
     test_chacha20
     test_mul_csa_pthreads
