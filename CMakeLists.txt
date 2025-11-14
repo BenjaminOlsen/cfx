@@ -14,7 +14,7 @@ option(CFX_BUILD_EXAMPLES "Build examples" ON)
 set(CFX_HEADERS
     include/cfx/cfx.h
     include/cfx/big.h
-    include/cfx/num.h
+    include/cfx/numerical.h
     include/cfx/fac.h
     include/cfx/algo.h
     include/cfx/rand.h

@@ -78,7 +78,6 @@ int main(int argc, char* argv[]) {
 
     cfx_big_free(&n);
     cfx_big_free(&p);
-    // cfx_big_free(&acc);
     cfx_big_free(&np);
     free(npstr);
     

@@ -1,7 +1,7 @@
 #ifndef CFX_CRYPTO_H
 #define CFX_CRYPTO_H
 
-#include "cfx/num.h"
+#include "cfx/numerical.h"
 #include <stddef.h>
 
 #ifdef __cplusplus

@@ -7,8 +7,8 @@
 *   -DCFX_FORCE_NO_UINT128 (pretend no __uint128_t)
 */
 
-#ifndef CFX_NUM_H
-#define CFX_NUM_H
+#ifndef CFX_NUMERICAL_H
+#define CFX_NUMERICAL_H
 
 #include <stdint.h>
 #include <inttypes.h>
@@ -226,4 +226,4 @@ CFX_INLINE void cfx_acc_mac(cfx_acc_t* acc, cfx_limb_t x, cfx_limb_t y) {
 #endif
 }
 
-#endif  /* CFX_NUM_H */
+#endif  /* CFX_NUMERICAL_H */

@@ -3,7 +3,7 @@
 #include "cfx/big.h"
 #include "cfx/fac.h"
 #include "cfx/algo.h"
-#include "cfx/num.h"
+#include "cfx/numerical.h"
 #include "cfx/macros.h"
 
 #include <math.h>

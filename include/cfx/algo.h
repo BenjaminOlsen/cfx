@@ -3,7 +3,7 @@
 #ifndef CFX_ALGO_H
 #define CFX_ALGO_H
 
-#include "cfx/num.h"
+#include "cfx/numerical.h"
 #include "cfx/vector.h"
 
 #include <stdint.h>

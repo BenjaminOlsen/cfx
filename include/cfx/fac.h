@@ -4,7 +4,7 @@
 #define CFX_FAC_H
 
 #include "cfx/vector.h"
-#include "cfx/num.h"
+#include "cfx/numerical.h"
 
 #include <stdint.h>
 #include <stddef.h>

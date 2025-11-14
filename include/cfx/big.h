@@ -5,7 +5,7 @@
 
 #include "cfx/fac.h"
 #include "cfx/algo.h"
-#include "cfx/num.h"
+#include "cfx/numerical.h"
 
 #include <stdint.h>
 #include <stddef.h>

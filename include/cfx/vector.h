@@ -3,7 +3,7 @@
 #ifndef CFX_VECTOR_H
 #define CFX_VECTOR_H
 
-#include "cfx/num.h"
+#include "cfx/numerical.h"
 
 #include <stddef.h>
 #include <stdint.h>
