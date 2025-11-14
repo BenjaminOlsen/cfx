@@ -220,8 +220,8 @@ static void check(const char *label, const cfx_limb_t *limbs, size_t n, const ch
     big_init_from_limbs_base_1e9(&b, limbs, n);
     size_t len = 0;
     char *s = cfx_big_to_str(&b, &len);
-    // CFX_BIG_PRINTF(&b, "str is:\n");
-    // CFX_PRINT_DBG("str should be:\n%s\n", expect);
+    /* CFX_BIG_PRINTF(&b, "str is:\n"); */
+    /* CFX_PRINT_DBG("str should be:\n%s\n", expect); */
     CFX_ASSERT(strcmp(s, expect) == 0);
     CFX_ASSERT(len == strlen(expect));
     CFX_ASSERT(s[len] == '\0');
@@ -231,40 +231,40 @@ static void check(const char *label, const cfx_limb_t *limbs, size_t n, const ch
 }
 
 
-// Single small limb
+/* Single small limb */
 static void test_limb1(void) {
     cfx_limb_t L[] = { 123456789u };
     check("single limb", L, 1, "123456789");
     PRINT_TEST(1);
 }
 
-// -->) Single 0 limb but n>0 (should normally be normalized away; if you allow it, behavior is “000…000”?)
-// Prefer: represent zero as n==0. You can skip this if you enforce normalization.
+/* -->) Single 0 limb but n>0 (should normally be normalized away; if you allow it, behavior is “000…000”?) */
+/* Prefer: represent zero as n==0. You can skip this if you enforce normalization. */
 
-// Two limbs with inner zero-padding needed:
-// value = limb[1]*1e9 + limb[0] = 42*1e9 + 123456789
+/* Two limbs with inner zero-padding needed: */
+/* value = limb[1]*1e9 + limb[0] = 42*1e9 + 123456789 */
 static void test_limb2(void) {
     cfx_limb_t L[] = { 123456789u, 4200u };
     check("two limbs pad", L, 2, "4200123456789");
     PRINT_TEST(1);
 }
 
-// Inner limb exact zero-padding boundary: limb[0] has fewer than 9 digits
+/* Inner limb exact zero-padding boundary: limb[0] has fewer than 9 digits */
 static void test_limb3(void) {
     cfx_limb_t L[] = { 1u, 1u };
     check("two limbs tiny low", L, 2, "1000000001");
     PRINT_TEST(1);
 }
 
-// Max limb values
+/* Max limb values */
 static void test_limb4(void) {
     cfx_limb_t L[] = { 999999999u, 999999999u };
     check("two limbs max", L, 2, "999999999999999999");
     PRINT_TEST(1);
 }
 
-// Four limbs mixed
-// value = 1*1e27 + 7*1e18 + 42*1e9 + 5 → "1 000000007 000000042 000000005"
+/* Four limbs mixed */
+/* value = 1*1e27 + 7*1e18 + 42*1e9 + 5 → "1 000000007 000000042 000000005" */
 static void test_limb5(void) {
     cfx_limb_t L[] = { 5u, 42u, 7u, 1u };
     check("four limbs pad", L, 4, "1000000007000000042000000005");
@@ -287,14 +287,14 @@ static void test_limb6(void) {
     PRINT_TEST(1);
 }
 
-// Large ndigits sanity: build via mul to exercise carry
+/* Large ndigits sanity: build via mul to exercise carry */
 static void test_limb7(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_from_u64(&b, 1);
-    for (int i = 0; i < 10; ++i) cfx_big_mul_sm(&b, 1000000000u - 1u); // (1e9-1)^10
+    for (int i = 0; i < 10; ++i) cfx_big_mul_sm(&b, 1000000000u - 1u); /* (1e9-1)^10 */
     char *s = cfx_big_to_str(&b, NULL);
-    // spot checks: starts with '9' and length >= 9
+    /* spot checks: starts with '9' and length >= 9 */
     CFX_PRINT_DBG("%s\n", s);
     CFX_ASSERT(s[0] == '9');
     CFX_ASSERT(strlen(s) >= 9);
@@ -336,11 +336,11 @@ static void test_str2(void) {
 }
 
 
-// --- hex tests ---
+/* --- hex tests --- */
 static void test_hex_zero_empty_n(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    // n == 0 should yield "0"
+    /* n == 0 should yield "0" */
     size_t len = 12345;
     char* s = cfx_big_to_hex(&b, &len);
     CFX_ASSERT(s);
@@ -372,7 +372,7 @@ static void test_hex_zero_explicit_limb_zero(void) {
 static void test_hex_single_limb_basic(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    // 0x1 -> "1"
+    /* 0x1 -> "1" */
     cfx_limb_t limbs1[] = {0x1ull};
     cfx_big_from_limbs(&b, limbs1, 1);
     size_t len1 = 0;
@@ -383,7 +383,7 @@ static void test_hex_single_limb_basic(void) {
     printf("[%s] - %s\n", __func__, s1);
     free(s1);
 
-    // 0xabcdef -> "abcdef" (lowercase)
+    /* 0xabcdef -> "abcdef" (lowercase) */
     b.limb[0] = 0xabcdefull;
     size_t len2 = 0;
     char* s2 = cfx_big_to_hex(&b, &len2);
@@ -399,7 +399,7 @@ static void test_hex_single_limb_basic(void) {
 static void test_hex_single_limb_hex_digit_count(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    // 2^60 = 0x1000000000000000 -> 1 followed by 15 zeros (16 digits total)
+    /* 2^60 = 0x1000000000000000 -> 1 followed by 15 zeros (16 digits total) */
     cfx_limb_t limbs[] = {0x1000000000000000ull};
     cfx_big_from_limbs(&b, limbs, 1);
     size_t len = 0;
@@ -416,16 +416,16 @@ static void test_hex_single_limb_hex_digit_count(void) {
 static void test_hex_two_limbs_padding(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    // high = 0x1, low = 0x1 -> "1" + "0000000000000001"
+    /* high = 0x1, low = 0x1 -> "1" + "0000000000000001" */
     cfx_limb_t limbs[] = {
-        0x0000000000000001ull, // low
-        0x0000000000000001ull  // high
+        0x0000000000000001ull, /* low */
+        0x0000000000000001ull  /* high */
     };
     cfx_big_from_limbs(&b, limbs, 2);
     size_t len = 0;
     char* s = cfx_big_to_hex(&b, &len);
     CFX_ASSERT(strcmp(s, "10000000000000001") == 0);
-    CFX_ASSERT(len == 17);                  // 1 + 16
+    CFX_ASSERT(len == 17);                  /* 1 + 16 */
     CFX_ASSERT(s[len] == '\0');
     cfx_big_free(&b);
     printf("[%s] - %s\n", __func__, s);
@@ -436,14 +436,14 @@ static void test_hex_two_limbs_padding(void) {
 static void test_hex_two_limbs_mixed_digits(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    // high = 0xABC, low = 0x0011223344556677
-    // expect: "abc" + "0011223344556677"
+    /* high = 0xABC, low = 0x0011223344556677 */
+    /* expect: "abc" + "0011223344556677" */
     cfx_limb_t limbs[] = {
-        0x0011223344556677ull, // low
-        0x0000000000000ABCull  // high
+        0x0011223344556677ull, /* low */
+        0x0000000000000ABCull  /* high */
     };
     cfx_big_from_limbs(&b, limbs, 2);
-    char* s = cfx_big_to_hex(&b, NULL); // also test sz_out == NULL
+    char* s = cfx_big_to_hex(&b, NULL); /* also test sz_out == NULL */
     CFX_ASSERT(strcmp(s, "abc0011223344556677") == 0);
     CFX_ASSERT(s[strlen(s)] == '\0');
     cfx_big_free(&b);
@@ -455,19 +455,19 @@ static void test_hex_two_limbs_mixed_digits(void) {
 static void test_hex_leading_zero_limb_skipped(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    // limbs: [low=X, mid=Y, high=0] -> should behave like just [low=X, mid=Y]
+    /* limbs: [low=X, mid=Y, high=0] -> should behave like just [low=X, mid=Y] */
     cfx_limb_t limbs3[] = {
-        0xDEADBEEFCAFEBABEuLL, // low
-        0x0000000000000123uLL, // mid
-        0x0000000000000000uLL  // high (zero)
+        0xDEADBEEFCAFEBABEuLL, /* low */
+        0x0000000000000123uLL, /* mid */
+        0x0000000000000000uLL  /* high (zero) */
     };
     cfx_big_from_limbs(&b, limbs3, 3);
     size_t len = 0;
     char* s = cfx_big_to_hex(&b, &len);
-    // expected: "123" + "%016" of low
-    const char* expect_low = "deadbeefcafebabe"; // lowercase
-    // const char* expect = "1230000000000000" "deadbeefcafebabe";
-    // But careful: mid=0x123 -> "123", low padded to 16
+    /* expected: "123" + "%016" of low */
+    const char* expect_low = "deadbeefcafebabe"; /* lowercase */
+    /* const char* expect = "1230000000000000" "deadbeefcafebabe"; */
+    /* But careful: mid=0x123 -> "123", low padded to 16 */
     char expect_buf[3 + 16 + 1];
     snprintf(expect_buf, sizeof(expect_buf), "%s%s", "123", expect_low);
     CFX_ASSERT(strcmp(s, expect_buf) == 0);
@@ -482,7 +482,7 @@ static void test_hex_leading_zero_limb_skipped(void) {
 static void test_hex_no_leading_zeros_on_msl(void) {
     cfx_big_t b;
     cfx_big_init(&b);
-    // high = 0x00000000000000ab -> "ab", low zero-padded
+    /* high = 0x00000000000000ab -> "ab", low zero-padded */
     cfx_limb_t limbs[] = {
         0ULL,
         0xABULL
@@ -505,8 +505,8 @@ static void test_cache(void) {
     CFX_ASSERT(b.cache != NULL);
 
     cfx_big_from_u64(&b, 1);
-    // CFX_ASSERT(b.cache->primes.data == NULL);
-    // CFX_ASSERT(b.cache->state == CFX_FAC_FULL); todo
+    /* CFX_ASSERT(b.cache->primes.data == NULL); */
+    /* CFX_ASSERT(b.cache->state == CFX_FAC_FULL); todo */
     PRINT_TEST(1);
 }
 
@@ -610,7 +610,7 @@ static void test_carry_two_limbs_times_2(void) {
 
 
 static void test_mul_by_base_2_64_shift(void) {
-    // Multiply by 2^64 (limbs = [0,1]) should shift by one limb
+    /* Multiply by 2^64 (limbs = [0,1]) should shift by one limb */
     cfx_big_t b, m;
     cfx_big_init(&b);
     cfx_big_init(&m);
@@ -634,7 +634,7 @@ static void test_mul_by_base_2_64_shift(void) {
         expect[n+sz0-1] = 0x0000000000000001ull;
 
         big_expect_limbs(__func__, &b, expect, sz0 + n);
-        // printf("[test_mul_by_base_2_64_shift]: tested shift of %zu OK\n", n);
+        /* printf("[test_mul_by_base_2_64_shift]: tested shift of %zu OK\n", n); */
         free(expect);
         expect = NULL;
     }
@@ -645,13 +645,13 @@ static void test_mul_by_base_2_64_shift(void) {
 }
 
 static void test_self_multiply_square(void) {
-    // (2^64 - 1)^2 = [0xFFFFFFFFFFFFFFFE, 1] in base 2^64
+    /* (2^64 - 1)^2 = [0xFFFFFFFFFFFFFFFE, 1] in base 2^64 */
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_limb_t limbs[] = {0xFFFFFFFFFFFFFFFFull};
     cfx_big_from_limbs(&b, limbs, 1);
     big_expect_limbs(__func__, &b, limbs, 1);
-    cfx_big_mul(&b, &b); // self-mul path
+    cfx_big_mul(&b, &b); /* self-mul path */
     cfx_limb_t expect[] = {1ull, 0xFFFFFFFFFFFFFFFEull};
     big_expect_limbs(__func__, &b, expect, 2);
     cfx_big_free(&b);
@@ -684,30 +684,30 @@ void test_mul(cfx_big_t* b, const cfx_big_t* m) {
         cfx_big_from_u64(b, 0);
         return;
     }
-    // if (cfx_big_eq(b, m)) {
-    //     cfx_big_sq(b);
-    //     return;
-    // }
+    /* if (cfx_big_eq(b, m)) { */
+    /*     cfx_big_sq(b); */
+    /*     return; */
+    /* } */
     PRINT_TEST(1);
     
 }
 
-// static void write_string_wrapped(const char* s, const char* fn, size_t w) {
-//     FILE* f = fopen(fn, "w");
-//     if (!f) {
-//         perror("fopen");
-//         return;
-//     }
-//     size_t len = strlen(s);
-//     for (size_t i = 0; i < len; i += w) {
-//         fprintf(f, "\"");
-//         for (size_t j = i; j < i + w && j < len; ++j) {
-//             fputc(s[j], f);
-//         }
-//         fprintf(f, "\"\n");
-//     }
-//     fclose(f);
-// }
+/* static void write_string_wrapped(const char* s, const char* fn, size_t w) { */
+/*     FILE* f = fopen(fn, "w"); */
+/*     if (!f) { */
+/*         perror("fopen"); */
+/*         return; */
+/*     } */
+/*     size_t len = strlen(s); */
+/*     for (size_t i = 0; i < len; i += w) { */
+/*         fprintf(f, "\""); */
+/*         for (size_t j = i; j < i + w && j < len; ++j) { */
+/*             fputc(s[j], f); */
+/*         } */
+/*         fprintf(f, "\"\n"); */
+/*     } */
+/*     fclose(f); */
+/* } */
 
 static void test_known_squares(void) {
     cfx_big_t b;
@@ -769,7 +769,7 @@ static void test_known_squares(void) {
         "2564742658586426229545514803499564697000372"
         "3095350971345437292114654548843072761868784"
         "674125049315509629339381027496416991005114370");
-    cfx_big_sq(&b); // 1
+    cfx_big_sq(&b); /* 1 */
     free(s);
     s = cfx_big_to_str(&b, NULL);
     
@@ -785,7 +785,7 @@ static void test_known_squares(void) {
     CFX_ASSERT(strcmp(s, expect) == 0);
 
     /* ----------------------------------- */
-    cfx_big_sq(&b); // 2
+    cfx_big_sq(&b); /* 2 */
     free(s);
     s = cfx_big_to_str(&b, NULL);
     
@@ -808,7 +808,7 @@ static void test_known_squares(void) {
         "610000";
     CFX_ASSERT(strcmp(s, expect) == 0);
 
-    cfx_big_sq(&b); // 4
+    cfx_big_sq(&b); /* 4 */
     free(s);
     s = cfx_big_to_str(&b, NULL);
     
@@ -846,14 +846,14 @@ static void test_known_squares(void) {
         "2100000000";
     printf("\n\n%s\n\n", s);
     CFX_ASSERT(strcmp(s, expect) == 0);
-    // CFX_BIG_PRINT_LIMBS(b);
+    /* CFX_BIG_PRINT_LIMBS(b); */
 
     
-    // cfx_big_sq(&b); // 8
+    /* cfx_big_sq(&b); // 8 */
     cfx_big_mul(&b, &b);
     free(s);
     s = cfx_big_to_str(&b, NULL);
-    //// sanity check:
+    /*// sanity check: */
     cfx_big_t B;
     cfx_big_init(&B);
     cfx_big_from_str(&B, s);
@@ -876,34 +876,34 @@ static void test_known_squares(void) {
     CFX_ASSERT(strcmp(s, expect) == 0);
     int cnt = 0;
 
-    cfx_big_mul(&b, &b); // 16
+    cfx_big_mul(&b, &b); /* 16 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
 
-    cfx_big_mul(&b, &b); // 32
+    cfx_big_mul(&b, &b); /* 32 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 64
+    cfx_big_mul(&b, &b); /* 64 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 128
+    cfx_big_mul(&b, &b); /* 128 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 256
+    cfx_big_mul(&b, &b); /* 256 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); // 512
+    cfx_big_mul(&b, &b); /* 512 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul(&b, &b); // 1024
-    // printf("mul %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul(&b, &b); // 2048
-    // printf("mul %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul(&b, &b); // 4096
-    // printf("mul %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul(&b, &b); // 8192
-    // printf("mul %d len: %zu \n", ++cnt, b.n);
+    /* cfx_big_mul(&b, &b); // 1024 */
+    /* printf("mul %d len: %zu \n", ++cnt, b.n); */
+    /* cfx_big_mul(&b, &b); // 2048 */
+    /* printf("mul %d len: %zu \n", ++cnt, b.n); */
+    /* cfx_big_mul(&b, &b); // 4096 */
+    /* printf("mul %d len: %zu \n", ++cnt, b.n); */
+    /* cfx_big_mul(&b, &b); // 8192 */
+    /* printf("mul %d len: %zu \n", ++cnt, b.n); */
 
-    // for (size_t i = 0; i < b.n; ++i) {
-    //     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"CFX_PRI0xLIMB")\n", i, b.limb[i], b.limb[i]);
-    // }
+    /* for (size_t i = 0; i < b.n; ++i) { */
+    /*     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"CFX_PRI0xLIMB")\n", i, b.limb[i], b.limb[i]); */
+    /* } */
     
     char* huge = cfx_big_to_hex(&b, NULL);
-    // printf("%s\n", huge);
+    /* printf("%s\n", huge); */
     printf("digits: %zu\n", strlen(huge));
     free(huge);
     free(s);
@@ -919,7 +919,7 @@ static void test_known_squares_2(void) {
         "2564742658586426229545514803499564697000372"
         "3095350971345437292114654548843072761868784"
         "674125049315509629339381027496416991005114370");
-    cfx_big_mul_csa(&b, &b); // 1
+    cfx_big_mul_csa(&b, &b); /* 1 */
     char* s = cfx_big_to_str(&b, NULL);
     
     char* expect = 
@@ -935,7 +935,7 @@ static void test_known_squares_2(void) {
     CFX_ASSERT(strcmp(s, expect) == 0);
 
     /* ----------------------------------- */
-    cfx_big_mul_csa(&b, &b); // 2
+    cfx_big_mul_csa(&b, &b); /* 2 */
     free(s);
     s = cfx_big_to_str(&b, NULL);
     
@@ -958,10 +958,10 @@ static void test_known_squares_2(void) {
         "610000";
     CFX_ASSERT(strcmp(s, expect) == 0);
 
-    cfx_big_mul_csa(&b, &b); // 4
+    cfx_big_mul_csa(&b, &b); /* 4 */
     free(s);
     s = cfx_big_to_str(&b, NULL);
-    // write_string_wrapped(s, "", 80);
+    /* write_string_wrapped(s, "", 80); */
     expect = 
         "3584759174695717079200799669904391027371015034"
         "5591263067167166620789779901562032648556807601"
@@ -996,10 +996,10 @@ static void test_known_squares_2(void) {
         "2100000000";
     printf("\n\n%s\n\n", s);
     CFX_ASSERT(strcmp(s, expect) == 0);
-    // CFX_BIG_PRINT_LIMBS(b);
+    /* CFX_BIG_PRINT_LIMBS(b); */
 
     
-    cfx_big_mul(&b, &b); // 8
+    cfx_big_mul(&b, &b); /* 8 */
     free(s);
     s = cfx_big_to_str(&b, NULL);
 
@@ -1029,31 +1029,31 @@ static void test_known_squares_2(void) {
     /* ----------------------------------------------------------- */
 
     int cnt = 0;
-    cfx_big_mul_csa(&b, &b); // 16
+    cfx_big_mul_csa(&b, &b); /* 16 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); // 32
+    cfx_big_mul_csa(&b, &b); /* 32 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); // 64
+    cfx_big_mul_csa(&b, &b); /* 64 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); // 128
+    cfx_big_mul_csa(&b, &b); /* 128 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); // 256
+    cfx_big_mul_csa(&b, &b); /* 256 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); // 512
+    cfx_big_mul_csa(&b, &b); /* 512 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul_csa(&b, &b); // 1024
-    // printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul_csa(&b, &b); // 2048
-    // printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    // cfx_big_mul_csa(&b, &b); // 4096
-    // printf("mul csa %d len: %zu \n", ++cnt, b.n);
+    /* cfx_big_mul_csa(&b, &b); // 1024 */
+    /* printf("mul csa %d len: %zu \n", ++cnt, b.n); */
+    /* cfx_big_mul_csa(&b, &b); // 2048 */
+    /* printf("mul csa %d len: %zu \n", ++cnt, b.n); */
+    /* cfx_big_mul_csa(&b, &b); // 4096 */
+    /* printf("mul csa %d len: %zu \n", ++cnt, b.n); */
 
-    // for (size_t i = 0; i < b.n; ++i) {
-    //     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"CFX_PRI0xLIMB")\n", i, b.limb[i], b.limb[i]);
-    // }
+    /* for (size_t i = 0; i < b.n; ++i) { */
+    /*     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"CFX_PRI0xLIMB")\n", i, b.limb[i], b.limb[i]); */
+    /* } */
     
     char* huge = cfx_big_to_hex(&b, NULL);
-    // printf("%s\n", huge);
+    /* printf("%s\n", huge); */
     printf("digits: %zu\n", strlen(huge));
     free(huge);
     free(s);
@@ -1078,10 +1078,10 @@ static void big_dec1(cfx_big_t* x) {
         x->limb[i] = old - borrow;
         borrow = (x->limb[i] > old);
     }
-    // rely on library ops to keep canonical form later
+    /* rely on library ops to keep canonical form later */
 }
 
-// Property check: n == q*d + r and r < d
+/* Property check: n == q*d + r and r < d */
 static void assert_n_eq_qd_plus_r(const cfx_big_t* n, const cfx_big_t* q,
                                   const cfx_big_t* d, const cfx_big_t* r) {
     cfx_big_t check;
@@ -1101,7 +1101,7 @@ static void assert_n_eq_qd_plus_r(const cfx_big_t* n, const cfx_big_t* q,
     cfx_big_free(&tmp);
 }
 
-// ---------- tests ----------
+/* ---------- tests ---------- */
 
 void test_big_div_divide_by_zero(void) {
     cfx_big_t n, d, q, r;
@@ -1187,7 +1187,7 @@ void test_big_div_single_limb_divisor_property(void) {
     cfx_big_init(&d);
     cfx_big_init(&q);
     cfx_big_init(&r);
-    cfx_big_from_str(&n, "340282366920938463463374607431768211455"); // 2^128 - 1
+    cfx_big_from_str(&n, "340282366920938463463374607431768211455"); /* 2^128 - 1 */
     cfx_big_from_u64(&d, 123456789ULL);
 
     int rc = cfx_big_divrem(&q, &r, &n, &d);
@@ -1201,7 +1201,7 @@ void test_big_div_single_limb_divisor_property(void) {
 }
 
 void test_big_div_multi_limb_divisor_exact_and_remainder(void) {
-    // n = a*b + r, then n / b -> q=a, rem=r
+    /* n = a*b + r, then n / b -> q=a, rem=r */
     cfx_big_t a, b, r, n, q, rem;
     cfx_big_init(&a);
     cfx_big_init(&b);
@@ -1232,7 +1232,7 @@ void test_big_div_multi_limb_divisor_exact_and_remainder(void) {
 }
 
 void test_big_div_in_place_eq_with_remainder(void) {
-    // Build n = a*b + 42, then n := n / b, rem = 42
+    /* Build n = a*b + 42, then n := n / b, rem = 42 */
     cfx_big_t a, b, n, rem, forty_two;
     cfx_big_init(&a);
     cfx_big_init(&b);
@@ -1240,7 +1240,7 @@ void test_big_div_in_place_eq_with_remainder(void) {
     cfx_big_init(&rem);
     cfx_big_init(&forty_two);
     cfx_big_from_str(&a, "1122334455667788990011223344556677889900");
-    cfx_big_from_str(&b, "18446744073709551616"); // 2^64
+    cfx_big_from_str(&b, "18446744073709551616"); /* 2^64 */
     cfx_big_copy(&n, &a);
     cfx_big_mul(&n, &b);
     cfx_big_from_u64(&forty_two, 42);
@@ -1269,7 +1269,7 @@ void test_big_div_quotient_only_and_remainder_only(void) {
     cfx_big_from_str(&a, "3141592653589793238462643383279502884197");
     cfx_big_from_str(&b, "2718281828459045235360287471352662497757");
 
-    // n = a*b + (b-1)
+    /* n = a*b + (b-1) */
     cfx_big_copy(&n, &a);
     cfx_big_mul(&n, &b);
 
@@ -1278,11 +1278,11 @@ void test_big_div_quotient_only_and_remainder_only(void) {
 
     cfx_big_add(&n, &b_minus_1);
 
-    // quotient only
+    /* quotient only */
     CFX_ASSERT(cfx_big_div_out(&q, &n, &b) == 0);
     CFX_ASSERT(cfx_big_eq(&q, &a));
 
-    // remainder only
+    /* remainder only */
     CFX_ASSERT(cfx_big_mod(&r, &n, &b) == 0);
     CFX_ASSERT(cfx_big_eq(&r, &b_minus_1));
 
@@ -1298,7 +1298,7 @@ void test_big_div_alias_remainder_eq_src(void) {
     CFX_ASSERT(1);
     /* TODO! */
     #if 0
-    // Verify cfx_big_div_eq supports r == b (if your impl promises this).
+    /* Verify cfx_big_div_eq supports r == b (if your impl promises this). */
     cfx_big_t b, d;
     cfx_big_init(&b);
     cfx_big_init(&d);
@@ -1310,13 +1310,13 @@ void test_big_div_alias_remainder_eq_src(void) {
     
     cfx_big_copy(&orig, &b);
 
-    int rc = cfx_big_div_eq(&b, &d, &b);   // r aliases src
+    int rc = cfx_big_div_eq(&b, &d, &b);   /* r aliases src */
     CFX_ASSERT(rc == 0);
 
-    // Check property with a fresh recompute: orig == q*d + r, where q is in 'b' (after div)
+    /* Check property with a fresh recompute: orig == q*d + r, where q is in 'b' (after div) */
     cfx_big_t q_copy;
     cfx_big_init(&q_copy);
-    cfx_big_copy(&q_copy, &b);  // b now holds q
+    cfx_big_copy(&q_copy, &b);  /* b now holds q */
     assert_n_eq_qd_plus_r(&orig, &q_copy, &d, &b);
 
     cfx_big_free(&orig);
@@ -1361,7 +1361,7 @@ static void assert_hex_eq(const char* tag, const cfx_big_t* x, const char* hex_e
     int ok = (strcmp(got, hex_exp) == 0);
     if (!ok) {
         fprintf(stderr, "[%s] expected 0x%s, got 0x%s\n", tag, hex_exp, got);
-        // fflush(stderr);
+        /* fflush(stderr); */
     }
     CFX_ASSERT_PRINT(ok);
     free(got);
@@ -1421,9 +1421,9 @@ static void test_shl_basic_identity(void) {
 
 static void test_shl_create_top_limb(void) {
     /* new top limb created when MSB carries out */
-    CHECK_SHL_CASE("8000000000000000", 1, "10000000000000000");    // 2^63 << 1 -> 2^64
-    CHECK_SHL_CASE("1", 64, "10000000000000000");                   // append 16 hex zeros
-    CHECK_SHL_CASE("1", 68, "100000000000000000");                 // 16 zeros + 1 hex nibble
+    CHECK_SHL_CASE("8000000000000000", 1, "10000000000000000");    /* 2^63 << 1 -> 2^64 */
+    CHECK_SHL_CASE("1", 64, "10000000000000000");                   /* append 16 hex zeros */
+    CHECK_SHL_CASE("1", 68, "100000000000000000");                 /* 16 zeros + 1 hex nibble */
 }
 
 static void test_shl_cross_limb_1bit(void) {
@@ -1441,8 +1441,8 @@ static void test_shr_basic_identity(void) {
 
 static void test_shr_drop_whole_limb(void) {
     /* exact 64-bit drops */
-    CHECK_SHR_CASE("10000000000000000", 64, "1");         // 2^64 >> CFX_LIMB_BITS
-    CHECK_SHR_CASE("100000000000000000", 68, "1");       // (2^68) >> 68
+    CHECK_SHR_CASE("10000000000000000", 64, "1");         /* 2^64 >> CFX_LIMB_BITS */
+    CHECK_SHR_CASE("100000000000000000", 68, "1");       /* (2^68) >> 68 */
 }
 
 static void test_shr_to_zero(void) {
@@ -1465,9 +1465,9 @@ static void test_shr_cross_limb_carry_6bits(void) {
 
 static void test_shr_mixed_cases(void) {
     /* assorted mixes with odd s and multiple limbs */
-    CHECK_SHR_CASE("100000000000000000000", 4, "10000000000000000000");  // divide by 16
-    CHECK_SHR_CASE("abcdef0123456789", 4, "abcdef012345678");          // >>4 removes low nibble
-    CHECK_SHR_CASE("abcdef0123456789", 60, "a");                         // >>68 = >>64 then >>4
+    CHECK_SHR_CASE("100000000000000000000", 4, "10000000000000000000");  /* divide by 16 */
+    CHECK_SHR_CASE("abcdef0123456789", 4, "abcdef012345678");          /* >>4 removes low nibble */
+    CHECK_SHR_CASE("abcdef0123456789", 60, "a");                         /* >>68 = >>64 then >>4 */
 }
 
 /* ------------------------------------------------------------------ */
@@ -1483,25 +1483,25 @@ void test_exp_edge_cases(void) {
     cfx_big_t n, p, out;
     cfx_big_init(&n); cfx_big_init(&p); cfx_big_init(&out);
 
-    // 0^0 := 1
+    /* 0^0 := 1 */
     cfx_big_from_u64(&n, 0);
     cfx_big_from_u64(&p, 0);
     cfx_big_exp(&out, &n, &p);
     CFX_ASSERT(cfx_big_eq_u64(&out, 1));
 
-    // 0^k = 0 (k>0)
+    /* 0^k = 0 (k>0) */
     cfx_big_from_u64(&n, 0);
     cfx_big_from_u64(&p, 5);
     cfx_big_exp(&out, &n, &p);
     CFX_ASSERT(cfx_big_eq_u64(&out, 0));
 
-    // 1^p = 1
+    /* 1^p = 1 */
     cfx_big_from_u64(&n, 1);
     cfx_big_from_u64(&p, 1234567);
     cfx_big_exp(&out, &n, &p);
     CFX_ASSERT(cfx_big_eq_u64(&out, 1));
 
-    // n^0 = 1
+    /* n^0 = 1 */
     cfx_big_from_u64(&n, 42);
     cfx_big_from_u64(&p, 0);
     cfx_big_exp(&out, &n, &p);
@@ -1514,19 +1514,19 @@ void test_exp_small_values(void) {
     cfx_big_t n, p, out;
     cfx_big_init(&n); cfx_big_init(&p); cfx_big_init(&out);
 
-    // n^1 = n
+    /* n^1 = n */
     cfx_big_from_u64(&n, 123456789);
     cfx_big_from_u64(&p, 1);
     cfx_big_exp(&out, &n, &p);
     CFX_ASSERT(out.n == 1 && out.limb[0] == 123456789ULL);
 
-    // 2^10 = 1024
+    /* 2^10 = 1024 */
     cfx_big_from_u64(&n, 2);
     cfx_big_from_u64(&p, 10);
     cfx_big_exp(&out, &n, &p);
     CFX_ASSERT(cfx_big_eq_u64(&out, 1024ULL));
 
-    // 3^5 = 243
+    /* 3^5 = 243 */
     cfx_big_from_u64(&n, 3);
     cfx_big_from_u64(&p, 5);
     cfx_big_exp(&out, &n, &p);
@@ -1539,20 +1539,20 @@ void test_exp_powers_of_two_boundaries(void) {
     cfx_big_t n, p, out;
     cfx_big_init(&n); cfx_big_init(&p); cfx_big_init(&out);
 
-    // 2^64 = 1<<64 -> limbs [0]=0, [1]=1
+    /* 2^64 = 1<<64 -> limbs [0]=0, [1]=1 */
     cfx_big_from_u64(&n, 2);
     cfx_big_from_u64(&p, 64);
     cfx_big_exp(&out, &n, &p);
     CFX_ASSERT(out.n == 2);
     expect_limb_pattern(&out, 2, 0, 1, 0);
 
-    // 2^128 = 1<<128 -> limbs [0]=0, [1]=0, [2]=1
+    /* 2^128 = 1<<128 -> limbs [0]=0, [1]=0, [2]=1 */
     cfx_big_from_u64(&p, 128);
     cfx_big_exp(&out, &n, &p);
     CFX_ASSERT(out.n == 3);
     expect_limb_pattern(&out, 3, 1, 0, 0);
 
-    // 2^127 -> highest bit in limb[1], limb[0]=0
+    /* 2^127 -> highest bit in limb[1], limb[0]=0 */
     cfx_big_from_u64(&p, 127);
     cfx_big_exp(&out, &n, &p);
     CFX_ASSERT(out.n == 2);
@@ -1566,27 +1566,27 @@ void test_exp_aliasing(void) {
     cfx_big_t n, p;
     cfx_big_init(&n); cfx_big_init(&p);
 
-    // out aliases base (out == n)
+    /* out aliases base (out == n) */
     cfx_big_from_u64(&n, 7);
-    cfx_big_from_u64(&p, 6);      // 7^6 = 117,649
+    cfx_big_from_u64(&p, 6);      /* 7^6 = 117,649 */
     cfx_big_exp(&n, &n, &p);
     CFX_ASSERT(n.n == 2 || n.n == 1);
-    // 117,649 fits in 64 bits
+    /* 117,649 fits in 64 bits */
     CFX_ASSERT(n.n == 1 && n.limb[0] == 117649ULL);
 
-    // out aliases exponent (out == p)
+    /* out aliases exponent (out == p) */
     cfx_big_from_u64(&n, 2);
-    cfx_big_from_u64(&p, 80);     // 2^80 -> limbs [0]=0, [1]=0x1000000000000000, [2]=0x0000000000000001
+    cfx_big_from_u64(&p, 80);     /* 2^80 -> limbs [0]=0, [1]=0x1000000000000000, [2]=0x0000000000000001 */
     cfx_big_exp(&p, &n, &p);
     CFX_ASSERT(p.n == 2 || p.n == 3);
-    // exact check:
-    CFX_ASSERT(p.n == 2 || p.n == 3); // (library may trim leading zero limbs)
+    /* exact check: */
+    CFX_ASSERT(p.n == 2 || p.n == 3); /* (library may trim leading zero limbs) */
     if (p.n == 2) {
-        // 2^80 = 1<<80 => limb[0]=0, limb[1]=1<<16
+        /* 2^80 = 1<<80 => limb[0]=0, limb[1]=1<<16 */
         CFX_ASSERT(p.limb[0] == 0);
         CFX_ASSERT(p.limb[1] == (1ULL << 16));
     } else {
-        // If your representation keeps a third limb for carry, adjust accordingly.
+        /* If your representation keeps a third limb for carry, adjust accordingly. */
         CFX_ASSERT(0 && "Unexpected limb count for 2^80");
     }
 
@@ -1598,7 +1598,7 @@ void test_exp_compare_with_naive_mul(void) {
     cfx_big_init(&n); cfx_big_init(&p);
     cfx_big_init(&out1); cfx_big_init(&out2);
 
-    // Random-ish small cases to avoid huge numbers; compare against repeated multiply.
+    /* Random-ish small cases to avoid huge numbers; compare against repeated multiply. */
     cfx_limb_t bases[] = {2,3,5,10,17,1234567};
     cfx_limb_t exps[]  = {2,3,4,5,8,16};
 
@@ -1607,10 +1607,10 @@ void test_exp_compare_with_naive_mul(void) {
             cfx_big_from_u64(&n, bases[i]);
             cfx_big_from_u64(&p, exps[j]);
 
-            // exp under test
+            /* exp under test */
             cfx_big_exp(&out1, &n, &p);
 
-            // naive: res=1; repeat e times: res*=n
+            /* naive: res=1; repeat e times: res*=n */
             cfx_big_from_u64(&out2, 1);
             cfx_limb_t e = exps[j];
             while (e--) {

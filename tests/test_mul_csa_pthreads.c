@@ -11,20 +11,16 @@
 #include <string.h>
 
 
-
-/* --- helpers --- */
 static void ensure_cap(cfx_big_t* b, size_t need) {
-    // PRINT_BIG("ensure_cap BEFORE", b);
     cfx_big_reserve(b, need);
-    // PRINT_BIG("ensure_cap AFTER", b);
 }
 
 static void fill_zero(cfx_big_t* b, size_t nlimbs) {
     ensure_cap(b, nlimbs);
     memset(b->limb, 0, nlimbs * sizeof(cfx_limb_t));
-    b->n = nlimbs ? 1 : 0; // canonical zero usually n=0, but harmless if 1 with limb[0]==0
+    b->n = nlimbs ? 1 : 0; /* canonical zero usually n=0, but harmless if 1 with limb[0]==0 */
     if (nlimbs) b->limb[0] = 0;
-    b->n = 0; // prefer canonical zero
+    b->n = 0; /* prefer canonical zero */
 }
 
 static void fill_val(cfx_big_t* b, size_t nlimbs, cfx_limb_t v) {
@@ -44,8 +40,8 @@ static void fill_ones(cfx_big_t* b, size_t nlimbs) {
 static void fill_rand(cfx_big_t* b, size_t nlimbs, cfx_limb_t seed) {
     ensure_cap(b, nlimbs);
     cfx_limb_t s = seed ? seed : 0x123456789abcdef0ULL;
-    for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = cfx_rand_xorshift64(&s);
-    if (nlimbs) b->limb[nlimbs-1] |= (1ULL << 63); // avoid leading zeros
+    for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = cfx_xorshift64(&s);
+    if (nlimbs) b->limb[nlimbs-1] |= (1ULL << 63); /* avoid leading zeros */
     b->n = nlimbs;
 }
 
@@ -74,7 +70,7 @@ static void run_case(const char* name,
                      int threads)
 {
     printf("\n------------------- %s -------------------\n", name);
-    // Make working copies
+    /* Make working copies */
     cfx_big_t b_ref;
     cfx_big_init(&b_ref);
     cfx_big_t b_pt;
@@ -82,7 +78,7 @@ static void run_case(const char* name,
     cfx_big_t m_copy;
     cfx_big_init(&m_copy);
 
-    // Capacity for outputs: up to nout = nb + nm
+    /* Capacity for outputs: up to nout = nb + nm */
     const size_t nout = b0_in->n + m_in->n;
     printf("nout = %zu\n", nout);
     printf("run_case: %s, b0_in->cap %zu, b0_in->n: %zu, m_in->cap %zu, m_in->n: %zu\n",
@@ -92,7 +88,7 @@ static void run_case(const char* name,
     PRINT_BIG("b_ref", &b_ref);
     cfx_big_copy(&b_pt,  b0_in);
     PRINT_BIG("b_pt", &b_pt);
-    cfx_big_copy(&m_copy, m_in); // to test immutability
+    cfx_big_copy(&m_copy, m_in); /* to test immutability */
     PRINT_BIG("m_copy", &m_copy);
 
     ensure_cap(&b_ref, nout);
@@ -100,13 +96,13 @@ static void run_case(const char* name,
     ensure_cap(&b_pt,  nout);
     PRINT_BIG("b_pt after ensure", &b_pt);
 
-    // reference multiply (single-thread schoolbook)
+    /* reference multiply (single-thread schoolbook) */
     cfx_big_mul(&b_ref, m_in);
 
-    // pthreads CSA multiply
-    cfx_big_mul_csa_pthreads(&b_pt, m_in, threads);
+    /* pthreads CSA multiply */
+    cfx_big_mul_rows_pthreads(&b_pt, m_in, threads);
 
-    // Check equality (compare first nout limbs)
+    /* Check equality (compare first nout limbs) */
     if (!big_equal(&b_ref, &b_pt, nout)) {
         fprintf(stderr, "[FAIL] %s (threads=%d)\n", name, threads);
         print_limbs("b0  ", b0_in, b0_in->n);
@@ -116,7 +112,7 @@ static void run_case(const char* name,
         CFX_ASSERT(0 && "mismatch between reference and pthreads CSA");
     }
 
-    // Ensure m was not modified
+    /* Ensure m was not modified */
     if (!big_equal(&m_copy, m_in, m_in->n)) {
         fprintf(stderr, "[FAIL] %s: multiplicand was modified!\n", name);
         CFX_ASSERT(0 && "multiplicand modified");
@@ -135,13 +131,13 @@ static void test_zero_cases(void) {
     cfx_big_init(&b);
     cfx_big_init(&m);
 
-    // 0 * X
+    /* 0 * X */
     fill_zero(&b, 0);
     fill_rand(&m, 3, 0xA1);
     run_case("zero_times_rand", &b, &m, 1);
     run_case("zero_times_rand_t4", &b, &m, 4);
 
-    // X * 0
+    /* X * 0 */
     fill_rand(&b, 4, 0xB2);
     fill_zero(&m, 0);
     run_case("rand_times_zero", &b, &m, 1);
@@ -156,13 +152,13 @@ static void test_one_cases(void) {
     cfx_big_init(&b);
     cfx_big_init(&m);
 
-    // 1 * X
+    /* 1 * X */
     fill_val(&b, 1, 1);
     fill_rand(&m, 5, 0xC3);
     run_case("one_times_rand", &b, &m, 1);
     run_case("one_times_rand_t6", &b, &m, 6);
 
-    // X * 1
+    /* X * 1 */
     fill_rand(&b, 6, 0xD4);
     fill_val(&m, 1, 1);
     run_case("rand_times_one", &b, &m, 1);
@@ -177,8 +173,8 @@ static void test_all_ones_small(void) {
     cfx_big_init(&b);
     cfx_big_init(&m);
 
-    fill_ones(&b, 3); // (2^192 - 1)
-    fill_ones(&m, 2); // (2^128 - 1)
+    fill_ones(&b, 3); /* (2^192 - 1) */
+    fill_ones(&m, 2); /* (2^128 - 1) */
     run_case("all_ones_3x2_t1", &b, &m, 1);
     run_case("all_ones_3x2_t4", &b, &m, 4);
 
@@ -191,7 +187,7 @@ static void test_powers_of_two_alignment(void) {
     cfx_big_init(&b);
     cfx_big_init(&m);
 
-    // b = 2^128 + 1, m = 2^65
+    /* b = 2^128 + 1, m = 2^65 */
     ensure_cap(&b, 3); memset(b.limb, 0, 3*sizeof(cfx_limb_t)); b.limb[0]=1; b.limb[2]=1; b.n=3;
     ensure_cap(&m, 2); memset(m.limb, 0, 2*sizeof(cfx_limb_t)); m.limb[1]=2; m.n=2;
 
@@ -229,10 +225,10 @@ static void test_small_fuzz(void) {
     cfx_limb_t seed = 0xCAFEBABE12345678ULL;
 
     for (int t = 0; t < 20; ++t) {
-        size_t nb = 1 + (xorshift64(&seed) % 6);   // 1..6 limbs
-        size_t nm = 1 + (xorshift64(&seed) % 6);
-        fill_rand(&b, nb, xorshift64(&seed));
-        fill_rand(&m, nm, xorshift64(&seed));
+        size_t nb = 1 + (cfx_xorshift64(&seed) % 6);   /* 1..6 limbs */
+        size_t nm = 1 + (cfx_xorshift64(&seed) % 6);
+        fill_rand(&b, nb, cfx_xorshift64(&seed));
+        fill_rand(&m, nm, cfx_xorshift64(&seed));
         for (size_t i = 0; i < sizeof(threads_vec)/sizeof(threads_vec[0]); ++i) {
             int th = threads_vec[i];
             run_case("fuzz_small", &b, &m, th);

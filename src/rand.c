@@ -18,7 +18,7 @@ typedef struct {
 
 static cfx_rand_state_t G = {0};
 
-cfx_limb_t cfx_rand_xorshift64(cfx_limb_t* s) {
+cfx_limb_t cfx_xorshift64(cfx_limb_t* s) {
     cfx_limb_t x = *s;
     x ^= x << 13;
     x ^= x >> 7;

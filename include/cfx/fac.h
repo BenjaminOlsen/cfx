@@ -15,8 +15,8 @@ extern "C" {
 
  /* a single prime factor: */
 typedef struct {
-    cfx_limb_t p;  // prime
-    cfx_limb_t e;  // exponent
+    cfx_limb_t p;  /* prime */
+    cfx_limb_t e;  /* exponent */
 } cfx_pf_t;
 
 /**

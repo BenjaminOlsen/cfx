@@ -173,9 +173,9 @@ int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base);
  *   k      : limb count of n; also defines R = b^k
  *   n0inv  : (-n[0])^{-1} mod b, i.e. n[0] * n0inv ≡ -1 (mod b)
  *   rr     : R^2 mod n  (used to convert x → xR mod n via MontMul)
- *   // Additional caches:
- *   // R1  : R mod n    (the Montgomery representation of 1)
- *   // mu  : floor(b^(2k)/n) for Barrett reduction of large inputs
+ *   Additional caches:
+ *   R1  : R mod n    (the Montgomery representation of 1)
+ *   mu  : floor(b^(2k)/n) for Barrett reduction of large inputs
  *
  * With this context:
  *   MontMul(a,b) = a * b * R^{-1} mod n   (for 0 ≤ a,b < n)
@@ -212,9 +212,9 @@ int cfx_big_mont_from (cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_c
  * Uses the Coarsely Integrated Operand Scanning (CIOS) algorithm:
  *   for i = 0..k-1:
  *     T += a * b[i]
- *     m = (T[0] * n0inv) mod b        // n0inv ≡ -n[0]^{-1} (mod b)
+ *     m = (T[0] * n0inv) mod b         n0inv ≡ -n[0]^{-1} (mod b) 
  *     T += m * n
- *     T >>= 64                        // drop least-significant limb
+ *     T >>= 64                         drop least-significant limb 
  * Final step does a conditional subtraction so that 0 ≤ out < n.
  *
  * Preconditions:

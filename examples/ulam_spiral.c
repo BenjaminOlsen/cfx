@@ -109,8 +109,8 @@ int main(int argc, char** argv) {
     for (unsigned k = 1; k <= w*w; ++k) {
         values[col+w*row] = k;
         prime[col+w*row] = cfx_is_prime_u64(k) ? (unsigned char)1 : (unsigned char)0;
-        // printf("values[%d][%d] = %d%c\n", col, row, k,
-        //     cfx_is_prime_u64(k) ? '*': ' ');
+        /* printf("values[%d][%d] = %d%c\n", col, row, k, */
+        /*     cfx_is_prime_u64(k) ? '*': ' '); */
 
         switch (d) {
             case UP: --row; break;

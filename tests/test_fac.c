@@ -189,7 +189,7 @@ static void fac(cfx_big_t* out, const cfx_big_t* in) {
         cfx_big_mul(out, &tmp);
         cfx_big_sub_sm(&tmp, 1);
         char* s = cfx_big_to_str(&tmp, NULL);
-        // printf("tmp: %s\n", s);
+        /* printf("tmp: %s\n", s); */
         free(s);
     }
     cfx_big_free(&tmp);

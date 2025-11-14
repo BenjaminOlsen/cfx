@@ -53,7 +53,7 @@ int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
     if (new_cap < req_cap) {
         new_cap = req_cap;
     }
-    // CFX_PRINT_DBG("cfx_fac_reserve %p requested cap: %zu, new cap: %zu\n", f, req_cap, new_cap);
+    /* CFX_PRINT_DBG("cfx_fac_reserve %p requested cap: %zu, new cap: %zu\n", f, req_cap, new_cap); */
     size_t bytes;
     if (_cfx_mul_zu_ok(new_cap, sizeof(cfx_pf_t), &bytes) != CFX_OK) {
         return CFX_ENOMEM;
@@ -86,13 +86,13 @@ void cfx_fac_copy(cfx_fac_t *dst, const cfx_fac_t *src) {
     }
 }
 
-// dst += src
+/* dst += src */
 void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src) {
     cfx_fac_t out;
     cfx_fac_init(&out);
     cfx_fac_reserve(&out, src->len + dst->len);
 
-    // Assumes data[] is sorted by p
+    /* Assumes data[] is sorted by p */
     size_t i = 0;
     size_t j = 0;
 
@@ -101,15 +101,15 @@ void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src) {
         cfx_pf_t* pf2 = &src->data[j];
 
         if (j == src->len || (i < dst->len && pf1->p < pf2->p)) {
-            // p is in dst, but not in src
+            /* p is in dst, but not in src */
             cfx_fac_push(&out, pf1->p, pf1->e);
             ++i;
         } else if (i == dst->len || (j < src->len && pf1->p > pf2->p)) {
-            // p is in src, but not in dst
+            /* p is in src, but not in dst */
             cfx_fac_push(&out, pf2->p, pf2->e);
             ++j;
         } else {
-            // p is in src and dst
+            /* p is in src and dst */
             cfx_limb_t p = pf1->p;
             cfx_limb_t e = pf1->e + pf2->e;
             if (e) cfx_fac_push(&out, p, e);
@@ -136,24 +136,24 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
         cfx_pf_t* pf2 = &src->data[j];
 
         if (j == src->len || (i < dst->len && pf1->p < pf2->p)) {
-            // p is in dst but not src - no change
+            /* p is in dst but not src - no change */
             cfx_fac_push(&out, pf1->p, pf1->e);
             ++i;
         } else if (i == dst->len || (j < src->len && pf1->p > pf2->p)) {
-            // p is in src but not dst - dst does not divide src!!!!
+            /* p is in src but not dst - dst does not divide src!!!! */
             assert(0 && "cfx_fac_sub underflow");
             j++;
         } else {
-            // p is in both src and dst:
+            /* p is in both src and dst: */
             cfx_limb_t p = pf1->p;
             cfx_limb_t e;
-            if (pf1->e > pf2->e) { // dst divides src
+            if (pf1->e > pf2->e) { /* dst divides src */
                 e = pf1->e - pf2->e;
                 cfx_fac_push(&out, p, e);
-            } else if (pf2->e > pf1->e) { // dst does not divide src!
+            } else if (pf2->e > pf1->e) { /* dst does not divide src! */
                 assert(0 && "cfx_fac_sub underflow");
             } 
-            // else, e == 0, p is cancelled out!ç
+            /* else, e == 0, p is cancelled out!ç */
             ++i;
             ++j;
         }
@@ -209,8 +209,8 @@ cfx_fac_t cfx_fac_binom(cfx_limb_t n, cfx_limb_t k){
     return fn; /* sorted, coalesced */
 }
 
-// Public entry: factor n (cfx_limb_t) into fac (coalesced).
-// Returns 1 on success; 0 for n==0 (degenerate) or allocation failures.
+/* Public entry: factor n (cfx_limb_t) into fac (coalesced). */
+/* Returns 1 on success; 0 for n==0 (degenerate) or allocation failures. */
 int cfx_fac_from_u64(cfx_fac_t* fac, cfx_limb_t n) {
     if (n == 0) return 0;
     if (n == 1) return 1;

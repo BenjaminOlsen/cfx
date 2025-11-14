@@ -1,4 +1,4 @@
-// ---- dcmini.c ----
+/* ---- dcmini.c ---- */
 #include "cfx/cfx.h"
 
 #include <stdio.h>
@@ -29,8 +29,8 @@ typedef enum {
 
 typedef struct {
     token_type_t t;
-    char op;          // for when token type = T_OP
-    char *num;        // malloc'd string for when token type = T_NUM
+    char op;          /* for when token type = T_OP */
+    char *num;        /* malloc'd string for when token type = T_NUM */
 } token_t;
 
 typedef struct {
@@ -43,7 +43,7 @@ static void tv_init(token_vec_t* t) {
 }
 
 static void tv_push(token_vec_t* tv, token_t tk) { 
-    // printf("tv push: tk.t: %d, tk.op: %c, tk.num: %s\n", tk.t, tk.op, tk.num);
+    /* printf("tv push: tk.t: %d, tk.op: %c, tk.num: %s\n", tk.t, tk.op, tk.num); */
     if (tv->n == tv->cap) {
         tv->cap = tv->cap ? tv->cap * 2 : 32;
         tv->v = realloc(tv->v, tv->cap * sizeof(token_t));
@@ -64,7 +64,7 @@ static int right_assoc(char op) { return op == '^'; }
 
 static int is_num_char(char c, base_t b) {
     if (b == BASE_DEC) return (c >= '0' && c <= '9');
-    // if (b == BASE_BIN) return (c == '0' || c == '1');
+    /* if (b == BASE_BIN) return (c == '0' || c == '1'); */
     /* hex */
     return (c >= '0' && c <= '9') ||
            (c >= 'a' && c <= 'f') ||
@@ -110,13 +110,13 @@ static token_vec_t tokenize(const char* s, base_t inb) {
 }
 
 static token_vec_t tokenize_rpn(const char* s, base_t inb) {
-    (void)inb; // todo!
+    (void)inb; /* todo! */
     token_vec_t tv;
     tv_init(&tv);
     const char* p = s;
     while (*p) {
         while (isspace((unsigned char)*p)) ++p;
-        // if (!*p) break;
+        /* if (!*p) break; */
         const char* start = p;
         while (*p && !isspace((unsigned char)*p)) ++p;
         size_t len = (size_t)(p - start);
@@ -132,7 +132,7 @@ static token_vec_t tokenize_rpn(const char* s, base_t inb) {
     return tv;
 }
 
-// convert infix tokens to RPN using shunting-yard
+/* convert infix tokens to RPN using shunting-yard */
 static token_vec_t to_rpn(const token_vec_t* in) {
     token_vec_t out = {0};
     token_t* opstack = NULL;
@@ -244,8 +244,8 @@ static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, cha
         return;
     }
     if (op == '^') {
-        // plain pow (no mod). 
-        // Here we implement a^b with b as non-negative.
+        /* plain pow (no mod).  */
+        /* Here we implement a^b with b as non-negative. */
         cfx_big_t e;
         cfx_big_init(&e);
         cfx_big_copy(&e,B);
@@ -345,7 +345,7 @@ static void eval_rpn(const token_vec_t* rpn, cfx_big_t* result, base_t inb) {
 static void usage(const char* prog) {
     fprintf(stderr,
         "usage: %s [opts] EXPR...\n"
-        "  input base : -id (dec, default) | -ix (hex)\n" // | -ib (bin)\n"
+        "  input base : -id (dec, default) | -ix (hex)\n" /* | -ib (bin)\n" */
         "  output base: -od (dec, default) | -ox (hex) | -ob (bin)\n"
         "  mode       : -rpn (treat input as Reverse Polish Notation)\n"
         "examples:\n"
@@ -382,7 +382,7 @@ static int parse_flags(int argc, char** argv, base_t* inb, base_t* outb,
         if (a[0] != '-') break;
         if (strcmp(a,"-id") == 0) *inb = BASE_DEC;
         else if (strcmp(a,"-ix") == 0) *inb = BASE_HEX;
-        // else if (strcmp(a,"-ib") == 0) *inb = BASE_BIN;
+        /* else if (strcmp(a,"-ib") == 0) *inb = BASE_BIN; */
         else if (strcmp(a,"-od") == 0) *outb = BASE_DEC;
         else if (strcmp(a,"-ox") == 0) *outb = BASE_HEX;
         else if (strcmp(a,"-ob") == 0) *outb = BASE_BIN;
@@ -426,7 +426,7 @@ int main(int argc, char** argv) {
     puts(out);
     printf("digits: %zu\n", digits);
 
-    if (mode != MODE_RPN) free(tv.v);  // tv == rpn when MODE_RPN
+    if (mode != MODE_RPN) free(tv.v);  /* tv == rpn when MODE_RPN */
     free(rpn.v);
     cfx_big_free(&res);
     free(out);

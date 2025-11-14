@@ -92,6 +92,7 @@ if(CFX_BUILD_TESTS)
     test_rho_brent
     test_mul_rows
     test_chacha20
+    test_mul_csa_pthreads
   )
 
   foreach(test_name IN LISTS TEST_NAMES)

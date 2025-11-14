@@ -12,7 +12,7 @@ extern const uint32_t cfx_primes[];
 static void test_prime_sieve(void) {
     uint32_t maxp = cfx_primes[cfx_primes_len-1];
     cfx_vec_t primes = cfx_sieve_primes(maxp);
-    // CFX_PRINT_DBG("len: %zu, maxp: %u\n", cfx_primes_len, maxp);
+    /* CFX_PRINT_DBG("len: %zu, maxp: %u\n", cfx_primes_len, maxp); */
     CFX_ASSERT(primes.size == cfx_primes_len);
     for (size_t i = 0; i < primes.size; ++i) {
         CFX_ASSERT(primes.data[i] == cfx_primes[i]);
@@ -31,13 +31,13 @@ static void test_primality_test(void) {
         cfx_limb_t p2 = cfx_primes[i+1];
         int isprime = cfx_is_prime_u64(p1);
         fpos += (1 - isprime);
-        // CFX_PRINT_DBG(""CFX_PRIuLIMB" is prime: %d\n", p1, isprime);
+        /* CFX_PRINT_DBG(""CFX_PRIuLIMB" is prime: %d\n", p1, isprime); */
         CFX_ASSERT(isprime == 1);
 
         for (cfx_limb_t n = p1 + 1; n < p2; ++n) {
             int iscomp = !cfx_is_prime_u64(n);
             fneg += (1 - iscomp);
-            // CFX_PRINT_DBG(""CFX_PRIuLIMB" is prime: %d\n", n, !iscomp);
+            /* CFX_PRINT_DBG(""CFX_PRIuLIMB" is prime: %d\n", n, !iscomp); */
             CFX_ASSERT(iscomp == 1);
         }
     }
@@ -51,14 +51,14 @@ static void test_primality_test(void) {
 static void test_mulmod_basic(void) {
     CFX_ASSERT(cfx_mulmod_u64(0, 0, 7) == 0);
     CFX_ASSERT(cfx_mulmod_u64(1, 0, 7) == 0);
-    CFX_ASSERT(cfx_mulmod_u64(3, 4, 7) == 5);     // 12 % 7 = 5
-    CFX_ASSERT(cfx_mulmod_u64(6, 6, 7) == 1);     // 36 % 7 = 1
+    CFX_ASSERT(cfx_mulmod_u64(3, 4, 7) == 5);     /* 12 % 7 = 5 */
+    CFX_ASSERT(cfx_mulmod_u64(6, 6, 7) == 1);     /* 36 % 7 = 1 */
 
-    // m = 1 => always 0
+    /* m = 1 => always 0 */
     CFX_ASSERT(cfx_mulmod_u64(UINT64_C(123), UINT64_C(456), UINT64_C(1)) == 0);
 
-    // large operands, prime modulus near 2^64
-    const cfx_limb_t p = UINT64_C(18446744073709551557); // known 64-bit prime
+    /* large operands, prime modulus near 2^64 */
+    const cfx_limb_t p = UINT64_C(18446744073709551557); /* known 64-bit prime */
     cfx_limb_t a = UINT64_C(18446744073709551615) - 12345;
     cfx_limb_t b = UINT64_C(18446744073709551615) - 67890;
     CFX_ASSERT(cfx_mulmod_u64(a,b,p) == 833451784);
@@ -72,7 +72,7 @@ static void test_powmod_edges(void) {
     CFX_ASSERT(cfx_powmod_u64(0, 1, 13) == 0);
     CFX_ASSERT(cfx_powmod_u64(0, 5, 13) == 0);
 
-    CFX_ASSERT(cfx_powmod_u64(2, 10, 1000) == 24); // 1024 % 1000
+    CFX_ASSERT(cfx_powmod_u64(2, 10, 1000) == 24); /* 1024 % 1000 */
     CFX_ASSERT(cfx_powmod_u64(3, 12345, 67891) == 31627);
 
     const cfx_limb_t p = UINT64_C(18446744073709551557);
@@ -88,10 +88,10 @@ static void test_fermat_primes(void) {
     for (size_t i = 0; i < sizeof(primes)/sizeof(primes[0]); ++i) {
         cfx_limb_t p = primes[i];
         if (p == 2) {
-            // pick a = 1
+            /* pick a = 1 */
             CFX_ASSERT(cfx_powmod_u64(1, p-1, p) == 1 % p);
         } else {
-            // a not divisible by p
+            /* a not divisible by p */
             cfx_limb_t a = 2;
             if (p % 2 == 0) a = 3;
             CFX_ASSERT(cfx_powmod_u64(a, p-1, p) == 1);
@@ -124,12 +124,12 @@ static void mul_ref(const cfx_limb_t* A, size_t na,
             ++k;
         }
     }
-    // CFX_PRINT_DBG("A:\t"); 
-    // PRINT_ARR(A, na);
-    // CFX_PRINT_DBG("B:\t"); 
-    // PRINT_ARR(B, nb);
-    // CFX_PRINT_DBG("R:\t");
-    // PRINT_ARR(R, nout);
+    /* CFX_PRINT_DBG("A:\t");  */
+    /* PRINT_ARR(A, na); */
+    /* CFX_PRINT_DBG("B:\t");  */
+    /* PRINT_ARR(B, nb); */
+    /* CFX_PRINT_DBG("R:\t"); */
+    /* PRINT_ARR(R, nout); */
 }
 
 /* --- helpers --- */
@@ -176,8 +176,8 @@ static void test_single_limb_carry(void) {
 }
 
 static void test_mixed_lengths(void) {
-    cfx_limb_t A[] = {0x0000000000000001ULL, 0x0000000000000000ULL, 0x0000000000000001ULL}; // 2^128 + 1
-    cfx_limb_t B[] = {0x0000000000000000ULL, 0x0000000000000002ULL};                         // 2^65
+    cfx_limb_t A[] = {0x0000000000000001ULL, 0x0000000000000000ULL, 0x0000000000000001ULL}; /* 2^128 + 1 */
+    cfx_limb_t B[] = {0x0000000000000000ULL, 0x0000000000000002ULL};                         /* 2^65 */
     size_t na = 3, nb = 2, nout = na + nb;
     cfx_limb_t R1[5], R2[5];
 
@@ -254,7 +254,7 @@ static void test_sqrt(void) {
     CFX_ASSERT (cfx_isqrt_nr(100) == 10);
     CFX_ASSERT (cfx_isqrt_nr(25) == 5);
     CFX_ASSERT (cfx_isqrt_nr(0) == 0);
-    // printf("cfx_isqrt_nr(0xFFFFFFFFFFFFFF) = " CFX_PRIuLIMB "\n", cfx_isqrt_nr(0xFFFFFFFFFFFFFF));
+    /* printf("cfx_isqrt_nr(0xFFFFFFFFFFFFFF) = " CFX_PRIuLIMB "\n", cfx_isqrt_nr(0xFFFFFFFFFFFFFF)); */
     CFX_ASSERT (cfx_isqrt_nr(0xFFFFFFFFFFFFFF) == 268435455);
     CFX_ASSERT (cfx_isqrt_nr(0xFFFFFFF0000000) == 268435455);
     CFX_ASSERT (cfx_isqrt_nr(0xabcdefabada) == 3436031);

@@ -11,14 +11,14 @@
 #include "cfx/macros.h"
 
 
-// ---- Tiny helpers -----------------------------------------------------------
+/* ---- Tiny helpers ----------------------------------------------------------- */
 
 static void big_set_limbs(cfx_big_t* x, const cfx_limb_t* limbs, size_t n)
 {
     cfx_big_reserve(x, n);
     if (n) memcpy(x->limb, limbs, n * sizeof(cfx_limb_t));
     x->n = n;
-    // Normalize: trim leading zeros in case caller passed any
+    /* Normalize: trim leading zeros in case caller passed any */
     while (x->n && x->limb[x->n - 1] == 0) x->n--;
 }
 
@@ -40,7 +40,7 @@ static void big_print(const char* tag, const cfx_big_t* x)
     printf("]\n");
 }
 
-// Reference schoolbook multiply: out = a * b  (no threading, exact)
+/* Reference schoolbook multiply: out = a * b  (no threading, exact) */
 static void big_mul_ref(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
 {
     cfx_big_reserve(out, a->n + b->n + 1);
@@ -68,11 +68,11 @@ static void big_mul_ref(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
 #  error "This reference multiply needs __int128. For MSVC, port to _umul128/_addcarry_u64."
 #endif
 
-    // normalize
+    /* normalize */
     while (out->n && out->limb[out->n - 1] == 0) out->n--;
 }
 
-// Deterministic PRNG (SplitMix64)
+/* Deterministic PRNG (SplitMix64) */
 static cfx_limb_t splitmix64(cfx_limb_t* s) {
     cfx_limb_t z = (*s += 0x9e3779b97f4a7c15ULL);
     z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
@@ -85,11 +85,11 @@ static void big_rand(cfx_big_t* x, size_t n, cfx_limb_t* seed)
     cfx_big_reserve(x, n);
     for (size_t i = 0; i < n; ++i) x->limb[i] = splitmix64(seed);
     x->n = n;
-    // Ensure top limb is nonzero (if n>0) to avoid degenerate trims
+    /* Ensure top limb is nonzero (if n>0) to avoid degenerate trims */
     if (n) { if (x->limb[n - 1] == 0) x->limb[n - 1] = 1; }
 }
 
-// ---- Tests ------------------------------------------------------------------
+/* ---- Tests ------------------------------------------------------------------ */
 
 static void test_mul_zero_zero(void)
 {
@@ -138,7 +138,7 @@ static void test_mul_by_one(void)
     big_set_limbs(&a, limbs, 2);
     cfx_big_from_u64(&m, 1);
 
-    // reference: a * 1 = a
+    /* reference: a * 1 = a */
     big_set_limbs(&ref, limbs, 2);
 
     cfx_big_mul_rows_pthreads(&a, &m, 8);
@@ -149,7 +149,7 @@ static void test_mul_by_one(void)
 
 static void test_cross_limb_carry_small(void)
 {
-    // (2^64 - 1)^2 = high: 0xfffffffffffffffe, low: 0x0000000000000001
+    /* (2^64 - 1)^2 = high: 0xfffffffffffffffe, low: 0x0000000000000001 */
     cfx_big_t a, m, ref;
     cfx_big_init(&a); cfx_big_init(&m); cfx_big_init(&ref);
 
@@ -168,7 +168,7 @@ static void test_cross_limb_carry_small(void)
 
 static void test_small_vector_known(void)
 {
-    // [1,1] * [1,1] = [1,2,1]  (i.e., (1 + B)^2)
+    /* [1,1] * [1,1] = [1,2,1]  (i.e., (1 + B)^2) */
     cfx_big_t a, m, ref;
     cfx_big_init(&a); cfx_big_init(&m); cfx_big_init(&ref);
 
@@ -194,11 +194,11 @@ static void test_random_compare_ref(size_t na, size_t nb, int threads, cfx_limb_
     big_rand(&a, na, &seed);
     big_rand(&b, nb, &seed);
 
-    // ref = a * b  (commutative)
+    /* ref = a * b  (commutative) */
     big_mul_ref(&ref, &a, &b);
 
-    // tmpa = a; tmpa *= b via threaded mul
-    // note: API under test overwrites first arg
+    /* tmpa = a; tmpa *= b via threaded mul */
+    /* note: API under test overwrites first arg */
     big_set_limbs(&tmpa, a.limb, a.n);
     cfx_big_mul_rows_pthreads(&tmpa, &b, threads);
 
@@ -252,7 +252,7 @@ static void test_thread_counts_agree(void)
     cfx_big_free(&t32);
 }
 
-// ---- Main -------------------------------------------------------------------
+/* ---- Main ------------------------------------------------------------------- */
 
 #define TEST_RAND(na, nb, threads, seed_init) \
     test_random_compare_ref(na, nb, threads, seed_init, \
@@ -268,7 +268,7 @@ int main(void)
     CFX_TEST(test_small_vector_known);
     CFX_TEST(test_thread_counts_agree);
 
-    // Randoms vs reference (sizes & threads)
+    /* Randoms vs reference (sizes & threads) */
     TEST_RAND(1, 1, 1, 0xC0FFEEF);
     TEST_RAND(3, 2, 2, 0xDEADBAEF);
     TEST_RAND(8, 9, 4, 0x12345678);

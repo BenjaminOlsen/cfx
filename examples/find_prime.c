@@ -6,21 +6,21 @@
 #include <string.h>
 #include <assert.h>
 
-// RNG: fill `out[len]` with cryptographic random bytes. Return 0 on success.
+/* RNG: fill `out[len]` with cryptographic random bytes. Return 0 on success. */
 typedef int (*cfx_rng_fn)(void* ctx, uint8_t* out, size_t len);
 
 enum {
     CFX_PRIME_FLAG_NONE      = 0,
-    CFX_PRIME_FLAG_SAFE      = 1 << 0,  // generate a safe prime p with (p-1)/2 also prime
-    CFX_PRIME_FLAG_TOP2      = 1 << 1,  // set the top two bits (FIPS-ish)
+    CFX_PRIME_FLAG_SAFE      = 1 << 0,  /* generate a safe prime p with (p-1)/2 also prime */
+    CFX_PRIME_FLAG_TOP2      = 1 << 1,  /* set the top two bits (FIPS-ish) */
 };
 
-// Generate an N-bit prime into `p`.
-// - `bits`  : number of bits (e.g., 1024, 2048, 4096).
-// - `rng`   : CSPRNG callback.
-// - `rngctx`: user context for RNG.
-// - `flags` : OR of CFX_PRIME_FLAG_*.
-// Returns 0 on success, nonzero on error.
+/* Generate an N-bit prime into `p`. */
+/* - `bits`  : number of bits (e.g., 1024, 2048, 4096). */
+/* - `rng`   : CSPRNG callback. */
+/* - `rngctx`: user context for RNG. */
+/* - `flags` : OR of CFX_PRIME_FLAG_*. */
+/* Returns 0 on success, nonzero on error. */
 int cfx_big_gen_nbit_prime(cfx_big_t* p, size_t bits,
                            cfx_rng_fn rng, void* rngctx,
                            unsigned flags);
@@ -34,39 +34,39 @@ static const uint16_t SMALL_PRIMES[] = {
     491,499,503,509,521,523,541,0
 };
 
-// --- make a random n bit odd number ----------------------------------------------
+/* --- make a random n bit odd number ---------------------------------------------- */
 static int rand_nbit_odd(cfx_big_t* out, size_t bits, cfx_rng_fn rng, void* ctx, int set_top2) {
     if (bits < 2) return -1;
     size_t nbytes = (bits + 7) / 8;
-    uint8_t buf[8192];                  // stack buffer for up to 65536 bits; adjust if needed
+    uint8_t buf[8192];                  /* stack buffer for up to 65536 bits; adjust if needed */
     if (nbytes > sizeof(buf)) return -2;
 
     if (rng(ctx, buf, nbytes) != 0) return -3;
 
-    // mask the top partial byte so value < 2^bits
+    /* mask the top partial byte so value < 2^bits */
     unsigned excess = (unsigned)(8*nbytes - bits);
     if (excess) buf[0] &= (uint8_t)(0xFFu >> excess);
 
-    // force top bit to ensure exactly 'bits' bits
+    /* force top bit to ensure exactly 'bits' bits */
     buf[0] |= (uint8_t)(1u << (7 - excess));
 
-    // (TODO? Rethink this) force the second highest bit
+    /* (TODO? Rethink this) force the second highest bit */
     if (set_top2 && bits >= 2) {
         unsigned pos = (7 - excess) - 1;
         if ((int)pos >= 0) buf[0] |= (uint8_t)(1u << pos);
     }
 
-    buf[nbytes - 1] |= 1u;  // force odd
+    buf[nbytes - 1] |= 1u;  /* force odd */
 
     int rc = cfx_big_from_bytes_be(out, buf, nbytes);
     if (rc != 0) return rc;
 
-    // sanity: todo
-    // assert(cfx_big_bitlen(out) == bits);
+    /* sanity: todo */
+    /* assert(cfx_big_bitlen(out) == bits); */
     return 0;
 }
 
-// --- Update remainders after adding +2 ---------------------------------------
+/* --- Update remainders after adding +2 --------------------------------------- */
 static inline void remainders_add2(uint16_t* rem, const uint16_t* primes) {
     for (size_t i = 0; primes[i]; ++i) {
         uint16_t p = primes[i];
@@ -75,12 +75,12 @@ static inline void remainders_add2(uint16_t* rem, const uint16_t* primes) {
     }
 }
 
-// --- Initialize remainder table rem[i] = n % primes[i] ------------------------
+/* --- Initialize remainder table rem[i] = n % primes[i] ------------------------ */
 static void remainders_init(uint16_t* rem, const cfx_big_t* n, const uint16_t* primes) {
     for (size_t i = 0; primes[i]; ++i) rem[i] = (uint16_t)cfx_big_mod_sm(n, primes[i]);
 }
 
-// --- Try small-prime rejection; return 0 if divisible by any -----------------
+/* --- Try small-prime rejection; return 0 if divisible by any ----------------- */
 static int passes_small_trial(const uint16_t* rem, const uint16_t* primes) {
     for (size_t i = 0; primes[i]; ++i) {
         if (rem[i] == 0) return 0;
@@ -96,41 +96,41 @@ static int is_safe_prime(const cfx_big_t* p) {
     cfx_big_copy(&t, p);
     cfx_big_sub_sm(&t, 1);
     cfx_big_copy(&q, &t);
-    cfx_big_shr_bits_eq(&q, 1);  // q = (p-1)/2
+    cfx_big_shr_bits_eq(&q, 1);  /* q = (p-1)/2 */
     return cfx_big_is_prime(&q);
 }
 
-// --- Main generator -----------------------------------------------------------
+/* --- Main generator ----------------------------------------------------------- */
 int cfx_big_gen_nbit_prime(cfx_big_t* p, size_t bits,
                            cfx_rng_fn rng, void* rngctx,
                            unsigned flags) {
     if (bits < 2 || !p || !rng) return -1;
 
-    // 1) Draw initial random N-bit odd candidate.
+    /* 1) Draw initial random N-bit odd candidate. */
     cfx_big_t n;
     cfx_big_init(&n);
     int rc = rand_nbit_odd(&n, bits, rng, rngctx, (flags & CFX_PRIME_FLAG_TOP2) != 0);
     if (rc != 0) return rc;
 
-    // 2) Prepare small-prime remainders.
+    /* 2) Prepare small-prime remainders. */
     uint16_t rem[sizeof(SMALL_PRIMES)/sizeof(SMALL_PRIMES[0])] = {0};
     remainders_init(rem, &n, SMALL_PRIMES);
 
-    // Ensure we’re not accidentally equal to a small prime (only possible if bits are tiny).
+    /* Ensure we’re not accidentally equal to a small prime (only possible if bits are tiny). */
     for (size_t i = 0; SMALL_PRIMES[i]; ++i) {
         if (cfx_big_cmp_sm(&n, SMALL_PRIMES[i]) == 0) {
-            // bump by 2 to avoid returning small primes
+            /* bump by 2 to avoid returning small primes */
             cfx_big_add_sm(&n, 2);
             remainders_add2(rem, SMALL_PRIMES);
             break;
         }
     }
 
-    // 3) Search loop
+    /* 3) Search loop */
     for (;;) {
-        // Small trial division
+        /* Small trial division */
         if (passes_small_trial(rem, SMALL_PRIMES)) {
-            // Probable-prime test (Miller–Rabin in your cfx_big_is_prime)
+            /* Probable-prime test (Miller–Rabin in your cfx_big_is_prime) */
             if (cfx_big_is_prime(&n)) {
                 if (flags & CFX_PRIME_FLAG_SAFE) {
                     if (is_safe_prime(&n)) {
@@ -144,11 +144,11 @@ int cfx_big_gen_nbit_prime(cfx_big_t* p, size_t bits,
             }
         }
 
-        // Next odd candidate: n += 2
+        /* Next odd candidate: n += 2 */
         cfx_big_add_sm(&n, 2);
         remainders_add2(rem, SMALL_PRIMES);
 
-        // Keep within N bits: if we overflowed (rare), redraw.
+        /* Keep within N bits: if we overflowed (rare), redraw. */
         if (cfx_big_bitlen(&n) > bits) {
             rc = rand_nbit_odd(&n, bits, rng, rngctx, (flags & CFX_PRIME_FLAG_TOP2) != 0);
             if (rc != 0) return rc;
@@ -169,7 +169,7 @@ static int urandom_rng(void* ctx, uint8_t* out, size_t len) {
 
 
 
-// optional: update usage text to match this tool
+/* optional: update usage text to match this tool */
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s <bits> [--safe] [--top2]\n", prog);
     fprintf(stderr, "  Generate an N-bit prime (optionally safe) and print it in hex.\n");
@@ -179,8 +179,8 @@ static void print_big_hex(const cfx_big_t* b) {
     size_t i = b->n - 1;
     printf("0x%llx", (unsigned long long)b->limb[i]);
 
-    // remaining limbs zero-padded to full limb width
-    int w = (int)(sizeof(cfx_limb_t) * 2); // hex digits per limb
+    /* remaining limbs zero-padded to full limb width */
+    int w = (int)(sizeof(cfx_limb_t) * 2); /* hex digits per limb */
     while (i-- > 0) {
         printf("%0*llx", w, (unsigned long long)b->limb[i]);
     }
@@ -222,7 +222,7 @@ int main(int argc, char* argv[]) {
 
 
     print_big_hex(&p);
-    printf("// bits = %zu\n", cfx_big_bitlen(&p));
+    printf(" bits = %zu\n", cfx_big_bitlen(&p));
 
     cfx_big_free(&p);
     return 0;

@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
 
     int eq = cfx_big_eq(&p, &u);
     printf("ok? %s\n", eq ? "yes!" : "NO.");
-    //if (!eq) 
+    /*if (!eq)  */
     {
         int cmp = cfx_big_cmp(&p, &u);
         cfx_big_t diff;

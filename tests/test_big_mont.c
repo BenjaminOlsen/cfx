@@ -64,7 +64,7 @@ void test_mont_mul_matches_scalar(void) {
     cfx_limb_t expect = mulmod_u64(a64, b64, n64);
     printf(">>>>>>>>>>>>>>>>> test_mont_mul_matches_scalar: got: 0x"CFX_PRI0xLIMB", expect: 0x"CFX_PRI0xLIMB" (diff "CFX_PRIuLIMB")\n",
         got, expect, got > expect? got-expect : expect-got);
-    // CFX_ASSERT_PRINT(got == expect);
+    /* CFX_ASSERT_PRINT(got == expect); */
 
     cfx_big_free(&aR);
     cfx_big_free(&bR);
@@ -94,7 +94,7 @@ void test_mont_modexp_matches_scalar(void) {
     cfx_limb_t expect = powmod_u64(a64, e64, n64);
     printf(">>>>>>>>>>>>>>>>> test_mont_modexp_matches_scalar: got: 0x"CFX_PRI0xLIMB", expect: 0x"CFX_PRI0xLIMB" (diff "CFX_PRIuLIMB")\n",
         got, expect, got > expect? got-expect : expect-got);
-    // CFX_ASSERT_PRINT(got == powmod_u64(a64, e64, n64));
+    /* CFX_ASSERT_PRINT(got == powmod_u64(a64, e64, n64)); */
 
     cfx_big_free(&n);
     cfx_big_free(&a);
@@ -158,13 +158,13 @@ void test_mont_aliasing_safe(void) {
     /* sanity */
     CFX_ASSERT_PRINT(cfx_big_cmp(&aR, &aR) == 0);
 
-    // printf("ref.n=%zu aR.n=%zu (k=%zu)\n", ref.n, aR.n, C.k);
-    // for (size_t i = 0; i < C.k; ++i) {
-    //     cfx_limb_t rv = (i < ref.n) ? ref.limb[i] : 0;
-    //     cfx_limb_t av = (i < aR.n)  ? aR.limb[i]  : 0;
-    //     printf("[%zu] ref=" CFX_PRI0xLIMB "  aR=" CFX_PRI0xLIMB "%s\n",
-    //         i, rv, av, (rv==av?"":"  << mismatch"));
-    // }
+    /* printf("ref.n=%zu aR.n=%zu (k=%zu)\n", ref.n, aR.n, C.k); */
+    /* for (size_t i = 0; i < C.k; ++i) { */
+    /*     cfx_limb_t rv = (i < ref.n) ? ref.limb[i] : 0; */
+    /*     cfx_limb_t av = (i < aR.n)  ? aR.limb[i]  : 0; */
+    /*     printf("[%zu] ref=" CFX_PRI0xLIMB "  aR=" CFX_PRI0xLIMB "%s\n", */
+    /*         i, rv, av, (rv==av?"":"  << mismatch")); */
+    /* } */
     CFX_ASSERT_PRINT(cfx_big_cmp(&aR, &ref) == 0);
 
     cfx_big_free(&ref);
@@ -216,7 +216,7 @@ static cfx_limb_t powmod_u64_ref(cfx_limb_t a, cfx_limb_t e, cfx_limb_t n) {
 /* Init a mont ctx for 64-bit odd n */
 static void init_ctx_u64(cfx_big_mont_ctx_t* C, cfx_big_t* n, cfx_limb_t n64) {
     cfx_big_init(n);
-    cfx_big_from_u64(n, n64 | 1ull);    // ensure odd
+    cfx_big_from_u64(n, n64 | 1ull);    /* ensure odd */
     int ok = cfx_big_mont_ctx_init(C, n);
     CFX_ASSERT(ok);
 }
@@ -303,13 +303,13 @@ void test_modexp_binary_matches_u64_ref(void) {
 
     for (int t = 0; t < 200; ++t) {
         cfx_limb_t n64;
-        do { n64 = (rand64() | 1ull); } while (n64 < 3);  // odd, >1
+        do { n64 = (rand64() | 1ull); } while (n64 < 3);  /* odd, >1 */
         cfx_big_t n; 
         cfx_big_mont_ctx_t C;
         init_ctx_u64(&C, &n, n64);
 
         cfx_limb_t a64 = rand64() % n64;
-        cfx_limb_t e64 = rand64();          // any exponent
+        cfx_limb_t e64 = rand64();          /* any exponent */
         cfx_limb_t expect = powmod_u64_ref(a64, e64, n64);
 
         cfx_big_t a,e,out; 
@@ -432,11 +432,11 @@ void test_modexp_binary_exponent_reduction(void) {
     cfx_big_assign(&tmp, &phi);
     big_shl_limbs_inplace(&tmp, 1);   /* shift by 64-bit limb */
     /* Now e2 = e1 + tmp */
-    // simple add: since tmp is one limb above, we can extend e2 and set limb[1]
+    /* simple add: since tmp is one limb above, we can extend e2 and set limb[1] */
     if (e2.cap < 2) cfx_big_reserve(&e2, 2);
     if (e2.n < 2) e2.limb[e2.n++] = 0;
-    e2.limb[1] += tmp.limb[1];  // tmp.limb[1] = (p-1), tmp.limb[0]=0
-    // carry normalize if needed:
+    e2.limb[1] += tmp.limb[1];  /* tmp.limb[1] = (p-1), tmp.limb[0]=0 */
+    /* carry normalize if needed: */
     if (e2.limb[1] == 0) { /* nothing */ }
 
     cfx_big_t r1, r2;

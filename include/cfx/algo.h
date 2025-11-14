@@ -15,13 +15,13 @@ extern "C" {
 /* Accumulator holds a value as:  (acc_hi << CFX_LIMB_BITS) + acc_lo
    No cross-limb carry is propagated while accumulating. */
 typedef struct {
-    cfx_limb_t lo;  // sum bits
-    cfx_limb_t hi;  // saved carries (conceptually << 1 bit each)
+    cfx_limb_t lo;  /* sum bits */
+    cfx_limb_t hi;  /* saved carries (conceptually << 1 bit each) */
 } csa128_t;
 
 typedef struct {
-    csa128_t* acc;     // nout entries
-    cfx_limb_t* spill;   // nout entries (small counters)
+    csa128_t* acc;     /* nout entries */
+    cfx_limb_t* spill;   /* nout entries (small counters) */
     size_t    cap;
 } cfx_mul_scratch_t;
 
@@ -62,7 +62,7 @@ void cfx_mul_csa_portable_fast(const cfx_limb_t* A, size_t na,
 void cfx_mul_scratch_alloc(cfx_mul_scratch_t* s, size_t needed);
 void cfx_mul_scratch_free(cfx_mul_scratch_t* s);
 
-// Zero only the first `nout` entries that the multiplication will touch
+/* Zero only the first `nout` entries that the multiplication will touch */
 void cfx_mul_scratch_zero(cfx_mul_scratch_t* s, size_t nout);
 
 /* portable CSA inner: accumulate rows i in [ia, ia+na_rows) into acc/spill */
@@ -100,14 +100,14 @@ cfx_limb_t cfx_isqrt_nr(cfx_limb_t n) {
     if (n == 0) return 0;
     const unsigned B = (unsigned)(8u * sizeof(cfx_limb_t));
     unsigned bitlen = B - cfx_clz(n);
-    // x0 ≈ 2^{ceil(bitlen/2)}
+    /* x0 ≈ 2^{ceil(bitlen/2)} */
     cfx_limb_t x = (cfx_limb_t)1 << ((bitlen + 1u) >> 1);
 
-    // Newton step: x_{k+1} = floor((x_k + floor(n / x_k)) / 2)
-    // This uses only division and addition; no x*x overflow risk.
+    /* Newton step: x_{k+1} = floor((x_k + floor(n / x_k)) / 2) */
+    /* This uses only division and addition; no x*x overflow risk. */
     for (;;) {
         cfx_limb_t y = (x + n / x) >> 1;
-        if (y >= x) return x;  // converged (floor)
+        if (y >= x) return x;  /* converged (floor) */
         x = y;
     }
 }
@@ -118,11 +118,11 @@ CFX_INLINE
 cfx_limb_t cfx_isqrt_fp(cfx_limb_t n) {
     if (!n) return 0;
     double d = (double)n;
-    cfx_limb_t x = (cfx_limb_t)floor(sqrt(d));   // seed
+    cfx_limb_t x = (cfx_limb_t)floor(sqrt(d));   /* seed */
 
-    // upward correction (no overflow: compare via division)
+    /* upward correction (no overflow: compare via division) */
     while ((cfx_limb_t)(x + 1) != 0 && (cfx_limb_t)(x + 1) <= n / (cfx_limb_t)(x + 1)) ++x;
-    // downward correction if overshot
+    /* downward correction if overshot */
     while (x && x > n / x) --x;
     return x;
 }
