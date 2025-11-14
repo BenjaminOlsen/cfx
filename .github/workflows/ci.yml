@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  build-test:
+    name: ${{ matrix.os }} / Debug
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # TODO: Think about caching compiler outputs ?
+      # - name: Setup ccache
+      #   uses: hendrikmuhs/ccache-action@v1
+      #   with:
+      #     key: ${{ runner.os }}-debug
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Upload CTest logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-logs-${{ matrix.os }}
+          path: |
+            build/Testing/Temporary/*
+            build/Testing/**/LastTest.log
+
+  # TODO: UBSAN & ASAN:
+
+  # sanitizers:
+  #   name: ubuntu / clang / asan-ubsan
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Configure with sanitizers
+  #       run: |
+  #         cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
+  #           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+  #           -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+  #           -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+  #           -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+  #     - name: Build
+  #       run: cmake --build build --parallel
+  #     - name: Test
+  #       run: ASAN_OPTIONS=detect_leaks=1 ctest --test-dir build --output-on-failure
