@@ -28,8 +28,7 @@ static int hexval(int c) {
     return -1;
 }
 
-/* parse compact hex string into exactly outlen bytes.
-   returns 0 on success, -1 on error */
+/* parse hex string into exactly outlen bytes. returns 0 on success, -1 on error */
 static int parse_hex(const char* s, uint8_t* out, size_t outlen) {
     if (s[0]=='0' && (s[1]=='x' || s[1]=='X')) s += 2;
 

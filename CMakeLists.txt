@@ -73,7 +73,8 @@ if(CFX_BUILD_EXAMPLES)
     factor
     dcmini
     choose
-    cypher
+    chacha20
+    poly1305
     primes
     fread
     div
