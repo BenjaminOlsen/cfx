@@ -73,6 +73,7 @@ if(CFX_BUILD_EXAMPLES)
     factor
     dcmini
     choose
+    cypher
     primes
     fread
     div

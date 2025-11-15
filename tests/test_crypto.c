@@ -70,6 +70,7 @@ static int expect_eq(const char* name, const uint8_t* got, const uint8_t* exp, s
     return 0;
 }
 
+#define P_S(s)printf("%s\n",s);
 #define P_C(a,n)for(size_t i=0;i<n;++i){printf("%c",a[i]);}puts("");
 #define P_D(a,n)for(size_t i=0;i<n;++i){printf("%d ",a[i]);}puts("");
 #define P_X(a,n)for(size_t i=0;i<n;++i){printf("%02x ",a[i]);}puts("");
@@ -83,10 +84,11 @@ static void chacha20_block_kat(void) {
 
 static void chacha20_stream_kat(void) {
     uint8_t ct[sizeof(PLAINTEXT)];
+    memset(ct, 0, sizeof(ct));
     cfx_chacha20_encrypt(KEY, COUNTER_STREAM, NONCE_STREAM,
                           PLAINTEXT, sizeof(PLAINTEXT), ct);
     puts("plaintext:");
-    P_C(PLAINTEXT, sizeof(PLAINTEXT));
+    P_S(PLAINTEXT);
     P_X(PLAINTEXT, sizeof(PLAINTEXT));
     puts("cyphertext:");
     P_X(ct, sizeof(ct));
@@ -94,12 +96,20 @@ static void chacha20_stream_kat(void) {
 
     /* just for sanity */
     uint8_t pt[sizeof(PLAINTEXT)];
+    memset(pt, 0, sizeof(pt));
     cfx_chacha20_encrypt(KEY, COUNTER_STREAM, NONCE_STREAM, ct, sizeof(PLAINTEXT), pt);
     puts("\nand back again:");
-    P_C(pt, sizeof(PLAINTEXT));
+    P_S(pt);
     P_X(pt, sizeof(PLAINTEXT));
     ok &= expect_eq(__func__, pt, PLAINTEXT, sizeof(PLAINTEXT));
     CFX_ASSERT(ok);
+
+    for (uint32_t cnt = 0; cnt < 100; ++cnt) {
+        memset(pt, 0, sizeof(pt));
+        cfx_chacha20_encrypt(KEY, cnt, NONCE_STREAM, ct, sizeof(PLAINTEXT), pt);
+        printf("\ncounter=%u:\n", cnt);
+        P_X(pt, sizeof(PLAINTEXT));
+    }
 }
 
 int main(void) {

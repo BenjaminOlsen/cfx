@@ -10,7 +10,7 @@ static uint32_t load32_le(const void *p) {
 }
 
 static void store32_le(void *p, uint32_t x) {
-    unsigned char *b = (unsigned char*)p;
+    unsigned char* b = (unsigned char*)p;
     b[0] = (unsigned char)(x      );
     b[1] = (unsigned char)(x >>  8);
     b[2] = (unsigned char)(x >> 16);
@@ -18,36 +18,39 @@ static void store32_le(void *p, uint32_t x) {
 }
 
 void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12], uint8_t out[64]) {
-    static const uint32_t C[4] = {0x61707865u, 0x3320646eu, 0x79622d32u, 0x6b206574u}; /* "expa" "nd 3" "2-by" "te k" */
+    static const uint32_t C[4] = {0x61707865u, 0x3320646eu, 0x79622d32u, 0x6b206574u};  /* "expa" "nd 3" "2-by" "te k" */
     uint32_t s[16], w[16];
 
-    s[0] = C[0];
-    s[1] = C[1];
-    s[2] = C[2];
-    s[3] = C[3];
-    s[4] = load32_le(key + 0);
-    s[5] = load32_le(key + 4);
-    s[6] = load32_le(key + 8);
-    s[7] = load32_le(key + 12);
-    s[8] = load32_le(key + 16);
-    s[9] = load32_le(key + 20);
+    s[0]  = C[0];
+    s[1]  = C[1];
+    s[2]  = C[2];
+    s[3]  = C[3];
+
+    s[4]  = load32_le(key + 0);
+    s[5]  = load32_le(key + 4);
+    s[6]  = load32_le(key + 8);
+    s[7]  = load32_le(key + 12);
+    s[8]  = load32_le(key + 16);
+    s[9]  = load32_le(key + 20);
     s[10] = load32_le(key + 24);
     s[11] = load32_le(key + 28);
 
-    s[12] = counter;                          /* 32-bit block counter */
-    s[13] = load32_le(nonce+0);
-    s[14] = load32_le(nonce+4);
-    s[15] = load32_le(nonce+8);               /* 96-bit nonce */
+    s[12] = counter;                        /* 32-bit block counter */
 
-    for (int i=0;i<16;++i) w[i]=s[i];
+    s[13] = load32_le(nonce + 0);
+    s[14] = load32_le(nonce + 4);
+    s[15] = load32_le(nonce + 8);             /* 96-bit nonce */
 
+    for (int i = 0; i < 16; ++i) w[i] = s[i];
+
+/* Quarter Round */
 #define QR(a, b, c, d) \
     a += b; d ^= a; d = ROTL32(d,16); \
     c += d; b ^= c; b = ROTL32(b,12); \
     a += b; d ^= a; d = ROTL32(d, 8); \
     c += d; b ^= c; b = ROTL32(b, 7);
 
-    for (int i=0;i<10;++i){
+    for (int i = 0;i < 10; ++i){
         /* column rounds */
         QR(w[0], w[4], w[8], w[12])
         QR(w[1], w[5], w[9], w[13])
