@@ -37,8 +37,8 @@ typedef struct cfx_fac_cache cfx_fac_cache_t;
  * limb: ptr to array of limbs
  * n: current number of limbs
  * cap: capacity of underlying limb array
- * 
- * >>>>> Always call cfx_big_init after declaring a cfx_big_t ! 
+ *
+ * >>>>> Always call cfx_big_init after declaring a cfx_big_t !
  **/
 typedef struct {
     cfx_limb_t* limb; /* the 'digits' of the number with base BIG_BASE */
@@ -48,13 +48,13 @@ typedef struct {
 } cfx_big_t;
 
 /**  cache for prime factors of a cfx_big_t.
- * 
+ *
  * Invariants: (assume value N of cfx_big_t:)
  *  - N == (∏ p_i^e_i) * cofactor.
  *  - cofactor ≥ 1.
  *  - cofactor has no prime factor ≤ bnd.
  *  - state == CFX_FAC_FULL iff cofactor == 1.
- * 
+ *
  * for N = 1: primes empty, cofactor = 1, state = CFX_FAC_FULL.
 */
 struct cfx_fac_cache {
@@ -141,7 +141,7 @@ void cfx_big_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p);
 void cfx_big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_limb_t p);
 
 /* out = (n^p) mod m */
-void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, const cfx_big_t* m); 
+void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, const cfx_big_t* m);
 
 /* out = (a*b) mod m*/
 int cfx_big_mulmod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_t* m);
@@ -212,9 +212,9 @@ int cfx_big_mont_from (cfx_big_t* out, const cfx_big_t* aR, const cfx_big_mont_c
  * Uses the Coarsely Integrated Operand Scanning (CIOS) algorithm:
  *   for i = 0..k-1:
  *     T += a * b[i]
- *     m = (T[0] * n0inv) mod b         n0inv ≡ -n[0]^{-1} (mod b) 
+ *     m = (T[0] * n0inv) mod b         n0inv ≡ -n[0]^{-1} (mod b)
  *     T += m * n
- *     T >>= 64                         drop least-significant limb 
+ *     T >>= 64                         drop least-significant limb
  * Final step does a conditional subtraction so that 0 ≤ out < n.
  *
  * Preconditions:

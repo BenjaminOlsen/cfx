@@ -9,8 +9,6 @@
 #include "cfx/algo.h"
 
 
-/* ---------- Demo: compute C(n,k) ---------- */
-
 static void print_binom(cfx_limb_t n, cfx_limb_t k){
     cfx_fac_t f = cfx_fac_binom(n,k);
     cfx_big_t B;
@@ -39,50 +37,6 @@ int main(int argc, char* argv[]) {
         k = (cfx_limb_t)strtol(argv[2], NULL, 10);
         print_binom(n, k);
     }
-/*
-    cfx_fac_t f1, f2;
-
-    cfx_fac_t* p1 = &f1;
-    cfx_fac_t* p2 = &f2;
     
-    cfx_fac_init(p1);
-    cfx_fac_init(p2);
-    
-    cfx_fac_push(p1, 2, 4);
-    cfx_fac_push(p1, 3, 2);
-    
-    cfx_fac_push(p2, 2, 5);
-    cfx_fac_push(p2, 5, 2);
-
-    printf("p1: \n");
-    cfx_fac_print(p1);
-    printf("p2: \n");
-    cfx_fac_print(p2);
-
-    printf("p1 += p2 -------\n");
-    cfx_fac_add(p1, p2);
-    cfx_fac_print(p1);
-
-    printf("p1 -= p2 -------\n");
-    cfx_fac_sub(p1, p2);
-    cfx_fac_print(p1);
-
-    cfx_fac_t f3;
-    cfx_fac_copy(&f3, &f1);
-    printf("f3 copy of p1 -------\n");
-    cfx_fac_print(&f3);
-
-    printf("primes until %u:\n", n);
-    cfx_vec_t primes = cfx_sieve_primes(n);
-    cfx_vec_print(&primes);
-
-    printf("-------------- \n");
-    cfx_fac_t f4 = cfx_fac_factorial(n, &primes);
-    fac_print(&f4);
-
-    print_binom(n, k);
-*/
-    
-
     return 0;
 }

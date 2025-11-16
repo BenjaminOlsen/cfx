@@ -67,8 +67,6 @@ void cfx_srand_os(void) {
     G.seeded = 1;
 }
 
-
-/* SplitMix64 for deterministic seed expansion */
 static uint64_t splitmix64_next(uint64_t *s) {
     uint64_t z = (*s += 0x9E3779B97F4A7C15ULL);
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
@@ -76,28 +74,15 @@ static uint64_t splitmix64_next(uint64_t *s) {
     return z ^ (z >> 31);
 }
 
-static void store64_le(void *p, uint64_t x) {
-    unsigned char *b = (unsigned char*)p;
-    b[0] = (unsigned char)(x      );
-    b[1] = (unsigned char)(x >>  8);
-    b[2] = (unsigned char)(x >> 16);
-    b[3] = (unsigned char)(x >> 24);
-    b[4] = (unsigned char)(x >> 32);
-    b[5] = (unsigned char)(x >> 40);
-    b[6] = (unsigned char)(x >> 48);
-    b[7] = (unsigned char)(x >> 56);
-}
-
-/* Deterministic seeding from unsigned int (std srand compatibility) */
 void cfx_srand(unsigned int seed) {
     uint64_t s = ((uint64_t)seed << 32) | 0xA5A5A5A5u;
     /* Fill key, nonce, counter from SplitMix64 stream */
     for (int i = 0; i < 4; ++i) {
         uint64_t x = splitmix64_next(&s);
-        store64_le(G.key + 8*i, x);
+        cfx_store64_le(G.key + 8*i, x);
     }
     uint64_t n0 = splitmix64_next(&s);
-    memcpy(G.nonce, &n0, 12); /* first 12 bytes */
+    memcpy(G.nonce, &n0, 12);   /* first 12 bytes */
     G.counter = splitmix64_next(&s);
     G.idx = 64;   /* force refill */
     G.seeded = 1;
@@ -123,4 +108,10 @@ int cfx_rand(void) {
     uint32_t v = ((uint32_t)b[0]) | ((uint32_t)b[1] << 8) |
                  ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
     return (int)(v & 0x7fffffff);
+}
+
+void cfx_randombytes(void* buf, size_t len) {
+    if (os_getrandom(buf, len) != 0) {
+        memset(buf, 0, len);
+    }
 }

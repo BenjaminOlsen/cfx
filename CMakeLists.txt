@@ -67,6 +67,7 @@ if(CFX_BUILD_EXAMPLES)
 
   set(EXAMPLE_NAMES
     ulam_spiral
+    cfx_keygen
     find_prime
     prime_test
     factorial

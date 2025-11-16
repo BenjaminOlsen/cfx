@@ -85,7 +85,7 @@ unsigned cfx_clz(cfx_limb_t x) {
     #endif
 #else
     if (!x) return (unsigned)(8*sizeof(x));
-    unsigned c = 0, 
+    unsigned c = 0;
     unsigned B = (unsigned)(8u * sizeof(cfx_limb_t));
     cfx_limb_t m = (cfx_limb_t)1 << (B - 1);
     while (m && (x & m) == 0) { c++; m >>= 1; }
@@ -126,7 +126,7 @@ cfx_limb_t cfx_isqrt_fp(cfx_limb_t n) {
     while (x && x > n / x) --x;
     return x;
 }
-#endif 
+#endif
 
 #ifdef __cplusplus
 }
