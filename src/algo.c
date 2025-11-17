@@ -161,12 +161,13 @@ cfx_limb_t cfx_gcd_u64(cfx_limb_t a, cfx_limb_t b) {
 
 /* Pollard's rho method of finding a non-trivial factor of some
 integer n. It uses the fact that if there is some divisor p (not necessarily prime)
-of n, then  */
+of n, then there are cycles in a well chosen function that's applied repeatedly 
+to element in Zp... */
 cfx_limb_t cfx_pollard_rho_brent(cfx_limb_t n) {
     if ((n & 1) == 0) return 2;
     cfx_limb_t y =  cfx_rand_limb() % (n-1) + 1;
     cfx_limb_t c = cfx_rand_limb() % (n-1) + 1;
-    /*we must choose c != 0, but less evidently we must also choose c != −2 because (y + 1/y)2 − 2 = y2 + 1/y2 */
+    /* we must choose c != 0, but less evidently we must also choose c != −2 because (y + 1/y)2 − 2 = y2 + 1/y2 */
     cfx_limb_t m = 128;
 
     cfx_limb_t g = 1, r = 1, q = 1, x, ys;

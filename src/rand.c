@@ -1,5 +1,5 @@
 #include "cfx/rand.h"
-#include "cfx/crypto.h"
+#include "cfx/chacha20.h"
 #include "cfx/memory.h"
 
 #include <stdlib.h>
@@ -101,7 +101,7 @@ static void refill_if_needed(void) {
 int cfx_rand(void) {
     /* Pull 4 bytes, assemble LE uint32, mask to 31 bits */
     uint8_t b[4];
-    for (int i = 0; i < 4; ++i) {
+    for (size_t i = 0; i < 4; ++i) {
         refill_if_needed();
         b[i] = G.buf[G.idx++];
     }
@@ -111,6 +111,14 @@ int cfx_rand(void) {
 }
 
 void cfx_randombytes(void* buf, size_t len) {
+    uint8_t* p = (uint8_t*)buf;
+    for (size_t i = 0; i < len; ++i) {
+        refill_if_needed();
+        p[i]= G.buf[G.idx++];
+    }
+}
+
+void cfx_randombytes_os(void* buf, size_t len) {
     if (os_getrandom(buf, len) != 0) {
         memset(buf, 0, len);
     }

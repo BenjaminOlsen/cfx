@@ -10,8 +10,9 @@ extern "C" {
 
 int  cfx_rand(void);                     /* returns 0..0x7fffffff */
 void cfx_srand(unsigned seed);
+void cfx_randombytes(void* buf, size_t len);  /* randon bytes seeded by cfx_srand seed */
 void cfx_rand_seed_os(void);             /* (re)seed from OS RNG */
-void cfx_randombytes(void* buf, size_t len);
+void cfx_randombytes_os(void* buf, size_t len);  /* random bytes seeded by OS RNG */
 cfx_limb_t cfx_xorshift64(cfx_limb_t* s);
 cfx_limb_t cfx_rand_limb(void);
 

@@ -4,6 +4,11 @@ cfx is a C library for performing a host of arithmetic computations with arbitra
 
 cfx used to mean one thing, something around 'Factorization into prime eXponents in C', but it's constantly changing so forget about what it means - its just cfx... 
 
+## TestU01
+
+to run statistical tests using TestU01, you have to install it following their instructions: https://github.com/blep/TestU01, and then pass its install location to cmake configure:
+
+`cmake -B build -S . -DCFX_ENABLE_TESTU01=ON -DTESTU01_ROOT=/path/to/TestU01`
 
 ## License
 The cfx library is dual-licensed.

@@ -1,4 +1,5 @@
-#include "cfx/crypto.h"
+#include "cfx/chacha20.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -21,29 +22,6 @@ static void usage(const char* name) {
         name, name);
 }
 
-static int hexval(int c) {
-    if ('0' <= c && c <= '9') return c - '0';
-    if ('a' <= c && c <= 'f') return 10 + c - 'a';
-    if ('A' <= c && c <= 'F') return 10 + c - 'A';
-    return -1;
-}
-
-/* parse hex string into exactly outlen bytes. returns 0 on success, -1 on error */
-static int parse_hex(const char* s, uint8_t* out, size_t outlen) {
-    if (s[0]=='0' && (s[1]=='x' || s[1]=='X')) s += 2;
-
-    size_t n = strlen(s);
-    if (n != outlen*2) return -1;
-
-    for (size_t i = 0; i < outlen; ++i) {
-        int hi = hexval(s[2*i]);
-        int lo = hexval(s[2*i+1]);
-        if (hi < 0 || lo < 0) return -1;
-        out[i] = (uint8_t)((hi << 4) | lo);
-    }
-    return 0;
-}
-
 int main(int argc, char** argv) {
     if (argc < 2) {
         usage(argv[0]);
@@ -55,19 +33,22 @@ int main(int argc, char** argv) {
     const char* pt       = NULL;
     uint32_t counter     = 0;
 
-    #define CHECK_ARG(i) if (++i >= argc) { usage(argv[0]); return EXIT_FAILURE; }
+    #define CHECK_ARG(i) if (i >= argc) { usage(argv[0]); return EXIT_FAILURE; }
 
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-k") == 0) {
+            ++i;
             CHECK_ARG(i);
             key_in = argv[i];
         } else if (strcmp(argv[i], "-c") == 0) {
+            ++i;
             CHECK_ARG(i);
             errno = 0;
             unsigned long v = strtoul(argv[i], NULL, 0);
             if (errno) { perror("counter"); return EXIT_FAILURE; }
             counter = (uint32_t)v;
         } else if (strcmp(argv[i], "-n") == 0) {
+            ++i;
             CHECK_ARG(i);
             nonce_in = argv[i];
         } else if (argv[i][0] == '-' ) {
@@ -83,7 +64,7 @@ int main(int argc, char** argv) {
         usage(argv[0]);
         return EXIT_FAILURE;
     }
-    const char* default_key = "1234567890";
+    const char default_key[] = "1234567890";
     if (!key_in) {
         fprintf(stderr, "using default key\n");
         key_in = default_key;
@@ -103,6 +84,12 @@ int main(int argc, char** argv) {
             fprintf(stderr, "warn: ASCII key longer than 32 bytes; truncated\n");
         }
     }
+
+    fprintf(stderr, "key: ");
+    for (size_t i = 0; i < sizeof key; ++i) {
+        fprintf(stderr, "%02x ", key[i]);
+    }
+    fprintf(stderr, "\n");
 
     uint8_t nonce[12] = {0};
     if (nonce_in) {
