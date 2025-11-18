@@ -6,20 +6,20 @@
 #include <stdlib.h>
 
 int main(int argc, char* argv[]) {
-    
+
     char* u_in, *v_in;
-    
+
     int hex_in = 0;  /* default to decimal */
     int hex_out = 0;
 
-    if (argc < 3) { 
+    if (argc < 3) {
         puts("Use: ./div <optional -x for hex input> <optional -ox for hex output> <dividend> <divisor>");
     } else {
         for (int i = 0; i < argc; ++i) {
             if (strcmp(argv[i], "-x") == 0) hex_in = 1;
             else if (strcmp(argv[i], "-ox") == 0) hex_out = 1;
         }
-        
+
         u_in = argv[argc-2];
         v_in = argv[argc-1];
     }
@@ -89,10 +89,10 @@ int main(int argc, char* argv[]) {
 
     char* p_str = hex_out ? cfx_big_to_hex(&p, NULL):cfx_big_to_str(&p, NULL);
     printf("p = v*q + r: %s\n", p_str);
-    
+
     /* sanity check: */
     int scmp = strcmp(p_str, u_str);
-    
+
     printf("strcmp: %d\n", scmp);
 
     PRINT_BIG("u", &u);
@@ -108,12 +108,12 @@ int main(int argc, char* argv[]) {
     free(q_str);
     free(v_str);
     free(p_str);
-    
+
     cfx_big_free(&u);
     cfx_big_free(&v);
     cfx_big_free(&q);
     cfx_big_free(&r);
     cfx_big_free(&p);
-    
+
     return 0;
 }

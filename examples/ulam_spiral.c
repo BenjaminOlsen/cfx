@@ -84,12 +84,12 @@ int main(int argc, char** argv) {
     }
 
     printf("writing a %d x %d image to %s, scale %d\n", w, w, outfile, scale);
-    
+
     if (w <= 0 || (w % 2) == 0) {
         fprintf(stderr, "Size must be a positive odd integer.\n");
         return EXIT_FAILURE;
     }
-    
+
     unsigned* values = (unsigned*)calloc((size_t)w*w, sizeof(*values));
     unsigned char* prime = (unsigned char*)calloc((size_t)w*w, 1);
 

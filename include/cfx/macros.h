@@ -71,7 +71,7 @@ do { \
     } while (0)
 #else
 #define CFX_ASSERT_PRINT(cond) CFX_PRINT_TEST_COND(cond)
-#endif 
+#endif
 
 #ifdef CFX_DEBUG
   #define PRINT_DBG(...) printf(__VA_ARGS__)

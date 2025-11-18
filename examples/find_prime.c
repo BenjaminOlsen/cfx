@@ -212,7 +212,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    cfx_big_t p; 
+    cfx_big_t p;
     cfx_big_init(&p);
     int rc = cfx_big_gen_nbit_prime(&p, bits, urandom_rng, NULL, flags);
     if (rc != 0) {

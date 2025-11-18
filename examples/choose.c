@@ -37,6 +37,6 @@ int main(int argc, char* argv[]) {
         k = (cfx_limb_t)strtol(argv[2], NULL, 10);
         print_binom(n, k);
     }
-    
+
     return 0;
 }

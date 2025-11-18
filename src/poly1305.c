@@ -21,8 +21,32 @@
 
 
 /* ---------------------------------------------------------------------------------------------------- */
-/* The amazing poly1305 message authenticator algorithm - shamelessly plagiarized from libsodium but copied here
- * to feel the masters' hands on my keyboard...
+/* The amazing poly1305 message authenticator algorithm - shamelessly plagiarized from libsodium.
+
+the '1305' comes from  p = 2^130 - 5, so we can do some tricks:
+
+if a and b are expressed in 5 x 26  bit limbs, then
+we can take advantage of the fact that the top column (in parens below)
+which are in the (2^26)^5 = 2^130 place. So if we have a quantity n in that
+term it's:
+  n * 2^130 mod p
+= n*2^130 mod (2^130 - 5)
+= (n mod p) * (2^130 mod p)
+= (n mod p) * 5
+
+= n * 5     - (if 0 <= n < p, then n mod p = n.)
+
+This makes the multiplication of two 5 limb numbers look like this:
+
+                                   a4      a3      a2      a1      a0
+                              ×    b4      b3      b2      b1      b0
+                              ---------------------------------------
+                                a4×b0   a3×b0   a2×b0   a1×b0   a0×b0
+                     (a4*b1)  + a3×b1   a2×b1   a1×b1   a0×b1 5×a4×b1  <--
+              ...  + (a3*b2)  + a2×b2   a1×b2   a0×b2 5×a4×b2 5×a3×b2  <--
+        ... + ...  + (a2*b3)  + a1×b3   a0×b3 5×a4×b3 5×a3×b3 5×a2×b3
+ ... + .... + ...  + (a1*b4)  + a0×b4 5×a4×b4 5×a3×b4 5×a2×b4 5×a1×b4
+
  * ----- */
 
 /* tag = Poly1305(key, m) per RFC8439 A.3

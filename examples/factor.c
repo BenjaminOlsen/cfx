@@ -22,15 +22,15 @@ int main(int argc, char* argv[]) {
     /* Parse flags */
     int argi = 1;
     int base = 10; /* default */
-    
+
     if (strcmp(argv[argi], "-ix") == 0) {
         base = 16;
         argi++;
     } else if (strcmp(argv[argi], "-id") == 0) {
         base = 10;
         argi++;
-    } 
-    
+    }
+
     if (argi > argc - 1) {
         usage(argv[0]);
         return 1;

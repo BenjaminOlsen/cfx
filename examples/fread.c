@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
         print_hex = 0; argi++;
     } else if (strcmp(argv[argi], "-b") == 0) {
         print_bin = 1; argi++;
-    } 
+    }
     if (strcmp(argv[argi], "-ix") == 0) {
         base = 16; argi++;
     } else if (strcmp(argv[argi], "-id") == 0) {
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
         usage(argv[0]);
         return 1;
     }
-    
+
     fname = argv[argi];
 
     FILE* fp = fopen(fname, "rb");
@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
     }
 
     printf("%s\n", s);
-    
+
     printf("digits: %zu, limbs: %zu\n", strlen(s), big.n);
     free(s);
     cfx_big_free(&big);

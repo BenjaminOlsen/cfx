@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
         }
 
     }
-    
+
 
     const uint8_t* msg = (uint8_t*)msg_in;
     size_t len = strlen(msg_in);
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     uint8_t key[32];
     memset(key, 0, sizeof key);
 
-    
+
     if (!key_in) {
         if (seed_in) {
             unsigned seed = strtoull(seed_in, NULL, 0);  /* base 0: deduces base from a */;

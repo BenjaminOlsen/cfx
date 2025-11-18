@@ -82,7 +82,7 @@ void cfx_big_assign_sm(cfx_big_t* dst, const cfx_limb_t src) {
     }
 
     cfx_big_reserve(dst, 1); /* todo: error if != 0 */
-    
+
     memset(dst->limb, 0, dst->cap * sizeof(cfx_limb_t));
     dst->n = 1;
     dst->limb[0] = src;
@@ -124,8 +124,8 @@ static inline size_t _nz_len(const cfx_big_t* x) {
 }
 */
 
-/** compare two bigs - 
- * returns: 
+/** compare two bigs -
+ * returns:
  * -1 if a < b
  * 0 if a == b
  * 1 if a > b
@@ -140,8 +140,8 @@ int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b) {
     return 0;
 }
 
-/** compare a big and a small: - 
- * returns: 
+/** compare a big and a small: -
+ * returns:
  * -1 if a < b
  * 0 if a == b
  * 1 if a > b
@@ -150,7 +150,7 @@ int cfx_big_cmp_sm(const cfx_big_t* a, cfx_limb_t b) {
     if (a->n == 0) /* a == 0 */ return b == 0 ? 0 : -1;
     if (a->n > 1) return 1;
     if (a->limb[0] != b) return (a->limb[0] < b) ? -1 : 1;
-    return 0; 
+    return 0;
 }
 
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b) {
@@ -353,12 +353,12 @@ static inline void _mul_sm_fast(cfx_big_t* b, cfx_limb_t m) {
 
 /* Multiply by p^e by repeated squaring using small chunks to avoid u32 overflow */
 void cfx_big_expmul_prime(cfx_big_t* b, cfx_limb_t p, cfx_limb_t e) {
-    
+
     /* Find largest t so that p^t fits in 32 bits -> p^2t fits in 64 */
     cfx_limb_t t = 1;
     cfx_acc_t acc = p;
     const cfx_acc_t lim = CFX_SQRT_ACC_MAX;
-    
+
     while (acc <= lim / acc) {
         acc *= acc;
         t *= 2u;
@@ -370,14 +370,14 @@ void cfx_big_expmul_prime(cfx_big_t* b, cfx_limb_t p, cfx_limb_t e) {
     /* Compute p^t */
     /* compute power safely */
     cfx_limb_t pow_t = p;
-    
+
     /* fast power to get pow_t = p^t by using binary expansion of t:
     p^t = p^(b_i*2^i) * p^(b_(i-1)*2^(i-1) * ... */
     pow_t = 1;
     acc = p;
     cfx_limb_t tt = t;
     while (tt) {
-        if (tt & 1u) pow_t = (cfx_limb_t)(pow_t * acc); 
+        if (tt & 1u) pow_t = (cfx_limb_t)(pow_t * acc);
         tt >>= 1u;
         acc = acc*acc;
     }
@@ -408,10 +408,10 @@ void cfx_big_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p) {
     cfx_big_init(&acc);
     cfx_big_init(&pp);
     cfx_big_init(&np);
-    
+
     cfx_big_from_u64(&np, 1);
     cfx_big_copy(&pp, p);
-    cfx_big_copy(&acc, n); 
+    cfx_big_copy(&acc, n);
 
     while (!cfx_big_is_zero(&pp)) {
         if (pp.n && (pp.limb[0] & 1)) {
@@ -435,7 +435,7 @@ void cfx_big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_limb_t p) {
     cfx_big_init(&acc);
     cfx_big_init(&np);
     cfx_big_from_u64(&np, 1);
-    cfx_big_copy(&acc, n); 
+    cfx_big_copy(&acc, n);
     while (p) {
         if (p & 1) {
             cfx_big_mul_auto(&np, &acc);
@@ -459,7 +459,7 @@ void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, con
     cfx_big_init(&np);
     cfx_big_from_u64(&np, 1);
     cfx_big_copy(&pp, p);
-    cfx_big_copy(&acc, n); 
+    cfx_big_copy(&acc, n);
     while (!cfx_big_is_zero(&pp)) {
         if (pp.n && (pp.limb[0] & 1)) {
             cfx_big_mul_auto(&np, &acc);
@@ -630,7 +630,7 @@ void cfx_big_sq(cfx_big_t* b) {
     cfx_big_trim(&ret);
     cfx_big_swap(&ret, b);
     cfx_big_free(&ret);
-    
+
 #elif 0
     if (b->n == 0) return;
 
@@ -687,7 +687,7 @@ void cfx_big_sq(cfx_big_t* b) {
     cfx_big_trim(ret);
     free(tmp);
     return ret;
-#else 
+#else
     const size_t n = b->n;
     cfx_big_t ret;
     cfx_big_init(&ret);
@@ -695,7 +695,7 @@ void cfx_big_sq(cfx_big_t* b) {
     if (n == 0) {
         return;
     }
-    
+
     cfx_big_reserve(&ret, 2*n);
     memset(ret.limb, 0, 2*n * sizeof(cfx_limb_t));
     ret.n = 2*n;
@@ -799,7 +799,7 @@ void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t
 }
 
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
-    
+
     if (cfx_big_is_zero(b) || cfx_big_is_zero(m)) {
         cfx_big_from_u64(b, 0);
         return;
@@ -991,7 +991,7 @@ acc0 = (an*B + an-1)
 acc1 = acc0*B + an-2 = (an*B + an-1)B + an-2 = anB^2 + an-1B + an-2
 acc2 = acc1*B + an-3 .. etc
 
-and each step, take % m because the remainder of the sum div m 
+and each step, take % m because the remainder of the sum div m
 is the sum of the remainders modulo m
 */
 cfx_limb_t cfx_big_mod_sm(const cfx_big_t* b, cfx_limb_t m) {
@@ -1191,8 +1191,8 @@ char* cfx_big_to_str(const cfx_big_t* src, size_t *sz_out) {
     int cnt = 0;
     const size_t n0 = tmp.n;
     while (tmp.n) {
-        
-        if (!(tmp.n % 100)) { 
+
+        if (!(tmp.n % 100)) {
             const char spinner[] = "|/-\\";
             printf("%zu decimal digits done... %zu/%zu limbs remain... %c        \r",
                 k*9, tmp.n, n0, spinner[cnt++ % 4]);
@@ -1339,7 +1339,7 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
 
     unsigned limb_shift = s >> 6; /* s / 64 */
     unsigned bit_shift  = s & 63; /* s & 64 */
-    
+
     /* printf("cfx_big_shl_bits - limb shift: %u, bit shift: %u\n", limb_shift, bit_shift); */
 
     /* bits from the right coming in to each limb */
@@ -1355,7 +1355,7 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
             /* printf("s: %u, bit_shift: %u, limb_shift: %u, i: %zx -> p->limb[%zu] = a->limb[%zu]\n", s, bit_shift, limb_shift, i, i+limb_shift, i); */
         }
         p->n = a->n + limb_shift;
-        
+
     } else {
         cfx_limb_t carry = 0;
         for (size_t i = 0; i < a->n; ++i) {
@@ -1989,13 +1989,13 @@ int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base) {
     cfx_big_from_u64(out, 0);
 
     enum { BASE_DEC=10, BASE_HEX=16, BASE_BIN=2 };
-    int detected_base; 
+    int detected_base;
     if ((base != BASE_DEC) && (base != BASE_HEX) && (base != BASE_BIN))  {
         detected_base = BASE_DEC; /* default */
     } else {
         detected_base = base;
     }
-    
+
     int saw_digit = 0;
     int negative = 0;
     int in_prefix = 1; /* we’re skipping leading ws, sign, 0x */
@@ -2032,7 +2032,7 @@ int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base) {
                         if (detected_base != BASE_HEX) {
                             CFX_PRINT_ERR("hex '0x' prefix in file,"
                                 " but different base (%d) specified!", detected_base);
-                            
+
                         }
                         detected_base = BASE_HEX;
                         i++;
@@ -2396,7 +2396,7 @@ int cfx_big_modexp(cfx_big_t* out, const cfx_big_t* base, const cfx_big_t* exp, 
             cfx_limb_t w = exp->limb[i];
             for (int b = 0; b < 64; ++b) {
                 if (w & 1u) {
-                    ok = cfx_big_mont_mul(&X, &X, &A, &C); 
+                    ok = cfx_big_mont_mul(&X, &X, &A, &C);
                     if (!ok) break;
                 }
                 w >>= 1;
@@ -2425,7 +2425,7 @@ double cfx_big_log(const cfx_big_t* b, double base) {
     return ((l - 1) * ln_B + ln_hi) / ln_base;
 }
 
-int cfx_big_to_sci(const cfx_big_t* x, unsigned base, 
+int cfx_big_to_sci(const cfx_big_t* x, unsigned base,
                                 int sig_digits, char* out, size_t outsz) {
 
     if (!x || !out || outsz == 0 || base < 2) return 0;

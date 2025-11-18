@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
             "e.g. 'primes 800 100': find primes to 800 printed with line width of 100");
         return 1;
     }
-    
+
     int dmax = INT32_MAX;
     if (argc == 3) dmax = (size_t)strtol(argv[2], NULL, 10);
 
