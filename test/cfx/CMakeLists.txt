@@ -17,5 +17,5 @@ foreach(test_name IN LISTS CFX_UNIT_TESTS)
     #     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
     # )
     target_link_libraries(${test_name} PRIVATE cfx::cfx)
-    add_test(NAME ${test_name} COMMAND ${test_name})
+    add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
 endforeach()

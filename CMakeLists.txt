@@ -70,6 +70,8 @@ if(CFX_BUILD_EXAMPLES)
 endif()
 
 # ---------------- Tests (CTest)
+include(CTest)
+
 if(CFX_BUILD_TESTS)
     message(STATUS "Building tests...")
     add_subdirectory(test)
