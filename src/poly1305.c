@@ -56,7 +56,7 @@ This makes the multiplication of two 5 limb numbers look like this:
  * mlen: length in bytes
  * tag: 16 byte MAC
  */
-void cfx_poly1305_mac(const uint8_t key[32], const uint8_t *m, size_t mlen, uint8_t tag[16]) {
+void cfx_poly1305_mac(const uint8_t key[32], const uint8_t* m, size_t mlen, uint8_t tag[16]) {
     /*  clamp(r): r &= 0x0ffffffc0ffffffc0ffffffc0fffffff */
     uint32_t r0 =  cfx_load32_le(&key[0])  & 0x3ffffffu;
     uint32_t r1 = (cfx_load32_le(&key[3])  >> 2) & 0x3ffff03u;

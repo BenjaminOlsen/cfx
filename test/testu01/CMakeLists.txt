@@ -5,9 +5,9 @@ endif()
 
 include_directories(${TESTU01_ROOT}/include)
 
-add_executable(test_chacha20_testu01 test_chacha20_testu01.c)
+add_executable(test_testu01 test_testu01.c)
 
-target_link_libraries(test_chacha20_testu01 PRIVATE
+target_link_libraries(test_testu01 PRIVATE
   cfx::cfx
   ${TESTU01_ROOT}/lib/libtestu01.a
   ${TESTU01_ROOT}/lib/libprobdist.a
