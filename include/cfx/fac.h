@@ -21,9 +21,9 @@ typedef struct {
 
 /**
  * cfx_fac_t: a struct to hold a prime factorization of a number
- * 
+ *
  * Invariants:
- * 
+ *
  * - Contains only pairs (p, e) with p prime, p >= 2, e >= 1
  * - Sorted strictly by p, coalesced (no duplicates), no zero exponents
  */

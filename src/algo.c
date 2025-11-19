@@ -104,7 +104,7 @@ static inline cfx_limb_t _cfx_powmod_u64(cfx_limb_t a, cfx_limb_t e, cfx_limb_t 
 }
 
 cfx_limb_t cfx_mulmod_u64(cfx_limb_t a, cfx_limb_t b, cfx_limb_t m) {
-    return _cfx_mulmod_u64(a, b, m); 
+    return _cfx_mulmod_u64(a, b, m);
 }
 
 /* modular exponentiation (a^e) mod m */
@@ -112,11 +112,11 @@ cfx_limb_t cfx_powmod_u64(cfx_limb_t a, cfx_limb_t e, cfx_limb_t m) {
     return _cfx_powmod_u64(a, e, m);
 }
 
-/** Uses Miller–Rabin 'probable primality' test 
+/** Uses Miller–Rabin 'probable primality' test
  * - take n-1 (which is even), express it as d*2^s.
  * - find a which is coprime to n
  * - then n is "probably" prime if either:
- *      - a^d == 1 mod n, or 
+ *      - a^d == 1 mod n, or
  *      - a^(2r*d) == -1 mod n for some 0 <= r < s;
 */
 int cfx_is_prime_u64(cfx_limb_t n) {
@@ -161,7 +161,7 @@ cfx_limb_t cfx_gcd_u64(cfx_limb_t a, cfx_limb_t b) {
 
 /* Pollard's rho method of finding a non-trivial factor of some
 integer n. It uses the fact that if there is some divisor p (not necessarily prime)
-of n, then there are cycles in a well chosen function that's applied repeatedly 
+of n, then there are cycles in a well chosen function that's applied repeatedly
 to element in Zp... */
 cfx_limb_t cfx_pollard_rho_brent(cfx_limb_t n) {
     if ((n & 1) == 0) return 2;
@@ -209,16 +209,16 @@ static int cmp_u64(const void* a, const void* b) {
 
 
 int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n) {
-   
+
     if (n == 0) return -1;
     if (n == 1) return 0;
-    
+
     cfx_vec_t v; /* local vec for all primes */
     cfx_vec_init(&v);
 
     cfx_vec_init(primes);
     cfx_vec_init(exps);
-    
+
     /* 1) Strip tiny (<255) primes fast */
     for (size_t i = 0; i < 54; ++i) {
         cfx_limb_t p = cfx_primes[i];

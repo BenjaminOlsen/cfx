@@ -38,6 +38,7 @@ static void init_from_seed(uint64_t seed) {
     g_counter = 0;
 }
 
+typedef void (*test_fn)(void);
 /* ------------------------------------------------------------------ */
 /* 32-bit generator interface for TestU01                             */
 static uint32_t cfx_chacha32(void) {
@@ -85,7 +86,7 @@ int main(int argc, char **argv) {
 
     for (int i = 1; i < argc; i++) {
         const char* arg = argv[i];
-        
+
         if (strcmp(arg, "--smallcrush") == 0) {
             mode = MODE_SMALLCRUSH;
         } else if (strcmp(arg, "--crush") == 0) {

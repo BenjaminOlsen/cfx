@@ -65,76 +65,14 @@ add_library(cfx::cfx ALIAS cfx)
 
 # ---------------- Examples
 if(CFX_BUILD_EXAMPLES)
-
-  set(EXAMPLE_NAMES
-    ulam_spiral
-    cfx_keygen
-    find_prime
-    prime_test
-    factorial
-    factor
-    dcmini
-    choose
-    encrypt
-    primes
-    fread
-    mac
-    div
-    pow
-  )
-  
-  add_library(example_utils examples/utils.h examples/utils.c)
-
-  foreach(example_name IN LISTS EXAMPLE_NAMES)
-    add_executable(${example_name} examples/${example_name}.c)
-    target_link_libraries(${example_name} PRIVATE cfx::cfx example_utils)
-  endforeach()
+    message(STATUS "Building examples...")
+    add_subdirectory(examples)
 endif()
 
 # ---------------- Tests (CTest)
-include(CTest)
-
 if(CFX_BUILD_TESTS)
-  set(TEST_NAMES
-    test_big
-    test_big_mont
-    test_fac
-    test_algo
-    test_pollard_rho
-    test_mul_rows
-    test_poly1305
-    test_chacha20
-    test_mul_csa_pthreads
-  )
-
-  foreach(test_name IN LISTS TEST_NAMES)
-    add_executable(${test_name} test/cfx/${test_name}.c)
-    target_link_libraries(${test_name} PRIVATE cfx::cfx)
-    add_test(NAME ${test_name} COMMAND ${test_name})
-  endforeach()
-endif()
-
-# ---------------- TestU01 testing:
-
-option(CFX_ENABLE_TESTU01 "Build RNG tests with TestU01" OFF)
-set(TESTU01_ROOT "" CACHE PATH "Path to TestU01 installation root")
-
-if(CFX_ENABLE_TESTU01)
-    if(NOT TESTU01_ROOT)
-        message(FATAL_ERROR "Set TESTU01_ROOT to TestU01 install prefix")
-    endif()
-
-    include_directories(${TESTU01_ROOT}/include)
-
-    add_executable(test_chacha20_testu01 test/testu01/test_chacha20_testu01.c)
-
-    target_link_libraries(test_chacha20_testu01 PRIVATE
-        cfx
-        ${TESTU01_ROOT}/lib/libtestu01.a
-        ${TESTU01_ROOT}/lib/libprobdist.a
-        ${TESTU01_ROOT}/lib/libmylib.a
-        m
-    )
+    message(STATUS "Building tests...")
+    add_subdirectory(test)
 endif()
 
 # ---------------- Install
