@@ -114,7 +114,11 @@ void cfx_srand(unsigned int seed) {
         CFX_STORE64_LE(G.key + 8*i, x);
     }
     uint64_t n0 = splitmix64_next(&s);
-    memcpy(G.nonce, &n0, 12);   /* first 12 bytes */
+    uint32_t n1 = (uint32_t) splitmix64_next(&s);
+
+    CFX_STORE64_LE(G.nonce,      n0);
+    CFX_STORE32_LE(G.nonce + 8,  n1);
+
     G.counter = splitmix64_next(&s);
     G.idx = 64;   /* force refill */
     G.seeded = 1;
