@@ -134,7 +134,6 @@ static void refill_if_needed(void) {
 }
 
 uint32_t cfx_urand(void) {
-    /* Pull 4 bytes, assemble LE uint32, mask to 31 bits */
     uint8_t b[4];
     for (size_t i = 0; i < 4; ++i) {
         refill_if_needed();

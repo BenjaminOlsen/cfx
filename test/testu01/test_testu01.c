@@ -99,9 +99,7 @@ static uint32_t cfx_poly1305_gen(void) {
 /* cfx_rand */
 /* seed with cfx_srand (cfx/rand.h) */
 static uint32_t cfx_rand_gen(void) {
-    uint32_t r;
-    cfx_randombytes((void*)&r, sizeof(r));
-    return r;
+    return cfx_urand();
 }
 
 /* .................................................................. */
