@@ -229,7 +229,7 @@ static void test_facs(cfx_fac_t* f, cfx_limb_t primes[], cfx_limb_t exps[], size
     CFX_ASSERT(ok);
     CFX_ASSERT(f->len == nprimes);
     for (size_t i = 0; i < nprimes; ++i) {
-        printf("p: "CFX_PRIuLIMB", e: "CFX_PRIuLIMB"\n", f->data[i].p, f->data[i].e);
+        printf("p: " CFX_PRIuLIMB ", e: " CFX_PRIuLIMB "\n", f->data[i].p, f->data[i].e);
         CFX_ASSERT(f->data[i].p == primes[i]);
         CFX_ASSERT(f->data[i].e == exps[i]);
     }

@@ -111,6 +111,9 @@ static uint32_t rand_gen(void) {
     uint32_t r = (uint32_t)(rand() & 0x7FFFFFFF);
     r ^= 1;
     r ^= (uint32_t)(rand() & 0x7FFFFFFF);
+    // debug:
+    static int callcnt = 0;
+    printf("[%d] rand: 0x%x\n", ++callcnt, r);
     return r;
 }
 
@@ -132,7 +135,10 @@ static const gen_desc_t g_generators[] = {
     {"cfx_chacha20", "--chacha20", cfx_chacha20_gen,  chacha20_seed},
     {"cfx_poly1305", "--poly1305", cfx_poly1305_gen, poly1305_seed},
     {"cfx_rand", "--cfx_rand", cfx_rand_gen, cfx_srand},
+    {"cfx_splitmix32", "--cfx_splitmix32", cfx_splitmix32, cfx_splitmix_seed},
+    {"cfx_pcg32", "--cfx_pcg32", cfx_pcg32, cfx_pcg_seed},
     {"rand", "--rand", rand_gen, srand}
+
     /* todo later:
        { "cfx_xoshiro256ss", "--xoshiro256ss", cfx_xoshiro256ss_32 },
        ...
@@ -208,11 +214,10 @@ int main(int argc, char **argv) {
         }
     }
 
-    chacha20_seed(seed);
-
     printf("selected gen: %s: seed = 0x%016llX\n", selected_gen->name,
            (unsigned long long)seed);
 
+    selected_gen->sfn(seed);
     /* Wrap our 32-bit generator for TestU01 */
     unif01_Gen* gen = unif01_CreateExternGenBits((char *)selected_gen->name, selected_gen->fn);
 

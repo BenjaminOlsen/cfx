@@ -163,12 +163,12 @@ static void test_sub_sm(void) {
     for (cfx_limb_t n = 0; n < 2; ++n) {
         cfx_acc_t s = (cfx_acc_t)b.limb[0] + q;
         cfx_big_add_sm(&b, q);
-        CFX_BIG_PRINTF(&b, "add "CFX_PRIuLIMB": ", q);
+        CFX_BIG_PRINTF(&b, "add " CFX_PRIuLIMB ": ", q);
         CFX_ASSERT(b.limb[0] == (cfx_limb_t)s);
         CFX_ASSERT(b.n > 1);
         CFX_ASSERT(b.limb[1] == (cfx_limb_t)(s >> CFX_LIMB_BITS));
         cfx_big_sub_sm(&b, q);
-        CFX_BIG_PRINTF(&b, "sub "CFX_PRIuLIMB": ", q);
+        CFX_BIG_PRINTF(&b, "sub " CFX_PRIuLIMB ": ", q);
         CFX_ASSERT(b.limb[0] == orig);
     }
     PRINT_TEST(1);
@@ -867,7 +867,7 @@ static void test_known_squares(void) {
     CFX_ASSERT(strcmp(sanity, expect) == 0);
 
     for (size_t i = 0; i < b.n; ++i) {
-        printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB"; correct: B.limb[%zu]: "CFX_PRIuLIMB": %s: diff %d\n",
+        printf("calculated: b.limb[%zu]: " CFX_PRIuLIMB "; correct: B.limb[%zu]: " CFX_PRIuLIMB ": %s: diff %d\n",
         i, b.limb[i], i, B.limb[i], b.limb[i] == B.limb[i] ? "ok" : "--- NOT OK",
         (int)(b.limb[i] & 0xFFFF) - (int)(B.limb[i] & 0xFFFF));
     }
@@ -899,7 +899,7 @@ static void test_known_squares(void) {
     /* printf("mul %d len: %zu \n", ++cnt, b.n); */
 
     /* for (size_t i = 0; i < b.n; ++i) { */
-    /*     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"CFX_PRI0xLIMB")\n", i, b.limb[i], b.limb[i]); */
+    /*     printf("calculated: b.limb[%zu]: " CFX_PRIuLIMB " (0x"CFX_PRI0xLIMB")\n", i, b.limb[i], b.limb[i]); */
     /* } */
     
     char* huge = cfx_big_to_hex(&b, NULL);
@@ -1018,7 +1018,7 @@ static void test_known_squares_2(void) {
     CFX_ASSERT(strcmp(sanity, expect) == 0);
 
     for (size_t i = 0; i < b.n; ++i) {
-        printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB"; correct: B.limb[%zu]: "CFX_PRIuLIMB": %s: diff %d\n",
+        printf("calculated: b.limb[%zu]: " CFX_PRIuLIMB "; correct: B.limb[%zu]: " CFX_PRIuLIMB ": %s: diff %d\n",
         i, b.limb[i], i, B.limb[i], b.limb[i] == B.limb[i] ? "ok" : "--- NOT OK",
         (int)(b.limb[i] & 0xFFFF) - (int)(B.limb[i] & 0xFFFF));
     }
@@ -1049,7 +1049,7 @@ static void test_known_squares_2(void) {
     /* printf("mul csa %d len: %zu \n", ++cnt, b.n); */
 
     /* for (size_t i = 0; i < b.n; ++i) { */
-    /*     printf("calculated: b.limb[%zu]: "CFX_PRIuLIMB" (0x"CFX_PRI0xLIMB")\n", i, b.limb[i], b.limb[i]); */
+    /*     printf("calculated: b.limb[%zu]: " CFX_PRIuLIMB " (0x"CFX_PRI0xLIMB")\n", i, b.limb[i], b.limb[i]); */
     /* } */
     
     char* huge = cfx_big_to_hex(&b, NULL);

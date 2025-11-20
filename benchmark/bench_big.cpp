@@ -121,13 +121,13 @@ cfx_big_t sq1(const cfx_big_t* b) {
             prod += ret.limb[i+j];
             ret.limb[i+j] = (cfx_limb_t)prod;
             carry = prod >> CFX_LIMB_BITS;
-            // printf("doubling term i: %zu, j: %zu; prod: "CFX_PRIuLIMB", carry: "CFX_PRIuLIMB"\n", i, j, prod, (cfx_limb_t)carry);
+            // printf("doubling term i: %zu, j: %zu; prod: " CFX_PRIuLIMB ", carry: " CFX_PRIuLIMB "\n", i, j, prod, (cfx_limb_t)carry);
         }
         cfx_acc_t sq = bi*bi;
         sq += ret.limb[2*i];
         cfx_limb_t lo = (cfx_limb_t)sq;
         cfx_acc_t c2 = sq >> CFX_LIMB_BITS;
-        // printf("squaring term i: %zu, lo: "CFX_PRIuLIMB", carry: "CFX_PRIuLIMB"\n", i, lo, (cfx_limb_t)carry);
+        // printf("squaring term i: %zu, lo: " CFX_PRIuLIMB ", carry: " CFX_PRIuLIMB "\n", i, lo, (cfx_limb_t)carry);
 
         // propagate carry from cross terms into next limb
         cfx_acc_t u = (cfx_acc_t)ret.limb[i + n] + carry + c2;

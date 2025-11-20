@@ -364,7 +364,7 @@ void cfx_big_expmul_prime(cfx_big_t* b, cfx_limb_t p, cfx_limb_t e) {
         t *= 2u;
     }
     /* now t is the largest s.t. p^t <= lim */
-    CFX_PRINT_DBG("multiplying by "CFX_PRIuLIMB"^"CFX_PRIuLIMB" by breaking it into ("CFX_PRIuLIMB"^"CFX_PRIuLIMB")^("CFX_PRIuLIMB"/"CFX_PRIuLIMB") \n", p, e, p, t, e, t);
+    CFX_PRINT_DBG("multiplying by " CFX_PRIuLIMB "^" CFX_PRIuLIMB " by breaking it into (" CFX_PRIuLIMB "^" CFX_PRIuLIMB ")^(" CFX_PRIuLIMB "/" CFX_PRIuLIMB ") \n", p, e, p, t, e, t);
 
     /* Now multiply by (p^t)^(e/t) and then the remainder */
     /* Compute p^t */
@@ -600,13 +600,13 @@ void cfx_big_sq(cfx_big_t* b) {
             prod += ret.limb[i+j];
             ret.limb[i+j] = (cfx_limb_t)prod;
             carry = prod >> CFX_LIMB_BITS;
-            /* printf("doubling term i: %zu, j: %zu; prod: "CFX_PRIuLIMB", carry: "CFX_PRIuLIMB"\n", i, j, prod, (cfx_limb_t)carry); */
+            /* printf("doubling term i: %zu, j: %zu; prod: " CFX_PRIuLIMB ", carry: " CFX_PRIuLIMB "\n", i, j, prod, (cfx_limb_t)carry); */
         }
         cfx_acc_t sq = bi*bi;
         sq += ret.limb[2*i];
         cfx_limb_t lo = (cfx_limb_t)sq;
         cfx_acc_t c2 = sq >> CFX_LIMB_BITS;
-        /* printf("squaring term i: %zu, lo: "CFX_PRIuLIMB", carry: "CFX_PRIuLIMB"\n", i, lo, (cfx_limb_t)carry); */
+        /* printf("squaring term i: %zu, lo: " CFX_PRIuLIMB ", carry: " CFX_PRIuLIMB "\n", i, lo, (cfx_limb_t)carry); */
 
         /* propagate carry from cross terms into next limb */
         cfx_acc_t u = (cfx_acc_t)ret.limb[i + n] + carry + c2;
@@ -618,7 +618,7 @@ void cfx_big_sq(cfx_big_t* b) {
         if (k) {
             size_t idx = i + n + 1;
             while (k) {
-                printf("carry continues "CFX_PRIuLIMB"\n", (cfx_limb_t)k);
+                printf("carry continues " CFX_PRIuLIMB "\n", (cfx_limb_t)k);
                 if (idx >= szout) break;
                 cfx_acc_t w = (cfx_acc_t)ret.limb[idx] + (cfx_limb_t)k;
                 ret.limb[idx] = (cfx_limb_t)w;
@@ -2012,7 +2012,7 @@ int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base) {
     cfx_limb_t cnt = 0;
     while ((nread = fread(buf, 1, sizeof(buf), fp)) > 0) {
         cnt += nread;
-        printf("read "CFX_PRIuLIMB" characters..... \n", cnt);
+        printf("read " CFX_PRIuLIMB " characters..... \n", cnt);
         for (size_t i = 0; i < nread; ++i) {
             unsigned char c = buf[i];
 

@@ -33,7 +33,6 @@ set(CFX_SOURCES
     src/algo.c
     src/rand.c
     src/error.c
-    src/memory.c
     src/primes.c
     src/vector.c
     src/chacha20.c

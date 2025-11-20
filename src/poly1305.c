@@ -172,7 +172,7 @@ void cfx_poly1305_mac(const uint8_t key[32], const uint8_t* m, size_t mlen, uint
         h1 += c;
 
         /* scrub buf */
-        cfx_memzero_s(buf, sizeof(buf));
+        CFX_MEMZERO_S(buf, sizeof(buf));
     }
 
     /* final reduction: carry fully, then conditional subtract p */
@@ -232,32 +232,32 @@ void cfx_poly1305_mac(const uint8_t key[32], const uint8_t* m, size_t mlen, uint
     cfx_store32_le(tag + 12, t3);
 
     /* scrub sensitive locals: */
-    cfx_memzero_s(&r0, sizeof(r0));
-    cfx_memzero_s(&r1, sizeof(r1));
-    cfx_memzero_s(&r2, sizeof(r2));
-    cfx_memzero_s(&r3, sizeof(r3));
-    cfx_memzero_s(&r4, sizeof(r4));
+    CFX_MEMZERO_S(&r0, sizeof(r0));
+    CFX_MEMZERO_S(&r1, sizeof(r1));
+    CFX_MEMZERO_S(&r2, sizeof(r2));
+    CFX_MEMZERO_S(&r3, sizeof(r3));
+    CFX_MEMZERO_S(&r4, sizeof(r4));
 
-    cfx_memzero_s(&s1, sizeof(s1));
-    cfx_memzero_s(&s2, sizeof(s2));
-    cfx_memzero_s(&s3, sizeof(s3));
-    cfx_memzero_s(&s4, sizeof(s4));
+    CFX_MEMZERO_S(&s1, sizeof(s1));
+    CFX_MEMZERO_S(&s2, sizeof(s2));
+    CFX_MEMZERO_S(&s3, sizeof(s3));
+    CFX_MEMZERO_S(&s4, sizeof(s4));
 
-    cfx_memzero_s(&h0, sizeof(h0));
-    cfx_memzero_s(&h1, sizeof(h1));
-    cfx_memzero_s(&h2, sizeof(h2));
-    cfx_memzero_s(&h3, sizeof(h3));
-    cfx_memzero_s(&h4, sizeof(h4));
+    CFX_MEMZERO_S(&h0, sizeof(h0));
+    CFX_MEMZERO_S(&h1, sizeof(h1));
+    CFX_MEMZERO_S(&h2, sizeof(h2));
+    CFX_MEMZERO_S(&h3, sizeof(h3));
+    CFX_MEMZERO_S(&h4, sizeof(h4));
 
-    cfx_memzero_s(&pad0, sizeof(pad0));
-    cfx_memzero_s(&pad1, sizeof(pad1));
-    cfx_memzero_s(&pad2, sizeof(pad2));
-    cfx_memzero_s(&pad3, sizeof(pad3));
-    cfx_memzero_s(&t0, sizeof(t0));
-    cfx_memzero_s(&t1, sizeof(t1));
-    cfx_memzero_s(&t2, sizeof(t2));
-    cfx_memzero_s(&t3, sizeof(t3));
-    cfx_memzero_s(&f,  sizeof(f));
+    CFX_MEMZERO_S(&pad0, sizeof(pad0));
+    CFX_MEMZERO_S(&pad1, sizeof(pad1));
+    CFX_MEMZERO_S(&pad2, sizeof(pad2));
+    CFX_MEMZERO_S(&pad3, sizeof(pad3));
+    CFX_MEMZERO_S(&t0, sizeof(t0));
+    CFX_MEMZERO_S(&t1, sizeof(t1));
+    CFX_MEMZERO_S(&t2, sizeof(t2));
+    CFX_MEMZERO_S(&t3, sizeof(t3));
+    CFX_MEMZERO_S(&f,  sizeof(f));
 }
 
 #ifdef OLD_S

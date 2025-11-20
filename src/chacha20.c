@@ -14,22 +14,23 @@ void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const u
     s[2]  = C[2];
     s[3]  = C[3];
 
-    s[4]  = cfx_load32_le(key + 0);
-    s[5]  = cfx_load32_le(key + 4);
-    s[6]  = cfx_load32_le(key + 8);
-    s[7]  = cfx_load32_le(key + 12);
-    s[8]  = cfx_load32_le(key + 16);
-    s[9]  = cfx_load32_le(key + 20);
-    s[10] = cfx_load32_le(key + 24);
-    s[11] = cfx_load32_le(key + 28);
+    s[4]  = CFX_LOAD32_LE(key + 0);
+    s[5]  = CFX_LOAD32_LE(key + 4);
+    s[6]  = CFX_LOAD32_LE(key + 8);
+    s[7]  = CFX_LOAD32_LE(key + 12);
+    s[8]  = CFX_LOAD32_LE(key + 16);
+    s[9]  = CFX_LOAD32_LE(key + 20);
+    s[10] = CFX_LOAD32_LE(key + 24);
+    s[11] = CFX_LOAD32_LE(key + 28);
 
     s[12] = counter;                        /* 32-bit block counter */
 
-    s[13] = cfx_load32_le(nonce + 0);
-    s[14] = cfx_load32_le(nonce + 4);
-    s[15] = cfx_load32_le(nonce + 8);             /* 96-bit nonce */
+    s[13] = CFX_LOAD32_LE(nonce + 0);
+    s[14] = CFX_LOAD32_LE(nonce + 4);
+    s[15] = CFX_LOAD32_LE(nonce + 8);             /* 96-bit nonce */
 
-    for (int i = 0; i < 16; ++i) w[i] = s[i];
+    /* for (int i = 0; i < 16; ++i) w[i] = s[i]; */
+    memcpy(w, s, sizeof(w));
 
 /* Quarter Round */
 #define QR(a, b, c, d) \
@@ -38,7 +39,7 @@ void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const u
     a += b; d ^= a; d = ROTL32(d, 8); \
     c += d; b ^= c; b = ROTL32(b, 7);
 
-    for (int i = 0;i < 10; ++i){
+    for (int i = 0; i < 10; ++i){
         /* column rounds */
         QR(w[0], w[4], w[8], w[12])
         QR(w[1], w[5], w[9], w[13])
@@ -52,8 +53,12 @@ void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const u
     }
 #undef QR
 
+    #pragma unroll 16
     for (int i = 0; i < 16; ++i) w[i] += s[i];
-    for (int i = 0; i < 16; ++i) cfx_store32_le(out + 4 * i, w[i]);
+
+    #pragma unroll 16
+    for (int i = 0; i < 16; ++i) CFX_STORE32_LE(out + 4 * i, w[i]);
+
 }
 
 
@@ -75,5 +80,5 @@ void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t
         pt_len  -= take;
     }
 
-    cfx_memzero_s(ks, sizeof(ks));
+    CFX_MEMZERO_S(ks, sizeof(ks));
 }

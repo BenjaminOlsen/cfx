@@ -1,7 +1,7 @@
 #ifndef CFX_CHACHA20_H
 #define CFX_CHACHA20_H
 
-#include "cfx/numerical.h"
+#include <stdint.h>
 #include <stddef.h>
 
 #ifdef __cplusplus

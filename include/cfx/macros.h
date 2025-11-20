@@ -37,7 +37,7 @@
 #define PRINT_ARR(A, na) do { \
     printf("["); \
     for (size_t i = na; i--;) { \
-        printf(""CFX_PRIuLIMB"", A[i]); \
+        printf("" CFX_PRIuLIMB "", A[i]); \
         if (i == 0) printf("]\n"); \
         else printf(", "); \
     } \
