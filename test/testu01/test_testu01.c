@@ -111,9 +111,6 @@ static uint32_t rand_gen(void) {
     uint32_t r = (uint32_t)(rand() & 0x7FFFFFFF);
     r ^= 1;
     r ^= (uint32_t)(rand() & 0x7FFFFFFF);
-    // debug:
-    static int callcnt = 0;
-    printf("[%d] rand: 0x%x\n", ++callcnt, r);
     return r;
 }
 
