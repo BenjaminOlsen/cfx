@@ -11,6 +11,7 @@ set(EXAMPLE_NAMES
     encrypt
     primes
     fread
+    rand
     mac
     div
     pow
