@@ -103,6 +103,10 @@ static uint32_t rand_gen(void) {
     return r;
 }
 
+/* .................................................................. */
+/* Bengen */
+static uint64_t g_ben_seed = 0xa5a5a5a5a5a5a5a5;
+
 
 typedef uint32_t (*rand_fn)(void);
 typedef void (*seed_fn)(unsigned);
@@ -119,6 +123,8 @@ const rand_desc_t g_rand_gens[] = {
     {"cfx_rand",        cfx_rand_gen,       cfx_srand},
     {"cfx_splitmix32",  cfx_splitmix32,     cfx_splitmix_seed},
     {"cfx_pcg32",       cfx_pcg32,          cfx_pcg_seed},
+    {"cfx_drand48",     cfx_drand48,        cfx_drand48_seed},
+    {"cfx_minstd",      cfx_minstd,         cfx_minstd_seed},
     {"rand",            rand_gen,           srand}
 
     /* todo later:

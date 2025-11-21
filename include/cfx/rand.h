@@ -25,6 +25,12 @@ void cfx_randombytes_os(void* buf, size_t len);  /* random bytes seeded by OS RN
 cfx_limb_t cfx_xorshift64(cfx_limb_t* s);
 cfx_limb_t cfx_rand_limb(void);
 
+void cfx_drand48_seed(unsigned seed);
+uint32_t cfx_drand48(void);
+
+void cfx_minstd_seed(unsigned seed);
+uint32_t cfx_minstd(void);
+
 
 #ifdef __cplusplus
 }

@@ -68,6 +68,32 @@ void cfx_srand_os(void) {
 }
 
 /* ---------------------------------------------------------------------------------------------- */
+static uint64_t g_drand_state = 0x123456789ABCDEFULL;
+
+void cfx_drand48_seed(unsigned seed) {
+    g_drand_state = (uint64_t)seed;
+}
+
+uint32_t cfx_drand48(void) {
+    const uint64_t pow_2_48 = 281474976710656ULL;
+    g_drand_state = ((g_drand_state * 25214903917) + 11 ) % pow_2_48;
+    return (uint32_t)(g_drand_state >> 16);
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+static uint64_t g_minstd_state = 0x123456789ABCDEFULL;
+
+void cfx_minstd_seed(unsigned seed) {
+    g_minstd_state = (uint64_t)seed;
+}
+
+uint32_t cfx_minstd(void) {
+    g_minstd_state *= 16807ULL;
+    g_minstd_state %= 2147483647ULL;
+    return (uint32_t)g_minstd_state;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
 /* splitmix */
 static uint64_t splitmix64_next(uint64_t *s) {
     uint64_t z = (*s += 0x9E3779B97F4A7C15ULL);
@@ -90,7 +116,7 @@ uint32_t cfx_splitmix32(void) {
 /* ---------------------------------------------------------------------------------------------- */
 /* PCG "permuted congruential generator"
  *   ref: https://www.pcg-random.org/index.html 
-*/
+ */
 static uint64_t g_pcg_state = 0x853c49e6748fea9bull;
 
 void cfx_pcg_seed(unsigned seed) {
