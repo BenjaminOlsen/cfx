@@ -40,7 +40,7 @@ static void fill_ones(cfx_big_t* b, size_t nlimbs) {
 static void fill_rand(cfx_big_t* b, size_t nlimbs, cfx_limb_t seed) {
     ensure_cap(b, nlimbs);
     cfx_limb_t s = seed ? seed : 0x123456789abcdef0ULL;
-    for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = cfx_xorshift64(&s);
+    for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = cfx_xorshift(&s);
     if (nlimbs) b->limb[nlimbs-1] |= (1ULL << 63); /* avoid leading zeros */
     b->n = nlimbs;
 }
@@ -225,10 +225,10 @@ static void test_small_fuzz(void) {
     cfx_limb_t seed = 0xCAFEBABE12345678ULL;
 
     for (int t = 0; t < 20; ++t) {
-        size_t nb = 1 + (cfx_xorshift64(&seed) % 6);   /* 1..6 limbs */
-        size_t nm = 1 + (cfx_xorshift64(&seed) % 6);
-        fill_rand(&b, nb, cfx_xorshift64(&seed));
-        fill_rand(&m, nm, cfx_xorshift64(&seed));
+        size_t nb = 1 + (cfx_xorshift(&seed) % 6);   /* 1..6 limbs */
+        size_t nm = 1 + (cfx_xorshift(&seed) % 6);
+        fill_rand(&b, nb, cfx_xorshift(&seed));
+        fill_rand(&m, nm, cfx_xorshift(&seed));
         for (size_t i = 0; i < sizeof(threads_vec)/sizeof(threads_vec[0]); ++i) {
             int th = threads_vec[i];
             run_case("fuzz_small", &b, &m, th);

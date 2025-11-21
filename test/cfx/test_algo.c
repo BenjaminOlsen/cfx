@@ -31,13 +31,13 @@ static void test_primality_test(void) {
         cfx_limb_t p2 = cfx_primes[i+1];
         int isprime = cfx_is_prime_u64(p1);
         fpos += (1 - isprime);
-        /* CFX_PRINT_DBG("" CFX_PRIuLIMB " is prime: %d\n", p1, isprime); */
+        /* CFX_PRINT_DBG(""CFX_PRIuLIMB" is prime: %d\n", p1, isprime); */
         CFX_ASSERT(isprime == 1);
 
         for (cfx_limb_t n = p1 + 1; n < p2; ++n) {
             int iscomp = !cfx_is_prime_u64(n);
             fneg += (1 - iscomp);
-            /* CFX_PRINT_DBG("" CFX_PRIuLIMB " is prime: %d\n", n, !iscomp); */
+            /* CFX_PRINT_DBG(""CFX_PRIuLIMB" is prime: %d\n", n, !iscomp); */
             CFX_ASSERT(iscomp == 1);
         }
     }

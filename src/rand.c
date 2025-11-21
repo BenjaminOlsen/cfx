@@ -20,11 +20,47 @@ typedef struct {
 
 static cfx_rand_state_t G = {0};
 
-cfx_limb_t cfx_xorshift64(cfx_limb_t* s) {
-    cfx_limb_t x = *s;
+uint64_t cfx_xorshift64(uint64_t* s) {
+    uint64_t x = *s;
     x ^= x << 13;
     x ^= x >> 7;
     x ^= x << 17;
+    *s = x;
+    return x;
+}
+
+uint64_t cfx_xorshift64star(uint64_t *s) {
+    uint64_t x = *s;
+    x ^= x >> 12;
+    x ^= x << 25;
+    x ^= x >> 27;
+    *s = x;
+    return x * UINT64_C(2685821657736338717);
+}
+
+uint32_t cfx_xorshift32(uint32_t* s) {
+    uint32_t x = *s;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    *s = x;
+    return x;
+}
+
+
+cfx_limb_t cfx_xorshift(cfx_limb_t* s) {
+    cfx_limb_t x = *s;
+    #if (CFX_LIMB_BITS == 64)
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    #elif (CFX_LIMB_BITS == 32)
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    #else
+    /* ?? */
+    #endif
     *s = x;
     return x;
 }
@@ -68,41 +104,41 @@ void cfx_srand_os(void) {
 }
 
 /* ---------------------------------------------------------------------------------------------- */
-static uint64_t g_drand_state = 0x123456789ABCDEFULL;
+static uint64_t g_drand_state = UINT64_C(0x123456789ABCDEF);
 
 void cfx_drand48_seed(unsigned seed) {
     g_drand_state = (uint64_t)seed;
 }
 
 uint32_t cfx_drand48(void) {
-    const uint64_t pow_2_48 = 281474976710656ULL;
+    const uint64_t pow_2_48 = UINT64_C(281474976710656);
     g_drand_state = ((g_drand_state * 25214903917) + 11 ) % pow_2_48;
     return (uint32_t)(g_drand_state >> 16);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
-static uint64_t g_minstd_state = 0x123456789ABCDEFULL;
+static uint64_t g_minstd_state = UINT64_C(0x123456789ABCDEF);
 
 void cfx_minstd_seed(unsigned seed) {
     g_minstd_state = (uint64_t)seed;
 }
 
 uint32_t cfx_minstd(void) {
-    g_minstd_state *= 16807ULL;
-    g_minstd_state %= 2147483647ULL;
+    g_minstd_state *= UINT64_C(16807);
+    g_minstd_state %= UINT64_C(2147483647);
     return (uint32_t)g_minstd_state;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
 /* splitmix */
 static uint64_t splitmix64_next(uint64_t *s) {
-    uint64_t z = (*s += 0x9E3779B97F4A7C15ULL);
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    uint64_t z = (*s += UINT64_C(0x9E3779B97F4A7C15));
+    z = (z ^ (z >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
+    z = (z ^ (z >> 27)) * UINT64_C(0x94D049BB133111EB);
     return z ^ (z >> 31);
 }
 
-static uint64_t g_sm64_state = 0x123456789ABCDEFULL;
+static uint64_t g_sm64_state = UINT64_C(0x123456789ABCDEF);
 
 void cfx_splitmix_seed(unsigned seed) {   
     g_sm64_state = (uint64_t)seed;
@@ -117,16 +153,16 @@ uint32_t cfx_splitmix32(void) {
 /* PCG "permuted congruential generator"
  *   ref: https://www.pcg-random.org/index.html 
  */
-static uint64_t g_pcg_state = 0x853c49e6748fea9bull;
+static uint64_t g_pcg_state = UINT64_C(0x853c49e6748fea9b);
 
 void cfx_pcg_seed(unsigned seed) {
     g_pcg_state = (uint64_t)seed;
 }
 
 uint32_t cfx_pcg32(void) {
-    const uint64_t pcg_inc = 0xda3e39cb94b95bdbull;
+    const uint64_t pcg_inc = UINT64_C(0xda3e39cb94b95bdb);
     uint64_t oldstate = g_pcg_state;
-    g_pcg_state = oldstate * 6364136223846793005ULL + (pcg_inc | 1);
+    g_pcg_state = oldstate * UINT64_C(6364136223846793005) + (pcg_inc | 1);
     uint32_t xorshifted = (uint32_t)(((oldstate >> 18u) ^ oldstate) >> 27u);
     uint32_t rot = oldstate >> 59u;
     return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
