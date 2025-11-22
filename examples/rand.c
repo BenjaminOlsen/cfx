@@ -1,6 +1,7 @@
 #include "../test/testu01/rand_gen.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
