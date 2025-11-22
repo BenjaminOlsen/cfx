@@ -102,7 +102,7 @@ void cfx_srand_os(void) {
     G.counter = 0;
     for (int i = 0; i < 8; ++i) G.counter |= (uint64_t)tmp[44 + i] << (8*i);
     cfx_memzero_s(tmp, sizeof(tmp));
-    G.idx = 64; /* force refill on first use */
+    G.idx = 64;  /* force refill on first use */
     G.seeded = 1;
 }
 
@@ -119,11 +119,11 @@ cfx_limb_t cfx_rand_limb(void) {
 /* ---------------------------------------------------------------------------------------------- */
 uint32_t g_lcg_seed = 0x126;
 
-void cfx_lcg_seed(unsigned seed) {
+void cfx_lcg_seed(uint32_t seed) {
     g_lcg_seed = seed;
 }
 
-uint32_t cfx_lcg_gen(void) {
+uint32_t cfx_lcg_gen32(void) {
     return cfx_lcg(&g_lcg_seed);
 }
 
@@ -152,12 +152,12 @@ void cfx_lcg_bytes(uint32_t seed, uint8_t *data, size_t len) {
 static uint8_t g_poly1305_key[32];
 static uint64_t g_poly1305_counter = 0;
 
-void cfx_poly1305_seed(unsigned seed) {
+void cfx_poly1305_seed(uint32_t seed) {
     cfx_lcg_bytes(seed, g_poly1305_key, sizeof g_poly1305_key);
     g_poly1305_counter = 0;
 }
 
-uint32_t cfx_poly1305_gen(void) {
+uint32_t cfx_poly1305_gen32(void) {
     uint8_t tag[16];
     uint8_t msg[8];
 
@@ -191,7 +191,7 @@ void cfx_chacha20_seed(uint32_t seed) {
     g_chacha20_counter = 0;
 }
 
-uint32_t cfx_chacha20_gen(void) {
+uint32_t cfx_chacha20_gen32(void) {
     static uint8_t buf[64];
     static size_t idx = 64;  /* force initial refill */
 
@@ -214,11 +214,11 @@ uint32_t cfx_chacha20_gen(void) {
 /* xorshift */
 static uint32_t g_xorshift32_seed = 0x01;
 
-void cfx_xorshift32_seed(unsigned seed) {
+void cfx_xorshift32_seed(uint32_t seed) {
     g_xorshift32_seed = seed;
 }
 
-uint32_t cfx_xorshift32_gen(void) {
+uint32_t cfx_xorshift32_gen32(void) {
     return cfx_xorshift32(&g_xorshift32_seed);
 }
 
@@ -231,18 +231,18 @@ uint32_t cfx_xorshift32(uint32_t* s) {
     return x;
 }
 
-static uint32_t g_xorshift32_star_seed = 0x078;
+static uint32_t g_xorshift32star_seed = 0x078;
 
 
-void cfx_xorshift32_star_seed(unsigned seed) {
-    g_xorshift32_star_seed = seed;
+void cfx_xorshift32star_seed(uint32_t seed) {
+    g_xorshift32star_seed = seed;
 }
 
-uint32_t cfx_xorshift32_star_gen(void) {
-    return cfx_xorshift32_star(&g_xorshift32_star_seed);
+uint32_t cfx_xorshift32star_gen32(void) {
+    return cfx_xorshift32star(&g_xorshift32star_seed);
 }
 
-uint32_t cfx_xorshift32_star(uint32_t* s) {
+uint32_t cfx_xorshift32star(uint32_t* s) {
     uint32_t x = *s;
     /* xorshift32 (13,17,5) */
     x ^= x << 13;
@@ -255,11 +255,11 @@ uint32_t cfx_xorshift32_star(uint32_t* s) {
 
 static uint64_t g_xorshift64_seed = UINT64_C(0x057);
 
-void cfx_xorshift64_seed(unsigned seed) {
+void cfx_xorshift64_seed(uint32_t seed) {
     g_xorshift64_seed = (uint64_t)seed;
 }
 
-uint32_t cfx_xorshift64_gen(void) {
+uint32_t cfx_xorshift64_gen32(void) {
     return cfx_xorshift64(&g_xorshift64_seed);
 }
 
@@ -274,15 +274,15 @@ uint64_t cfx_xorshift64(uint64_t* s) {
 
 static uint64_t g_xorshift_star_seed = UINT64_C(0x1238);
 
-void cfx_xorshift64_star_seed(unsigned seed) {
+void cfx_xorshift64star_seed(uint32_t seed) {
     g_xorshift_star_seed = (uint64_t)seed;
 }
 
-uint32_t cfx_xorshift64_star_gen(void) {
-    return (uint32_t)cfx_xorshift64_star(&g_xorshift_star_seed);
+uint32_t cfx_xorshift64star_gen32(void) {
+    return (uint32_t)cfx_xorshift64star(&g_xorshift_star_seed);
 }
 
-uint64_t cfx_xorshift64_star(uint64_t* s) {
+uint64_t cfx_xorshift64star(uint64_t* s) {
     uint64_t x = *s;
     x ^= x >> 12;
     x ^= x << 25;
@@ -294,11 +294,11 @@ uint64_t cfx_xorshift64_star(uint64_t* s) {
 
 static cfx_limb_t g_xorshift_state = (cfx_limb_t)0xABC;
 
-void cfx_xorshift_seed(unsigned seed) {
+void cfx_xorshift_seed(uint32_t seed) {
     g_xorshift_state = (cfx_limb_t)seed;
 }
 
-cfx_limb_t cfx_xorshift_gen(void) {
+cfx_limb_t cfx_xorshift_gen32(void) {
     return cfx_xorshift(&g_xorshift_state);
 }
 
@@ -324,11 +324,11 @@ cfx_limb_t cfx_xorshift(cfx_limb_t* s) {
 /* ---------------------------------------------------------------------------------------------- */
 static uint64_t g_drand_state = UINT64_C(0x123456789ABCDEF);
 
-void cfx_drand48_seed(unsigned seed) {
+void cfx_drand48_seed(uint32_t seed) {
     g_drand_state = (uint64_t)seed;
 }
 
-uint32_t cfx_drand48_gen(void) {
+uint32_t cfx_drand48_gen32(void) {
     return cfx_drand48(&g_drand_state);
 }
 
@@ -341,11 +341,11 @@ uint32_t cfx_drand48(uint64_t* s) {
 /* ---------------------------------------------------------------------------------------------- */
 static uint64_t g_minstd_state = UINT64_C(0x123456789ABCDEF);
 
-void cfx_minstd_seed(unsigned seed) {
+void cfx_minstd_seed(uint32_t seed) {
     g_minstd_state = (uint64_t)seed;
 }
 
-uint32_t cfx_minstd_gen(void) {
+uint32_t cfx_minstd_gen32(void) {
     return cfx_minstd(&g_minstd_state);
 }
 
@@ -361,11 +361,11 @@ uint32_t cfx_minstd(uint64_t* s) {
 
 static uint32_t g_splitmix32_seed = 0x12678u;
 
-void cfx_splitmix32_seed(unsigned seed) {
+void cfx_splitmix32_seed(uint32_t seed) {
     g_splitmix32_seed = seed;
 }
 
-uint32_t cfx_splitmix32_gen(void) {
+uint32_t cfx_splitmix32_gen32(void) {
     return cfx_splitmix32(&g_splitmix32_seed);
 }
 
@@ -381,11 +381,11 @@ uint32_t cfx_splitmix32(uint32_t *s) {
 
 static uint64_t g_sm64_state = UINT64_C(0x123456789ABCDEF);
 
-void cfx_splitmix64_seed(unsigned seed) {
+void cfx_splitmix64_seed(uint32_t seed) {
     g_sm64_state = (uint64_t)seed;
 }
 
-uint32_t cfx_splitmix64_gen(void) {
+uint32_t cfx_splitmix64_gen32(void) {
     return (uint32_t)cfx_splitmix64(&g_sm64_state);
 }
 
@@ -397,15 +397,15 @@ uint64_t cfx_splitmix64(uint64_t *s) {
 }
 
 /* ---------------------------------------------------------------------------------------------- */
-/* PCG "permuted congruential generator"
- *   ref: https://www.pcg-random.org/index.html
- */
+/** PCG "permuted congruential generator"
+ *  ref: https://www.pcg-random.org/index.html
+ **/
 static uint64_t g_pcg_state = UINT64_C(0x853c49e6748fea9b);
 
-void cfx_pcg32_seed(unsigned seed) {
+void cfx_pcg32_seed(uint32_t seed) {
     g_pcg_state = (uint64_t)seed;
 }
-uint32_t cfx_pcg32_gen(void) {
+uint32_t cfx_pcg32_gen32(void) {
     return cfx_pcg32(&g_pcg_state);
 }
 
@@ -417,3 +417,192 @@ uint32_t cfx_pcg32(uint64_t* s) {
     uint32_t rot = oldstate >> 59u;
     return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
 }
+
+/* ---------------------------------------------------------------------------------------------- */
+/* xoroshiro family */
+static inline uint64_t rotl64(const uint64_t x, int k) {
+    return (x << k) | (x >> (64 - k));
+}
+
+static inline uint32_t rotl32(uint32_t x, int k) {
+    return (x << k) | (x >> (32 - k));
+}
+
+static void seed2_32(uint32_t s[2], uint32_t seed) {
+    uint32_t x = seed ? seed : 0x1u;   /* avoid trivial zero */
+    s[0] = cfx_splitmix32(&x);
+    s[1] = cfx_splitmix32(&x);
+    if (s[0] == 0u && s[1] == 0u) {
+        s[0] = 1u;  /* ensure nonzero state */
+    }
+}
+
+static void seed2_64(uint64_t s[2], uint32_t seed) {
+    uint64_t x = seed ? (uint64_t)seed : UINT64_C(0x1);   /* avoid trivial zero */
+    s[0] = cfx_splitmix64(&x);
+    s[1] = cfx_splitmix64(&x);
+    if (s[0] == 0 && s[1] == 0) {
+        s[0] = UINT64_C(1);  /* ensure nonzero state */
+    }
+}
+
+static void seed4_64(uint64_t s[4], uint32_t seed) {
+    uint64_t x = seed ? (uint64_t)seed : UINT64_C(0x1);   /* avoid trivial zero */
+    s[0] = cfx_splitmix64(&x);
+    s[1] = cfx_splitmix64(&x);
+    s[2] = cfx_splitmix64(&x);
+    s[3] = cfx_splitmix64(&x);
+    if (!s[0] && !s[1] && !s[2] && !s[3]) {
+        s[0] = UINT64_C(1);  /* ensure nonzero state */
+    }
+}
+
+
+/* ................................. */
+static uint32_t g_xoroshiro64star_state[2];
+
+void cfx_xoroshiro64star_seed(uint32_t seed) {
+    seed2_32(g_xoroshiro64star_state, seed);
+}
+
+uint32_t cfx_xoroshiro64star_gen32(void) {
+    return cfx_xoroshiro64star(g_xoroshiro64star_state);
+}
+
+uint32_t cfx_xoroshiro64star(uint32_t s[2]) {
+    const uint32_t s0 = s[0];
+    uint32_t       s1 = s[1];
+
+    const uint32_t result = s0 * 0x9E3779BBu;  /* * */
+
+    s1 ^= s0;
+    s[0] = rotl32(s0, 26) ^ s1 ^ (s1 << 9);
+    s[1] = rotl32(s1, 13);
+
+    return result;
+}
+
+/* ................................. */
+static uint32_t g_xoroshiro64starstar_state[2];
+
+void cfx_xoroshiro64starstar_seed(uint32_t seed) {
+    seed2_32(g_xoroshiro64starstar_state, seed);
+}
+
+uint32_t cfx_xoroshiro64starstar_gen32(void) {
+    return cfx_xoroshiro64starstar(g_xoroshiro64starstar_state);
+}
+uint32_t cfx_xoroshiro64starstar(uint32_t s[2]) {
+    const uint32_t s0 = s[0];
+    uint32_t       s1 = s[1];
+
+    /* output function: ** */
+    const uint32_t result = rotl32(s0 * 0x9E3779BBu, 5) * 5u;
+
+    /* state transition */
+    s1 ^= s0;
+    s[0] = rotl32(s0, 26) ^ s1 ^ (s1 << 9);
+    s[1] = rotl32(s1, 13);
+
+    return result;
+}
+
+/* ................................. */
+static uint64_t g_xoroshiro128plus_state[2];
+
+void cfx_xoroshiro128plus_seed(uint32_t seed) {
+    seed2_64(g_xoroshiro128plus_state, seed);
+}
+
+uint32_t cfx_xoroshiro128plus_gen32(void) {
+    /* Q: better lower or higher bits? */
+    return (uint32_t)(cfx_xoroshiro128plus(g_xoroshiro128plus_state) >> 32);
+}
+
+uint64_t cfx_xoroshiro128plus(uint64_t s[2]) {
+    const uint64_t s0 = s[0];
+    uint64_t s1 = s[1];
+    const uint64_t result = s0 + s1;
+
+    s1 ^= s0;
+    s[0] = rotl64(s0, 55) ^ s1 ^ (s1 << 14); /* a, b */
+    s[1] = rotl64(s1, 36);                   /* c */
+
+    return result;
+}
+
+/* ................................. */
+static uint64_t g_xoroshiro128starstar_state[2];
+
+void cfx_xoroshiro128starstar_seed(uint32_t seed) {
+    seed2_64(g_xoroshiro128starstar_state, seed);
+}
+
+uint32_t cfx_xoroshiro128starstar_gen32(void) {
+    return (uint32_t)(cfx_xoroshiro128starstar(g_xoroshiro128starstar_state) >> 32);
+}
+
+uint64_t cfx_xoroshiro128starstar(uint64_t s[2]) {
+    const uint64_t s0 = s[0];
+    uint64_t s1 = s[1];
+    const uint64_t result = rotl64(s0 * 5, 7) * 9;
+
+    s1 ^= s0;
+    s[0] = rotl64(s0, 55) ^ s1 ^ (s1 << 14);
+    s[1] = rotl64(s1, 36);
+
+    return result;
+}
+
+/* ................................. */
+static uint64_t g_xoshiro256plus_state[4];
+
+void cfx_xoshiro256plus_seed(uint32_t seed) {
+    seed4_64(g_xoshiro256plus_state, seed);
+}
+
+uint32_t cfx_xoshiro256plus_gen32(void) {
+    return (uint32_t)(cfx_xoshiro256plus(g_xoshiro256plus_state) >> 32);
+}
+
+uint64_t cfx_xoshiro256plus(uint64_t s[4]) {
+    const uint64_t result = s[0] + s[3];
+    const uint64_t t = s[1] << 17;
+
+    s[2] ^= s[0];
+    s[3] ^= s[1];
+    s[1] ^= s[2];
+    s[0] ^= s[3];
+    s[2] ^= t;
+    s[3] = rotl64(s[3], 45);
+
+    return result;
+}
+
+/* ................................. */
+static uint64_t g_xoshiro256starstar[4];
+
+void cfx_xoshiro256starstar_seed(uint32_t seed) {
+    seed4_64(g_xoshiro256starstar, seed);
+}
+
+uint32_t cfx_xoshiro256starstar_gen32(void) {
+    return (uint32_t)(cfx_xoshiro256starstar(g_xoshiro256starstar) >> 32);
+}
+
+uint64_t cfx_xoshiro256starstar(uint64_t s[4]) {
+    const uint64_t result = rotl64(s[1] * 5, 7) * 9;
+    const uint64_t t = s[1] << 17;
+
+    s[2] ^= s[0];
+    s[3] ^= s[1];
+    s[1] ^= s[2];
+    s[0] ^= s[3];
+
+    s[2] ^= t;
+    s[3] = rotl64(s[3], 45);
+
+    return result;
+}
+
+

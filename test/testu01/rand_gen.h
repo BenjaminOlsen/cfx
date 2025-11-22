@@ -12,7 +12,7 @@
 /* .................................................................. */
 /* for testing's sake: c std library rand */
 /* seed with srand (stdlib.h) */
-static uint32_t rand_gen(void) {
+static uint32_t rand_gen32(void) {
     uint32_t r = (uint32_t)(rand() & 0x7FFFFFFF);
     r ^= 1;
     r ^= (uint32_t)(rand() & 0x7FFFFFFF);
@@ -29,27 +29,28 @@ typedef struct {
     seed_fn     sfn;        /* fn to pass in the seed*/
 } rand_desc_t;
 
-const rand_desc_t g_rand_gens[] = {
-    {"cfx_rand",                cfx_urand,                  cfx_srand},
-    {"cfx_chacha20",            cfx_chacha20_gen,           cfx_chacha20_seed},
-    {"cfx_poly1305",            cfx_poly1305_gen,           cfx_poly1305_seed},
-    {"cfx_splitmix32",          cfx_splitmix32_gen,         cfx_splitmix32_seed},
-    {"cfx_splitmix64",          cfx_splitmix64_gen,         cfx_splitmix64_seed},
-    {"cfx_xorshift64",          cfx_xorshift64_gen,         cfx_xorshift64_seed},
-    {"cfx_xorshift64_star",     cfx_xorshift64_star_gen,    cfx_xorshift64_seed},
-    {"cfx_xorshift32",          cfx_xorshift32_gen,         cfx_xorshift32_seed},
-    {"cfx_xorshift32_star",     cfx_xorshift32_star_gen,    cfx_xorshift32_star_seed},
-    {"cfx_splitmix32",          cfx_splitmix32_gen,         cfx_splitmix32_seed},
-    {"cfx_splitmix64",          cfx_splitmix64_gen,         cfx_splitmix64_seed},
-    {"cfx_pcg32",               cfx_pcg32_gen,              cfx_pcg32_seed},
-    {"cfx_drand48",             cfx_drand48_gen,            cfx_drand48_seed},
-    {"cfx_minstd",              cfx_minstd_gen,             cfx_minstd_seed},
-    {"rand",                    rand_gen,                   srand}
+#define RNG_ENTRY(ID) { "cfx_" #ID, cfx_##ID##_gen32, cfx_##ID##_seed }
 
-    /* todo later:
-       { "cfx_xoshiro256ss", "--xoshiro256ss", cfx_xoshiro256ss_32 },
-       ...
-    */
+const rand_desc_t g_rand_gens[] = {
+    RNG_ENTRY(chacha20),
+    RNG_ENTRY(poly1305),
+    RNG_ENTRY(xorshift64),
+    RNG_ENTRY(xorshift64star),
+    RNG_ENTRY(xorshift32),
+    RNG_ENTRY(xorshift32star),
+    RNG_ENTRY(splitmix32),
+    RNG_ENTRY(splitmix64),
+    RNG_ENTRY(pcg32),
+    RNG_ENTRY(drand48),
+    RNG_ENTRY(minstd),
+    RNG_ENTRY(xoroshiro64star),
+    RNG_ENTRY(xoroshiro64starstar),
+    RNG_ENTRY(xoroshiro128plus),
+    RNG_ENTRY(xoroshiro128starstar),
+    RNG_ENTRY(xoshiro256plus),
+    RNG_ENTRY(xoshiro256starstar),
+    {"cfx_rand",    cfx_urand,  cfx_srand},
+    {"rand",        rand_gen32, srand}
 };
 
 static const size_t g_rand_gen_cnt = sizeof(g_rand_gens) / sizeof(g_rand_gens[0]);
