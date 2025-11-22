@@ -5,9 +5,10 @@
 #include <time.h>
 
 static void usage(const char* prog) {
-    fprintf(stderr, 
+    fprintf(stderr,
         "Usage: %s --seed=<seed|0x...> --rng=<generator name>\n"
         "  --seed=N       Use integer N to derive key/nonce (default: 0xC0FFEE)\n"
+        "  --n=<integer>  Produce n bytes (default 4)\n"
         "  --rng=name     Select RNG (default: %s)\n"
         "                 Available RNGs:\n",
         prog,
@@ -24,7 +25,7 @@ int main(int argc, char** argv) {
     clock_gettime(CLOCK_REALTIME, &res);
     long ns = res.tv_nsec;
     uint32_t seed = (uint32_t)ns;
-
+    size_t n = 4;
     const char* prog = argv[0];
 
     const rand_desc_t* rand_gen = &g_rand_gens[0]; /* default */
@@ -57,6 +58,8 @@ int main(int argc, char** argv) {
         } else if ((strcmp(arg, "--help") == 0) || (strcmp(arg, "-h") == 0)) {
             usage(prog);
             return EXIT_FAILURE;
+        } else if ((strncmp(arg, "--n=", 4) == 0)) {
+            n = strtoull(arg+4, NULL, 0);
         } else {
             fprintf(stderr, "Unknown option: %s\n\n", arg);
             usage(prog);
@@ -67,7 +70,25 @@ int main(int argc, char** argv) {
     printf("selected gen: %s: seed = 0x%08x\n\n.........\n", rand_gen->name, seed);
 
     rand_gen->sfn(seed);
-    uint32_t v = rand_gen->fn();
-    printf("0x%x\n", v);
+    uint8_t* bytes = (uint8_t*)malloc(n);
+    if (bytes) {
+        size_t i = 0;
+        while (i < n) {
+            uint32_t v = rand_gen->fn();
+            for (size_t vn = 0; vn < sizeof(v) && (i < n); vn++) {
+                bytes[i] = v & 0xFF;
+                v >>= 8;
+                ++i;
+            }
+        }
+    } else {
+        return EXIT_FAILURE;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        printf("%02x", bytes[i]);
+    }
+    printf("\n");
+    free(bytes);
     return EXIT_SUCCESS;
 }
