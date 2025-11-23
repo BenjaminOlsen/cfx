@@ -12,6 +12,8 @@
 #define __FILENAME__ \
     (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
+static inline void ignore_args(const void *x, ...) { (void)x; }
+
 #ifdef CFX_DEBUG
 #define CFX_PRINT_DBG(fmt, ...) \
     do { \
@@ -19,7 +21,7 @@
         __FILENAME__, __LINE__, __func__, ##__VA_ARGS__); \
     } while(0)
 #else
-#define CFX_PRINT_DBG(...) do {} while(0)
+#define CFX_PRINT_DBG(...) do { ignore_args(NULL, ##__VA_ARGS__); } while(0)
 #endif
 
 #define CFX_PRINT_ERR(fmt, ...) do {                                                \
@@ -76,7 +78,7 @@ do { \
 #ifdef CFX_DEBUG
   #define PRINT_DBG(...) printf(__VA_ARGS__)
 #else
-  #define PRINT_DBG(...) ((void)0)
+  #define PRINT_DBG(...) do { ignore_args(NULL, ##__VA_ARGS__); } while(0)
 #endif
 
 #define CFX_ASSERT(expr) do {           \

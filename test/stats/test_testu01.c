@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "rand_gen.h"
+#include "cfx/rand.h"
 
 /* TestU01 includes */
 #pragma GCC diagnostic push
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
     uint32_t seed = 0x00C0FFEEu;
     const char* prog = argv[0];
 
-    const rand_desc_t *selected_gen = &g_rand_gens[0]; /* default */
+    const cfx_rand_desc_t *selected_gen = &g_rand_gens[0]; /* default */
     for (int i = 1; i < argc; i++) {
         const char* arg = argv[i];
 

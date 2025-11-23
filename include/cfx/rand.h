@@ -56,7 +56,7 @@ uint32_t    cfx_xorshift64star_gen32(void);
 uint64_t    cfx_xorshift64star(uint64_t* s);
 
 void        cfx_xorshift_seed(uint32_t seed);
-uint32_t cfx_xorshift_gen32(void);
+uint32_t    cfx_xorshift_gen32(void);
 cfx_limb_t  cfx_xorshift(cfx_limb_t* s);
 
 /* ------- splitmix ------- */
@@ -107,6 +107,18 @@ void        cfx_xoshiro256starstar_seed(uint32_t seed);
 uint32_t    cfx_xoshiro256starstar_gen32(void);
 uint64_t    cfx_xoshiro256starstar(uint64_t s[4]);
 
+/* ---------------------------------------------------------------------------------------------- */
+typedef uint32_t (*cfx_rand_fn)(void);
+typedef void (*cfx_seed_fn)(uint32_t);
+
+typedef struct {
+    const char*     name;           /* name passed to TestU01 */
+    cfx_rand_fn     gen32;          /* RNG function */
+    cfx_seed_fn     seed;           /* fn to pass in the seed*/
+} cfx_rand_desc_t;
+
+extern const cfx_rand_desc_t g_rand_gens[];
+extern const size_t g_rand_gen_cnt;
 
 #ifdef __cplusplus
 }

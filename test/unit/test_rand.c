@@ -7,11 +7,12 @@
 
 #include "cfx/macros.h"
 #include "cfx/rand.h"
-#include "../stats/rand_gen.h"   /* for rand_desc_t and g_rand_gens[] */
 
-static void test_rng_reproducible(const rand_desc_t *rng) {
+#define N 16
+
+static void test_rng_reproducible(const cfx_rand_desc_t *rng) {
     const uint32_t SEED = 0x12345678u;
-    size_t   N    = 16;
+
     uint32_t seq1[N];
     uint32_t seq2[N];
 
@@ -29,8 +30,8 @@ static void test_rng_reproducible(const rand_desc_t *rng) {
 }
 
 /* Very weak, but catches “seed is ignored” type bugs */
-static void test_rng_different_seeds_differ(const rand_desc_t* rng) {
-    const size_t N = 16;
+static void test_rng_different_seeds_differ(const cfx_rand_desc_t* rng) {
+
     uint32_t seq1[N];
     uint32_t seq2[N];
 
@@ -54,10 +55,10 @@ static void test_rng_different_seeds_differ(const rand_desc_t* rng) {
 }
 
 static void run_all_table_rng_tests(void) {
-    const size_t count = sizeof g_rand_gens / sizeof g_rand_gens[0];
+    const size_t count = sizeof g_rand_gen_cnt;
 
     for (size_t i = 0; i < count; ++i) {
-        const rand_desc_t* rng = &g_rand_gens[i];
+        const cfx_rand_desc_t* rng = &g_rand_gens[i];
         printf("Testing RNG: %s\n", rng->name);
 
         test_rng_reproducible(rng);
@@ -81,6 +82,7 @@ static void test_rng_state_advance(void) {
 
 int main(void) {
     CFX_TEST(run_all_table_rng_tests);
+    CFX_TEST(test_rng_state_advance);
     return 0;
 }
 

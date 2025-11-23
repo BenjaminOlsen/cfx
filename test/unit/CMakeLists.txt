@@ -17,4 +17,9 @@ foreach(test_name IN LISTS CFX_UNIT_TESTS)
     target_link_libraries(${test_name} PRIVATE cfx::cfx)
     add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
     message(STATUS "added unit test '${test_name}'")
+    target_compile_options(${test_name} PRIVATE
+        ${CFX_CFLAGS}
+        ${CFX_SILENCED}
+        -Wno-missing-prototypes
+    )
 endforeach()

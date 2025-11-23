@@ -1,4 +1,5 @@
-#include "../test/stats/rand_gen.h"
+
+#include "cfx/rand.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +30,7 @@ int main(int argc, char** argv) {
     size_t n = 4;
     const char* prog = argv[0];
 
-    const rand_desc_t* rand_gen = &g_rand_gens[0]; /* default */
+    const cfx_rand_desc_t* rand_gen = &g_rand_gens[0]; /* default */
     for (int i = 1; i < argc; i++) {
         const char* arg = argv[i];
 

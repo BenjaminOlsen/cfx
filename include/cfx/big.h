@@ -259,9 +259,9 @@ double cfx_big_log(const cfx_big_t* b, double base);
  * */
 #define CFX_BIG_PRINTF(b, fmt, ...) \
 do {\
-    char *s = cfx_big_to_str(b, NULL); \
-    CFX_PRINT_DBG(fmt "%s\n", ##__VA_ARGS__, s); \
-    free(s); \
+    char *_cfx_big_printf_var = cfx_big_to_str(b, NULL); \
+    CFX_PRINT_DBG(fmt "%s\n", ##__VA_ARGS__, _cfx_big_printf_var); \
+    free(_cfx_big_printf_var); \
 } while (0)
 
 #ifdef __cplusplus

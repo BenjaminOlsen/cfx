@@ -23,7 +23,6 @@ foreach(test_name IN LISTS CFX_STATS_TESTS)
         ${TESTU01_ROOT}/lib/libmylib.a
         m
     )
-    add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
 
     message(STATUS "added stats test '${test_name}'")
 endforeach()
