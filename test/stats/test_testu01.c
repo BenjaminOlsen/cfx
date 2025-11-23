@@ -7,8 +7,11 @@
 #include "rand_gen.h"
 
 /* TestU01 includes */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmacro-redefined"
 #include "unif01.h"
 #include "bbattery.h"
+#pragma GCC diagnostic pop
 
 
 
@@ -89,9 +92,9 @@ int main(int argc, char **argv) {
     printf("selected gen: %s: seed = 0x%016llX\n", selected_gen->name,
            (unsigned long long)seed);
 
-    selected_gen->sfn(seed);
+    selected_gen->seed(seed);
     /* Wrap our 32-bit generator for TestU01 */
-    unif01_Gen* gen = unif01_CreateExternGenBits((char *)selected_gen->name, selected_gen->fn);
+    unif01_Gen* gen = unif01_CreateExternGenBits((char *)selected_gen->name, selected_gen->gen32);
 
     switch (mode) {
         case MODE_SMALLCRUSH:

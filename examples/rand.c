@@ -1,4 +1,4 @@
-#include "../test/testu01/rand_gen.h"
+#include "../test/stats/rand_gen.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,12 +70,12 @@ int main(int argc, char** argv) {
 
     printf("selected gen: %s: seed = 0x%08x\n\n.........\n", rand_gen->name, seed);
 
-    rand_gen->sfn(seed);
+    rand_gen->seed(seed);
     uint8_t* bytes = (uint8_t*)malloc(n);
     if (bytes) {
         size_t i = 0;
         while (i < n) {
-            uint32_t v = rand_gen->fn();
+            uint32_t v = rand_gen->gen32();
             for (size_t vn = 0; vn < sizeof(v) && (i < n); vn++) {
                 bytes[i] = v & 0xFF;
                 v >>= 8;

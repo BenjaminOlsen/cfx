@@ -9,13 +9,12 @@ set(CFX_UNIT_TESTS
     test_poly1305
     test_chacha20
     test_mul_csa_pthreads
+    test_rand
 )
 
 foreach(test_name IN LISTS CFX_UNIT_TESTS)
     add_executable(${test_name} ${test_name}.c)
-    # set_target_properties(${test_name} PROPERTIES
-    #     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-    # )
     target_link_libraries(${test_name} PRIVATE cfx::cfx)
     add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
+    message(STATUS "added unit test '${test_name}'")
 endforeach()

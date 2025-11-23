@@ -36,6 +36,7 @@ typedef struct {
 
 void cfx_fac_print(cfx_fac_t* f);
 void cfx_fac_init(cfx_fac_t* f);
+void cfx_fac_clear(cfx_fac_t* f);
 void cfx_fac_free(cfx_fac_t* f) ;
 int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap);
 int cfx_fac_push(cfx_fac_t* f, cfx_limb_t p, cfx_limb_t e);

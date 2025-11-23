@@ -20,14 +20,13 @@ static uint32_t rand_gen32(void) {
     return r;
 }
 
-
 typedef uint32_t (*rand_fn)(void);
 typedef void (*seed_fn)(unsigned);
 
 typedef struct {
-    const char* name;       /* name passed to TestU01 */
-    rand_fn     fn;         /* RNG function */
-    seed_fn     sfn;        /* fn to pass in the seed*/
+    const char* name;           /* name passed to TestU01 */
+    rand_fn     gen32;          /* RNG function */
+    seed_fn     seed;           /* fn to pass in the seed*/
 } rand_desc_t;
 
 #define RNG_ENTRY(ID) { "cfx_" #ID, cfx_##ID##_gen32, cfx_##ID##_seed }

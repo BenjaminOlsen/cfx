@@ -40,11 +40,14 @@ set(CFX_SOURCES
 )
 
 add_library(cfx ${CFX_SOURCES})
+
+set_property(TARGET cfx PROPERTY C_STANDARD 99)
+set_property(TARGET cfx PROPERTY C_STANDARD_REQUIRED ON)
+set_property(TARGET cfx PROPERTY C_EXTENSIONS OFF)
+
 if(CFX_BUILD_SHARED)
-  set_target_properties(cfx PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-    WINDOWS_EXPORT_ALL_SYMBOLS ON
-  )
+  set_property(TARGET cfx PROPERTY POSITION_INDEPENDENT_CODE ON)
+  set_property(TARGET cfx PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
 target_include_directories(cfx

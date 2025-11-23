@@ -22,10 +22,10 @@
 #define CFX_PRINT_DBG(...) do {} while(0)
 #endif
 
-#define CFX_PRINT_ERR(fmt, ...) do {                       \
-    char buf[128];                                               \
-    snprintf(buf, sizeof(buf), fmt, ##__VA_ARGS__);              \
-    fprintf(stderr, "[%s] - %s\n", __func__, buf);               \
+#define CFX_PRINT_ERR(fmt, ...) do {                                                \
+    char _cfx_print_err_buf[128];                                                   \
+    snprintf(_cfx_print_err_buf, sizeof(_cfx_print_err_buf), fmt, ##__VA_ARGS__);   \
+    fprintf(stderr, "[%s] - %s\n", __func__, _cfx_print_err_buf);                   \
 } while (0)
 
 

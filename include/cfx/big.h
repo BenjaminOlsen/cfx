@@ -120,6 +120,8 @@ int cfx_big_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* m);
 /* returns b % m */
 cfx_limb_t cfx_big_mod_sm(const cfx_big_t* b, cfx_limb_t m);
 
+/* TODO: factor big into fac */
+int cfx_fac_from_big(cfx_fac_t* fac, const cfx_big_t* in);
 
 /* Bitshift operations */
 /* b >>= s */
@@ -244,9 +246,10 @@ static inline int cfx_big_mont_sqr(cfx_big_t* out, const cfx_big_t* aR, const cf
 }
 
 
-/* Ergonomic one liners that use montgomery internally */
-int cfx_big_sqr_mod (cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* n);
-int cfx_big_modexp  (cfx_big_t* out, const cfx_big_t* base, const cfx_big_t* exp, const cfx_big_t* n);
+/* one liners that use montgomery internally */
+int cfx_big_mul_mod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_t* n);
+int cfx_big_sqr_mod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* n);
+int cfx_big_modexp(cfx_big_t* out, const cfx_big_t* base, const cfx_big_t* exp, const cfx_big_t* n);
 
 double cfx_big_log(const cfx_big_t* b, double base);
 

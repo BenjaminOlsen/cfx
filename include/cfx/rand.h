@@ -56,6 +56,7 @@ uint32_t    cfx_xorshift64star_gen32(void);
 uint64_t    cfx_xorshift64star(uint64_t* s);
 
 void        cfx_xorshift_seed(uint32_t seed);
+uint32_t cfx_xorshift_gen32(void);
 cfx_limb_t  cfx_xorshift(cfx_limb_t* s);
 
 /* ------- splitmix ------- */

@@ -474,7 +474,7 @@ void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, con
     cfx_big_free(&acc);
 }
 
-int cfx_big_is_even(const cfx_big_t* n) {
+static int cfx_big_is_even(const cfx_big_t* n) {
     return ((n->n >=1) && !(n->limb[0] & 0x1));
 }
 

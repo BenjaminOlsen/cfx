@@ -298,7 +298,7 @@ void cfx_xorshift_seed(uint32_t seed) {
     g_xorshift_state = (cfx_limb_t)seed;
 }
 
-cfx_limb_t cfx_xorshift_gen32(void) {
+uint32_t cfx_xorshift_gen32(void) {
     return cfx_xorshift(&g_xorshift_state);
 }
 
