@@ -13,7 +13,7 @@ extern "C" {
 #include "cfx/error.h"
 #include "cfx/macros.h"
 #include "cfx/primes.h"
-#include "cfx/numerical.h"
+#include "cfx/types.h"
 #include "cfx/vector.h"
 #include "cfx/version.h"
 

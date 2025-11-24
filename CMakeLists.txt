@@ -24,7 +24,7 @@ set(CFX_HEADERS
     include/cfx/version.h
     include/cfx/poly1305.h
     include/cfx/chacha20.h
-    include/cfx/numerical.h
+    include/cfx/types.h
 )
 
 set(CFX_SOURCES

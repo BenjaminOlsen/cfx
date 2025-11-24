@@ -1,7 +1,7 @@
 #ifndef CFX_POLY1305_H
 #define CFX_POLY1305_H
 
-#include "cfx/numerical.h"
+#include "cfx/types.h"
 #include <stddef.h>
 
 #ifdef __cplusplus

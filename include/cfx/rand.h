@@ -1,7 +1,7 @@
 #ifndef CFX_RAND_H
 #define CFX_RAND_H
 
-#include "cfx/numerical.h"
+#include "cfx/types.h"
 #include <stddef.h>
 
 #ifdef __cplusplus
