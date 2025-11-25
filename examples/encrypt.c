@@ -14,6 +14,7 @@ static void usage(const char* name) {
         "  -k  key as ASCII (padded/truncated to 32 bytes) OR 0x64_hex_chars\n"
         "  -c  initial 32-bit counter (default 0)\n"
         "  -n  nonce as 0x24_hex_chars (96-bit, default all zeros)\n"
+        "  -v  verbose printing\n"
         "  text: plaintext string to encrypt\n"
         "  -------\n"
         "  example: %s -k 0xe999fb0f95c3b2e2a703ea2d55565a8a2a8a725291c4ad4d614c20c31a14708e\n"
@@ -32,6 +33,7 @@ int main(int argc, char** argv) {
     const char* nonce_in = NULL;
     const char* pt       = NULL;
     uint32_t counter     = 0;
+    int verbose = 0;
 
     #define CHECK_ARG(i) if (i >= argc) { usage(argv[0]); return EXIT_FAILURE; }
 
@@ -51,6 +53,8 @@ int main(int argc, char** argv) {
             ++i;
             CHECK_ARG(i);
             nonce_in = argv[i];
+        } else if (strcmp(argv[i], "-v") == 0) {
+            verbose = 1;
         } else if (argv[i][0] == '-' ) {
             /* unknown flag */
             usage(argv[0]); return EXIT_FAILURE;
@@ -66,7 +70,7 @@ int main(int argc, char** argv) {
     }
     const char default_key[] = "1234567890";
     if (!key_in) {
-        fprintf(stderr, "using default key\n");
+        if (verbose) fprintf(stderr, "using default key\n");
         key_in = default_key;
     }
 
@@ -85,11 +89,13 @@ int main(int argc, char** argv) {
         }
     }
 
-    fprintf(stderr, "key: ");
-    for (size_t i = 0; i < sizeof key; ++i) {
-        fprintf(stderr, "%02x ", key[i]);
+    if (verbose) {
+        fprintf(stderr, "key: ");
+        for (size_t i = 0; i < sizeof key; ++i) {
+            fprintf(stderr, "%02x ", key[i]);
+        }
+        fprintf(stderr, "\n");
     }
-    fprintf(stderr, "\n");
 
     uint8_t nonce[12] = {0};
     if (nonce_in) {
@@ -105,7 +111,7 @@ int main(int argc, char** argv) {
 
     cfx_chacha20_encrypt(key, counter, nonce, (const uint8_t*)pt, len, ct);
 
-    printf("ciphertext (%zu bytes):\n", len);
+    if (verbose) printf("ciphertext (%zu bytes):\n", len);
     for (size_t i = 0; i < len; ++i) printf("%02x%s", ct[i], (i+1==len) ? "" : " ");
     printf("\n");
 
