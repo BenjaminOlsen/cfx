@@ -21,7 +21,7 @@ static cfx_limb_t powmod_u64(cfx_limb_t a, cfx_limb_t e, cfx_limb_t n) {
     return (cfx_limb_t)r;
 }
 
-void test_mont_ctx_rejects_even_n(void) {
+static void test_mont_ctx_rejects_even_n(void) {
     cfx_big_t n;
     cfx_big_init(&n);
     cfx_big_from_u64(&n, 100); /* even */
@@ -30,7 +30,7 @@ void test_mont_ctx_rejects_even_n(void) {
     cfx_big_free(&n);
 }
 
-void test_mont_mul_matches_scalar(void) {
+static void test_mont_mul_matches_scalar(void) {
     cfx_limb_t n64 = 0xffffffff00000001ull; /* odd */
     cfx_limb_t a64 = 0x123456789abcdef0ull % n64;
     cfx_limb_t b64 = 0x0fedcba987654321ull % n64;
@@ -75,7 +75,7 @@ void test_mont_mul_matches_scalar(void) {
     cfx_big_mont_ctx_free(&C);
 }
 
-void test_mont_modexp_matches_scalar(void) {
+static void test_mont_modexp_matches_scalar(void) {
     cfx_limb_t n64 = 0xffffffff00000001ull; /* odd */
     cfx_limb_t a64 = 0xdeadbeefcafebabeull % n64;
     cfx_limb_t e64 = 0x1d; /* 29 */
@@ -102,7 +102,7 @@ void test_mont_modexp_matches_scalar(void) {
     cfx_big_free(&r);
 }
 
-void test_mont_roundtrip_1(void) {
+static void test_mont_roundtrip_1(void) {
     cfx_big_t n;
     cfx_big_init(&n);
     cfx_big_from_u64(&n, 0xffffffff00000001ull);
@@ -129,7 +129,7 @@ void test_mont_roundtrip_1(void) {
     cfx_big_free(&a);
 }
 
-void test_mont_aliasing_safe(void) {
+static void test_mont_aliasing_safe(void) {
     /* Ensure out == a alias works */
     cfx_big_t n;
     cfx_big_init(&n);
@@ -244,7 +244,7 @@ static void big_shl_limbs_inplace(cfx_big_t* x, size_t L) {
 
 /* ---------- TESTS ---------- */
 /* e==0 => 1 mod n; 0^0 treated as 1; a==1 stays 1; (-1) squared == 1 */
-void test_modexp_binary_trivial(void) {
+static void test_modexp_binary_trivial(void) {
     srand(12345);
 
     cfx_big_t n;
@@ -298,7 +298,7 @@ void test_modexp_binary_trivial(void) {
 }
 
 /* Random cross-check vs 64-bit reference for many small odd moduli */
-void test_modexp_binary_matches_u64_ref(void) {
+static void test_modexp_binary_matches_u64_ref(void) {
     srand(777);
 
     for (int t = 0; t < 200; ++t) {
@@ -338,7 +338,7 @@ void test_modexp_binary_matches_u64_ref(void) {
 }
 
 /* Aliasing: out == a must be safe */
-void test_modexp_binary_aliasing(void) {
+static void test_modexp_binary_aliasing(void) {
     cfx_big_t n;
     cfx_big_init(&n);
     cfx_big_mont_ctx_t C;
@@ -372,7 +372,7 @@ void test_modexp_binary_aliasing(void) {
 /* Fermat check with a known 64-bit prime p = 2^61 - 1 (Mersenne prime):
    For 1 <= a < p, a^(p-1) ≡ 1 (mod p).
 */
-void test_modexp_binary_fermat_mersenne61(void) {
+static void test_modexp_binary_fermat_mersenne61(void) {
     const cfx_limb_t p = ((1ull << 61) - 1ull);
 
     cfx_big_t n;
@@ -407,7 +407,7 @@ void test_modexp_binary_fermat_mersenne61(void) {
 
 /* Exponent reduction mod (p-1): for prime p, a^e ≡ a^(e + k*(p-1)) (mod p).
    We build a two-limb exponent by adding a large multiple of (p-1). */
-void test_modexp_binary_exponent_reduction(void) {
+static void test_modexp_binary_exponent_reduction(void) {
     const cfx_limb_t p = ((1ull << 61) - 1ull);
 
     cfx_big_t n; cfx_big_mont_ctx_t C;

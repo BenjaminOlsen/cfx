@@ -312,7 +312,7 @@ static const uint8_t T_A3_11[16] = {
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
-void poly1305_rfc8439_appendix_a3_kats(void) {
+static void poly1305_rfc8439_appendix_a3_kats(void) {
     uint8_t tag[16];
 
     cfx_poly1305_mac(K_A3_1, M_A3_1, sizeof M_A3_1, tag);

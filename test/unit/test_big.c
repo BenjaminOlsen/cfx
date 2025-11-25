@@ -677,38 +677,6 @@ static void test_self_multiply_big(void) {
 }
 
 
-void test_mul(cfx_big_t* b, const cfx_big_t* m) {
-    if(cfx_big_is_zero(m)) {
-        printf("multiplying b by zero!\n");
-        cfx_big_free(b);
-        cfx_big_from_u64(b, 0);
-        return;
-    }
-    /* if (cfx_big_eq(b, m)) { */
-    /*     cfx_big_sq(b); */
-    /*     return; */
-    /* } */
-    PRINT_TEST(1);
-    
-}
-
-/* static void write_string_wrapped(const char* s, const char* fn, size_t w) { */
-/*     FILE* f = fopen(fn, "w"); */
-/*     if (!f) { */
-/*         perror("fopen"); */
-/*         return; */
-/*     } */
-/*     size_t len = strlen(s); */
-/*     for (size_t i = 0; i < len; i += w) { */
-/*         fprintf(f, "\""); */
-/*         for (size_t j = i; j < i + w && j < len; ++j) { */
-/*             fputc(s[j], f); */
-/*         } */
-/*         fprintf(f, "\"\n"); */
-/*     } */
-/*     fclose(f); */
-/* } */
-
 static void test_known_squares(void) {
     cfx_big_t b;
     cfx_big_init(&b);
@@ -1103,7 +1071,7 @@ static void assert_n_eq_qd_plus_r(const cfx_big_t* n, const cfx_big_t* q,
 
 /* ---------- tests ---------- */
 
-void test_big_div_divide_by_zero(void) {
+static void test_big_div_divide_by_zero(void) {
     cfx_big_t n, d, q, r;
     cfx_big_init(&n);
     cfx_big_init(&d);
@@ -1121,7 +1089,7 @@ void test_big_div_divide_by_zero(void) {
     cfx_big_free(&r);
 }
 
-void test_big_div_zero_dividend(void) {
+static void test_big_div_zero_dividend(void) {
     cfx_big_t n, d, q, r;
     cfx_big_init(&n);
     cfx_big_init(&d);
@@ -1141,7 +1109,7 @@ void test_big_div_zero_dividend(void) {
     cfx_big_free(&r);
 }
 
-void test_big_div_n_less_than_d(void) {
+static void test_big_div_n_less_than_d(void) {
     cfx_big_t n, d, q, r;
     cfx_big_init(&n);
     cfx_big_init(&d);
@@ -1161,7 +1129,7 @@ void test_big_div_n_less_than_d(void) {
     cfx_big_free(&r);
 }
 
-void test_big_div_equal_numbers(void) {
+static void test_big_div_equal_numbers(void) {
     cfx_big_t n, d, q, r;
     cfx_big_init(&n);
     cfx_big_init(&d);
@@ -1181,7 +1149,7 @@ void test_big_div_equal_numbers(void) {
     cfx_big_free(&r);
 }
 
-void test_big_div_single_limb_divisor_property(void) {
+static void test_big_div_single_limb_divisor_property(void) {
     cfx_big_t n, d, q, r;
     cfx_big_init(&n);
     cfx_big_init(&d);
@@ -1200,7 +1168,7 @@ void test_big_div_single_limb_divisor_property(void) {
     cfx_big_free(&r);
 }
 
-void test_big_div_multi_limb_divisor_exact_and_remainder(void) {
+static void test_big_div_multi_limb_divisor_exact_and_remainder(void) {
     /* n = a*b + r, then n / b -> q=a, rem=r */
     cfx_big_t a, b, r, n, q, rem;
     cfx_big_init(&a);
@@ -1231,7 +1199,7 @@ void test_big_div_multi_limb_divisor_exact_and_remainder(void) {
     cfx_big_free(&rem);
 }
 
-void test_big_div_in_place_eq_with_remainder(void) {
+static void test_big_div_in_place_eq_with_remainder(void) {
     /* Build n = a*b + 42, then n := n / b, rem = 42 */
     cfx_big_t a, b, n, rem, forty_two;
     cfx_big_init(&a);
@@ -1258,7 +1226,7 @@ void test_big_div_in_place_eq_with_remainder(void) {
     cfx_big_free(&forty_two);
 }
 
-void test_big_div_quotient_only_and_remainder_only(void) {
+static void test_big_div_quotient_only_and_remainder_only(void) {
     cfx_big_t a, b, n, q, r, b_minus_1;
     cfx_big_init(&a);
     cfx_big_init(&b);
@@ -1294,7 +1262,7 @@ void test_big_div_quotient_only_and_remainder_only(void) {
     cfx_big_free(&b_minus_1);
 }
 
-void test_big_div_alias_remainder_eq_src(void) {
+static void test_big_div_alias_remainder_eq_src(void) {
     CFX_ASSERT(1);
     /* TODO! */
     #if 0
@@ -1479,7 +1447,7 @@ static void expect_limb_pattern(const cfx_big_t* a, size_t n,
     if (n >= 3) CFX_ASSERT(a->limb[2] == l2);
 }
 
-void test_exp_edge_cases(void) {
+static void test_exp_edge_cases(void) {
     cfx_big_t n, p, out;
     cfx_big_init(&n); cfx_big_init(&p); cfx_big_init(&out);
 
@@ -1510,7 +1478,7 @@ void test_exp_edge_cases(void) {
     cfx_big_free(&out); cfx_big_free(&p); cfx_big_free(&n);
 }
 
-void test_exp_small_values(void) {
+static void test_exp_small_values(void) {
     cfx_big_t n, p, out;
     cfx_big_init(&n); cfx_big_init(&p); cfx_big_init(&out);
 
@@ -1535,7 +1503,7 @@ void test_exp_small_values(void) {
     cfx_big_free(&out); cfx_big_free(&p); cfx_big_free(&n);
 }
 
-void test_exp_powers_of_two_boundaries(void) {
+static void test_exp_powers_of_two_boundaries(void) {
     cfx_big_t n, p, out;
     cfx_big_init(&n); cfx_big_init(&p); cfx_big_init(&out);
 
@@ -1562,7 +1530,7 @@ void test_exp_powers_of_two_boundaries(void) {
     cfx_big_free(&out); cfx_big_free(&p); cfx_big_free(&n);
 }
 
-void test_exp_aliasing(void) {
+static void test_exp_aliasing(void) {
     cfx_big_t n, p;
     cfx_big_init(&n); cfx_big_init(&p);
 
@@ -1593,7 +1561,7 @@ void test_exp_aliasing(void) {
     cfx_big_free(&p); cfx_big_free(&n);
 }
 
-void test_exp_compare_with_naive_mul(void) {
+static void test_exp_compare_with_naive_mul(void) {
     cfx_big_t n, p, out1, out2;
     cfx_big_init(&n); cfx_big_init(&p);
     cfx_big_init(&out1); cfx_big_init(&out2);
@@ -1625,7 +1593,7 @@ void test_exp_compare_with_naive_mul(void) {
     cfx_big_free(&p); cfx_big_free(&n);
 }
 
-void test_big_prime(void) {
+static void test_big_prime(void) {
     extern const size_t cfx_primes_len;
     extern const uint32_t cfx_primes[];
     
@@ -1683,6 +1651,7 @@ int main(void) {
     CFX_TEST(test_self_multiply_big);
     CFX_TEST(test_known_squares);
     CFX_TEST(test_known_squares_2);
+
     CFX_TEST(test_mul_adduiv);
     CFX_TEST(test_big_div_divide_by_zero);
     CFX_TEST(test_big_div_zero_dividend);
