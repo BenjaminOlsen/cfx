@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "cfx/rand.h"
+#include "cfx/memory.h"
 
 /* TestU01 includes */
 #pragma GCC diagnostic push
@@ -13,7 +14,33 @@
 #include "bbattery.h"
 #pragma GCC diagnostic pop
 
+#if CFX_HAVE_OPENSSL
 
+#include <openssl/rand.h>
+
+static inline void openssl_bytes(void *buf, size_t len) {
+    RAND_bytes((unsigned char*)(buf), (int)len);
+}
+
+static inline uint32_t openssl_gen32(void) {
+    unsigned char buf[4];
+    RAND_bytes(buf, sizeof buf);
+    uint32_t v = cfx_load32_le((void*)buf);
+    return v;
+}
+
+static inline void openssl_seed(uint32_t seed) {
+    RAND_seed((void*)&seed, sizeof seed);
+}
+
+static const cfx_rand_desc_t g_openssl_desc = {
+    "openssl_rand",
+    /* gen32 = */ openssl_gen32,
+    /* seed  = */ openssl_seed,
+    /* bytes = */ openssl_bytes
+};
+
+#endif
 
 static void usage(const char *prog) {
     fprintf(stderr,
@@ -31,6 +58,8 @@ static void usage(const char *prog) {
     for (size_t i = 0; i < g_rand_gen_cnt; ++i) {
         fprintf(stderr, "                   %s\n", g_rand_gens[i].name);
     }
+    fprintf(stderr, "                   %s\n", g_openssl_desc.name);
+
 }
 
 
@@ -70,6 +99,10 @@ int main(int argc, char **argv) {
             for (size_t j = 0; j < g_rand_gen_cnt; ++j) {
                 if (strcmp(name, g_rand_gens[j].name) == 0) {
                     selected_gen = &g_rand_gens[j];
+                    found = 1;
+                    break;
+                } else if (strcmp(name, g_openssl_desc.name) == 0) {
+                    selected_gen = &g_openssl_desc;
                     found = 1;
                     break;
                 }

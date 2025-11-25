@@ -23,3 +23,16 @@ foreach(test_name IN LISTS CFX_STATS_TESTS)
 
     message(STATUS "added stats test '${test_name}'")
 endforeach()
+
+set(TESTS_USING_OPENSSL
+    test_testu01
+)
+
+foreach(test_name IN LISTS TESTS_USING_OPENSSL)
+    if (OpenSSL_FOUND)
+        message(STATUS "Enabling OpenSSL for ${test_name}")
+        target_link_libraries(${test_name} PRIVATE OpenSSL::Crypto)
+    else()
+        message(STATUS "Not using OpenSSL for ${test_name}")
+    endif()
+endforeach()

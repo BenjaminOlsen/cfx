@@ -16,8 +16,8 @@ static inline void openssl_bytes(void *buf, size_t len) {
 
 static const cfx_rand_desc_t g_openssl_desc = {
     "OpenSSL RAND_bytes",
-    /* gen32 = */ nullptr,      // or a wrapper if you want
-    /* seed  = */ nullptr,      // RAND_seed if you care
+    /* gen32 = */ nullptr,
+    /* seed  = */ nullptr,
     /* bytes = */ openssl_bytes
 };
 

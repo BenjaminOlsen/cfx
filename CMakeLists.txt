@@ -10,6 +10,12 @@ option(CFX_BUILD_SHARED "Build shared library" ON)
 option(CFX_BUILD_TESTS  "Build tests" ON)
 option(CFX_BUILD_EXAMPLES "Build examples" ON)
 
+find_package(OpenSSL QUIET)
+
+if(OpenSSL_FOUND)
+    add_compile_definitions(CFX_HAVE_OPENSSL=1)
+endif()
+
 set(CFX_HEADERS
     include/cfx/cfx.h
     include/cfx/big.h

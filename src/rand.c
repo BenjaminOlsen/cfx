@@ -58,34 +58,35 @@ const size_t g_rand_gen_cnt = sizeof(g_rand_gens) / sizeof(g_rand_gens[0]);
        DEFINE_BYTES32_FN(cfx_pcg32, cfx_pcg32_gen32)
     ---> generates void NAME##_bytes(void *buf, size_t len);
  */
-#define DEFINE_BYTES32_FN(NAME, GEN32)                                    \
+#define DEFINE_BYTES32_FN(NAME, GEN32)                                      \
 void NAME##_bytes(void *buf, size_t len)                                    \
 {                                                                           \
     uint8_t *out = (uint8_t *)buf;                                          \
+    const size_t word_size = sizeof(uint32_t);                              \
     const size_t word_align = CFX_ALIGNOF(uint32_t);                        \
                                                                             \
-    /* 1) Head: align to uint32_t alignment */                              \
+    /* align to uint32_t alignment */                                       \
     while (len > 0 && ((uintptr_t)out % word_align) != 0) {                 \
         uint32_t w = (GEN32);                                               \
         *out++ = (uint8_t)w;                                                \
         len--;                                                              \
     }                                                                       \
                                                                             \
-    /* 2) Main body: multiples of 4 bytes */                                \
-    size_t main_len = len & ~(size_t)3;                                     \
-    uint32_t *out4 = (uint32_t *)out;                                       \
+    /* multiples of word_size bytes */                                      \
+    size_t main_len = len & ~(size_t)(word_size - 1);                       \
+    uint32_t* out4 = (uint32_t *)out;                                       \
                                                                             \
-    while (main_len >= 4) {                                                 \
-        *out4++ = (GEN32);                                                 \
-        main_len -= 4;                                                      \
-        len      -= 4;                                                      \
+    while (main_len >= word_size) {                                         \
+        *out4++ = (GEN32);                                                  \
+        main_len -= word_size;                                              \
+        len      -= word_size;                                              \
     }                                                                       \
                                                                             \
     out = (uint8_t *)out4;                                                  \
                                                                             \
-    /* 3) Tail: 0..3 bytes */                                               \
+    /* remaining 1-word_size-1 bytes */                                     \
     if (len > 0) {                                                          \
-        uint32_t w = (GEN32);                                              \
+        uint32_t w = (GEN32);                                               \
         for (size_t i = 0; i < len; ++i) {                                  \
             out[i] = (uint8_t)(w >> (8 * i));                               \
         }                                                                   \
@@ -299,7 +300,7 @@ uint32_t cfx_chacha20_gen32(void) {
     return v;
 }
 
-#if 2
+#if 1
 static inline void cfx_chacha20_refill_block(uint8_t out[64]) {
     cfx_chacha20_block_rfc8439(R.key, R.counter++, R.nonce, out);
     ++R.counter;

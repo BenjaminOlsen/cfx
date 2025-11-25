@@ -6,6 +6,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* let me have my fun */
+typedef const char B;
+typedef size_t C;
+typedef const uint8_t D;
+#define E(n) for(C i=0;i<n;++i)
+#define F(x) putchar(x);
+#define G(f, c)printf(f,c);
+#define H '\n'
+#define I "%02x "
+#define K [i]
+
+static inline void p_c(B*a,C n){E(n)F(a K);F(H);}
+static inline void p_x(D*d,C n){E(n)G(I,d K);F(H);}
 
 /* ---- RFC 8439 2.3.2: Block function vector ---- */
 static const uint8_t KEY[32] = {
@@ -70,9 +83,6 @@ static int expect_eq(const char* name, const uint8_t* got, const uint8_t* exp, s
     return 0;
 }
 
-#define P_C(a,n)for(size_t i=0;i<n;++i){printf("%c",a[i]);}putchar('\n');
-#define P_X(a,n)for(size_t i=0;i<n;++i){printf("%02x ",a[i]);}putchar('\n');
-
 static void chacha20_block_kat(void) {
     uint8_t block[64];
     cfx_chacha20_block_rfc8439(KEY, COUNTER_BLOCK, NONCE_BLOCK, block);
@@ -86,10 +96,10 @@ static void chacha20_stream_kat(void) {
     cfx_chacha20_encrypt(KEY, COUNTER_STREAM, NONCE_STREAM,
                           PLAINTEXT, sizeof(PLAINTEXT), ct);
     puts("plaintext:");
-    P_C(PLAINTEXT, sizeof(PLAINTEXT));
-    P_X(PLAINTEXT, sizeof(PLAINTEXT));
+    p_c((const char*)PLAINTEXT, sizeof(PLAINTEXT));
+    p_x(PLAINTEXT, sizeof(PLAINTEXT));
     puts("cyphertext:");
-    P_X(ct, sizeof(ct));
+    p_x(ct, sizeof(ct));
     int ok = expect_eq(__func__, ct, CIPHERTEXT_EXPECT, sizeof(CIPHERTEXT_EXPECT));
 
     /* just for sanity */
@@ -97,16 +107,16 @@ static void chacha20_stream_kat(void) {
     memset(pt, 0, sizeof(pt));
     cfx_chacha20_encrypt(KEY, COUNTER_STREAM, NONCE_STREAM, ct, sizeof(PLAINTEXT), pt);
     puts("\nand back again:");
-    P_C(pt, sizeof(PLAINTEXT));
-    P_X(pt, sizeof(PLAINTEXT));
+    p_c((const char*)pt, sizeof(PLAINTEXT));
+    p_x(pt, sizeof(PLAINTEXT));
     ok &= expect_eq(__func__, pt, PLAINTEXT, sizeof(PLAINTEXT));
     CFX_ASSERT(ok);
 
-    for (uint32_t cnt = 0; cnt < 100; ++cnt) {
+    for (uint32_t cnt = 0; cnt < 10; ++cnt) {
         memset(pt, 0, sizeof(pt));
         cfx_chacha20_encrypt(KEY, cnt, NONCE_STREAM, ct, sizeof(PLAINTEXT), pt);
         printf("\ncounter=%u:\n", cnt);
-        P_X(pt, sizeof(PLAINTEXT));
+        p_x(pt, sizeof(PLAINTEXT));
     }
 }
 
@@ -115,3 +125,11 @@ int main(void) {
     CFX_TEST(chacha20_stream_kat);
     return 0;
 }
+
+
+#undef E
+#undef F
+#undef G
+#undef H
+#undef I
+#undef J
