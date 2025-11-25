@@ -1594,8 +1594,6 @@ static void test_exp_compare_with_naive_mul(void) {
 }
 
 static void test_big_prime(void) {
-    extern const size_t cfx_primes_len;
-    extern const uint32_t cfx_primes[];
     
     cfx_big_t b1, b2;
     cfx_big_init(&b1);

@@ -6,8 +6,6 @@
 
 #include <stdio.h>
 
-extern const size_t cfx_primes_len;
-extern const uint32_t cfx_primes[];
 
 static void test_prime_sieve(void) {
     uint32_t maxp = cfx_primes[cfx_primes_len-1];

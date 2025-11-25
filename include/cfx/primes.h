@@ -7,6 +7,6 @@
 #include <stddef.h>
 
 extern const uint32_t cfx_primes[];
-extern const size_t cfx_primes_sz;
+extern const size_t cfx_primes_len;
 
 #endif
