@@ -18,7 +18,8 @@ extern "C" {
   #define CFX_ALIGNOF(T) alignof(T)
 #else
   #include <stddef.h>
-  #define CFX_ALIGNOF(T) offsetof(struct { char c; T x; }, x)
+  struct offset_struct_32 {char c; uint32_t x;};
+  #define CFX_ALIGNOF(T) offsetof(struct offset_struct_32, x)
 #endif
 
 /**

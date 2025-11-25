@@ -53,12 +53,9 @@ void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const u
     }
 #undef QR
 
-    #pragma unroll 16
     for (int i = 0; i < 16; ++i) w[i] += s[i];
 
-    #pragma unroll 16
     for (int i = 0; i < 16; ++i) CFX_STORE32_LE(out + 4 * i, w[i]);
-
 }
 
 
