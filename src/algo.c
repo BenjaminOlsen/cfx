@@ -11,6 +11,10 @@
 #include <string.h>   /* memset */
 #include <assert.h>
 
+#if defined(__GNUC__) || defined(__clang__)
+#  include <alloca.h>   /* alloca on GCC/Clang for POSIX */
+#endif
+
 /* bit index i -> x = 2i + 3 */
 #define BIT_GET(A,i)  (((A)[(i)>>3] >> ((i)&7)) & 1u)
 #define BIT_SET(A,i)  ((A)[(i)>>3] |= (uint8_t)(1u << ((i)&7)))

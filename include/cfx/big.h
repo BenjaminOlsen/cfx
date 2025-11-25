@@ -257,10 +257,10 @@ double cfx_big_log(const cfx_big_t* b, double base);
  *  args: cfx_big_t * b : ptr to big
  *  fmt: format string
  * */
-#define CFX_BIG_PRINTF(b, fmt, ...) \
+#define CFX_BIG_PRINTF(b, ...) \
 do {\
     char *_cfx_big_printf_var = cfx_big_to_str(b, NULL); \
-    CFX_PRINT_DBG(fmt "%s\n", ##__VA_ARGS__, _cfx_big_printf_var); \
+    CFX_PRINT_DBG("%s\n", __VA_ARGS__, _cfx_big_printf_var); \
     free(_cfx_big_printf_var); \
 } while (0)
 

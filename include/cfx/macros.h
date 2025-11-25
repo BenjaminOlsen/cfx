@@ -15,18 +15,18 @@
 static inline void ignore_args(const void *x, ...) { (void)x; }
 
 #ifdef CFX_DEBUG
-#define CFX_PRINT_DBG(fmt, ...) \
-    do { \
-        fprintf(stderr, "[%s:%d:%s()]: " fmt, \
-        __FILENAME__, __LINE__, __func__, ##__VA_ARGS__); \
-    } while(0)
+#define CFX_PRINT_DBG( ...) \
+    do {                                                                     \
+        fprintf(stderr, "[%s:%d:%s()]: ", __FILENAME__, __LINE__, __func__); \
+        fprintf(stderr, __VA_ARGS__);                                        \
+    } while (0)
 #else
-#define CFX_PRINT_DBG(...) do { ignore_args(NULL, ##__VA_ARGS__); } while(0)
+#define CFX_PRINT_DBG(...) do { ignore_args(__VA_ARGS__); } while(0)
 #endif
 
-#define CFX_PRINT_ERR(fmt, ...) do {                                                \
+#define CFX_PRINT_ERR(...) do {                                                \
     char _cfx_print_err_buf[128];                                                   \
-    snprintf(_cfx_print_err_buf, sizeof(_cfx_print_err_buf), fmt, ##__VA_ARGS__);   \
+    snprintf(_cfx_print_err_buf, sizeof(_cfx_print_err_buf), __VA_ARGS__);   \
     fprintf(stderr, "[%s] - %s\n", __func__, _cfx_print_err_buf);                   \
 } while (0)
 
@@ -78,7 +78,7 @@ do { \
 #ifdef CFX_DEBUG
   #define PRINT_DBG(...) printf(__VA_ARGS__)
 #else
-  #define PRINT_DBG(...) do { ignore_args(NULL, ##__VA_ARGS__); } while(0)
+  #define PRINT_DBG(...) do { ignore_args(__VA_ARGS__); } while(0)
 #endif
 
 #define CFX_ASSERT(expr) do {           \

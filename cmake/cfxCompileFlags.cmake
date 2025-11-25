@@ -20,7 +20,7 @@ if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     # set(SAN_FLAGS -fsanitize=address,undefined -fno-strict-aliasing -fno-omit-frame-pointer -O1)
 
     set(CFX_SILENCED
-        -Wno-gnu-zero-variadic-macro-arguments
+        # -Wno-gnu-zero-variadic-macro-arguments
     )
 
     target_compile_options(cfx PRIVATE
