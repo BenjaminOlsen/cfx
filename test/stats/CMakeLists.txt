@@ -13,10 +13,7 @@ set(CFX_STATS_TESTS
 foreach(test_name IN LISTS CFX_STATS_TESTS)
     add_executable(${test_name} ${test_name}.c)
 
-    # if(CFX_ENABLE_TESTU01)
-    #     target_compile_definitions(${test_name} PRIVATE CFX_ENABLE_TESTU01=1)
-    # endif()
-    target_link_libraries(test_testu01 PRIVATE
+    target_link_libraries(${test_name} PRIVATE
         cfx::cfx
         ${TESTU01_ROOT}/lib/libtestu01.a
         ${TESTU01_ROOT}/lib/libprobdist.a

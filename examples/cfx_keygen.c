@@ -50,10 +50,10 @@ int main(int argc, char **argv) {
         unsigned seed = strtoull(seed_in, NULL, 0);  /* base 0: deduces base from a */;
         printf("got seed: %u\n", seed);
         cfx_srand(seed);
-        cfx_randombytes(buf, (size_t)nbytes);
+        cfx_rand_bytes(buf, (size_t)nbytes);
     } else {
         printf("using OS RNG\n");
-        cfx_randombytes_os(buf, (size_t)nbytes);
+        cfx_rand_bytes_os(buf, (size_t)nbytes);
     }
 
     for (long i = 0; i < nbytes; i++) {

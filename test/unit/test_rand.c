@@ -1,6 +1,5 @@
 /* test_rand.c */
 
-#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -18,15 +17,15 @@ static void test_rng_reproducible(const cfx_rand_desc_t *rng) {
 
     rng->seed(SEED);
     for (size_t i = 0; i < N; ++i) {
-        seq1[i] = rng->gen32();
+        seq1[i] = rng->rng32();
     }
 
     rng->seed(SEED);
     for (size_t i = 0; i < N; ++i) {
-        seq2[i] = rng->gen32();
+        seq2[i] = rng->rng32();
     }
 
-    assert(memcmp(seq1, seq2, sizeof seq1) == 0);
+    CFX_ASSERT(memcmp(seq1, seq2, sizeof seq1) == 0);
 }
 
 /* Very weak, but catches “seed is ignored” type bugs */
@@ -37,12 +36,12 @@ static void test_rng_different_seeds_differ(const cfx_rand_desc_t* rng) {
 
     rng->seed(1u);
     for (size_t i = 0; i < N; ++i) {
-        seq1[i] = rng->gen32();
+        seq1[i] = rng->rng32();
     }
 
     rng->seed(2u);
     for (size_t i = 0; i < N; ++i) {
-        seq2[i] = rng->gen32();
+        seq2[i] = rng->rng32();
     }
 
     size_t equal = 0;
@@ -51,7 +50,7 @@ static void test_rng_different_seeds_differ(const cfx_rand_desc_t* rng) {
     }
 
     /* Allow a couple of accidental collisions, but not all of them */
-    assert(equal < N);
+    CFX_ASSERT(equal < N);
 }
 
 static void run_all_table_rng_tests(void) {
@@ -74,10 +73,8 @@ static void test_rng_state_advance(void) {
     uint64_t b = cfx_splitmix64(&s);
     uint64_t c = cfx_splitmix64(&s2);
 
-    /* Advancing one step from the same seed twice should match */
-    assert(a == c);
-    /* And state must advance, so second sample differs with overwhelming prob. */
-    assert(a != b);
+    CFX_ASSERT(a == c);
+    CFX_ASSERT(a != b);
 }
 
 int main(void) {

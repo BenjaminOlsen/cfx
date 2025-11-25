@@ -13,6 +13,14 @@
 extern "C" {
 #endif
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+  #include <stdalign.h>
+  #define CFX_ALIGNOF(T) alignof(T)
+#else
+  #include <stddef.h>
+  #define CFX_ALIGNOF(T) offsetof(struct { char c; T x; }, x)
+#endif
+
 /**
  * Q: Why do i keep the CFX_ALL_CAPS macros that just call the static inline functions?
  * A: To communicate that they're just like macros - they "inflate" at the call sites.

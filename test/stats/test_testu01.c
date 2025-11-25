@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
 
     selected_gen->seed(seed);
     /* Wrap our 32-bit generator for TestU01 */
-    unif01_Gen* gen = unif01_CreateExternGenBits((char *)selected_gen->name, selected_gen->gen32);
+    unif01_Gen* gen = unif01_CreateExternGenBits((char *)selected_gen->name, selected_gen->rng32);
 
     switch (mode) {
         case MODE_SMALLCRUSH:

@@ -57,9 +57,9 @@ int main(int argc, char** argv) {
             unsigned seed = strtoull(seed_in, NULL, 0);  /* base 0: deduces base from a */;
             printf("got seed: %u\n", seed);
             cfx_srand(seed);
-            cfx_randombytes((void*)key, sizeof(key));
+            cfx_rand_bytes((void*)key, sizeof(key));
         } else {
-            cfx_randombytes_os((void*)key, sizeof(key));
+            cfx_rand_bytes_os((void*)key, sizeof(key));
         }
     } else if (strncmp(key_in, "0x", 2) == 0) {
         if (parse_hex(key_in + 2, key, sizeof(key)) != 0) {
