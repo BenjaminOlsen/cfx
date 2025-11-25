@@ -4,9 +4,11 @@
 
 #include <benchmark/benchmark.h>
 
-#include <openssl/rand.h>
-
 #include "cfx/rand.h"
+
+#if CFX_HAVE_OPENSSL
+
+#include <openssl/rand.h>
 
 static inline void openssl_bytes(void *buf, size_t len) {
     RAND_bytes(reinterpret_cast<unsigned char*>(buf), (int)len);
@@ -19,12 +21,15 @@ static const cfx_rand_desc_t g_openssl_desc = {
     /* bytes = */ openssl_bytes
 };
 
+#endif
+
+
 static void BM_RNG(benchmark::State& state, const cfx_rand_desc_t* desc) {
     const int inner_loop = static_cast<int>(state.range(0));
     const size_t bytes_per_iter = static_cast<size_t>(inner_loop) * sizeof(uint32_t);
 
     std::vector<uint32_t> buf(inner_loop);
-    
+
     // Fixed seed for reproducibility
     if (desc->seed) {
         desc->seed(0x12345678u);
@@ -42,9 +47,11 @@ static void BM_RNG(benchmark::State& state, const cfx_rand_desc_t* desc) {
 }
 
 
-#define BENCH_ARGS(b) b->Arg(1<<6)->Arg(1<<8)->Arg(1<<10)->Arg(1<<12)->Arg(1<<14)
+// #define BENCH_ARGS(b) b->Arg(1<<6)->Arg(1<<8)->Arg(1<<10)->Arg(1<<12)->Arg(1<<14)
+#define BENCH_ARGS(b) b->Arg(1<<6)
+
 int main(int argc, char** argv) {
-    
+
     std::vector<const cfx_rand_desc_t*> rngs;
     rngs.reserve(g_rand_gen_cnt + 1);
 
@@ -63,10 +70,12 @@ int main(int argc, char** argv) {
         BENCH_ARGS(b);
     }
 
+    #if CFX_HAVE_OPENSSL
     auto* b = benchmark::RegisterBenchmark(
         "OpenSSL RAND_bytes",
         [](benchmark::State& state) { BM_RNG(state, &g_openssl_desc); } );
     BENCH_ARGS(b);
+    #endif
 
 
     // .-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.

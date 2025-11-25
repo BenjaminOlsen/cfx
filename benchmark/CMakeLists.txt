@@ -1,12 +1,13 @@
-
 enable_language(CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(OpenSSL REQUIRED)
 find_package(benchmark REQUIRED)
+
+# find_package(OpenSSL QUIET)
+
 
 set(CFX_BENCHMARKS
     bench_big
@@ -23,8 +24,16 @@ foreach(bench_name IN LISTS CFX_BENCHMARKS)
     target_compile_options(${bench_name} PRIVATE -O1 -march=native)
     target_link_libraries(${bench_name} PRIVATE
         benchmark::benchmark
-        OpenSSL::Crypto
         cfx::cfx
         pthread
     )
 endforeach()
+
+# Only bench_rand needs OpenSSL + macro
+if (OpenSSL_FOUND)
+    message(STATUS "OpenSSL found – enabling OpenSSL RNG benchmarks")
+    target_link_libraries(bench_rand PRIVATE OpenSSL::Crypto)
+    target_compile_definitions(bench_rand PRIVATE CFX_HAVE_OPENSSL=1)
+else()
+    message(STATUS "OpenSSL not found – OpenSSL RNG benchmarks will be disabled")
+endif()
