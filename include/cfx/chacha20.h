@@ -20,6 +20,9 @@ void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const u
 void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
                           const uint8_t *pt, size_t pt_len, uint8_t *ct);
 
+void cfx_chacha20_block4_simd(const uint8_t key[32], const uint32_t counter[4],
+                              const uint8_t nonce[4][12], uint8_t out[4][64]);
+
 #ifdef __cplusplus
 }
 #endif

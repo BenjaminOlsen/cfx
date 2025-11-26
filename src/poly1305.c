@@ -58,11 +58,11 @@ This makes the multiplication of two 5 limb numbers look like this:
  */
 void cfx_poly1305_mac(const uint8_t key[32], const uint8_t* m, size_t mlen, uint8_t tag[16]) {
     /*  clamp(r): r &= 0x0ffffffc0ffffffc0ffffffc0fffffff */
-    uint32_t r0 =  cfx_load32_le(&key[0])  & 0x3ffffffu;
-    uint32_t r1 = (cfx_load32_le(&key[3])  >> 2) & 0x3ffff03u;
-    uint32_t r2 = (cfx_load32_le(&key[6])  >> 4) & 0x3ffc0ffu;
-    uint32_t r3 = (cfx_load32_le(&key[9])  >> 6) & 0x3f03fffu;
-    uint32_t r4 = (cfx_load32_le(&key[12]) >> 8) & 0x00fffffu;
+    uint32_t r0 =  CFX_LOAD32_LE(&key[0])  & 0x3ffffffu;
+    uint32_t r1 = (CFX_LOAD32_LE(&key[3])  >> 2) & 0x3ffff03u;
+    uint32_t r2 = (CFX_LOAD32_LE(&key[6])  >> 4) & 0x3ffc0ffu;
+    uint32_t r3 = (CFX_LOAD32_LE(&key[9])  >> 6) & 0x3f03fffu;
+    uint32_t r4 = (CFX_LOAD32_LE(&key[12]) >> 8) & 0x00fffffu;
 
     /* precompute the 5*r[i] terms: */
     uint64_t s1 = (uint64_t)r1 * 5u;
@@ -71,10 +71,10 @@ void cfx_poly1305_mac(const uint8_t key[32], const uint8_t* m, size_t mlen, uint
     uint64_t s4 = (uint64_t)r4 * 5u;
 
     /* pad s = second half of the key */
-    uint32_t pad0 = cfx_load32_le(&key[16]);
-    uint32_t pad1 = cfx_load32_le(&key[20]);
-    uint32_t pad2 = cfx_load32_le(&key[24]);
-    uint32_t pad3 = cfx_load32_le(&key[28]);
+    uint32_t pad0 = CFX_LOAD32_LE(&key[16]);
+    uint32_t pad1 = CFX_LOAD32_LE(&key[20]);
+    uint32_t pad2 = CFX_LOAD32_LE(&key[24]);
+    uint32_t pad3 = CFX_LOAD32_LE(&key[28]);
 
     /* accumulator h in 26-bit limbs */
     uint32_t h0 = 0, h1 = 0, h2 = 0, h3 = 0, h4 = 0;
@@ -89,11 +89,11 @@ void cfx_poly1305_mac(const uint8_t key[32], const uint8_t* m, size_t mlen, uint
         const uint32_t hibit = 1u << 24;  /* 2^128 term for full blocks */
 
         /* h += m[i] (decoded into 26-bit limbs) */
-        t0 =  cfx_load32_le(p + 0)  & 0x3ffffffu;
-        t1 = (cfx_load32_le(p + 3)  >> 2) & 0x3ffffffu;
-        t2 = (cfx_load32_le(p + 6)  >> 4) & 0x3ffffffu;
-        t3 = (cfx_load32_le(p + 9)  >> 6) & 0x3ffffffu;
-        t4 = (cfx_load32_le(p + 12) >> 8) | hibit;
+        t0 =  CFX_LOAD32_LE(p + 0)  & 0x3ffffffu;
+        t1 = (CFX_LOAD32_LE(p + 3)  >> 2) & 0x3ffffffu;
+        t2 = (CFX_LOAD32_LE(p + 6)  >> 4) & 0x3ffffffu;
+        t3 = (CFX_LOAD32_LE(p + 9)  >> 6) & 0x3ffffffu;
+        t4 = (CFX_LOAD32_LE(p + 12) >> 8) | hibit;
 
         h0 += t0;
         h1 += t1;
@@ -139,11 +139,11 @@ void cfx_poly1305_mac(const uint8_t key[32], const uint8_t* m, size_t mlen, uint
         buf[bytes] = 1;
 
         /* h += m_last */
-        t0 =  cfx_load32_le(buf + 0)  & 0x3ffffffu;
-        t1 = (cfx_load32_le(buf + 3)  >> 2) & 0x3ffffffu;
-        t2 = (cfx_load32_le(buf + 6)  >> 4) & 0x3ffffffu;
-        t3 = (cfx_load32_le(buf + 9)  >> 6) & 0x3ffffffu;
-        t4 = (cfx_load32_le(buf + 12) >> 8) | hibit;
+        t0 =  CFX_LOAD32_LE(buf + 0)  & 0x3ffffffu;
+        t1 = (CFX_LOAD32_LE(buf + 3)  >> 2) & 0x3ffffffu;
+        t2 = (CFX_LOAD32_LE(buf + 6)  >> 4) & 0x3ffffffu;
+        t3 = (CFX_LOAD32_LE(buf + 9)  >> 6) & 0x3ffffffu;
+        t4 = (CFX_LOAD32_LE(buf + 12) >> 8) | hibit;
 
         h0 += t0;
         h1 += t1;
@@ -226,10 +226,10 @@ void cfx_poly1305_mac(const uint8_t key[32], const uint8_t* m, size_t mlen, uint
     f  = (uint64_t)t3 + pad3 + (f >> 32);
     t3 = (uint32_t)f;
 
-    cfx_store32_le(tag + 0, t0);
-    cfx_store32_le(tag + 4, t1);
-    cfx_store32_le(tag + 8, t2);
-    cfx_store32_le(tag + 12, t3);
+    CFX_STORE32_LE(tag + 0, t0);
+    CFX_STORE32_LE(tag + 4, t1);
+    CFX_STORE32_LE(tag + 8, t2);
+    CFX_STORE32_LE(tag + 12, t3);
 
     /* scrub sensitive locals: */
     CFX_MEMZERO_S(&r0, sizeof(r0));

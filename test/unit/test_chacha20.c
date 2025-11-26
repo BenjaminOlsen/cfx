@@ -112,17 +112,47 @@ static void chacha20_stream_kat(void) {
     ok &= expect_eq(__func__, pt, PLAINTEXT, sizeof(PLAINTEXT));
     CFX_ASSERT(ok);
 
+    /*
     for (uint32_t cnt = 0; cnt < 10; ++cnt) {
         memset(pt, 0, sizeof(pt));
         cfx_chacha20_encrypt(KEY, cnt, NONCE_STREAM, ct, sizeof(PLAINTEXT), pt);
         printf("\ncounter=%u:\n", cnt);
         p_x(pt, sizeof(PLAINTEXT));
     }
+    */
+}
+
+
+static const uint8_t NONCE_BLOCK4[12] = {
+    /* 00 00 00 09 00 00 00 4a 00 00 00 00 */
+    0x0f,0x00,0x00,0x09,0x00,0x1d,0x00,0x4a,0x00,0xa0,0x02,0x00
+};
+
+void test_block4_matches_scalar(void) {
+    const uint8_t *key = KEY;
+    uint8_t nonce[4][12];
+    for (size_t i = 0; i < 4; ++i) {
+        for (size_t j = 0; j < 12; ++j) {
+            nonce[i][j] = NONCE_BLOCK4[j];
+        }
+    }
+    uint32_t ctr[4] = { 7, 8, 9, 10 };
+    uint8_t out_scalar[4][64];
+    uint8_t out_vec[4][64];
+
+    for (int i = 0; i < 4; ++i) {
+        cfx_chacha20_block_rfc8439(key, ctr[i], nonce[i], out_scalar[i]);
+    }
+
+    cfx_chacha20_block4_simd(key, ctr, nonce, out_vec);
+
+    CFX_ASSERT(memcmp(out_scalar, out_vec, sizeof out_scalar) == 0);
 }
 
 int main(void) {
     CFX_TEST(chacha20_block_kat);
     CFX_TEST(chacha20_stream_kat);
+    CFX_TEST(test_block4_matches_scalar);
     return 0;
 }
 

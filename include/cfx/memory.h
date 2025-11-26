@@ -76,6 +76,17 @@ static inline uint64_t cfx_load64_le(const void* src) {
 #endif
 }
 
+#define CFX_LOAD32_LE_2(DST, SRC) cfx_load32_le_to((DST), (SRC))
+
+static inline void cfx_load32_le_to(uint32_t *dst, const void* src) {
+    #ifdef CFX_LITTLE_ENDIAN
+    uint32_t v;
+    memcpy(&v, src, sizeof v);
+    *dst = v;
+    #else
+    #endif
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 #define CFX_LOAD32_LE(SRC) cfx_load32_le(SRC)
 
