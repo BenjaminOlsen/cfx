@@ -14,6 +14,7 @@ set(CFX_BENCHMARKS
     bench_isqrt
     bench_rand
     bench_rand_fn_ptr
+    bench_chacha20
 )
 
 foreach(bench_name IN LISTS CFX_BENCHMARKS)

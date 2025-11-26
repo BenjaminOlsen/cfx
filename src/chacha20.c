@@ -84,6 +84,57 @@ void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t
 
 /* ---------------------------------------------------------------------------------------------- */
 /* Here be SIMD */
+#if defined(__clang__) || defined(__GNUC__)
+#define CFX_SIMD
+#endif
+
+#ifdef CFX_SIMD
+typedef uint32_t vec4_u32 __attribute__((vector_size(16)));
+
+static inline vec4_u32 v_add(vec4_u32 a, vec4_u32 b) {
+    return a + b;
+}
+
+static inline vec4_u32 v_xor(vec4_u32 a, vec4_u32 b) {
+    return a ^ b;
+}
+
+static inline vec4_u32 v_rotl(vec4_u32 x, unsigned n) {
+    return (x << n) | (x >> (32 - n));
+}
+
+static inline vec4_u32 v_set1(uint32_t x) {
+    return (vec4_u32){ x, x, x, x };
+}
+
+static inline vec4_u32 v_set4(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
+    return (vec4_u32){ a, b, c, d };
+}
+
+static inline vec4_u32 v_load32_le_1(const void* p) {
+    uint32_t w = CFX_LOAD32_LE(p);
+    return v_set1(w);
+}
+
+static inline vec4_u32 v_load32_le_4(const void* a, const void* b,
+                                     const void* c, const void* d) {
+    return (vec4_u32){
+        CFX_LOAD32_LE(a),
+        CFX_LOAD32_LE(b),
+        CFX_LOAD32_LE(c),
+        CFX_LOAD32_LE(d)
+    };
+}
+
+static inline void v_store32_le_4(uint8_t *out0, uint8_t *out1,
+                                  uint8_t *out2, uint8_t *out3, vec4_u32 x) {
+    CFX_STORE32_LE(out0, x[0]);
+    CFX_STORE32_LE(out1, x[1]);
+    CFX_STORE32_LE(out2, x[2]);
+    CFX_STORE32_LE(out3, x[3]);
+}
+
+#else
 
 typedef struct {
     uint32_t v[4];
@@ -142,6 +193,16 @@ static inline vec4_u32 v_load32_le_4(const void* a, const void* b, const void* c
     return r;
 }
 
+
+static inline void v_store32_le_4(uint8_t *out0, uint8_t *out1,
+                                  uint8_t *out2, uint8_t *out3, vec4_u32 x) {
+    CFX_STORE32_LE(out0, x.v[0]);
+    CFX_STORE32_LE(out1, x.v[1]);
+    CFX_STORE32_LE(out2, x.v[2]);
+    CFX_STORE32_LE(out3, x.v[3]);
+}
+#endif
+
 typedef struct {
     vec4_u32 x[16];  // x[0] is word0 for 4 blocks, etc.
 } chacha_state4;
@@ -171,7 +232,7 @@ void cfx_chacha20_block4_simd(const uint8_t key[32], const uint32_t counter[4],
     s[13] = v_load32_le_4(nonce[0] + 0, nonce[1] + 0, nonce[2] + 0, nonce[3] + 0);
     s[14] = v_load32_le_4(nonce[0] + 4, nonce[1] + 4, nonce[2] + 4, nonce[3] + 4);
     s[15] = v_load32_le_4(nonce[0] + 8, nonce[1] + 8, nonce[2] + 8, nonce[3] + 8);
-    
+
 
     /* for (size_t i = 0; i < 16; ++i) w[i] = s[i]; */
     memcpy(w, s, sizeof(w));
@@ -202,10 +263,10 @@ void cfx_chacha20_block4_simd(const uint8_t key[32], const uint32_t counter[4],
     }
 
     for (size_t i = 0; i < 16; ++i) {
-        CFX_STORE32_LE(out[0] + 4*i, w[i].v[0]);
-        CFX_STORE32_LE(out[1] + 4*i, w[i].v[1]);
-        CFX_STORE32_LE(out[2] + 4*i, w[i].v[2]);
-        CFX_STORE32_LE(out[3] + 4*i, w[i].v[3]);
+        v_store32_le_4(out[0] + 4*i,
+                       out[1] + 4*i,
+                       out[2] + 4*i,
+                       out[3] + 4*i,
+                       w[i]);
     }
 }
-
