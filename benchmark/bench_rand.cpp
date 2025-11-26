@@ -47,7 +47,8 @@ static void BM_RNG(benchmark::State& state, const cfx_rand_desc_t* desc) {
 }
 
 
-#define BENCH_ARGS(b) b->Arg(1<<6)->Arg(1<<8)->Arg(1<<10)->Arg(1<<12)->Arg(1<<14)
+// #define BENCH_ARGS(b) b->Arg(1<<6)->Arg(1<<8)->Arg(1<<10)->Arg(1<<12)->Arg(1<<14)
+#define BENCH_ARGS(b) b->Arg(1<<12)
 
 int main(int argc, char** argv) {
 
