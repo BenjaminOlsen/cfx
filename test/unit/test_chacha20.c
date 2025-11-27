@@ -144,7 +144,7 @@ static void test_block4_matches_scalar(void) {
         cfx_chacha20_block_rfc8439(key, ctr[i], nonce[i], out_scalar[i]);
     }
 
-    cfx_chacha20_block4_simd(key, ctr, nonce, out_vec);
+    cfx_chacha20_block4_simd(key, ctr, (const uint8_t (*)[12])nonce, out_vec);
 
     CFX_ASSERT(memcmp(out_scalar, out_vec, sizeof out_scalar) == 0);
 }
