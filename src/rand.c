@@ -93,70 +93,209 @@ void NAME##_bytes(void *buf, size_t len)                                    \
     }                                                                       \
 }
 
+#if CFX_SIMD
+typedef struct {
+    uint8_t  buf[4][64];                /* 4 lanes, blocks of 64 bytes: 256 tot */
+    uint8_t  key[32];
+    uint8_t  nonce[4][12];
+    uint32_t counter[4];
+    size_t   idx;                       /* next unread byte (0..BUF_BYTES) */
+    int      seeded;
+} chacha20_rand_state_t;
 
+static chacha20_rand_state_t G = {0};
+
+void cfx_chacha20_seed(uint32_t seed) {
+    cfx_lcg_bytes(seed, G.key, sizeof G.key);
+
+    for (size_t i = 0; i < 4; ++i) {
+        cfx_lcg_bytes(seed, G.nonce[i], sizeof G.nonce[i]);
+        G.counter[i] = i+1;
+    }
+    
+    G.seeded = 1;
+}
+
+uint32_t cfx_chacha20_gen32(void) {
+    static uint8_t buf[4][64];
+    static size_t idx = 4*64;  /* force initi al refill */
+
+    if (idx >= 4*64-4) {
+        /* Fill next block */
+        cfx_chacha20_block4_simd(G.key, G.counter, G.nonce, buf);
+        idx = 0;
+    }
+
+    /* TODO: change to 1-d*/
+    const size_t i = idx / 64;
+    const size_t j = idx % 64;
+
+    uint32_t v =
+        ((uint32_t)buf[i][j + 0]      ) |
+        ((uint32_t)buf[i][j + 1] <<  8) |
+        ((uint32_t)buf[i][j + 2] << 16) |
+        ((uint32_t)buf[i][j + 3] << 24);
+    idx += 4;
+    return v;
+}
+
+static inline void cfx_chacha20_refill_block(uint8_t out[4][64]) {
+    cfx_chacha20_block4_simd(G.key, G.counter, G.nonce, out);
+    for (size_t i = 0; i < 4; ++i) {
+        G.counter[i] += 4;
+    }
+    G.idx = 0;
+}
+
+void cfx_chacha20_bytes(void* buf, size_t len) {
+    uint8_t *out = (uint8_t *)buf;
+
+    if (!G.seeded) {
+        return;
+    }
+
+    /* use any leftover keystream in G.buf */
+    const uint8_t* const Gbuf_p = &G.buf[0][0];
+    while (len && G.idx < 256) {
+        *out = *(Gbuf_p+G.idx);
+        ++out;
+        --len;
+        ++G.idx;
+    }
+
+    if (len == 0) {
+        return;
+    }
+
+    /* here, G.idx == 4*64 (buffer empty). */
+
+    uint8_t (*out_arr)[64];
+    /* Fill whole blocks directly */
+    while (len >= 256) {
+        out_arr = (uint8_t (*)[64])out;
+        cfx_chacha20_refill_block(out_arr);   /* write directly into out */
+        out += 256;
+        len -= 256;
+    }
+
+    if (len == 0) {
+        return;
+    }
+
+    /* Tail */
+    cfx_chacha20_refill_block(G.buf);
+    for (unsigned i = 0; i < len; ++i) {
+        out[i] = *(Gbuf_p + i);
+    }
+}
+#else    
 
 typedef struct {
     uint8_t  buf[64];
     uint8_t  key[32];
     uint8_t  nonce[12];
     uint64_t counter;
-    unsigned idx;       /* next unread byte in buf (0..64) */
+    size_t   idx;                       /* next unread byte (0..BUF_BYTES) */
     int      seeded;
-} chacha_rand_state_t;
+} chacha20_rand_state_t;
 
-static chacha_rand_state_t G = {0};
+/*-------------*/
+static chacha20_rand_state_t G = {0};
+
+void cfx_chacha20_seed(uint32_t seed) {
+    cfx_lcg_bytes(seed, G.key, sizeof G.key);
+    cfx_lcg_bytes(seed, G.nonce, sizeof G.nonce);
+
+    G.counter = 0;
+    G.seeded = 1;
+}
+
+uint32_t cfx_chacha20_gen32(void) {
+    static uint8_t buf[64];
+    static size_t idx = 64;  /* force initial refill */
+
+    if (idx >= 64) {
+        /* Fill next block */
+        cfx_chacha20_block_rfc8439(G.key, G.counter++, G.nonce, buf);
+        idx = 0;
+    }
+
+    uint32_t v =
+        ((uint32_t)buf[idx + 0]      ) |
+        ((uint32_t)buf[idx + 1] <<  8) |
+        ((uint32_t)buf[idx + 2] << 16) |
+        ((uint32_t)buf[idx + 3] << 24);
+    idx += 4;
+    return v;
+}
+
+
+static inline void cfx_chacha20_refill_block(uint8_t out[64]) {
+    cfx_chacha20_block_rfc8439(G.key, G.counter, G.nonce, out);
+    ++G.counter;
+}
+
+/* a more efficient _bytes function for chacha20 than the DEFINE_BYTES32_FN*/
+void cfx_chacha20_bytes(void* buf, size_t len) {
+    uint8_t *out = (uint8_t *)buf;
+
+    if (!G.seeded) {
+        return;
+    }
+
+    /* use any leftover keystream in G.buf */
+    while (len && G.idx < 64) {
+        *out++ = G.buf[G.idx++];
+        len--;
+    }
+
+    if (len == 0) {
+        return;
+    }
+
+    /* here, G.idx == 64 (buffer empty). */
+
+    /* Fill whole 64-byte blocks directly */
+    while (len >= 64) {
+        cfx_chacha20_refill_block(out);   /* write directly into out */
+        out += 64;
+        len -= 64;
+    }
+
+    if (len == 0) {
+        return;
+    }
+
+    /* Tail: generate one more block into G.buf and consume a prefix */
+    cfx_chacha20_refill_block(G.buf);
+    G.idx = (unsigned)len;  /* next unread byte in G.buf */
+    for (unsigned i = 0; i < G.idx; ++i) {
+        out[i] = G.buf[i];
+    }
+}
+#endif  /* CFX_SIMD */
 
 /* ---------------------------------------------------------------------------------------------- */
 /* uses splitmix64 to generate nonce, counter, key for chacha20*/
 void cfx_srand(unsigned int seed) {
-    uint64_t s = ((uint64_t)seed << 32) | 0xA5A5A5A5u;
-    /* Fill key, nonce, counter from SplitMix64 stream */
-    for (int i = 0; i < 4; ++i) {
-        uint64_t x = cfx_splitmix64(&s);
-        CFX_STORE64_LE(G.key + 8*i, x);
-    }
-    uint64_t n0 = cfx_splitmix64(&s);
-    uint32_t n1 = (uint32_t) cfx_splitmix64(&s);
-
-    CFX_STORE64_LE(G.nonce,      n0);
-    CFX_STORE32_LE(G.nonce + 8,  n1);
-
-    G.counter = cfx_splitmix64(&s);
-    G.idx = 64;   /* force refill */
-    G.seeded = 1;
-}
-
-static void refill_if_needed(void) {
-    if (!G.seeded) cfx_srand_os();
-    if (G.idx >= 64) {
-        cfx_chacha20_block_rfc8439(G.key, G.counter++, G.nonce, G.buf);
-        G.idx = 0;
-    }
+    cfx_chacha20_seed(seed);
 }
 
 uint32_t cfx_urand(void) {
-    uint8_t b[4];
-    for (size_t i = 0; i < 4; ++i) {
-        refill_if_needed();
-        b[i] = G.buf[G.idx++];
-    }
-    uint32_t v = ((uint32_t)b[0]) | ((uint32_t)b[1] << 8) |
-                 ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
-    return v;
+    return cfx_chacha20_gen32();
 }
+
 
 int cfx_rand(void) {
     return (int)(cfx_urand() & 0x7fffffff);
 }
 
-void cfx_rand_bytes(void* buf, size_t len) {
-    uint8_t* p = (uint8_t*)buf;
-    for (size_t i = 0; i < len; ++i) {
-        refill_if_needed();
-        p[i] = G.buf[G.idx++];
-    }
+void cfx_rand_bytes(void *buf, size_t len) {
+   cfx_chacha20_bytes(buf, len);
 }
 
+/* ---------------------------------------------- */
+/* /dev/urandom based RNG. */
 static int os_getrandom(void *out, size_t len) {
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd < 0) return -1;
@@ -183,11 +322,19 @@ void cfx_srand_os(void) {
         memset(tmp, 0, sizeof(tmp));
     }
     memcpy(G.key,   tmp,       32);
+#if CFX_SIMD
+    memcpy(G.nonce[0], tmp + 32,  12);
+    G.counter[0] = 0;
+    for (int i = 0; i < 8; ++i) G.counter[0] |= (uint64_t)tmp[44 + i] << (8*i);
+    cfx_memzero_s(tmp, sizeof(tmp));
+    G.idx = 256;  /* force refill on first use */
+#else
     memcpy(G.nonce, tmp + 32,  12);
     G.counter = 0;
     for (int i = 0; i < 8; ++i) G.counter |= (uint64_t)tmp[44 + i] << (8*i);
     cfx_memzero_s(tmp, sizeof(tmp));
     G.idx = 64;  /* force refill on first use */
+#endif
     G.seeded = 1;
 }
 
@@ -268,83 +415,6 @@ uint32_t cfx_poly1305_gen32(void) {
 
     return r;
 }
-
-
-/*-------------*/
-static chacha_rand_state_t R = {0};
-
-void cfx_chacha20_seed(uint32_t seed) {
-    cfx_lcg_bytes(seed, R.key, sizeof R.key);
-    cfx_lcg_bytes(seed, R.nonce, sizeof R.nonce);
-
-    R.counter = 0;
-    R.seeded = 1;
-}
-
-uint32_t cfx_chacha20_gen32(void) {
-    static uint8_t buf[64];
-    static size_t idx = 64;  /* force initial refill */
-
-    if (idx >= 64) {
-        /* Fill next block */
-        cfx_chacha20_block_rfc8439(R.key, R.counter++, R.nonce, buf);
-        idx = 0;
-    }
-
-    uint32_t v =
-        ((uint32_t)buf[idx + 0]      ) |
-        ((uint32_t)buf[idx + 1] <<  8) |
-        ((uint32_t)buf[idx + 2] << 16) |
-        ((uint32_t)buf[idx + 3] << 24);
-    idx += 4;
-    return v;
-}
-
-#if 1
-static inline void cfx_chacha20_refill_block(uint8_t out[64]) {
-    cfx_chacha20_block_rfc8439(R.key, R.counter++, R.nonce, out);
-    ++R.counter;
-}
-
-/* a more efficient _bytes function for chacha20  than the DEFINE_BYTES32_FN*/
-void cfx_chacha20_bytes(void* buf, size_t len) {
-    uint8_t *out = (uint8_t *)buf;
-
-    if (!R.seeded) {
-        return;
-    }
-
-    /* use any leftover keystream in R.buf */
-    while (len && R.idx < 64) {
-        *out++ = R.buf[R.idx++];
-        len--;
-    }
-
-    if (len == 0) {
-        return;
-    }
-
-    /* here, R.idx == 64 (buffer empty). */
-
-    /* Fill whole 64-byte blocks directly */
-    while (len >= 64) {
-        cfx_chacha20_refill_block(out);   /* write directly into out */
-        out += 64;
-        len -= 64;
-    }
-
-    if (len == 0) {
-        return;
-    }
-
-    /* Tail: generate one more block into R.buf and consume a prefix */
-    cfx_chacha20_refill_block(R.buf);
-    R.idx = (unsigned)len;  /* next unread byte in R.buf */
-    for (unsigned i = 0; i < R.idx; ++i) {
-        out[i] = R.buf[i];
-    }
-}
-#endif
 
 /* ---------------------------------------------------------------------------------------------- */
 /* xorshift */

@@ -15,6 +15,10 @@ extern "C" {
   * ARE thread safe, as all state is passed in.
   **/
 
+#if defined(__clang__) || defined(__GNUC__)
+#define CFX_SIMD 0
+#endif
+
 void        cfx_srand(uint32_t seed);
 int         cfx_rand(void);                     /* returns 0..0x7fffffff - uses chacha20 internally */
 uint32_t    cfx_urand(void);                    /* returns 0..0xffffffff - uses chacha20 internally */

@@ -84,11 +84,8 @@ void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t
 
 /* ---------------------------------------------------------------------------------------------- */
 /* Here be SIMD */
-#if defined(__clang__) || defined(__GNUC__)
-#define CFX_SIMD
-#endif
 
-#ifdef CFX_SIMD
+#if CFX_SIMD
 typedef uint32_t vec4_u32 __attribute__((vector_size(16)));
 
 static inline vec4_u32 v_add(vec4_u32 a, vec4_u32 b) {
