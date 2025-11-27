@@ -22,6 +22,10 @@ extern "C" {
   #define CFX_ALIGNOF(T) offsetof(struct offset_struct_32, x)
 #endif
 
+#if defined(__clang__) || defined(__GNUC__)
+#define CFX_SIMD 1
+#endif
+
 /**
  * Q: Why do i keep the CFX_ALL_CAPS macros that just call the static inline functions?
  * A: To communicate that they're just like macros - they "inflate" at the call sites.

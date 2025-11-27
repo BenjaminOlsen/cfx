@@ -112,7 +112,7 @@ void cfx_chacha20_seed(uint32_t seed) {
         cfx_lcg_bytes(seed, G.nonce[i], sizeof G.nonce[i]);
         G.counter[i] = i+1;
     }
-    
+
     G.seeded = 1;
 }
 
@@ -188,7 +188,7 @@ void cfx_chacha20_bytes(void* buf, size_t len) {
         out[i] = *(Gbuf_p + i);
     }
 }
-#else    
+#else
 
 typedef struct {
     uint8_t  buf[64];

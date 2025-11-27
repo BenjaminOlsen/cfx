@@ -5,7 +5,6 @@
 
 #define ROTL32(x,n) ((uint32_t)(((x) << (n)) | ((x) >> (32-(n)))))
 
-#define WRITE_TO_PTR 0
 
 void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12], uint8_t out[64]) {
     static const uint32_t C[4] = {0x61707865u, 0x3320646eu, 0x79622d32u, 0x6b206574u};  /* "expa" "nd 3" "2-by" "te k" */
