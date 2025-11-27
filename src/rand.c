@@ -47,8 +47,8 @@ const size_t g_rand_gen_cnt = sizeof(g_rand_gens) / sizeof(g_rand_gens[0]);
 
 /* ---------------------------------------------------------------------------------------------- */
 /* chacha20 based rng */
-#if CFX_SIMD
-
+#if 1
+#undef CFX_SIMD
 #define CHACHA20_BLOCK_BYTES 64
 #ifdef CFX_SIMD
 #define CHACHA20_LANE_CNT 4
@@ -62,7 +62,7 @@ typedef struct {
     uint8_t  buf[CHACHA20_BUF_BYTES];  /* keystream buffer */
     uint8_t  key[32];
     uint8_t  nonce[12];
-    uint64_t counter;   /* 32-bit block counter in low word */
+    uint32_t counter;   /* 32-bit block counter in low word */
     size_t   idx;       /* next unread byte in buf: 0..BUF_BYTES */
     int      seeded;
 } chacha20_rand_state_t;
@@ -98,7 +98,7 @@ static inline void cfx_chacha20_refill_buf(void){
     uint8_t  nonce4[CHACHA20_LANE_CNT][12];
 
     for (size_t i = 0; i < CHACHA20_LANE_CNT; ++i) {
-        ctr[i] = (uint32_t)(G.counter + i);
+        ctr[i] = (G.counter + i);
         memcpy(nonce4[i], G.nonce, sizeof G.nonce);
     }
 
@@ -110,7 +110,7 @@ static inline void cfx_chacha20_refill_buf(void){
 #else
     /* scalar: one 64-byte block into buf */
     cfx_chacha20_block_rfc8439(G.key,
-                               (uint32_t)G.counter,
+                               G.counter,
                                G.nonce,
                                G.buf);
     G.counter += 1;
@@ -150,12 +150,11 @@ void cfx_chacha20_bytes(void *buf, size_t len) {
         uint8_t  nonce4[CHACHA20_LANE_CNT][12];
 
         for (size_t i = 0; i < CHACHA20_LANE_CNT; ++i) {
-            ctr[i] = (uint32_t)(G.counter + i);
+            ctr[i] = (G.counter + i);
             memcpy(nonce4[i], G.nonce, sizeof G.nonce);
         }
 
-        uint8_t (*out4)[CHACHA20_BLOCK_BYTES] =
-            (uint8_t (*)[CHACHA20_BLOCK_BYTES])out;
+        uint8_t (*out4)[CHACHA20_BLOCK_BYTES] = (uint8_t (*)[CHACHA20_BLOCK_BYTES])out;
 
         cfx_chacha20_block4_simd(G.key, ctr, nonce4, out4);
         G.counter += CHACHA20_LANE_CNT;
@@ -164,16 +163,21 @@ void cfx_chacha20_bytes(void *buf, size_t len) {
         len -= CHACHA20_BUF_BYTES;
     }
 
+#else
+    while (len >= CHACHA20_BUF_BYTES) {
+        cfx_chacha20_block_rfc8439(G.key, G.counter, G.nonce, out);
+        ++G.counter;
+        out += CHACHA20_BUF_BYTES;
+        len -= CHACHA20_BUF_BYTES;
+    }
+#endif /* CFX_SIMD */
+
     if (len == 0) {
         G.idx = CHACHA20_BUF_BYTES;  /* mark buffer empty */
         return;
     }
-#endif /* CFX_SIMD */
 
-    /*
-     * 3. Tail (< BUF_BYTES): refill internal buffer once and
-     *    copy only `len` bytes from it, leaving the rest for later.
-     */
+    /* Tail */
     cfx_chacha20_refill_buf();
     if (len > 0) {
         /* G.idx was set to 0 in refill */
@@ -308,19 +312,17 @@ static int os_getrandom(void *out, size_t len) {
     return 0;
 }
 
-/* Fill state from OS RNG (key, nonce, counter) */
+/* Fill global rand state from OS RNG (key, nonce, counter) */
 void cfx_srand_os(void) {
-    uint8_t tmp[32 + 12 + 8];
+    uint8_t tmp[32 + 12 + 4]; /* key + nonce + counter */
     if (os_getrandom(tmp, sizeof(tmp)) != 0) {
-        /* TODO: behavior if OS RNG unavailable */
-        memset(tmp, 0, sizeof(tmp));
+        memset(tmp, 0, sizeof(tmp));  /* fixme - what to do in failure? */
     }
-    memcpy(G.key,   tmp,       32);
-    memcpy(G.nonce, tmp + 32,  12);
-    G.counter = 0;
-    for (int i = 0; i < 8; ++i) G.counter |= (uint64_t)tmp[44 + i] << (8*i);
+    memcpy(G.key,   tmp,        32);
+    memcpy(G.nonce, tmp + 32,   12);
+    memcpy(&G.counter, tmp + 44, sizeof G.counter);
     cfx_memzero_s(tmp, sizeof(tmp));
-    G.idx = 64;  /* force refill on first use */
+    G.idx = CHACHA20_BLOCK_BYTES; /* force refill */
     G.seeded = 1;
 }
 
