@@ -48,7 +48,6 @@ const size_t g_rand_gen_cnt = sizeof(g_rand_gens) / sizeof(g_rand_gens[0]);
 /* ---------------------------------------------------------------------------------------------- */
 /* chacha20 based rng */
 #if 1
-#undef CFX_SIMD
 #define CHACHA20_BLOCK_BYTES 64
 #ifdef CFX_SIMD
 #define CHACHA20_LANE_CNT 4
@@ -105,7 +104,7 @@ static inline void cfx_chacha20_refill_buf(void){
     uint8_t (*out4)[CHACHA20_BLOCK_BYTES] =
         (uint8_t (*)[CHACHA20_BLOCK_BYTES])G.buf;
 
-    cfx_chacha20_block4_simd(G.key, ctr, nonce4, out4);
+    cfx_chacha20_block4_simd(G.key, ctr, (const uint8_t (*)[12])nonce4, out4);
     G.counter += CHACHA20_LANE_CNT;
 #else
     /* scalar: one 64-byte block into buf */
@@ -156,7 +155,7 @@ void cfx_chacha20_bytes(void *buf, size_t len) {
 
         uint8_t (*out4)[CHACHA20_BLOCK_BYTES] = (uint8_t (*)[CHACHA20_BLOCK_BYTES])out;
 
-        cfx_chacha20_block4_simd(G.key, ctr, nonce4, out4);
+        cfx_chacha20_block4_simd(G.key, ctr, (const uint8_t (*)[12])nonce4, out4);
         G.counter += CHACHA20_LANE_CNT;
 
         out += CHACHA20_BUF_BYTES;
