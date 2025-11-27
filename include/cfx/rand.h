@@ -16,7 +16,7 @@ extern "C" {
   **/
 
 #if defined(__clang__) || defined(__GNUC__)
-#define CFX_SIMD 0
+#define CFX_SIMD 1
 #endif
 
 void        cfx_srand(uint32_t seed);

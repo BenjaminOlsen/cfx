@@ -184,7 +184,7 @@ static void fac(cfx_big_t* out, const cfx_big_t* in) {
     cfx_big_init(&tmp);
     cfx_big_copy(&tmp, in);
     cfx_big_from_u64(out, 1);
-    
+
     while (!cfx_big_is_zero(&tmp)) {
         cfx_big_mul(out, &tmp);
         cfx_big_sub_sm(&tmp, 1);
@@ -206,9 +206,14 @@ static void test_big_factorial_to_100(int quiet) {
         fac(&f, &b);
         char* s = cfx_big_to_str(&f, NULL);
         int ok = (strcmp(s, F[n]) == 0);
-        if (!quiet) CFX_PRINT_DBG("%zu! %s", n, ok ? "ok" : "NOT OK!");
-        if (ok) { printf("\n");}
-        else { printf("\n%s\n%s\n", s, F[n]);}
+        if (!quiet){
+            CFX_PRINT_DBG("%zu! %s", n, ok ? "ok" : "NOT OK!");
+            if (ok) {
+                CFX_PRINT_DBG("\n");
+            } else {
+                CFX_PRINT_DBG("\n%s\n%s\n", s, F[n]);
+            }
+        }
         aok &= ok;
         cfx_big_free(&b);
         cfx_big_free(&f);
@@ -221,15 +226,15 @@ static void test_facs(cfx_fac_t* f, cfx_limb_t primes[], cfx_limb_t exps[], size
     cfx_fac_init(f);
     cfx_limb_t n = 1;
     for (size_t i = 0; i < nprimes; ++i) {
-        size_t e = exps[i]; 
+        size_t e = exps[i];
         while(e-->0) { n *= primes[i]; }
     }
-        
+
     int ok = cfx_fac_from_u64(f, n);
     CFX_ASSERT(ok);
     CFX_ASSERT(f->len == nprimes);
     for (size_t i = 0; i < nprimes; ++i) {
-        printf("p: " CFX_PRIuLIMB ", e: " CFX_PRIuLIMB "\n", f->data[i].p, f->data[i].e);
+        CFX_PRINT_DBG("p: " CFX_PRIuLIMB ", e: " CFX_PRIuLIMB "\n", f->data[i].p, f->data[i].e);
         CFX_ASSERT(f->data[i].p == primes[i]);
         CFX_ASSERT(f->data[i].e == exps[i]);
     }
@@ -241,7 +246,7 @@ static void test_fac_from_u64(void) {
     cfx_fac_init(&f);
     cfx_limb_t p1[] = {2, 3, 5, 7, 11};
     cfx_limb_t e1[] = {1, 2, 3, 4, 5};
-    printf("sizeof(p1)/sizeof(cfx_limb_t): %zu\n", sizeof(p1)/sizeof(cfx_limb_t));
+    CFX_PRINT_DBG("sizeof(p1)/sizeof(cfx_limb_t): %zu\n", sizeof(p1)/sizeof(cfx_limb_t));
     test_facs(&f, p1, e1, sizeof(p1)/sizeof(cfx_limb_t));
 
     cfx_limb_t p2[] = {4294967279ULL, 4294967291ULL};
@@ -262,7 +267,7 @@ static void test_fac_from_u64(void) {
 
 int main(void) {
     int quiet = 0;
-    
+
     CFX_TEST(test_init);
     CFX_TEST(test_reserve);
     CFX_TEST(test_push);
