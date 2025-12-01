@@ -151,7 +151,7 @@ static const uint8_t NONCE_BLOCK4[12] = {
 };
 
 static void test_block4_matches_scalar(void) {
-    const uint8_t *key = KEY;
+    const uint8_t* key = KEY;
     uint8_t nonce[4][12];
     for (size_t i = 0; i < 4; ++i) {
         for (size_t j = 0; j < 12; ++j) {
@@ -166,9 +166,32 @@ static void test_block4_matches_scalar(void) {
         cfx_chacha20_block_rfc8439(key, ctr[i], nonce[i], out_scalar[i]);
     }
 
-    cfx_chacha20_block4_simd(key, ctr, (const uint8_t (*)[12])nonce, out_vec);
+    cfx_chacha20_block4_simd(key, ctr, nonce, out_vec);
+
+    uint8_t out_vec2[4][64];
+    cfx_chacha_state4_t ctx4;
+    cfx_chacha20_state_init4(&ctx4, key, nonce);
+    cfx_chacha20_block4(&ctx4, ctr, out_vec2);
 
     CFX_ASSERT(memcmp(out_scalar, out_vec, sizeof out_scalar) == 0);
+    CFX_ASSERT(memcmp(out_vec, out_vec2, sizeof out_scalar) == 0);
+}
+
+/* ----------------------------------------------------------- */
+/* https://datatracker.ietf.org/doc/html/rfc8439#section-2.1.1 */
+
+static void test_quarter_round(void) {
+    uint32_t a = 0x11111111;
+    uint32_t b = 0x01020304;
+    uint32_t c = 0x9b8d6f43;
+    uint32_t d = 0x01234567;
+
+    CFX_CHACHA20_QR(a, b, c, d);
+
+    CFX_ASSERT(a == 0xea2a92f4);
+    CFX_ASSERT(b == 0xcb1cf8ce);
+    CFX_ASSERT(c == 0x4581472e);
+    CFX_ASSERT(d == 0x5881c4bb);
 }
 
 int main(void) {
@@ -177,6 +200,7 @@ int main(void) {
     CFX_TEST(chacha20_stream_kat);
     CFX_TEST(chacha20_stream_kat_2);
     CFX_TEST(test_block4_matches_scalar);
+    CFX_TEST(test_quarter_round);
     return 0;
 }
 

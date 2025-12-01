@@ -23,7 +23,7 @@ void cfx_chacha20_state_init(cfx_chacha_state_t* ctx, const uint8_t key[32], con
     ctx->s[9]  = CFX_LOAD32_LE(key + 20);
     ctx->s[10] = CFX_LOAD32_LE(key + 24);
     ctx->s[11] = CFX_LOAD32_LE(key + 28);
-    ctx->s[12] = 0;     /* counter */    
+    ctx->s[12] = 0;     /* counter */
     ctx->s[13] = CFX_LOAD32_LE(nonce + 0);
     ctx->s[14] = CFX_LOAD32_LE(nonce + 4);
     ctx->s[15] = CFX_LOAD32_LE(nonce + 8);
@@ -53,7 +53,7 @@ void cfx_chacha20_block(cfx_chacha_state_t* ctx, uint32_t counter, uint8_t out[6
 
 void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12], uint8_t out[64]) {
     uint32_t s[16], w[16];
-    
+
     s[0]  = 0x61707865u;    /* "expa" */
     s[1]  = 0x3320646eu;    /* "nd 3" */
     s[2]  = 0x79622d32u;    /* "2-by" */
@@ -373,6 +373,7 @@ void cfx_chacha20_state_init4(cfx_chacha_state4_t* ctx, const uint8_t key[32], c
 
 void cfx_chacha20_block4(cfx_chacha_state4_t* ctx, const uint32_t counter[4], uint8_t out[4][64]) {
     vec4_u32 w[16];
+
     ctx->s[12] = v_set4(counter[0], counter[1], counter[2], counter[3]);
 
     memcpy(w, ctx->s, sizeof(w));

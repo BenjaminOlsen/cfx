@@ -21,10 +21,10 @@ extern "C" {
 
 /* Quarter Round */
 #define CFX_CHACHA20_QR(a, b, c, d) \
-    a += b; d ^= a; d = ROTL32(d,16); \
-    c += d; b ^= c; b = ROTL32(b,12); \
-    a += b; d ^= a; d = ROTL32(d, 8); \
-    c += d; b ^= c; b = ROTL32(b, 7);
+    a += b; d ^= a; d = CFX_CHACHA20_ROTL32(d,16); \
+    c += d; b ^= c; b = CFX_CHACHA20_ROTL32(b,12); \
+    a += b; d ^= a; d = CFX_CHACHA20_ROTL32(d, 8); \
+    c += d; b ^= c; b = CFX_CHACHA20_ROTL32(b, 7);
 
 typedef struct {
     uint32_t s[16];
