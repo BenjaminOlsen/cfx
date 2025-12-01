@@ -10,7 +10,6 @@ extern "C" {
 #include "cfx/algo.h"
 #include "cfx/big.h"
 #include "cfx/fac.h"
-#include "cfx/error.h"
 #include "cfx/macros.h"
 #include "cfx/primes.h"
 #include "cfx/types.h"

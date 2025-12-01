@@ -152,7 +152,7 @@ static void BM_Chacha20_Block4_Simd_2(benchmark::State& state) {
     init_key_nonce(key, nonce1, nonce4);
     cfx_chacha_state4_t s;
     cfx_chacha20_state_init4(&s, key, nonce4);
-    
+
     for (auto _ : state) {
         cfx_chacha20_block4(&s, counters, out);
 

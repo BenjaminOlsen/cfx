@@ -3,7 +3,6 @@
 #include "cfx/fac.h"
 #include "cfx/big.h"
 #include "cfx/algo.h"
-#include "cfx/error.h"
 #include "cfx/vector.h"
 #include "cfx/macros.h"
 
@@ -24,7 +23,7 @@ static void test_reserve(void) {
     cfx_fac_t f;
     cfx_fac_init(&f);
     const size_t cap1 = 123;
-    CFX_ASSERT(cfx_fac_reserve(&f, cap1) == CFX_OK);
+    CFX_ASSERT(cfx_fac_reserve(&f, cap1) == 0);
     CFX_ASSERT(f.len == 0);
     CFX_ASSERT(f.cap == cap1);
     CFX_ASSERT(f.data != NULL);

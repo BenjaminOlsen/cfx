@@ -21,7 +21,7 @@ static void expect_factor(cfx_limb_t n) {
         /* Just ensure it *doesn't* falsely report a composite factor. */
         cfx_limb_t d = cfx_pollard_rho_brent(n);
         if (is_valid_factor(n, d)) {
-            fprintf(stderr, 
+            fprintf(stderr,
                 "cfx_pollard_rho_brent returned a nontrivial factor for prime " CFX_PRIuLIMB "\n",
                 n);
             CFX_FAIL();

@@ -2,7 +2,6 @@
 
 #include "cfx/big.h"
 #include "cfx/macros.h"
-#include "cfx/error.h"
 #include "cfx/primes.h"
 
 #include <assert.h>

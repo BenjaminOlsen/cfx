@@ -143,8 +143,8 @@ static void chacha20_stream_kat(void) {
 static void chacha20_stream_kat_2(void) {
     test_chacha20_encrypt_fn(cfx_chacha20_encrypt_bytes);
 }
-    
- 
+
+
 static const uint8_t NONCE_BLOCK4[12] = {
     /* 00 00 00 09 00 00 00 4a 00 00 00 00 */
     0x0f,0x00,0x00,0x09,0x00,0x1d,0x00,0x4a,0x00,0xa0,0x02,0x00

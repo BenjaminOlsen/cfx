@@ -2,7 +2,6 @@
 
 #include "cfx/fac.h"
 #include "cfx/algo.h"
-#include "cfx/error.h"
 #include "cfx/vector.h"
 #include "cfx/macros.h"
 #include "cfx/primes.h"
@@ -39,15 +38,15 @@ void cfx_fac_free(cfx_fac_t* f) {
 }
 
 static inline int _cfx_mul_zu_ok(size_t a, size_t b, size_t* out) {
-    if (a == 0 || b == 0) { *out = 0; return CFX_OK; }
-    if (a > SIZE_MAX / b) return CFX_EOVERFLOW;
+    if (a == 0 || b == 0) { *out = 0; return -1; }
+    if (a > SIZE_MAX / b) return -1;
     *out = a * b;
-    return CFX_OK;
+    return 0;
 }
 
 int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
     if (req_cap <= f->cap) {
-        return CFX_OK;
+        return 0;
     }
     size_t new_cap = f->cap ? 2 * f->cap : 16;
     if (new_cap < req_cap) {
@@ -55,23 +54,23 @@ int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
     }
     /* CFX_PRINT_DBG("cfx_fac_reserve %p requested cap: %zu, new cap: %zu\n", f, req_cap, new_cap); */
     size_t bytes;
-    if (_cfx_mul_zu_ok(new_cap, sizeof(cfx_pf_t), &bytes) != CFX_OK) {
-        return CFX_ENOMEM;
+    if (_cfx_mul_zu_ok(new_cap, sizeof(cfx_pf_t), &bytes) != 0) {
+        return -1;
     }
     f->data = (cfx_pf_t*)realloc(f->data, bytes);
     f->cap = new_cap;
-    return CFX_OK;
+    return 0;
 }
 
 int cfx_fac_push(cfx_fac_t* f, cfx_limb_t p, cfx_limb_t e) {
     if (e == 0) return -1;
     int ret = cfx_fac_reserve(f, f->len + 1);
-    if (ret != CFX_OK) return -1;
+    if (ret != 0) return -1;
     ++f->len;
     cfx_pf_t* pf = &f->data[f->len - 1];
     pf->p = p;
     pf->e = e;
-    return CFX_OK;
+    return 0;
 }
 
 /* Deep copy: dst becomes a copy of src, using cfx_fac_push for each element. */
@@ -167,7 +166,7 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
 * precondition: primes is sorted strictly increasing! 
 */
 int cfx_fac_factorial(cfx_fac_t *f, cfx_limb_t n, const cfx_vec_t *primes) {
-    int ret = CFX_OK;
+    int ret = 0;
     if (n == 0) {
         cfx_fac_init(f);
         goto end;
@@ -178,7 +177,7 @@ int cfx_fac_factorial(cfx_fac_t *f, cfx_limb_t n, const cfx_vec_t *primes) {
         cfx_limb_t e = cfx_legendre(n, p); 
         if (e) {
             ret = cfx_fac_push(f, p, e);
-            if (ret != CFX_OK) goto end;
+            if (ret != 0) goto end;
         }
     }
 end:
