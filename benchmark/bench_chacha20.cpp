@@ -23,7 +23,7 @@ static void init_key_nonce(uint8_t key[32], uint8_t nonce1[12], uint8_t nonce4[4
 }
 
 // ---------------------------------------------------------------------
-// Benchmark: scalar 4× single-block
+// scalar 4 x single-block
 // ---------------------------------------------------------------------
 
 static void BM_Chacha20_Block_Scalar4(benchmark::State& state) {
@@ -53,9 +53,66 @@ static void BM_Chacha20_Block_Scalar4(benchmark::State& state) {
 }
 
 // ---------------------------------------------------------------------
-// Benchmark: block4 “SIMD” version
+// same as above, but different
 // ---------------------------------------------------------------------
+static void BM_Chacha20_Block_Scalar4_2(benchmark::State& state) {
+    uint8_t key[32];
+    uint8_t nonce[12];
+    uint8_t out[4][64];
+    uint32_t counter = 0;
 
+    uint8_t nonce4_dummy[4][12];
+    init_key_nonce(key, nonce, nonce4_dummy);
+
+    for (auto _ : state) {
+
+        cfx_chacha20_block_rfc8439_2(key, counter + 0, nonce, out[0]);
+        cfx_chacha20_block_rfc8439_2(key, counter + 1, nonce, out[1]);
+        cfx_chacha20_block_rfc8439_2(key, counter + 2, nonce, out[2]);
+        cfx_chacha20_block_rfc8439_2(key, counter + 3, nonce, out[3]);
+
+        benchmark::DoNotOptimize(out);
+        benchmark::ClobberMemory();
+
+        counter += 4;
+    }
+    const auto total_bytes = static_cast<int64_t>(state.iterations()) * 4 * 64;
+    state.SetBytesProcessed(total_bytes);
+    state.counters["total_bytes"] = static_cast<double>(total_bytes);
+}
+
+static void BM_Chacha20_Block_Ctx(benchmark::State& state) {
+    uint8_t key[32];
+    uint8_t nonce[12];
+    uint8_t out[4][64];
+    uint32_t counter = 0;
+
+    uint8_t nonce4_dummy[4][12];
+    init_key_nonce(key, nonce, nonce4_dummy);
+
+    cfx_chacha_state_t s;
+    cfx_chacha20_state_init(&s, key, nonce);
+
+    for (auto _ : state) {
+
+        cfx_chacha20_block(&s, counter, out[0]);
+        cfx_chacha20_block(&s, counter, out[1]);
+        cfx_chacha20_block(&s, counter, out[2]);
+        cfx_chacha20_block(&s, counter, out[3]);
+
+        benchmark::DoNotOptimize(out);
+        benchmark::ClobberMemory();
+
+        counter += 4;
+    }
+    const auto total_bytes = static_cast<int64_t>(state.iterations()) * 4 * 64;
+    state.SetBytesProcessed(total_bytes);
+    state.counters["total_bytes"] = static_cast<double>(total_bytes);
+}
+
+// ---------------------------------------------------------------------
+// block4 SIMD
+// ---------------------------------------------------------------------
 static void BM_Chacha20_Block4_Simd(benchmark::State& state) {
     uint8_t key[32];
     uint8_t nonce1[12];
@@ -84,7 +141,40 @@ static void BM_Chacha20_Block4_Simd(benchmark::State& state) {
     state.counters["total_bytes"] = static_cast<double>(total_bytes);
 }
 
+static void BM_Chacha20_Block4_Simd_2(benchmark::State& state) {
+    uint8_t key[32];
+    uint8_t nonce1[12];
+    uint8_t nonce4[4][12];
+    uint8_t out[4][64];
+
+    uint32_t counters[4] = {0, 1, 2, 3};
+
+    init_key_nonce(key, nonce1, nonce4);
+    cfx_chacha_state4_t s;
+    cfx_chacha20_state_init4(&s, key, nonce4);
+    
+    for (auto _ : state) {
+        cfx_chacha20_block4(&s, counters, out);
+
+        benchmark::DoNotOptimize(out);
+        benchmark::ClobberMemory();
+
+        // so we don’t keep encrypting the same block values
+        counters[0] += 4;
+        counters[1] += 4;
+        counters[2] += 4;
+        counters[3] += 4;
+    }
+
+    const auto total_bytes = static_cast<int64_t>(state.iterations()) * 4 * 64;
+    state.SetBytesProcessed(total_bytes);
+    state.counters["total_bytes"] = static_cast<double>(total_bytes);
+}
+
 BENCHMARK(BM_Chacha20_Block_Scalar4);
+BENCHMARK(BM_Chacha20_Block_Scalar4_2);
+BENCHMARK(BM_Chacha20_Block_Ctx);
 BENCHMARK(BM_Chacha20_Block4_Simd);
+BENCHMARK(BM_Chacha20_Block4_Simd_2);
 
 BENCHMARK_MAIN();

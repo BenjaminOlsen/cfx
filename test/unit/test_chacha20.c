@@ -90,10 +90,23 @@ static void chacha20_block_kat(void) {
     CFX_ASSERT(ok);
 }
 
-static void chacha20_stream_kat(void) {
-    uint8_t ct[sizeof(PLAINTEXT)];
+static void chacha20_block_kat_2(void) {
+    uint8_t block[64];
+    cfx_chacha_state_t ctx;
+
+    cfx_chacha20_state_init(&ctx, KEY, NONCE_BLOCK);
+    cfx_chacha20_block(&ctx, COUNTER_BLOCK, block);
+    int ok = expect_eq(__func__, block, BLOCK_EXPECT, sizeof(block));
+    CFX_ASSERT(ok);
+}
+
+typedef void (*chacha20_encrypt_fn)(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
+                          const uint8_t *pt, size_t pt_len, uint8_t *ct);
+
+static void test_chacha20_encrypt_fn(chacha20_encrypt_fn fn) {
+       uint8_t ct[sizeof(PLAINTEXT)];
     memset(ct, 0, sizeof(ct));
-    cfx_chacha20_encrypt(KEY, COUNTER_STREAM, NONCE_STREAM,
+    fn(KEY, COUNTER_STREAM, NONCE_STREAM,
                           PLAINTEXT, sizeof(PLAINTEXT), ct);
     puts("plaintext:");
     p_c((const char*)PLAINTEXT, sizeof(PLAINTEXT));
@@ -105,7 +118,7 @@ static void chacha20_stream_kat(void) {
     /* just for sanity */
     uint8_t pt[sizeof(PLAINTEXT)];
     memset(pt, 0, sizeof(pt));
-    cfx_chacha20_encrypt(KEY, COUNTER_STREAM, NONCE_STREAM, ct, sizeof(PLAINTEXT), pt);
+    fn(KEY, COUNTER_STREAM, NONCE_STREAM, ct, sizeof(PLAINTEXT), pt);
     puts("\nand back again:");
     p_c((const char*)pt, sizeof(PLAINTEXT));
     p_x(pt, sizeof(PLAINTEXT));
@@ -123,6 +136,15 @@ static void chacha20_stream_kat(void) {
 }
 
 
+static void chacha20_stream_kat(void) {
+    test_chacha20_encrypt_fn(cfx_chacha20_encrypt);
+}
+
+static void chacha20_stream_kat_2(void) {
+    test_chacha20_encrypt_fn(cfx_chacha20_encrypt_bytes);
+}
+    
+ 
 static const uint8_t NONCE_BLOCK4[12] = {
     /* 00 00 00 09 00 00 00 4a 00 00 00 00 */
     0x0f,0x00,0x00,0x09,0x00,0x1d,0x00,0x4a,0x00,0xa0,0x02,0x00
@@ -151,7 +173,9 @@ static void test_block4_matches_scalar(void) {
 
 int main(void) {
     CFX_TEST(chacha20_block_kat);
+    CFX_TEST(chacha20_block_kat_2);
     CFX_TEST(chacha20_stream_kat);
+    CFX_TEST(chacha20_stream_kat_2);
     CFX_TEST(test_block4_matches_scalar);
     return 0;
 }
