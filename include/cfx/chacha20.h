@@ -8,6 +8,23 @@
 
 #ifdef __cplusplus
 extern "C" {
+
+#if defined(__GNUC__) || defined(__clang__)
+#define CFX_RESTRICT __restrict__
+#elif defined(_MSC_VER)
+#define CFX_RESTRICT __restrict
+#else
+#define CFX_RESTRICT
+#endif
+
+#else  /* ifndef __cplusplus */ 
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define CFX_RESTRICT restrict
+#else
+#define CFX_RESTRICT
+#endif
+
 #endif
 
 /* ------------------------------------------------------------------------------------------------------------------ */
@@ -56,6 +73,7 @@ typedef struct {
 void cfx_chacha20_state_init(cfx_chacha_state_t* ctx, const uint8_t key[32], const uint8_t nonce[12]);
 void cfx_chacha20_block(cfx_chacha_state_t* ctx, const uint32_t counter, uint8_t out[64]);
 
+
 void cfx_chacha20_state_init4(cfx_chacha_state4_t* ctx, const uint8_t key[32], const uint8_t nonce[4][12]);
 void cfx_chacha20_block4(cfx_chacha_state4_t* ctx, const uint32_t counter[4], uint8_t out[4][64]);
 
@@ -64,6 +82,11 @@ void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const u
 
 void cfx_chacha20_block_rfc8439_2(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
                                 uint8_t out[64]);
+                                
+void cfx_chacha20_block_rfc8439_3(const uint8_t *CFX_RESTRICT key,
+                                  uint32_t counter,
+                                  const uint8_t *CFX_RESTRICT nonce,
+                                  uint8_t *CFX_RESTRICT out);
 
 void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
                           const uint8_t *pt, size_t pt_len, uint8_t *ct);

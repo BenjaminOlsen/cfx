@@ -92,6 +92,7 @@ static inline void cfx_chacha20_refill_buf(void){
         return;
     }
 
+
 #ifdef CFX_SIMD
     uint32_t ctr[CHACHA20_LANE_CNT];
     uint8_t  nonce4[CHACHA20_LANE_CNT][12];

@@ -51,6 +51,7 @@ void cfx_chacha20_block(cfx_chacha_state_t* ctx, uint32_t counter, uint8_t out[6
     for (size_t i = 0; i < 16; ++i) CFX_STORE32_LE(out + 4 * i, w[i]);
 }
 
+
 void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12], uint8_t out[64]) {
     uint32_t s[16], w[16];
 
@@ -183,6 +184,67 @@ void cfx_chacha20_block_rfc8439_2(const uint8_t key[32], uint32_t counter, const
     CFX_STORE32_LE(out + 52, w13);
     CFX_STORE32_LE(out + 56, w14);
     CFX_STORE32_LE(out + 60, w15);
+}
+
+void cfx_chacha20_block_rfc8439_3(const uint8_t *CFX_RESTRICT key,
+                                  uint32_t counter,
+                                  const uint8_t *CFX_RESTRICT nonce,
+                                  uint8_t *CFX_RESTRICT out) {
+
+    uint32_t x0  = _EXPA;
+    uint32_t x1  = _ND_3;
+    uint32_t x2  = _2_BY;
+    uint32_t x3  = _TE_K;
+    uint32_t x4  = CFX_LOAD32_LE(key + 0);
+    uint32_t x5  = CFX_LOAD32_LE(key + 4);
+    uint32_t x6  = CFX_LOAD32_LE(key + 8);
+    uint32_t x7  = CFX_LOAD32_LE(key + 12);
+    uint32_t x8  = CFX_LOAD32_LE(key + 16);
+    uint32_t x9  = CFX_LOAD32_LE(key + 20);
+    uint32_t x10 = CFX_LOAD32_LE(key + 24);
+    uint32_t x11 = CFX_LOAD32_LE(key + 28);
+    uint32_t x12 = counter;
+    uint32_t x13 = CFX_LOAD32_LE(nonce + 0);
+    uint32_t x14 = CFX_LOAD32_LE(nonce + 4);
+    uint32_t x15 = CFX_LOAD32_LE(nonce + 8);
+
+    uint32_t o0 = x0,  o1 = x1,  o2 = x2,  o3 = x3;
+    uint32_t o4 = x4,  o5 = x5,  o6 = x6,  o7 = x7;
+    uint32_t o8 = x8,  o9 = x9,  o10 = x10, o11 = x11;
+    uint32_t o12 = x12, o13 = x13, o14 = x14, o15 = x15;
+
+    for (unsigned i = 20; i; i -= 2) {
+        QR(x0, x4, x8,  x12);
+        QR(x1, x5, x9,  x13);
+        QR(x2, x6, x10, x14);
+        QR(x3, x7, x11, x15);
+        QR(x0, x5, x10, x15);
+        QR(x1, x6, x11, x12);
+        QR(x2, x7, x8,  x13);
+        QR(x3, x4, x9,  x14);
+    }
+
+    x0  += o0;  x1  += o1;  x2  += o2;  x3  += o3;
+    x4  += o4;  x5  += o5;  x6  += o6;  x7  += o7;
+    x8  += o8;  x9  += o9;  x10 += o10; x11 += o11;
+    x12 += o12; x13 += o13; x14 += o14; x15 += o15;
+
+    CFX_STORE32_LE(out +  0, x0);
+    CFX_STORE32_LE(out +  4, x1);
+    CFX_STORE32_LE(out +  8, x2);
+    CFX_STORE32_LE(out + 12, x3);
+    CFX_STORE32_LE(out + 16, x4);
+    CFX_STORE32_LE(out + 20, x5);
+    CFX_STORE32_LE(out + 24, x6);
+    CFX_STORE32_LE(out + 28, x7);
+    CFX_STORE32_LE(out + 32, x8);
+    CFX_STORE32_LE(out + 36, x9);
+    CFX_STORE32_LE(out + 40, x10);
+    CFX_STORE32_LE(out + 44, x11);
+    CFX_STORE32_LE(out + 48, x12);
+    CFX_STORE32_LE(out + 52, x13);
+    CFX_STORE32_LE(out + 56, x14);
+    CFX_STORE32_LE(out + 60, x15);
 }
 
 

@@ -146,7 +146,6 @@ static void chacha20_stream_kat_2(void) {
 
 
 static const uint8_t NONCE_BLOCK4[12] = {
-    /* 00 00 00 09 00 00 00 4a 00 00 00 00 */
     0x0f,0x00,0x00,0x09,0x00,0x1d,0x00,0x4a,0x00,0xa0,0x02,0x00
 };
 
@@ -179,7 +178,6 @@ static void test_block4_matches_scalar(void) {
 
 /* ----------------------------------------------------------- */
 /* https://datatracker.ietf.org/doc/html/rfc8439#section-2.1.1 */
-
 static void test_quarter_round(void) {
     uint32_t a = 0x11111111;
     uint32_t b = 0x01020304;
@@ -194,6 +192,46 @@ static void test_quarter_round(void) {
     CFX_ASSERT(d == 0x5881c4bb);
 }
 
+/* https://datatracker.ietf.org/doc/html/rfc8439#section-2.2.1 */
+static void test_quarter_round_state(void) {
+    cfx_chacha_state_t ctx;
+    ctx.s[0]  = 0x79531e0;
+    ctx.s[1]  = 0xc5ecf37d;
+    ctx.s[2]  = 0x516461b1;
+    ctx.s[3]  = 0xc9a62f8a;
+    ctx.s[4]  = 0x44c20ef3;
+    ctx.s[5]  = 0x3390af7f;
+    ctx.s[6]  = 0xd9fc690b;
+    ctx.s[7]  = 0x2a5f714c;
+    ctx.s[8]  = 0x53372767;
+    ctx.s[9]  = 0xb00a5631;
+    ctx.s[10] = 0x974c541a;
+    ctx.s[11] = 0x359e9963;
+    ctx.s[12] = 0x5c971061;
+    ctx.s[13] = 0x3d631689;
+    ctx.s[14] = 0x2098d9d6;
+    ctx.s[15] = 0x91dbd320;
+
+    CFX_CHACHA20_QR(ctx.s[2], ctx.s[7], ctx.s[8], ctx.s[13])
+
+    CFX_ASSERT(ctx.s[0]  == 0x79531e0);
+    CFX_ASSERT(ctx.s[1]  == 0xc5ecf37d);
+    CFX_ASSERT(ctx.s[2]  == 0xbdb886dc);  /* <<<< */
+    CFX_ASSERT(ctx.s[3]  == 0xc9a62f8a);
+    CFX_ASSERT(ctx.s[4]  == 0x44c20ef3);
+    CFX_ASSERT(ctx.s[5]  == 0x3390af7f);
+    CFX_ASSERT(ctx.s[6]  == 0xd9fc690b);
+    CFX_ASSERT(ctx.s[7]  == 0xcfacafd2);  /* <<<< */
+    CFX_ASSERT(ctx.s[8]  == 0xe46bea80);  /* <<<< */
+    CFX_ASSERT(ctx.s[9]  == 0xb00a5631);
+    CFX_ASSERT(ctx.s[10] == 0x974c541a);
+    CFX_ASSERT(ctx.s[11] == 0x359e9963);
+    CFX_ASSERT(ctx.s[12] == 0x5c971061);
+    CFX_ASSERT(ctx.s[13] == 0xccc07c79);  /* <<<< */
+    CFX_ASSERT(ctx.s[14] == 0x2098d9d6);
+    CFX_ASSERT(ctx.s[15] == 0x91dbd320);
+}
+
 int main(void) {
     CFX_TEST(chacha20_block_kat);
     CFX_TEST(chacha20_block_kat_2);
@@ -201,6 +239,7 @@ int main(void) {
     CFX_TEST(chacha20_stream_kat_2);
     CFX_TEST(test_block4_matches_scalar);
     CFX_TEST(test_quarter_round);
+    CFX_TEST(test_quarter_round_state);
     return 0;
 }
 

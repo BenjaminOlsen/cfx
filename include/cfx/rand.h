@@ -41,6 +41,10 @@ void        cfx_poly1305_bytes(void* buf, size_t len);
 void        cfx_chacha20_seed(uint32_t seed);
 uint32_t    cfx_chacha20_gen32(void);
 void        cfx_chacha20_bytes(void* buf, size_t len);
+void        cfx_chacha20_bytes_raw(uint8_t* out, size_t len,
+                            const uint8_t key[32],
+                            const uint8_t nonce[12],
+                            uint32_t counter); 
 
 /* ------- xorshift ------- */
 void        cfx_xorshift32_seed(uint32_t seed);
