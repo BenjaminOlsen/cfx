@@ -5,6 +5,7 @@
 #include <stddef.h>
 
 #include "cfx/memory.h"
+#include "cfx/arch.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,7 +98,13 @@ void cfx_chacha20_encrypt_bytes(const uint8_t key[32], uint32_t counter, const u
 void cfx_chacha20_block4_simd(const uint8_t key[32], const uint32_t counter[4],
                               const uint8_t nonce[4][12], uint8_t out[4][64]);
 
+#if CFX_HAVE_AVX2
 
+void cfx_chacha20_block8_avx2(const uint8_t key[32],
+                              uint32_t counter,
+                              const uint8_t nonce[12],
+                              uint8_t out[8][64]);
+#endif
 
 #ifdef __cplusplus
 }

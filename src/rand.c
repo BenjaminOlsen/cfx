@@ -91,7 +91,17 @@ uint32_t cfx_chacha20_gen32(void) {
 void cfx_chacha20_bytes(void *buf, size_t len) {
     uint8_t *out = (uint8_t *)buf;
 
-#ifdef CFX_SIMD
+#if CFX_HAVE_AVX2
+    while (len >= 8 * 64) {
+        cfx_chacha20_block8_avx2(G.key, G.counter, G.nonce,
+                                 (uint8_t (*)[64])out);
+        G.counter += 8;
+        out += 8 * 64;
+        len -= 8 * 64;
+    }
+/* fall back to 4-lane / scalar for the rest */
+
+#elif defined(CFX_SIMD)
     /*  generate full 4-block chunks directly into out */
     while (len >= CHACHA20_BUF_BYTES) {
 

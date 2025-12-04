@@ -1,4 +1,9 @@
 #include "cfx/chacha20.h"
+#include "cfx/arch.h"
+
+#if CFX_HAVE_AVX2
+#include <immintrin.h>
+#endif
 
 #include <string.h>
 
@@ -521,6 +526,132 @@ void cfx_chacha20_block4_simd(const uint8_t key[32], const uint32_t counter[4],
                        w[i]);
     }
 }
+
+#if CFX_HAVE_AVX2
+
+static inline __m256i cfx_rotl32_vec(__m256i x, int n) {
+    return _mm256_or_si256(_mm256_slli_epi32(x, n),
+                           _mm256_srli_epi32(x, 32 - n));
+}
+
+#define MM_QR(a,b,c,d) do {         \
+    a = _mm256_add_epi32(a, b);     \
+    d = _mm256_xor_si256(d, a);     \
+    d = cfx_rotl32_vec(d, 16);      \
+    c = _mm256_add_epi32(c, d);     \
+    b = _mm256_xor_si256(b, c);     \
+    b = cfx_rotl32_vec(b, 12);      \
+    a = _mm256_add_epi32(a, b);     \
+    d = _mm256_xor_si256(d, a);     \
+    d = cfx_rotl32_vec(d, 8);       \
+    c = _mm256_add_epi32(c, d);     \
+    b = _mm256_xor_si256(b, c);     \
+    b = cfx_rotl32_vec(b, 7);       \
+} while (0)
+
+void cfx_chacha20_block8_avx2(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12], uint8_t out[8][64]) {
+    
+    /* Expand key/nonce to u32 */
+    uint32_t k[8];
+    uint32_t n[3];
+
+    for (size_t i = 0; i < 8; ++i) {
+        k[i] = CFX_LOAD32_LE(key + 4*i);
+    }
+    for (size_t i = 0; i < 3; ++i) {
+        n[i] = CFX_LOAD32_LE(nonce + 4*i);
+    }
+
+    /* lane offsets = {0,1,2,3,4,5,6,7} */
+    const __m256i lane = _mm256_setr_epi32(0,1,2,3,4,5,6,7);
+
+    __m256i x0  = _mm256_set1_epi32(_EXPA);
+    __m256i x1  = _mm256_set1_epi32(_ND_3);
+    __m256i x2  = _mm256_set1_epi32(_2_BY);
+    __m256i x3  = _mm256_set1_epi32(_TE_K);
+    __m256i x4  = _mm256_set1_epi32((int32_t)k[0]);
+    __m256i x5  = _mm256_set1_epi32((int32_t)k[1]);
+    __m256i x6  = _mm256_set1_epi32((int32_t)k[2]);
+    __m256i x7  = _mm256_set1_epi32((int32_t)k[3]);
+    __m256i x8  = _mm256_set1_epi32((int32_t)k[4]);
+    __m256i x9  = _mm256_set1_epi32((int32_t)k[5]);
+    __m256i x10 = _mm256_set1_epi32((int32_t)k[6]);
+    __m256i x11 = _mm256_set1_epi32((int32_t)k[7]);
+    __m256i x12 = _mm256_add_epi32(_mm256_set1_epi32((int32_t)counter), lane);
+    __m256i x13 = _mm256_set1_epi32((int32_t)n[0]);
+    __m256i x14 = _mm256_set1_epi32((int32_t)n[1]);
+    __m256i x15 = _mm256_set1_epi32((int32_t)n[2]);
+
+    /* originals */
+    __m256i o0 = x0,  o1 = x1,  o2 = x2,  o3 = x3;
+    __m256i o4 = x4,  o5 = x5,  o6 = x6,  o7 = x7;
+    __m256i o8 = x8,  o9 = x9,  o10 = x10, o11 = x11;
+    __m256i o12 = x12, o13 = x13, o14 = x14, o15 = x15;
+
+    for (size_t i = 0; i < 10; ++i) {
+        /* Column rounds */
+        MM_QR(x0, x4, x8,  x12);
+        MM_QR(x1, x5, x9,  x13);
+        MM_QR(x2, x6, x10, x14);
+        MM_QR(x3, x7, x11, x15);
+
+        /* Diagonal rounds */
+        MM_QR(x0, x5, x10, x15);
+        MM_QR(x1, x6, x11, x12);
+        MM_QR(x2, x7, x8,  x13);
+        MM_QR(x3, x4, x9,  x14);
+    }
+
+    x0  = _mm256_add_epi32(x0,  o0);
+    x1  = _mm256_add_epi32(x1,  o1);
+    x2  = _mm256_add_epi32(x2,  o2);
+    x3  = _mm256_add_epi32(x3,  o3);
+    x4  = _mm256_add_epi32(x4,  o4);
+    x5  = _mm256_add_epi32(x5,  o5);
+    x6  = _mm256_add_epi32(x6,  o6);
+    x7  = _mm256_add_epi32(x7,  o7);
+    x8  = _mm256_add_epi32(x8,  o8);
+    x9  = _mm256_add_epi32(x9,  o9);
+    x10 = _mm256_add_epi32(x10, o10);
+    x11 = _mm256_add_epi32(x11, o11);
+    x12 = _mm256_add_epi32(x12, o12);
+    x13 = _mm256_add_epi32(x13, o13);
+    x14 = _mm256_add_epi32(x14, o14);
+    x15 = _mm256_add_epi32(x15, o15);
+
+    /* Store vectors to temp, then scatter to out[block][word]. */
+    CFX_ALIGNAS(32) uint32_t tmp[16][8];
+
+    _mm256_store_si256((__m256i*)tmp[0],  x0);
+    _mm256_store_si256((__m256i*)tmp[1],  x1);
+    _mm256_store_si256((__m256i*)tmp[2],  x2);
+    _mm256_store_si256((__m256i*)tmp[3],  x3);
+    _mm256_store_si256((__m256i*)tmp[4],  x4);
+    _mm256_store_si256((__m256i*)tmp[5],  x5);
+    _mm256_store_si256((__m256i*)tmp[6],  x6);
+    _mm256_store_si256((__m256i*)tmp[7],  x7);
+    _mm256_store_si256((__m256i*)tmp[8],  x8);
+    _mm256_store_si256((__m256i*)tmp[9],  x9);
+    _mm256_store_si256((__m256i*)tmp[10], x10);
+    _mm256_store_si256((__m256i*)tmp[11], x11);
+    _mm256_store_si256((__m256i*)tmp[12], x12);
+    _mm256_store_si256((__m256i*)tmp[13], x13);
+    _mm256_store_si256((__m256i*)tmp[14], x14);
+    _mm256_store_si256((__m256i*)tmp[15], x15);
+
+    /* Scatter to out[block][64] in little-endian */
+    for (size_t blk = 0; blk < 8; ++blk) {
+        uint8_t* b = out[blk];
+        for (size_t w = 0; w < 16; ++w) {
+            CFX_STORE32_LE(b + 4*w, tmp[w][blk]);
+        }
+    }
+}
+
+#undef MM_QR
+
+#endif /* CFX_HAVE_AVX2 */
+
 
 
 #undef VQR

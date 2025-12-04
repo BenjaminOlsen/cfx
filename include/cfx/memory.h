@@ -2,7 +2,7 @@
 #ifndef CFX_MEMORY_H
 #define CFX_MEMORY_H
 
-#include "cfx/endian.h"
+#include "cfx/arch.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -13,18 +13,6 @@
 extern "C" {
 #endif
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-  #include <stdalign.h>
-  #define CFX_ALIGNOF(T) alignof(T)
-#else
-  #include <stddef.h>
-  struct offset_struct_32 {char c; uint32_t x;};
-  #define CFX_ALIGNOF(T) offsetof(struct offset_struct_32, x)
-#endif
-
-#if defined(__clang__) || defined(__GNUC__)
-#define CFX_SIMD 1
-#endif
 
 /**
  * Q: Why do i keep the CFX_ALL_CAPS macros that just call the static inline functions?

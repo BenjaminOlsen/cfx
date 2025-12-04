@@ -176,6 +176,27 @@ static void test_block4_matches_scalar(void) {
     CFX_ASSERT(memcmp(out_vec, out_vec2, sizeof out_scalar) == 0);
 }
 
+static const uint8_t NONCE_BLOCK8[12] = {
+    0x0f,0x0a,0x77,0x09,0x00,0x1d,0x00,0x4a,0x2A,0xa0,0x02,0x5d
+};
+
+static void test_block8_matches_scalar(void) {
+    const uint8_t* key = KEY;
+    
+    uint32_t ctr = 0;
+    uint8_t out_scalar[8][64];
+    uint8_t out_vec[8][64];
+
+     for (int i = 0; i < 8; ++i) {
+        cfx_chacha20_block_rfc8439(key, ctr + i, NONCE_BLOCK8, out_scalar[i]);
+    }
+
+    cfx_chacha20_block8_avx2(key, ctr, NONCE_BLOCK8, out_vec);
+    /* ctr += 8 */
+    
+    CFX_ASSERT(memcmp(out_scalar, out_vec, sizeof out_scalar) == 0);
+}
+
 /* ----------------------------------------------------------- */
 /* https://datatracker.ietf.org/doc/html/rfc8439#section-2.1.1 */
 static void test_quarter_round(void) {
@@ -238,6 +259,7 @@ int main(void) {
     CFX_TEST(chacha20_stream_kat);
     CFX_TEST(chacha20_stream_kat_2);
     CFX_TEST(test_block4_matches_scalar);
+    CFX_TEST(test_block8_matches_scalar);
     CFX_TEST(test_quarter_round);
     CFX_TEST(test_quarter_round_state);
     return 0;

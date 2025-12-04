@@ -15,6 +15,7 @@ if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         -Werror=vla
         -Wredundant-decls
         -Wmissing-field-initializers
+        -march=native
     )
 
     # set(SAN_FLAGS -fsanitize=address,undefined -fno-strict-aliasing -fno-omit-frame-pointer -O1)
@@ -28,7 +29,7 @@ if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         ${CFX_SILENCED}
 
         "$<$<CONFIG:Debug>:-g;-DCFX_DEBUG>"
-        "$<$<CONFIG:Release>:-O3;-DNDEBUG;-mbmi2;-madx>"
+        "$<$<CONFIG:Release>:-O3;-DNDEBUG>"
         "$<$<CONFIG:RelWithDebInfo>:-O2;-g;-DNDEBUG;-DCFX_DEBUG>"
     )
 endif()

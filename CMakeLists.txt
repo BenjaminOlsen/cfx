@@ -18,6 +18,7 @@ endif()
 
 set(CFX_HEADERS
     include/cfx/cfx.h
+    include/cfx/cpu.h
     include/cfx/big.h
     include/cfx/fac.h
     include/cfx/algo.h
