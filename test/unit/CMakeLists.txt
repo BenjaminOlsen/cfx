@@ -8,6 +8,7 @@ set(CFX_UNIT_TESTS
     test_mul_rows
     test_poly1305
     test_chacha20
+    test_chacha_avx2_transpose
     test_mul_csa_pthreads
     test_rand
 )

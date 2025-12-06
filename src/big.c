@@ -321,7 +321,7 @@ static inline void _mul_sm_fast(cfx_big_t* b, cfx_limb_t m) {
     cfx_big_reserve(b, n + 1);
     cfx_limb_t* p = b->limb;
 
-#if (CFX_USE_X86_INTRINSICS == 1) && defined(__BMI2__)
+#if (CFX_USE_X86_INTRINSICS == 1) && defined(__BMI2__) && (CFX_LIMB_BITS == 64)
     cfx_limb_t carry = 0;
     for (size_t i = 0; i < n; ++i) {
         cfx_limb_t lo, hi;

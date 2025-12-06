@@ -165,11 +165,11 @@ static void test_block4_matches_scalar(void) {
         cfx_chacha20_block_rfc8439(key, ctr[i], nonce[i], out_scalar[i]);
     }
 
-    cfx_chacha20_block4_simd(key, ctr, nonce, out_vec);
+    cfx_chacha20_block4_simd(key, ctr, (const uint8_t (*)[12])nonce, out_vec);
 
     uint8_t out_vec2[4][64];
     cfx_chacha_state4_t ctx4;
-    cfx_chacha20_state_init4(&ctx4, key, nonce);
+    cfx_chacha20_state_init4(&ctx4, key, (const uint8_t (*)[12])nonce);
     cfx_chacha20_block4(&ctx4, ctr, out_vec2);
 
     CFX_ASSERT(memcmp(out_scalar, out_vec, sizeof out_scalar) == 0);
@@ -179,6 +179,8 @@ static void test_block4_matches_scalar(void) {
 static const uint8_t NONCE_BLOCK8[12] = {
     0x0f,0x0a,0x77,0x09,0x00,0x1d,0x00,0x4a,0x2A,0xa0,0x02,0x5d
 };
+
+#if CFX_HAVE_AVX2
 
 static void test_block8_matches_scalar(void) {
     const uint8_t* key = KEY;
@@ -196,6 +198,7 @@ static void test_block8_matches_scalar(void) {
     
     CFX_ASSERT(memcmp(out_scalar, out_vec, sizeof out_scalar) == 0);
 }
+#endif
 
 /* ----------------------------------------------------------- */
 /* https://datatracker.ietf.org/doc/html/rfc8439#section-2.1.1 */
@@ -253,15 +256,19 @@ static void test_quarter_round_state(void) {
     CFX_ASSERT(ctx.s[15] == 0x91dbd320);
 }
 
+
 int main(void) {
     CFX_TEST(chacha20_block_kat);
     CFX_TEST(chacha20_block_kat_2);
     CFX_TEST(chacha20_stream_kat);
     CFX_TEST(chacha20_stream_kat_2);
     CFX_TEST(test_block4_matches_scalar);
+#if CFX_HAVE_AVX2
     CFX_TEST(test_block8_matches_scalar);
+#endif
     CFX_TEST(test_quarter_round);
     CFX_TEST(test_quarter_round_state);
+
     return 0;
 }
 

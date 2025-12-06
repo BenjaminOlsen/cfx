@@ -32,7 +32,7 @@ static void BM_Chacha20_Block_Scalar4(benchmark::State& state) {
     uint8_t out[4][64];
     uint32_t counter = 0;
 
-    uint8_t nonce4_dummy[4][12];  // not used here, but reused init helper
+    uint8_t nonce4_dummy[4][12];   // not used here, but reused init helper
     init_key_nonce(key, nonce, nonce4_dummy);
 
     for (auto _ : state) {
@@ -207,7 +207,7 @@ static void BM_Chacha20_Block4_Simd_2(benchmark::State& state) {
 }
 
 static void BM_Chacha20_Block8_avx2(benchmark::State& state) {
-    // cfx_chacha20_block8_avx2(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12], uint8_t out[8][64])
+    
     uint8_t key[32];
     uint8_t nonce1[12];
     uint8_t nonce4[4][12];  // wont use this
@@ -230,12 +230,12 @@ static void BM_Chacha20_Block8_avx2(benchmark::State& state) {
 
 }
 
-BENCHMARK(BM_Chacha20_Block_Scalar4_3);
-BENCHMARK(BM_Chacha20_Block_Scalar4_2);
-BENCHMARK(BM_Chacha20_Block_Ctx);
-BENCHMARK(BM_Chacha20_Block4_Simd);
-BENCHMARK(BM_Chacha20_Block4_Simd_2);
-BENCHMARK(BM_Chacha20_Block_Scalar4);
-BENCHMARK(BM_Chacha20_Block8_avx2);
+BENCHMARK(BM_Chacha20_Block_Scalar4)->Arg(1 << 16 );
+BENCHMARK(BM_Chacha20_Block_Scalar4_2)->Arg(1 << 16 );
+BENCHMARK(BM_Chacha20_Block_Scalar4_3)->Arg(1 << 16 );
+BENCHMARK(BM_Chacha20_Block_Ctx)->Arg(1 << 16 );
+BENCHMARK(BM_Chacha20_Block4_Simd)->Arg(1 << 16 );
+BENCHMARK(BM_Chacha20_Block4_Simd_2)->Arg(1 << 16 );
+BENCHMARK(BM_Chacha20_Block8_avx2)->Arg(1 << 16 );
 
 BENCHMARK_MAIN();
