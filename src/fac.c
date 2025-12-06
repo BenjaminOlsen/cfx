@@ -75,7 +75,7 @@ int cfx_fac_push(cfx_fac_t* f, cfx_limb_t p, cfx_limb_t e) {
 
 /* Deep copy: dst becomes a copy of src, using cfx_fac_push for each element. */
 void cfx_fac_copy(cfx_fac_t *dst, const cfx_fac_t *src) {
-    if (dst == src) return;  
+    if (dst == src) return;
     cfx_fac_free(dst);
     cfx_fac_init(dst);
     cfx_fac_reserve(dst, src->len);
@@ -112,7 +112,7 @@ void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src) {
             cfx_limb_t p = pf1->p;
             cfx_limb_t e = pf1->e + pf2->e;
             if (e) cfx_fac_push(&out, p, e);
-            ++i; 
+            ++i;
             ++j;
         }
     }
@@ -123,7 +123,7 @@ void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src) {
 /* dst -= src */
 void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
     cfx_fac_t out;
-    
+
     cfx_fac_init(&out);
     cfx_fac_reserve(&out, dst->len);
 
@@ -151,7 +151,7 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
                 cfx_fac_push(&out, p, e);
             } else if (pf2->e > pf1->e) { /* dst does not divide src! */
                 assert(0 && "cfx_fac_sub underflow");
-            } 
+            }
             /* else, e == 0, p is cancelled out!ç */
             ++i;
             ++j;
@@ -163,7 +163,7 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
 
 /** calculate the factorial of n.
 * we pass in a list of primes to not have to calculate it on every call of this function -
-* precondition: primes is sorted strictly increasing! 
+* precondition: primes is sorted strictly increasing!
 */
 int cfx_fac_factorial(cfx_fac_t *f, cfx_limb_t n, const cfx_vec_t *primes) {
     int ret = 0;
@@ -174,7 +174,7 @@ int cfx_fac_factorial(cfx_fac_t *f, cfx_limb_t n, const cfx_vec_t *primes) {
     for (size_t i = 0; i < primes->size; ++i) {
         cfx_limb_t p = primes->data[i];
         if (p > n) break;
-        cfx_limb_t e = cfx_legendre(n, p); 
+        cfx_limb_t e = cfx_legendre(n, p);
         if (e) {
             ret = cfx_fac_push(f, p, e);
             if (ret != 0) goto end;
@@ -186,10 +186,10 @@ end:
 
 /* Factorization of C(n,k) = n! / (k! (n-k)!) */
 cfx_fac_t cfx_fac_binom(cfx_limb_t n, cfx_limb_t k){
-    if (k > n) { 
+    if (k > n) {
         cfx_fac_t z;
         cfx_fac_init(&z);
-        return z; 
+        return z;
     }
     if (k > n-k) k = n-k;
     cfx_vec_t primes = cfx_sieve_primes(n);
@@ -219,10 +219,10 @@ int cfx_fac_from_u64(cfx_fac_t* fac, cfx_limb_t n) {
     cfx_vec_init(&primes);
     cfx_vec_init(&exps);
     int ret = cfx_factor_u64(&primes, &exps, n);
-    
+
     /* debug */
     assert(primes.size == exps.size);
-    
+
     if (ret != 0) return 0;
 
     for (size_t i = 0; i < primes.size; ++i) {

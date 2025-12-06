@@ -207,14 +207,14 @@ static void BM_Chacha20_Block4_Simd_2(benchmark::State& state) {
 }
 
 static void BM_Chacha20_Block8_avx2(benchmark::State& state) {
-    
+
     uint8_t key[32];
     uint8_t nonce1[12];
     uint8_t nonce4[4][12];  // wont use this
     uint8_t out[8][64];
 
     init_key_nonce(key, nonce1, nonce4);
-    
+
     uint32_t counter = 0;
     for (auto _ : state) {
         cfx_chacha20_block8_avx2(key, counter, nonce1, out);

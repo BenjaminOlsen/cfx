@@ -11,6 +11,7 @@ set(CFX_UNIT_TESTS
     test_chacha_avx2_transpose
     test_mul_csa_pthreads
     test_rand
+    test_aead_chacha20_poly1305
 )
 
 foreach(test_name IN LISTS CFX_UNIT_TESTS)

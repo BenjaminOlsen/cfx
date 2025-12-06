@@ -48,22 +48,26 @@ const size_t g_rand_gen_cnt = sizeof(g_rand_gens) / sizeof(g_rand_gens[0]);
 /* ---------------------------------------------------------------------------------------------- */
 /* chacha20 based rng */
 #if 1
+
+
 #define CHACHA20_BLOCK_BYTES 64
-#ifdef CFX_SIMD
+#if CFX_HAVE_AVX2
+#define CHACHA20_LANE_CNT 8
+#elif CFX_SIMD
 #define CHACHA20_LANE_CNT 4
 #else
 #define CHACHA20_LANE_CNT 1
 #endif
+
 #define CHACHA20_BUF_BYTES (CHACHA20_BLOCK_BYTES * CHACHA20_LANE_CNT)
 
 
 typedef struct {
+    uint8_t  buf[CHACHA20_BUF_BYTES];  /* keystream buffer */
     uint8_t  key[32];
     uint8_t  nonce[12];
-    uint32_t counter;   /* 32-bit block counter in low word */
+    uint32_t counter;
     size_t   idx;       /* next unread byte in buf: 0..BUF_BYTES */
-    uint32_t counter4[CHACHA20_LANE_CNT];
-    uint8_t  nonce4[CHACHA20_LANE_CNT][12];
     int      seeded;
 } chacha20_rand_state_t;
 
@@ -87,31 +91,87 @@ uint32_t cfx_chacha20_gen32(void) {
         ((uint32_t)buf[3] << 24);
 }
 
+static inline void cfx_chacha20_refill_buf(void){
+    if (!G.seeded) {
+        /* your choice: either auto-seed or just return */
+        return;
+    }
+
+#if CFX_HAVE_AVX2
+    uint8_t (*out8)[CHACHA20_BLOCK_BYTES] = (uint8_t (*)[CHACHA20_BLOCK_BYTES])G.buf;
+    cfx_chacha20_block8_avx2(G.key, G.counter, G.nonce, out8);
+    G.counter += CHACHA20_LANE_CNT;
+
+#elif CFX_SIMD
+    uint32_t ctr[CHACHA20_LANE_CNT];
+    uint8_t  nonce4[CHACHA20_LANE_CNT][12];
+
+    for (size_t i = 0; i < CHACHA20_LANE_CNT; ++i) {
+        ctr[i] = (G.counter + i);
+        memcpy(nonce4[i], G.nonce, sizeof G.nonce);
+    }
+
+    uint8_t (*out4)[CHACHA20_BLOCK_BYTES] =
+        (uint8_t (*)[CHACHA20_BLOCK_BYTES])G.buf;
+
+    cfx_chacha20_block4_simd(G.key, ctr, (const uint8_t (*)[12])nonce4, out4);
+    G.counter += CHACHA20_LANE_CNT;
+#else
+    /* scalar: one 64-byte block into buf */
+    cfx_chacha20_block_rfc8439(G.key,
+                               G.counter,
+                               G.nonce,
+                               G.buf);
+    G.counter += 1;
+#endif
+
+    G.idx = 0;
+}
 
 void cfx_chacha20_bytes(void *buf, size_t len) {
     uint8_t *out = (uint8_t *)buf;
 
-#if CFX_HAVE_AVX2
-    while (len >= 8 * 64) {
-        cfx_chacha20_block8_avx2(G.key, G.counter, G.nonce,
-                                 (uint8_t (*)[64])out);
-        G.counter += 8;
-        out += 8 * 64;
-        len -= 8 * 64;
-    }
-/* fall back to 4-lane / scalar for the rest */
+    // if (!G.seeded) {
+    //     return;
+    // }
 
-#elif defined(CFX_SIMD)
+    /* use leftover keystream in G.buf */
+    while (len > 0 && G.idx < CHACHA20_BUF_BYTES) {
+        size_t avail = CHACHA20_BUF_BYTES - G.idx;
+        size_t n = (len < avail) ? len : avail;
+
+        memcpy(out, G.buf + G.idx, n);
+
+        out   += n;
+        len   -= n;
+        G.idx += n;
+    }
+
+#if CFX_HAVE_AVX2
+    while (len >= CHACHA20_BUF_BYTES) {
+        uint8_t (*out8)[CHACHA20_BLOCK_BYTES] = (uint8_t (*)[CHACHA20_BLOCK_BYTES])out;
+        cfx_chacha20_block8_avx2(G.key, G.counter, G.nonce, out8);
+        out += CHACHA20_BUF_BYTES;
+        len -= CHACHA20_BUF_BYTES;
+        G.counter += CHACHA20_LANE_CNT;
+    }
+
+#elif CFX_SIMD
     /*  generate full 4-block chunks directly into out */
     while (len >= CHACHA20_BUF_BYTES) {
 
+        uint32_t ctr[CHACHA20_LANE_CNT];
+        uint8_t  nonce4[CHACHA20_LANE_CNT][12];
+
         for (size_t i = 0; i < CHACHA20_LANE_CNT; ++i) {
-            G.counter4[i] = (G.counter + i);
+            ctr[i] = (G.counter + i);
+            memcpy(nonce4[i], G.nonce, sizeof G.nonce);
         }
 
         uint8_t (*out4)[CHACHA20_BLOCK_BYTES] = (uint8_t (*)[CHACHA20_BLOCK_BYTES])out;
 
-        cfx_chacha20_block4_simd(G.key, G.counter4, (const uint8_t (*)[12])G.nonce4, out4);
+        cfx_chacha20_block4_simd(G.key, ctr, (const uint8_t (*)[12])nonce4, out4);
+        G.counter += CHACHA20_LANE_CNT;
 
         out += CHACHA20_BUF_BYTES;
         len -= CHACHA20_BUF_BYTES;
@@ -126,6 +186,18 @@ void cfx_chacha20_bytes(void *buf, size_t len) {
     }
 #endif /* CFX_SIMD */
 
+    if (len == 0) {
+        G.idx = CHACHA20_BUF_BYTES;  /* mark buffer empty */
+        return;
+    }
+
+    /* Tail */
+    cfx_chacha20_refill_buf();
+    if (len > 0) {
+        /* G.idx was set to 0 in refill */
+        memcpy(out, G.buf + G.idx, len);
+        G.idx += len;
+    }
 }
 
 

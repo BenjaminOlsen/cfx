@@ -65,11 +65,9 @@ static void print_limbs(const char* tag, const cfx_big_t* x, size_t upto) {
 }
 
 
-static void run_case(const char* name,
-                     const cfx_big_t* b0_in, const cfx_big_t* m_in,
-                     int threads)
-{
+static void run_case(const char* name, const cfx_big_t* b0_in, const cfx_big_t* m_in, int threads) {
     printf("\n------------------- %s -------------------\n", name);
+
     /* Make working copies */
     cfx_big_t b_ref;
     cfx_big_init(&b_ref);
@@ -99,10 +97,8 @@ static void run_case(const char* name,
     /* reference multiply (single-thread schoolbook) */
     cfx_big_mul(&b_ref, m_in);
 
-    /* pthreads CSA multiply */
     cfx_big_mul_rows_pthreads(&b_pt, m_in, threads);
 
-    /* Check equality (compare first nout limbs) */
     if (!big_equal(&b_ref, &b_pt, nout)) {
         fprintf(stderr, "[FAIL] %s (threads=%d)\n", name, threads);
         print_limbs("b0  ", b0_in, b0_in->n);
@@ -169,7 +165,7 @@ static void test_one_cases(void) {
 }
 
 static void test_all_ones_small(void) {
-    cfx_big_t b, m; 
+    cfx_big_t b, m;
     cfx_big_init(&b);
     cfx_big_init(&m);
 
@@ -249,7 +245,7 @@ static void test_medium_case_128x128(void) {
     run_case("medium_128x128_t1",  &b, &m, 1);
     run_case("medium_128x128_t4",  &b, &m, 4);
     run_case("medium_128x128_t12", &b, &m, 12);
-    cfx_big_free(&b); 
+    cfx_big_free(&b);
     cfx_big_free(&m);
 }
 

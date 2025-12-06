@@ -176,15 +176,15 @@ static void test_block4_matches_scalar(void) {
     CFX_ASSERT(memcmp(out_vec, out_vec2, sizeof out_scalar) == 0);
 }
 
+#if CFX_HAVE_AVX2
+
 static const uint8_t NONCE_BLOCK8[12] = {
     0x0f,0x0a,0x77,0x09,0x00,0x1d,0x00,0x4a,0x2A,0xa0,0x02,0x5d
 };
 
-#if CFX_HAVE_AVX2
-
 static void test_block8_matches_scalar(void) {
     const uint8_t* key = KEY;
-    
+
     uint32_t ctr = 0;
     uint8_t out_scalar[8][64];
     uint8_t out_vec[8][64];
@@ -195,7 +195,7 @@ static void test_block8_matches_scalar(void) {
 
     cfx_chacha20_block8_avx2(key, ctr, NONCE_BLOCK8, out_vec);
     /* ctr += 8 */
-    
+
     CFX_ASSERT(memcmp(out_scalar, out_vec, sizeof out_scalar) == 0);
 }
 #endif

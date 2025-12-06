@@ -16,6 +16,20 @@ if(OpenSSL_FOUND)
     add_compile_definitions(CFX_HAVE_OPENSSL=1)
 endif()
 
+# ---------------- static prime list
+# specify with cmake -S . -B build -DCFX_PRIMES_COUNT=XXXX
+set(CFX_PRIMES_COUNT 664579 CACHE STRING
+    "Number of primes to include in cfx_primes[] (<= 664579)")
+
+include(cmake/cfxPrimes.cmake)
+
+set(CFX_PRIMES_TXT "${CMAKE_CURRENT_SOURCE_DIR}/data/primes.txt")
+set(CFX_PRIMES_C   "${CMAKE_CURRENT_BINARY_DIR}/cfx_primes.c")
+
+cfx_generate_primes("${CFX_PRIMES_TXT}"
+                    "${CFX_PRIMES_C}"
+                    ${CFX_PRIMES_COUNT})
+
 set(CFX_HEADERS
     include/cfx/cfx.h
     include/cfx/cpu.h
@@ -31,6 +45,7 @@ set(CFX_HEADERS
     include/cfx/poly1305.h
     include/cfx/chacha20.h
     include/cfx/types.h
+    include/cfx/aead_chacha20_poly1305.h
 )
 
 set(CFX_SOURCES
@@ -38,13 +53,15 @@ set(CFX_SOURCES
     src/fac.c
     src/algo.c
     src/rand.c
-    src/primes.c
     src/vector.c
     src/chacha20.c
     src/poly1305.c
+    src/aead_chacha20_poly1305.c
+    "${CFX_PRIMES_GENERATED_SRC}"
 )
 
 add_library(cfx ${CFX_SOURCES})
+add_library(cfx::cfx ALIAS cfx)
 
 set_property(TARGET cfx PROPERTY C_STANDARD 99)
 set_property(TARGET cfx PROPERTY C_STANDARD_REQUIRED ON)
@@ -68,7 +85,6 @@ endif()
 
 include(cmake/cfxCompileFlags.cmake)
 
-add_library(cfx::cfx ALIAS cfx)
 
 # ---------------- Examples
 if(CFX_BUILD_EXAMPLES)

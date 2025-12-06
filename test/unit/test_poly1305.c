@@ -60,6 +60,8 @@ static void poly1305_rfc8439_2_5_2_kat(void) {
     uint8_t tag[16];
     cfx_poly1305_mac(K_2_5_2, M_2_5_2, sizeof(M_2_5_2), tag);
     expect_tag("RFC8439 2.5.2 KAT", tag, T_2_5_2);
+    cfx_poly1305_mac_2(K_2_5_2, M_2_5_2, sizeof(M_2_5_2), tag);
+    expect_tag("RFC8439 2.5.2 KAT - 2", tag, T_2_5_2);
 }
  
 
@@ -347,10 +349,105 @@ static void poly1305_rfc8439_appendix_a3_kats(void) {
 
     cfx_poly1305_mac(K_A3_11, M_A3_11, sizeof M_A3_11, tag);
     expect_tag("RFC8439 A.3 Test Vector #11", T_A3_11, tag);
+
+    /*  ----  */
+    cfx_poly1305_mac_2(K_A3_1, M_A3_1, sizeof M_A3_1, tag);
+    expect_tag("RFC8439 A.3 Test Vector #1 - 2", T_A3_1, tag);
+
+    cfx_poly1305_mac_2(K_A3_2, M_A3_2, sizeof M_A3_2, tag);
+    expect_tag("RFC8439 A.3 Test Vector #2 - 2", T_A3_2, tag);
+
+    cfx_poly1305_mac_2(K_A3_3, M_A3_3, sizeof M_A3_2, tag);
+    expect_tag("RFC8439 A.3 Test Vector #3 - 2", T_A3_3, tag);
+
+    cfx_poly1305_mac_2(K_A3_4, M_A3_4, sizeof M_A3_4, tag);
+    expect_tag("RFC8439 A.3 Test Vector #4 - 2", T_A3_4, tag);
+
+    cfx_poly1305_mac_2(K_A3_5, M_A3_5, sizeof M_A3_5, tag);
+    expect_tag("RFC8439 A.3 Test Vector #5 - 2", T_A3_5, tag);
+
+    cfx_poly1305_mac_2(K_A3_6, M_A3_6, sizeof M_A3_6, tag);
+    expect_tag("RFC8439 A.3 Test Vector #6 - 2", T_A3_6, tag);
+
+    cfx_poly1305_mac_2(K_A3_7, M_A3_7, sizeof M_A3_7, tag);
+    expect_tag("RFC8439 A.3 Test Vector #7 - 2", T_A3_7, tag);
+
+    cfx_poly1305_mac_2(K_A3_8, M_A3_8, sizeof M_A3_8, tag);
+    expect_tag("RFC8439 A.3 Test Vector #8 - 2", T_A3_8, tag);
+
+    cfx_poly1305_mac_2(K_A3_9, M_A3_9, sizeof M_A3_9, tag);
+    expect_tag("RFC8439 A.3 Test Vector #9 - 2", T_A3_9, tag);
+
+    cfx_poly1305_mac_2(K_A3_10, M_A3_10, sizeof M_A3_10, tag);
+    expect_tag("RFC8439 A.3 Test Vector #10 - 2", T_A3_10, tag);
+
+    cfx_poly1305_mac_2(K_A3_11, M_A3_11, sizeof M_A3_11, tag);
+    expect_tag("RFC8439 A.3 Test Vector #11 - 2", T_A3_11, tag);
+}
+
+/* ----------------------------------------------------------- */
+/* borrowed from poly1305-donna's poly1305_power_on_self_test  */
+/* https://github.com/floodyberry/poly1305-donna/blob/master/poly1305-donna.c */
+/* example from nacl */
+static const unsigned char nacl_key[32] = {
+    0xee,0xa6,0xa7,0x25,0x1c,0x1e,0x72,0x91,
+    0x6d,0x11,0xc2,0xcb,0x21,0x4d,0x3c,0x25,
+    0x25,0x39,0x12,0x1d,0x8e,0x23,0x4e,0x65,
+    0x2d,0x65,0x1f,0xa4,0xc8,0xcf,0xf8,0x80,
+};
+
+static const unsigned char nacl_msg[131] = {
+    0x8e,0x99,0x3b,0x9f,0x48,0x68,0x12,0x73,
+    0xc2,0x96,0x50,0xba,0x32,0xfc,0x76,0xce,
+    0x48,0x33,0x2e,0xa7,0x16,0x4d,0x96,0xa4,
+    0x47,0x6f,0xb8,0xc5,0x31,0xa1,0x18,0x6a,
+    0xc0,0xdf,0xc1,0x7c,0x98,0xdc,0xe8,0x7b,
+    0x4d,0xa7,0xf0,0x11,0xec,0x48,0xc9,0x72,
+    0x71,0xd2,0xc2,0x0f,0x9b,0x92,0x8f,0xe2,
+    0x27,0x0d,0x6f,0xb8,0x63,0xd5,0x17,0x38,
+    0xb4,0x8e,0xee,0xe3,0x14,0xa7,0xcc,0x8a,
+    0xb9,0x32,0x16,0x45,0x48,0xe5,0x26,0xae,
+    0x90,0x22,0x43,0x68,0x51,0x7a,0xcf,0xea,
+    0xbd,0x6b,0xb3,0x73,0x2b,0xc0,0xe9,0xda,
+    0x99,0x83,0x2b,0x61,0xca,0x01,0xb6,0xde,
+    0x56,0x24,0x4a,0x9e,0x88,0xd5,0xf9,0xb3,
+    0x79,0x73,0xf6,0x22,0xa4,0x3d,0x14,0xa6,
+    0x59,0x9b,0x1f,0x65,0x4c,0xb4,0x5a,0x74,
+    0xe3,0x55,0xa5
+};
+
+static const unsigned char nacl_mac[16] = {
+    0xf3,0xff,0xc7,0x70,0x3f,0x94,0x00,0xe5,
+    0x2a,0x7d,0xfb,0x4b,0x3d,0x33,0x05,0xd9
+};
+
+
+static void poly1305_nacl_test(void) {
+    uint8_t mac[16];
+    size_t i;
+	for (i = 0; i < sizeof(mac); i++) mac[i] = 0;
+    cfx_poly1305_state_t ctx;
+    cfx_poly1305_init(&ctx, nacl_key);
+    cfx_poly1305_update(&ctx, nacl_msg +   0, 32);
+	cfx_poly1305_update(&ctx, nacl_msg +  32, 64);
+	cfx_poly1305_update(&ctx, nacl_msg +  96, 16);
+	cfx_poly1305_update(&ctx, nacl_msg + 112,  8);
+	cfx_poly1305_update(&ctx, nacl_msg + 120,  4);
+	cfx_poly1305_update(&ctx, nacl_msg + 124,  2);
+	cfx_poly1305_update(&ctx, nacl_msg + 126,  1);
+	cfx_poly1305_update(&ctx, nacl_msg + 127,  1);
+	cfx_poly1305_update(&ctx, nacl_msg + 128,  1);
+	cfx_poly1305_update(&ctx, nacl_msg + 129,  1);
+	cfx_poly1305_update(&ctx, nacl_msg + 130,  1);
+	cfx_poly1305_finish(&ctx, mac);
+
+    expect_tag("poly1305_nacl_test", mac, nacl_mac);
 }
 
 int main(void) {
     CFX_TEST(poly1305_rfc8439_2_5_2_kat);
     CFX_TEST(poly1305_rfc8439_appendix_a3_kats);
+    CFX_TEST(poly1305_nacl_test);
+
     return 0;
 }

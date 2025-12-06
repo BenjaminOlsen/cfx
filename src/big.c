@@ -317,24 +317,23 @@ int cfx_big_from_bytes_be(cfx_big_t* out, const uint8_t* be, size_t len) {
 
 
 static inline void _mul_sm_fast(cfx_big_t* b, cfx_limb_t m) {
-    size_t    n = b->n;
+    size_t n = b->n;
     cfx_big_reserve(b, n + 1);
     cfx_limb_t* p = b->limb;
 
 #if (CFX_USE_X86_INTRINSICS == 1) && defined(__BMI2__) && (CFX_LIMB_BITS == 64)
     cfx_limb_t carry = 0;
     for (size_t i = 0; i < n; ++i) {
-        cfx_limb_t lo, hi;
+        unsigned long long lo, hi;
+
         /* lo = (p[i] * m) low 64, hi = high 64 — flags NOT clobbered */
         lo = _mulx_u64(p[i], m, &hi);
 
         /* add previous carry into lo, get carry-out in c1 */
         unsigned char c1 = _addcarry_u64(0, lo, carry, &lo);
-        /* hi += c1 */
         hi += c1;
-
-        p[i] = lo;
-        carry = hi;
+        p[i] = (cfx_limb_t)lo;
+        carry = (cfx_limb_t)hi;
     }
 
     p[n] = carry;

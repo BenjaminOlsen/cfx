@@ -10,44 +10,10 @@
 #ifndef CFX_TYPES_H
 #define CFX_TYPES_H
 
+#include "cfx/arch.h"
+
 #include <stdint.h>
 #include <inttypes.h>
-
-/* --- x86 intrinsics include --- */
-
-#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) \
-    && (defined(__has_include) && __has_include(<immintrin.h>))
-  #include <immintrin.h>
-  #define CFX_USE_X86_INTRINSICS 1
-#else
-  #define CFX_USE_X86_INTRINSICS 0
-#endif
-
-/* -------- feature detection -------- */
-#if !defined(CFX_FORCE_NO_UINT128) && defined(__SIZEOF_INT128__)
-  #define CFX_HAS_UINT128 1
-#endif
-
-#if !defined(CFX_NO_FP)
-  #include <float.h>
-  #if defined(__STDC_IEC_559__) && DBL_MANT_DIG == 53
-    #define CFX_USE_FP_ISQRT 1
-  #else
-    #define CFX_USE_FP_ISQRT 0
-  #endif
-#else
-  #define CFX_USE_FP_ISQRT 0
-#endif
-
-
-/* -------- always_inline helper -------- */
-#if defined(_MSC_VER)
-  #define CFX_INLINE __forceinline
-#elif defined(__GNUC__) || defined(__clang__)
-  #define CFX_INLINE __attribute__((always_inline)) static inline
-#else
-  #define CFX_INLINE static inline
-#endif
 
 /* -------- limb selection: 32 or 64 -------- */
 #if defined(CFX_FORCE_LIMB_32)
@@ -90,7 +56,7 @@
   #define CFX_PRI0uLIMB "%08" PRIu32
 #else
 /* todo - choose defaults or error  */
-#endif 
+#endif
 
 /* -------- accumulator selection: 2x limb width --------
  * If limb=64 and native 128 exists and not forced to struct -> use __uint128_t.

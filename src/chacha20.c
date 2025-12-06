@@ -56,6 +56,26 @@ void cfx_chacha20_block(cfx_chacha_state_t* ctx, uint32_t counter, uint8_t out[6
     for (size_t i = 0; i < 16; ++i) CFX_STORE32_LE(out + 4 * i, w[i]);
 }
 
+void cfx_chacha20_encrypt_ctx(cfx_chacha_state_t* ctx, uint32_t* const counter, const uint8_t* pt, size_t pt_len, uint8_t* ct) {
+    uint8_t ks[64];
+
+    while (pt_len) {
+        cfx_chacha20_block(ctx, *counter, ks);
+        ++*counter;
+
+        size_t take = pt_len < 64 ? pt_len : 64;
+        for (size_t i = 0; i < take; ++i) {
+            ct[i] = pt[i] ^ ks[i];
+        }
+
+        pt += take;
+        ct += take;
+        pt_len  -= take;
+    }
+
+    CFX_MEMZERO_S(ks, sizeof(ks));
+}
+
 
 void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12], uint8_t out[64]) {
     uint32_t s[16], w[16];
@@ -297,6 +317,8 @@ void cfx_chacha20_encrypt_bytes(const uint8_t key[32], uint32_t counter, const u
 
     CFX_MEMZERO_S(ks, sizeof(ks));
 }
+
+
 
 /* ---------------------------------------------------------------------------------------------- */
 /* Here be SIMD */
@@ -598,7 +620,7 @@ static inline void transpose_16x8_to_blocks(const __m256i x[16], uint32_t out[8]
 }
 
 void cfx_chacha20_block8_avx2(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12], uint8_t out[8][64]) {
-    
+
     /* Expand key/nonce to u32 */
     uint32_t k[8];
     uint32_t n[3];
@@ -612,7 +634,7 @@ void cfx_chacha20_block8_avx2(const uint8_t key[32], uint32_t counter, const uin
 
     /* lane offsets  {0,1,2,3,4,5,6,7} */
     const __m256i lane = _mm256_setr_epi32(0,1,2,3,4,5,6,7);
-    
+
     __m256i x[16], o[16];
 
     x[0]  = _mm256_set1_epi32(_EXPA);
@@ -630,7 +652,7 @@ void cfx_chacha20_block8_avx2(const uint8_t key[32], uint32_t counter, const uin
 
     /* lane 0..7 has counter value: {counter, counter+1, ... counter+7} */
     x[12] = _mm256_add_epi32(_mm256_set1_epi32((int32_t)counter), lane);
-    
+
     x[13] = _mm256_set1_epi32((int32_t)n[0]);
     x[14] = _mm256_set1_epi32((int32_t)n[1]);
     x[15] = _mm256_set1_epi32((int32_t)n[2]);
@@ -639,7 +661,7 @@ void cfx_chacha20_block8_avx2(const uint8_t key[32], uint32_t counter, const uin
     for (size_t i = 0; i < 16; ++i) {
         o[i] = x[i];
     }
-    
+
     for (size_t i = 0; i < 10; ++i) {
         MM256_QR(x[0], x[4], x[8],  x[12]);
         MM256_QR(x[1], x[5], x[9],  x[13]);
@@ -654,7 +676,7 @@ void cfx_chacha20_block8_avx2(const uint8_t key[32], uint32_t counter, const uin
     for (size_t i = 0; i < 16; ++i) {
         x[i] = _mm256_add_epi32(x[i], o[i]);
     }
-    
+
     uint32_t (*out_words)[16] = (uint32_t (*)[16])out;
     transpose_16x8_to_blocks(x, out_words);
 }

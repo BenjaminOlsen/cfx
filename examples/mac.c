@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
     printf("key: ");
     size_t i;
     for (i = 0; i < sizeof(key); ++i) {
-        printf("%02x ", key[i]);
+        printf("%02x", key[i]);
     }
     printf("\n\n");
 

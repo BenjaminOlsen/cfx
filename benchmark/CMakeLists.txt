@@ -15,6 +15,7 @@ set(CFX_BENCHMARKS
     bench_rand
     bench_rand_fn_ptr
     bench_chacha20
+    bench_aead_chacha20_poly1305
 )
 
 foreach(bench_name IN LISTS CFX_BENCHMARKS)

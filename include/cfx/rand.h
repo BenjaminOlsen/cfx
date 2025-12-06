@@ -8,10 +8,10 @@
 extern "C" {
 #endif
 
-/** the cfx_<rng>_gen32(void) functions rely on static global state to generate 
+/** the cfx_<rng>_gen32(void) functions rely on static global state to generate
   * their sequences, written by their corresponding cfx_<rng name>_seed() function.
   * They're NOT thread safe, because of their static shared state.
-  * However, the explicit state generators (with uint32_t* argument) 
+  * However, the explicit state generators (with uint32_t* argument)
   * ARE thread safe, as all state is passed in.
   **/
 
@@ -44,7 +44,7 @@ void        cfx_chacha20_bytes(void* buf, size_t len);
 void        cfx_chacha20_bytes_raw(uint8_t* out, size_t len,
                             const uint8_t key[32],
                             const uint8_t nonce[12],
-                            uint32_t counter); 
+                            uint32_t counter);
 
 /* ------- xorshift ------- */
 void        cfx_xorshift32_seed(uint32_t seed);

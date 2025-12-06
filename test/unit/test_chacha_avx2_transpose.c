@@ -4,9 +4,9 @@
 #if CFX_HAVE_AVX2
 #include <immintrin.h>
 
-/* ------------------------------------------------------ 
-* This are some tests of some tricky transpose logic that's 
-* used in the avx2 mm256 chacha20 implementation... 
+/* ------------------------------------------------------
+* This are some tests of some tricky transpose logic that's
+* used in the avx2 mm256 chacha20 implementation...
 */
 
 #define LANE32(v, idx) (uint32_t)_mm_extract_epi32(v, idx)
@@ -45,7 +45,7 @@ static void print_m256(const char *label, __m256i v) {
  */
 
 /* x[w] = [ in[0][w], in[1][w], ..., in[7][w] ] */
-static void transpose_16x8_to_blocks(const __m256i x[16], uint32_t out[8][16]) {
+static inline void transpose_16x8_to_blocks(const __m256i x[16], uint32_t out[8][16]) {
     __m128i lo[16], hi[16];
 
     DBG_P("\n---- Splitting x[w] into lo[w] and hi[w] ----\n");
@@ -89,7 +89,7 @@ static void transpose_16x8_to_blocks(const __m256i x[16], uint32_t out[8][16]) {
 #undef EXTRACT_BLOCK
 #undef LANE32
 }
-    
+
 
 static void test_avx2_transpose(void) {
     /* Original AoS data: 8 blocks, 16 words each.
@@ -110,11 +110,9 @@ static void test_avx2_transpose(void) {
         );
     }
 
-    /* Run transpose logic we want to test */
     uint32_t out[8][16] = {0};
     transpose_16x8_to_blocks(x, out);
 
-    /* Verify */
     int errors = 0;
     for (int blk = 0; blk < 8; ++blk) {
         for (int w = 0; w < 16; ++w) {
@@ -133,8 +131,8 @@ static void test_avx2_transpose(void) {
     } else {
         printf("-- avx2 transpose test: %d mismatches\n", errors);
     }
-    
-    CFX_ASSERT(errors == 0); 
+
+    CFX_ASSERT(errors == 0);
 }
 #endif
 
@@ -143,6 +141,6 @@ int main(void) {
 #if CFX_HAVE_AVX2
     CFX_TEST(test_avx2_transpose);
 #endif
-    
+
     return 0;
 }

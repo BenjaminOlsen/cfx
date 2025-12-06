@@ -272,7 +272,7 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n) {
         if (d == 0) {
             /* Very rare fallback: as a last resort, do a bounded trial division up to 2^32 */
             /* (For 64-bit inputs this almost never triggers with a decent rho.) */
-            /* You could also call SQUFOF here if you have it. */
+            /* TODO call SQUFOF here? */
             cfx_limb_t found = 0;
             for (cfx_limb_t p = 3; p*p <= m; p += 2) {
                 if (m % p == 0) { found = p; break; }
