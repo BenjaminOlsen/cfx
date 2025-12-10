@@ -12,12 +12,6 @@
 #include <cassert>
 #include <cstdio>
 
-// ---- helpers ---------------------------------------------------------------
-static void ensure_cap(cfx_big_t* b, size_t need) {
-    if (b->cap < need) cfx_big_reserve(b, need);
-    if (b->n > need)   b->n = need; // caller manages n exactly
-}
-
 static void fill_random(cfx_big_t* b, size_t limbs, cfx_limb_t seed) {
     cfx_big_reserve(b, limbs);
     std::mt19937_64 rng(seed);

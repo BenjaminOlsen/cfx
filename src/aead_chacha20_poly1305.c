@@ -26,32 +26,32 @@ int cfx_chacha20_poly1305_encrypt(
     const uint8_t zeros[16] = {0};
     uint32_t counter = 0;
     size_t pad = 0;
-    cfx_chacha_state_t chacha_st;
-    cfx_poly1305_state_t poly_st;
+    cfx_chacha20_ctx_t chacha_ctx;
+    cfx_poly1305_ctx_t poly_ctx;
 
-    cfx_chacha20_state_init(&chacha_st, key, nonce);
-    cfx_chacha20_block(&chacha_st, counter, poly_key);
-    cfx_poly1305_init(&poly_st, poly_key);
+    cfx_chacha20_ctx_init(&chacha_ctx, key, nonce);
+    cfx_chacha20_block(&chacha_ctx, counter, poly_key);
+    cfx_poly1305_init(&poly_ctx, poly_key);
     CFX_MEMZERO_S(&poly_key, sizeof poly_key);
 
     /* ciphertext = ChaCha20(key, nonce, counter=1)[pt_len] XOR plaintext */
     counter = 1;
-    cfx_chacha20_encrypt_ctx(&chacha_st, &counter, pt, pt_len, ct);
+    cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, pt, pt_len, ct);
 
     /* make the poly1305 tag out of the message: */
     /* AAD || padding1 || ciphertext || padding2 || len(AAD) (uint64, little-endian) || len(ciphertext) (uint64, little-endian) */
-    cfx_poly1305_update(&poly_st, aad, aad_len); /* does nothing on aad_len == 0*/
+    cfx_poly1305_update(&poly_ctx, aad, aad_len); /* does nothing on aad_len == 0*/
     pad = ct_pad16(aad_len);
-    cfx_poly1305_update(&poly_st, zeros, pad);
-    cfx_poly1305_update(&poly_st, ct, pt_len);
+    cfx_poly1305_update(&poly_ctx, zeros, pad);
+    cfx_poly1305_update(&poly_ctx, ct, pt_len);
     pad = ct_pad16(pt_len);
-    cfx_poly1305_update(&poly_st, zeros, pad);
+    cfx_poly1305_update(&poly_ctx, zeros, pad);
     CFX_STORE64_LE(len_block, (uint64_t)aad_len);
-    cfx_poly1305_update(&poly_st, len_block, 8);
+    cfx_poly1305_update(&poly_ctx, len_block, 8);
     CFX_STORE64_LE(len_block, (uint64_t)pt_len);
-    cfx_poly1305_update(&poly_st, len_block, 8);
+    cfx_poly1305_update(&poly_ctx, len_block, 8);
 
-    cfx_poly1305_finish(&poly_st, tag);
+    cfx_poly1305_finish(&poly_ctx, tag);
     return 0;
 }
 
@@ -84,35 +84,35 @@ int cfx_chacha20_poly1305_decrypt(
     uint32_t counter = 0;
     size_t pad = 0;
 
-    cfx_chacha_state_t chacha_st;
-    cfx_poly1305_state_t poly_st;
+    cfx_chacha20_ctx_t chacha_ctx;
+    cfx_poly1305_ctx_t poly_ctx;
 
-    cfx_chacha20_state_init(&chacha_st, key, nonce);
-    cfx_chacha20_block(&chacha_st, counter, poly_key);
-    cfx_poly1305_init(&poly_st, poly_key);
+    cfx_chacha20_ctx_init(&chacha_ctx, key, nonce);
+    cfx_chacha20_block(&chacha_ctx, counter, poly_key);
+    cfx_poly1305_init(&poly_ctx, poly_key);
     CFX_MEMZERO_S(&poly_key, sizeof poly_key);
 
-    cfx_poly1305_update(&poly_st, aad, aad_len);
+    cfx_poly1305_update(&poly_ctx, aad, aad_len);
     pad = ct_pad16(aad_len);
-    cfx_poly1305_update(&poly_st, zeros, pad);
-    cfx_poly1305_update(&poly_st, ct, ct_len);
+    cfx_poly1305_update(&poly_ctx, zeros, pad);
+    cfx_poly1305_update(&poly_ctx, ct, ct_len);
     pad = ct_pad16(ct_len);
-    cfx_poly1305_update(&poly_st, zeros, pad);
+    cfx_poly1305_update(&poly_ctx, zeros, pad);
     CFX_STORE64_LE(len_block, (uint64_t)aad_len);
-    cfx_poly1305_update(&poly_st, len_block, 8);
+    cfx_poly1305_update(&poly_ctx, len_block, 8);
     CFX_STORE64_LE(len_block, (uint64_t)ct_len);
-    cfx_poly1305_update(&poly_st, len_block, 8);
-    cfx_poly1305_finish(&poly_st, computed_tag);
+    cfx_poly1305_update(&poly_ctx, len_block, 8);
+    cfx_poly1305_finish(&poly_ctx, computed_tag);
 
     if (cfx_memeq_ct(tag, computed_tag, sizeof computed_tag) != 0) {
         CFX_MEMZERO_S(&computed_tag, sizeof computed_tag);
-        CFX_MEMZERO_S(&chacha_st, sizeof chacha_st);
-        CFX_MEMZERO_S(&poly_st, sizeof poly_st);
+        CFX_MEMZERO_S(&chacha_ctx, sizeof chacha_ctx);
+        CFX_MEMZERO_S(&poly_ctx, sizeof poly_ctx);
         return -1;  /* authentication error */
     }
 
     counter = 1;
-    cfx_chacha20_encrypt_ctx(&chacha_st, &counter, ct, ct_len, pt);
-    CFX_MEMZERO_S(&chacha_st, sizeof chacha_st);
+    cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, ct, ct_len, pt);
+    CFX_MEMZERO_S(&chacha_ctx, sizeof chacha_ctx);
     return 0;
 }

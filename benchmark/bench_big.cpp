@@ -2,12 +2,13 @@
 #include <benchmark/benchmark.h>
 #include <cstdint>
 #include <cfx/big.h>
+#include <cstring>
 
 static void BM_InitFree(benchmark::State& state) {
     for (auto _ : state) {
         cfx_big_t b;
         cfx_big_init(&b);
-        cfx_big_from_u64(&b, 42);
+        cfx_big_from_limb(&b, 42);
         cfx_big_free(&b);
         benchmark::DoNotOptimize(b);
     }
@@ -17,7 +18,7 @@ BENCHMARK(BM_InitFree);
 static void BM_AddSmall(benchmark::State& state) {
     cfx_big_t b;
     cfx_big_init(&b);
-    cfx_big_from_u64(&b, 0);
+    cfx_big_from_limb(&b, 0);
     for (auto _ : state) {
         cfx_big_add_sm(&b, 123456789ULL);
         benchmark::DoNotOptimize(b);
@@ -30,7 +31,7 @@ static void BM_MulSmall(benchmark::State& state) {
     cfx_big_t b;
     cfx_big_init(&b);
     for (auto _ : state) {
-        cfx_big_from_u64(&b, 123456789ULL);
+        cfx_big_from_limb(&b, 123456789ULL);
         cfx_big_mul_sm(&b, 7);
     }
     benchmark::DoNotOptimize(b);
@@ -43,9 +44,9 @@ static void BM_MulBig(benchmark::State& state) {
     cfx_big_init(&a);
     cfx_big_init(&b);
     
-    cfx_big_from_u64(&b, 987654321ULL);
+    cfx_big_from_limb(&b, 987654321ULL);
     for (auto _ : state) {
-        cfx_big_from_u64(&a, 123456789ULL);
+        cfx_big_from_limb(&a, 123456789ULL);
         cfx_big_mul(&a, &b);
         benchmark::DoNotOptimize(a);
         benchmark::DoNotOptimize(b);
@@ -101,7 +102,7 @@ static void BM_DivBig(benchmark::State& state) {
 BENCHMARK(BM_DivBig);
 // ----------------------------------------------------------------------------
 // different squaring functions
-cfx_big_t sq1(const cfx_big_t* b) {
+static cfx_big_t sq1(const cfx_big_t* b) {
     cfx_big_t ret;
     cfx_big_init(&ret);
     if (b->n == 0) return ret;
@@ -151,7 +152,7 @@ cfx_big_t sq1(const cfx_big_t* b) {
     // _trim_leading_zeros(&ret);
     return ret;
 }
-cfx_big_t sq2(const cfx_big_t* b) {
+static cfx_big_t sq2(const cfx_big_t* b) {
     cfx_big_t ret;
     cfx_big_init(&ret);
     if (b->n == 0) return ret;
@@ -211,7 +212,7 @@ cfx_big_t sq2(const cfx_big_t* b) {
 }
 
 // -------------
-cfx_big_t sq3(const cfx_big_t* b) {
+static cfx_big_t sq3(const cfx_big_t* b) {
     const size_t n = b->n;
     cfx_big_t ret;
     cfx_big_init(&ret);
@@ -220,7 +221,6 @@ cfx_big_t sq3(const cfx_big_t* b) {
         return ret;
     }
     
-    size_t cnt = 0;
     
     cfx_big_reserve(&ret, 2*n);
     memset(ret.limb, 0, 2*n * sizeof(cfx_limb_t));
@@ -245,7 +245,6 @@ cfx_big_t sq3(const cfx_big_t* b) {
                 + (cfx_limb_t)carry;
             ret.limb[i + j] = (cfx_limb_t)t;
             carry = (carry >> CFX_LIMB_BITS) + (t >> CFX_LIMB_BITS) + (p >> CFX_LIMB_BITS);
-            cnt++;
         }
 
         // propagate whatever is left in 'carry'
@@ -255,7 +254,6 @@ cfx_big_t sq3(const cfx_big_t* b) {
             ret.limb[k] = (cfx_limb_t)t;
             carry = (carry >> CFX_LIMB_BITS) + (t >> CFX_LIMB_BITS);
             ++k;
-            cnt++;
         }
     }
 
@@ -268,7 +266,7 @@ cfx_big_t sq3(const cfx_big_t* b) {
         cfx_acc_t c = (t >> CFX_LIMB_BITS) + (sq >> CFX_LIMB_BITS);
 
         size_t k = 2*i + 1;
-        cnt++;
+
         while (c) {
             t = (cfx_acc_t)ret.limb[k] + (cfx_limb_t)c;
             ret.limb[k] = (cfx_limb_t)t;
@@ -280,7 +278,6 @@ cfx_big_t sq3(const cfx_big_t* b) {
     // trim
     while (ret.n && ret.limb[ret.n - 1] == 0) --ret.n;
 
-    // printf("%s loop cnt: %zu\n", __func__, cnt);
     return ret;
 }
 
@@ -291,7 +288,7 @@ static void BM_sq1(benchmark::State& state) {
     cfx_big_init(&b);
 
     for (auto _ : state) {
-        cfx_big_from_u64(&a, 123456789ULL);
+        cfx_big_from_limb(&a, 123456789ULL);
         b = sq1(&a);
         benchmark::DoNotOptimize(a);
         benchmark::DoNotOptimize(b);
@@ -307,8 +304,8 @@ static void BM_sq2(benchmark::State& state) {
     cfx_big_init(&b);
 
     for (auto _ : state) {
-        cfx_big_from_u64(&a, 123456789ULL);
-        b = sq1(&a);
+        cfx_big_from_limb(&a, 123456789ULL);
+        b = sq2(&a);
         benchmark::DoNotOptimize(a);
         benchmark::DoNotOptimize(b);
     }
@@ -323,8 +320,8 @@ static void BM_sq3(benchmark::State& state) {
     cfx_big_init(&b);
 
     for (auto _ : state) {
-        cfx_big_from_u64(&a, 123456789ULL);
-        b = sq1(&a);
+        cfx_big_from_limb(&a, 123456789ULL);
+        b = sq3(&a);
         benchmark::DoNotOptimize(a);
         benchmark::DoNotOptimize(b);
     }

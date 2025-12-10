@@ -3,8 +3,8 @@
 #ifndef CFX_ALGO_H
 #define CFX_ALGO_H
 
-#include "cfx/types.h"
-#include "cfx/vector.h"
+#include "cfx/arith.h"
+#include "cfx/vec.h"
 
 #include <stdint.h>
 

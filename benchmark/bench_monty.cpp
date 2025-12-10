@@ -14,10 +14,6 @@
 
 // ----------------------- helpers -----------------------
 
-static inline void random_fill_limbs(cfx_limb_t* p, size_t n, std::mt19937_64& rng) {
-    for (size_t i = 0; i < n; ++i) p[i] = rng();
-}
-
 static void make_random_big(cfx_big_t* out, size_t limbs, std::mt19937_64& rng) {
     std::vector<cfx_limb_t> vec(limbs, 0);
     std::generate(vec.begin(), vec.end(), [&rng]() -> cfx_limb_t {return rng();});
@@ -64,6 +60,7 @@ static void BM_MontMul(benchmark::State& state) {
     make_random_odd_modulus(&n, limbs, rng);
     int ok = cfx_big_mont_ctx_init(&ctx, &n);
     assert(ok && "mont ctx init failed");
+    (void)ok;
 
     // random a,b and their Montgomery forms
     cfx_big_t a, b, aM, bM, outM;
@@ -193,7 +190,7 @@ static void BM_ModExpCore_Mont(benchmark::State& state) {
     cfx_big_mont_ctx_init(&ctx, &n);
 
     make_random_big(&base, limbs, rng);
-    cfx_big_from_u64(&acc, 1);
+    cfx_big_from_limb(&acc, 1);
 
     cfx_big_mont_to(&baseM, &base, &ctx);
     cfx_big_mont_to(&accM,  &acc,  &ctx);
@@ -229,7 +226,7 @@ static void BM_ModExpCore_Plain(benchmark::State& state) {
     cfx_big_init(&acc);
     make_random_odd_modulus(&n, limbs, rng);
     make_random_big(&base, limbs, rng);
-    cfx_big_from_u64(&acc, 1);
+    cfx_big_from_limb(&acc, 1);
 
     for (auto _ : state) {
         for (int i = 0; i < 1024; ++i)
@@ -257,7 +254,7 @@ static void BM_ModExpCore_Auto(benchmark::State& state) {
     cfx_big_init(&acc);
     make_random_odd_modulus(&n, limbs, rng);
     make_random_big(&base, limbs, rng);
-    cfx_big_from_u64(&acc, 1);
+    cfx_big_from_limb(&acc, 1);
 
     for (auto _ : state) {
         for (int i = 0; i < 1024; ++i)

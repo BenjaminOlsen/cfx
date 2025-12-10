@@ -5,12 +5,36 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+
+    #if defined(__GNUC__) || defined(__clang__)
+        #define CFX_RESTRICT __restrict__
+    #elif defined(_MSC_VER)
+        #define CFX_RESTRICT __restrict
+    #else
+        #define CFX_RESTRICT
+    #endif
+
+#else  /* ifndef __cplusplus */
+
+    #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+        #define CFX_RESTRICT restrict
+    #else
+        #define CFX_RESTRICT
+    #endif
+
+#endif
+
 #if defined(__clang__) || defined(__GNUC__)
 #define CFX_SIMD 1
 #endif
 
-#if defined(__AVX2__)
-#define CFX_HAVE_AVX2 1
+#ifndef CFX_HAVE_AVX2
+#  if defined(__AVX2__)
+#    define CFX_HAVE_AVX2 1
+#  else
+#    define CFX_HAVE_AVX2 0
+#  endif
 #endif
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L

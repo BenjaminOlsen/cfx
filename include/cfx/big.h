@@ -5,7 +5,7 @@
 
 #include "cfx/fac.h"
 #include "cfx/algo.h"
-#include "cfx/types.h"
+#include "cfx/arith.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -81,16 +81,19 @@ int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
 int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
 int cfx_big_cmp_sm(const cfx_big_t* a, cfx_limb_t n);
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
-size_t cfx_big_bitlen(const cfx_big_t* b);
+size_t cfx_big_bitlen(const cfx_big_t* b);      /* assumes b->limb[b->n - 1] != 0 */
 
-int cfx_big_from_u64(cfx_big_t* b, cfx_limb_t v);
+int cfx_big_from_u64(cfx_big_t* b, uint64_t v);
+int cfx_big_from_limb(cfx_big_t* b, cfx_limb_t v);
 int cfx_big_from_bytes_be(cfx_big_t* out, const uint8_t* be, size_t len);
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
 void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
 void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m);
 /* assumes scratch is allocated with the appropriate size b->n + m->n already. */
 void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t* scratch);
+/* if CFX_HAS_PTHREAD */
 void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads);
+
 /* chooses the fastest multiplication for the size of the multiplicands */
 void cfx_big_mul_auto(cfx_big_t* b, const cfx_big_t* m);
 
@@ -126,10 +129,13 @@ int cfx_fac_from_big(cfx_fac_t* fac, const cfx_big_t* in);
 /* Bitshift operations */
 /* b >>= s */
 void cfx_big_shr_bits_eq(cfx_big_t* b, unsigned s);
+
 /* b <<= s */
 void cfx_big_shl_bits_eq(cfx_big_t* b, unsigned s);
+
 /* out = x << s (0..63)  */
 void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s);
+
 /* out = x >> s (0..63)  */
 void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s);
 
@@ -138,7 +144,11 @@ void cfx_big_disable_cache(cfx_big_t* b);
 
 /* Multiply by p^e by repeated squaring using small chunks to avoid overflow */
 void cfx_big_expmul_prime(cfx_big_t* b, cfx_limb_t p, cfx_limb_t e);
-/* out = n ^ p*/
+
+/* out = p^e */
+void cfx_big_primepow(cfx_big_t* out, cfx_limb_t p, cfx_limb_t e);
+
+/* out = n ^ p */
 void cfx_big_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p);
 void cfx_big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_limb_t p);
 
@@ -152,6 +162,8 @@ int cfx_big_is_prime(const cfx_big_t* b);
 
 void cfx_big_from_limbs(cfx_big_t* b, const cfx_limb_t* limbs, size_t n);
 void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t* f);
+void cfx_big_from_fac_fast(cfx_big_t* out, const cfx_fac_t* f);
+void cfx_big_from_fac_faster(cfx_big_t* out, const cfx_fac_t* f);
 void cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b);
 
 char* cfx_big_to_str(const cfx_big_t* b, size_t *sz_out);
@@ -174,7 +186,7 @@ int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base);
  *   n      : modulus (normalized, odd)
  *   k      : limb count of n; also defines R = b^k
  *   n0inv  : (-n[0])^{-1} mod b, i.e. n[0] * n0inv ≡ -1 (mod b)
- *   rr     : R^2 mod n  (used to convert x → xR mod n via MontMul)
+ *   rr     : R^2 mod n  (used to convert x -> xR mod n via MontMul)
  *   Additional caches:
  *   R1  : R mod n    (the Montgomery representation of 1)
  *   mu  : floor(b^(2k)/n) for Barrett reduction of large inputs

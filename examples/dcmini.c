@@ -252,15 +252,15 @@ static void apply_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B, cha
         cfx_big_t res, base;
         cfx_big_init(&res);
         cfx_big_init(&base);
-        cfx_big_from_u64(&res, 1);
+        cfx_big_from_limb(&res, 1);
         cfx_big_copy(&base, A);
         cfx_big_t zero, two, q, r; 
         cfx_big_init(&zero);
         cfx_big_init(&two);
         cfx_big_init(&q);
         cfx_big_init(&r);
-        cfx_big_from_u64(&zero, 0);
-        cfx_big_from_u64(&two, 2);
+        cfx_big_from_limb(&zero, 0);
+        cfx_big_from_limb(&two, 2);
         while (cfx_big_cmp(&e, &zero) > 0) {
             cfx_big_divrem(&q, &r, &e, &two);
             if (!cfx_big_is_zero(&r)) {

@@ -3,8 +3,8 @@
 #ifndef CFX_FAC_H
 #define CFX_FAC_H
 
-#include "cfx/vector.h"
-#include "cfx/types.h"
+#include "cfx/vec.h"
+#include "cfx/arith.h"
 
 #include <stdint.h>
 #include <stddef.h>

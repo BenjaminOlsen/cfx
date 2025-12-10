@@ -18,7 +18,7 @@ static void usage(const char* prog) {
 
 enum direction { UP, DOWN, LEFT, RIGHT };
 
-void turn(enum direction* d) {
+static void turn(enum direction* d) {
     switch(*d) {
         case UP: *d = LEFT; break;
         case DOWN: *d = RIGHT; break;
@@ -29,7 +29,7 @@ void turn(enum direction* d) {
 }
 
 /* little trick for calculating the number of base 10 digits quickly */
-unsigned digits10(uint32_t v) {
+static unsigned digits10(uint32_t v) {
     static const uint32_t powers_of_10[] = {
         1U, 10U, 100U, 1000U, 10000U, 100000U,
         1000000U, 10000000U, 100000000U, 1000000000U
@@ -135,12 +135,12 @@ int main(int argc, char** argv) {
     if (console) {
         unsigned max_digits = digits10(w*w);
 
-        for (unsigned row = 0; row < w; ++row) {
-            for (unsigned col = 0; col < w; ++col) {
-                cfx_limb_t val = (cfx_limb_t)values[col+w*row];
+        for (unsigned r = 0; r < w; ++r) {
+            for (unsigned c = 0; c < w; ++c) {
+                cfx_limb_t val = (cfx_limb_t)values[c+w*r];
                 if (cfx_is_prime_u64(val)) {
                     if (dots) printf("·");
-                    else printf("%*d", max_digits, values[col+w*row]);
+                    else printf("%*d", max_digits, values[c+w*r]);
                 } else {
                     if (dots) printf(" ");
                     else printf("%*c", max_digits, 'x');
@@ -166,10 +166,10 @@ int main(int argc, char** argv) {
     fprintf(f, "P1\n%d %d\n", W, H);
 
     /* make the .pbm pixels */
-    for (unsigned row = 0; row < w; ++row) {
+    for (unsigned r = 0; r < w; ++r) {
         for (unsigned vrep = 0; vrep < scale; ++vrep) {  /* vertical */
-            for (unsigned col = 0; col < w; ++col) {
-                unsigned bit = prime[(size_t)row * (size_t)w + (size_t)col] ? 1 : 0;
+            for (unsigned c = 0; c < w; ++c) {
+                unsigned bit = prime[(size_t)r * (size_t)w + (size_t)c] ? 1 : 0;
                 for (unsigned hrep = 0; hrep < scale; ++hrep) { /* horizontal */
                     fputc(bit ? '1' : '0', f);
                     fputc(' ', f);

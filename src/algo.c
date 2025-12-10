@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
 
 #include "cfx/algo.h"
-#include "cfx/types.h"
+#include "cfx/arith.h"
 #include "cfx/macros.h"
 #include "cfx/primes.h"
 #include "cfx/rand.h"
@@ -293,7 +293,7 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n) {
         st[top++] = b;
     }
 
-    /* 4) Sort & coalesce → emit (p, e) */
+    /* 4) Sort & coalesce -> emit (p, e) */
     qsort(v.data, v.size, sizeof(cfx_limb_t), cmp_u64);
 
     for (size_t i = 0; i < v.size; ) {

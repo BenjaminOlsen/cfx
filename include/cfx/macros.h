@@ -8,6 +8,10 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* removes folders from __FILE__ path */
 #define __FILENAME__ \
     (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -75,11 +79,14 @@ do { \
 #define CFX_ASSERT_PRINT(cond) CFX_PRINT_TEST_COND(cond)
 #endif
 
-#ifdef CFX_DEBUG
+#ifdef CFX_PRINT_DEBUG
   #define PRINT_DBG(...) printf(__VA_ARGS__)
 #else
   #define PRINT_DBG(...) do { ignore_args(__VA_ARGS__); } while(0)
 #endif
+
+#define CFX_STATIC_ASSERT(cond, msg) \
+    typedef char static_assert_##msg[(cond) ? 1 : -1]
 
 #define CFX_ASSERT(expr) do {           \
     if (!(expr))  {                     \
@@ -90,5 +97,9 @@ do { \
 } while (0)
 
 #define CFX_FAIL() CFX_ASSERT(0)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* CFX_MACROS_H */

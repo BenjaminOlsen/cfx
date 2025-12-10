@@ -2,7 +2,7 @@
 
 #include "cfx/fac.h"
 #include "cfx/algo.h"
-#include "cfx/vector.h"
+#include "cfx/vec.h"
 #include "cfx/macros.h"
 #include "cfx/primes.h"
 

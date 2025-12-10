@@ -24,7 +24,7 @@ static cfx_limb_t powmod_u64(cfx_limb_t a, cfx_limb_t e, cfx_limb_t n) {
 static void test_mont_ctx_rejects_even_n(void) {
     cfx_big_t n;
     cfx_big_init(&n);
-    cfx_big_from_u64(&n, 100); /* even */
+    cfx_big_from_limb(&n, 100); /* even */
     cfx_big_mont_ctx_t C;
     CFX_ASSERT_PRINT(cfx_big_mont_ctx_init(&C, &n) == 0);
     cfx_big_free(&n);
@@ -40,9 +40,9 @@ static void test_mont_mul_matches_scalar(void) {
     cfx_big_init(&a);
     cfx_big_init(&b);
     
-    cfx_big_from_u64(&n, n64);
-    cfx_big_from_u64(&a, a64);
-    cfx_big_from_u64(&b, b64);
+    cfx_big_from_limb(&n, n64);
+    cfx_big_from_limb(&a, a64);
+    cfx_big_from_limb(&b, b64);
 
 
     cfx_big_mont_ctx_t C;
@@ -85,9 +85,9 @@ static void test_mont_modexp_matches_scalar(void) {
     cfx_big_init(&a);
     cfx_big_init(&e);
     cfx_big_init(&r);
-    cfx_big_from_u64(&n, n64);
-    cfx_big_from_u64(&a, a64);
-    cfx_big_from_u64(&e, e64);
+    cfx_big_from_limb(&n, n64);
+    cfx_big_from_limb(&a, a64);
+    cfx_big_from_limb(&e, e64);
 
     CFX_ASSERT_PRINT(cfx_big_modexp(&r, &a, &e, &n));
     cfx_limb_t got = (r.n ? r.limb[0] : 0);
@@ -105,10 +105,10 @@ static void test_mont_modexp_matches_scalar(void) {
 static void test_mont_roundtrip_1(void) {
     cfx_big_t n;
     cfx_big_init(&n);
-    cfx_big_from_u64(&n, 0xffffffff00000001ull);
+    cfx_big_from_limb(&n, 0xffffffff00000001ull);
     cfx_big_t a;
     cfx_big_init(&a);
-    cfx_big_from_u64(&a, 1234567);
+    cfx_big_from_limb(&a, 1234567);
 
     cfx_big_mont_ctx_t C;
     CFX_ASSERT_PRINT(cfx_big_mont_ctx_init(&C, &n));
@@ -133,7 +133,7 @@ static void test_mont_aliasing_safe(void) {
     /* Ensure out == a alias works */
     cfx_big_t n;
     cfx_big_init(&n);
-    cfx_big_from_u64(&n, 0xffffffff00000001ull);
+    cfx_big_from_limb(&n, 0xffffffff00000001ull);
     cfx_big_mont_ctx_t C;
     CFX_ASSERT_PRINT(cfx_big_mont_ctx_init(&C, &n));
 
@@ -216,7 +216,7 @@ static cfx_limb_t powmod_u64_ref(cfx_limb_t a, cfx_limb_t e, cfx_limb_t n) {
 /* Init a mont ctx for 64-bit odd n */
 static void init_ctx_u64(cfx_big_mont_ctx_t* C, cfx_big_t* n, cfx_limb_t n64) {
     cfx_big_init(n);
-    cfx_big_from_u64(n, n64 | 1ull);    /* ensure odd */
+    cfx_big_from_limb(n, n64 | 1ull);    /* ensure odd */
     int ok = cfx_big_mont_ctx_init(C, n);
     CFX_ASSERT(ok);
 }
@@ -224,7 +224,7 @@ static void init_ctx_u64(cfx_big_mont_ctx_t* C, cfx_big_t* n, cfx_limb_t n64) {
 /* Convert a u64 to cfx_big */
 static void big_from_u64(cfx_big_t* x, cfx_limb_t v) {
     cfx_big_init(x);
-    cfx_big_from_u64(x, v);
+    cfx_big_from_limb(x, v);
 }
 
 /* Read cfx_big as u64 (only for tests where we know it fits) */

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
 
-#include "cfx/vector.h"
+#include "cfx/vec.h"
 #include "cfx/macros.h"
 
 #include <stdio.h>

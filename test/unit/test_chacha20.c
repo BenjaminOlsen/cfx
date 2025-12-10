@@ -20,6 +20,11 @@ typedef const uint8_t D;
 static inline void p_c(B*a,C n){E(n)F(a K);F(H);}
 static inline void p_x(D*d,C n){E(n)G(I,d K);F(H);}
 
+/* cheating, exposing the "private" cfx_chacha20_state_t, ooOoooOoo..... */
+struct chacha20_state {
+    uint32_t s[16];
+};
+
 /* ---- RFC 8439 2.3.2: Block function vector ---- */
 static const uint8_t KEY[32] = {
     0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,
@@ -92,9 +97,9 @@ static void chacha20_block_kat(void) {
 
 static void chacha20_block_kat_2(void) {
     uint8_t block[64];
-    cfx_chacha_state_t ctx;
+    cfx_chacha20_ctx_t ctx;
 
-    cfx_chacha20_state_init(&ctx, KEY, NONCE_BLOCK);
+    cfx_chacha20_ctx_init(&ctx, KEY, NONCE_BLOCK);
     cfx_chacha20_block(&ctx, COUNTER_BLOCK, block);
     int ok = expect_eq(__func__, block, BLOCK_EXPECT, sizeof(block));
     CFX_ASSERT(ok);
@@ -168,7 +173,7 @@ static void test_block4_matches_scalar(void) {
     cfx_chacha20_block4_simd(key, ctr, (const uint8_t (*)[12])nonce, out_vec);
 
     uint8_t out_vec2[4][64];
-    cfx_chacha_state4_t ctx4;
+    cfx_chacha20_ctx4_t ctx4;
     cfx_chacha20_state_init4(&ctx4, key, (const uint8_t (*)[12])nonce);
     cfx_chacha20_block4(&ctx4, ctr, out_vec2);
 
@@ -216,9 +221,10 @@ static void test_quarter_round(void) {
     CFX_ASSERT(d == 0x5881c4bb);
 }
 
+
 /* https://datatracker.ietf.org/doc/html/rfc8439#section-2.2.1 */
 static void test_quarter_round_state(void) {
-    cfx_chacha_state_t ctx;
+    struct chacha20_state ctx;
     ctx.s[0]  = 0x79531e0;
     ctx.s[1]  = 0xc5ecf37d;
     ctx.s[2]  = 0x516461b1;

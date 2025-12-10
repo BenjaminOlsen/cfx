@@ -20,6 +20,16 @@
 /* cast to accumulator, multiply */
 #define MUL(a,b) ((uint64_t)(a)*(uint64_t)(b))
 
+typedef struct {
+    uint32_t r0, r1, r2, r3, r4;
+    uint64_t s1, s2, s3, s4;
+    uint32_t pad0, pad1, pad2, pad3;
+    uint32_t h0, h1, h2, h3, h4;
+
+    uint8_t  buffer[16];    /* holds any incomplete (< 16 byte ) blocks */
+    uint8_t  buflen;        /* 0..15 */
+    uint8_t  done;          /* After cfx_poly1305_finish(state, tag), the Poly1305 key must never be reused */
+} cfx_poly1305_state_t;
 
 /* ---------------------------------------------------------------------------------------------------- */
 /* The amazing poly1305 message authenticator algorithm - shamelessly plagiarized from libsodium.
@@ -40,13 +50,13 @@ term it's:
 This makes the multiplication of two 5 limb numbers look like this:
 
                                    a4      a3      a2      a1      a0
-                              ×    b4      b3      b2      b1      b0
+                              *    b4      b3      b2      b1      b0
                               ---------------------------------------
-                                a4×b0   a3×b0   a2×b0   a1×b0   a0×b0
-                     (a4*b1)  + a3×b1   a2×b1   a1×b1   a0×b1 5×a4×b1  <--
-              ...  + (a3*b2)  + a2×b2   a1×b2   a0×b2 5×a4×b2 5×a3×b2  <--
-        ... + ...  + (a2*b3)  + a1×b3   a0×b3 5×a4×b3 5×a3×b3 5×a2×b3
- ... + .... + ...  + (a1*b4)  + a0×b4 5×a4×b4 5×a3×b4 5×a2×b4 5×a1×b4
+                                a4*b0   a3*b0   a2*b0   a1*b0   a0*b0
+                     (a4*b1)  + a3*b1   a2*b1   a1*b1   a0*b1 5*a4*b1  <--
+              ...  + (a3*b2)  + a2*b2   a1*b2   a0*b2 5*a4*b2 5*a3*b2  <--
+        ... + ...  + (a2*b3)  + a1*b3   a0*b3 5*a4*b3 5*a3*b3 5*a2*b3
+ ... + .... + ...  + (a1*b4)  + a0*b4 5*a4*b4 5*a3*b4 5*a2*b4 5*a1*b4
 
  * ----- */
 
@@ -59,7 +69,8 @@ This makes the multiplication of two 5 limb numbers look like this:
  */
 
 
-void cfx_poly1305_init(cfx_poly1305_state_t* s, const uint8_t key[32]) {
+void cfx_poly1305_init(cfx_poly1305_ctx_t* ctx, const uint8_t key[32]) {
+    cfx_poly1305_state_t* s = (cfx_poly1305_state_t*)ctx->opaque;
 
     /*  clamp(r): r &= 0x0ffffffc0ffffffc0ffffffc0fffffff */
     s->r0 =  CFX_LOAD32_LE(&key[0])  & 0x3ffffffu;
@@ -116,7 +127,7 @@ CFX_INLINE void cfx_poly1305_block(
     H3 += t3;
     H4 += t4;
 
-    /* h *= r  (mod 2^130-5), with 32×32 -> 64 bit multiplies */
+    /* h *= r  (mod 2^130-5), with 32*32 -> 64 bit multiplies */
     d0 = SUM(MUL(H0,r0), MUL(H1,s4), MUL(H2,s3), MUL(H3,s2), MUL(H4,s1));
     d1 = SUM(MUL(H0,r1), MUL(H1,r0), MUL(H2,s4), MUL(H3,s3), MUL(H4,s2));
     d2 = SUM(MUL(H0,r2), MUL(H1,r1), MUL(H2,r0), MUL(H3,s4), MUL(H4,s3));
@@ -143,7 +154,9 @@ CFX_INLINE void cfx_poly1305_block(
     *h4 = H4;
 }
 
-void cfx_poly1305_update(cfx_poly1305_state_t* s, const uint8_t* msg, size_t mlen) {
+void cfx_poly1305_update(cfx_poly1305_ctx_t* ctx, const uint8_t* msg, size_t mlen) {
+    cfx_poly1305_state_t* s = (cfx_poly1305_state_t*)ctx->opaque;
+
     if (s->done || mlen == 0) { return; }
     uint8_t buflen = s->buflen;
 
@@ -191,7 +204,9 @@ void cfx_poly1305_update(cfx_poly1305_state_t* s, const uint8_t* msg, size_t mle
     s->h4 = h4;
 }
 
-void cfx_poly1305_finish(cfx_poly1305_state_t* s, uint8_t tag[16]) {
+void cfx_poly1305_finish(cfx_poly1305_ctx_t* ctx, uint8_t tag[16]) {
+    cfx_poly1305_state_t* s = (cfx_poly1305_state_t*)ctx->opaque;
+
     if (s->done) return;
 
     uint32_t r0 = s->r0, r1 = s->r1, r2 = s->r2, r3 = s->r3, r4 = s->r4;
@@ -338,10 +353,10 @@ void cfx_poly1305_finish(cfx_poly1305_state_t* s, uint8_t tag[16]) {
 }
 
 void cfx_poly1305_mac_2(const uint8_t key[32], const uint8_t* m, size_t mlen, uint8_t tag[16]) {
-    cfx_poly1305_state_t st;
-    cfx_poly1305_init(&st, key);
-    cfx_poly1305_update(&st, m, mlen);
-    cfx_poly1305_finish(&st, tag);
+    cfx_poly1305_ctx_t ctx;
+    cfx_poly1305_init(&ctx, key);
+    cfx_poly1305_update(&ctx, m, mlen);
+    cfx_poly1305_finish(&ctx, tag);
 }
 
 void cfx_poly1305_mac(const uint8_t key[32], const uint8_t* m, size_t mlen, uint8_t tag[16]) {
@@ -389,7 +404,7 @@ void cfx_poly1305_mac(const uint8_t key[32], const uint8_t* m, size_t mlen, uint
         h3 += t3;
         h4 += t4;
 
-        /* h *= r  (mod 2^130-5), with 32×32 -> 64 bit multiplies */
+        /* h *= r  (mod 2^130-5), with 32*32 -> 64 bit multiplies */
         d0 = SUM(MUL(h0,r0), MUL(h1,s4), MUL(h2,s3), MUL(h3,s2), MUL(h4,s1));
         d1 = SUM(MUL(h0,r1), MUL(h1,r0), MUL(h2,s4), MUL(h3,s3), MUL(h4,s2));
         d2 = SUM(MUL(h0,r2), MUL(h1,r1), MUL(h2,r0), MUL(h3,s4), MUL(h4,s3));

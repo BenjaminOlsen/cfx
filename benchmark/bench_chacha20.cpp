@@ -122,8 +122,8 @@ static void BM_Chacha20_Block_Ctx(benchmark::State& state) {
     uint8_t nonce4_dummy[4][12];
     init_key_nonce(key, nonce, nonce4_dummy);
 
-    cfx_chacha_state_t s;
-    cfx_chacha20_state_init(&s, key, nonce);
+    cfx_chacha20_ctx_t s;
+    cfx_chacha20_ctx_init(&s, key, nonce);
 
     for (auto _ : state) {
         for (size_t k = 2; k--;) {
@@ -184,7 +184,7 @@ static void BM_Chacha20_Block4_Simd_2(benchmark::State& state) {
     uint32_t counters[4] = {0, 1, 2, 3};
 
     init_key_nonce(key, nonce1, nonce4);
-    cfx_chacha_state4_t s;
+    cfx_chacha20_ctx4_t s;
     cfx_chacha20_state_init4(&s, key, nonce4);
 
     for (auto _ : state) {

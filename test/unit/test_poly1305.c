@@ -426,7 +426,7 @@ static void poly1305_nacl_test(void) {
     uint8_t mac[16];
     size_t i;
 	for (i = 0; i < sizeof(mac); i++) mac[i] = 0;
-    cfx_poly1305_state_t ctx;
+    cfx_poly1305_ctx_t ctx;
     cfx_poly1305_init(&ctx, nacl_key);
     cfx_poly1305_update(&ctx, nacl_msg +   0, 32);
 	cfx_poly1305_update(&ctx, nacl_msg +  32, 64);

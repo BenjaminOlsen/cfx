@@ -11,23 +11,6 @@
 
 #ifdef __cplusplus
 extern "C" {
-
-#if defined(__GNUC__) || defined(__clang__)
-#define CFX_RESTRICT __restrict__
-#elif defined(_MSC_VER)
-#define CFX_RESTRICT __restrict
-#else
-#define CFX_RESTRICT
-#endif
-
-#else  /* ifndef __cplusplus */
-
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-#define CFX_RESTRICT restrict
-#else
-#define CFX_RESTRICT
-#endif
-
 #endif
 
 /* ------------------------------------------------------------------------------------------------------------------ */
@@ -46,9 +29,12 @@ extern "C" {
     a += b; d ^= a; d = CFX_CHACHA20_ROTL32(d, 8); \
     c += d; b ^= c; b = CFX_CHACHA20_ROTL32(b, 7);
 
-typedef struct {
-    uint32_t s[16];
-} cfx_chacha_state_t;
+
+
+typedef union {
+    uint8_t opaque[64];
+    size_t aligner;
+} cfx_chacha20_ctx_t;
 
 
 #if CFX_SIMD
@@ -60,10 +46,12 @@ typedef struct {
 #endif
 
 
+typedef union {
+    uint8_t opaque[256];
+    size_t aligner;
+} cfx_chacha20_ctx4_t;
 
-typedef struct {
-    vec4_u32 s[16];  /*s[0] is word0 for 4 blocks, etc. */
-} cfx_chacha_state4_t;
+
 
 #define CFX_CHACHA20_VQR(a,b,c,d)  \
     a = v_add(a, b); d = v_xor(d, a); d = v_rotl(d,16); \
@@ -73,12 +61,12 @@ typedef struct {
 
 
 
-void cfx_chacha20_state_init(cfx_chacha_state_t* ctx, const uint8_t key[32], const uint8_t nonce[12]);
-void cfx_chacha20_block(cfx_chacha_state_t* ctx, const uint32_t counter, uint8_t out[64]);
-void cfx_chacha20_encrypt_ctx(cfx_chacha_state_t* ctx, uint32_t* const counter, const uint8_t* pt, size_t pt_len, uint8_t* ct);
+void cfx_chacha20_ctx_init(cfx_chacha20_ctx_t* ctx, const uint8_t key[32], const uint8_t nonce[12]);
+void cfx_chacha20_block(cfx_chacha20_ctx_t* ctx, const uint32_t counter, uint8_t out[64]);
+void cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t* ctx, uint32_t* const counter, const uint8_t* pt, size_t pt_len, uint8_t* ct);
 
-void cfx_chacha20_state_init4(cfx_chacha_state4_t* ctx, const uint8_t key[32], const uint8_t nonce[4][12]);
-void cfx_chacha20_block4(cfx_chacha_state4_t* ctx, const uint32_t counter[4], uint8_t out[4][64]);
+void cfx_chacha20_state_init4(cfx_chacha20_ctx4_t* ctx, const uint8_t key[32], const uint8_t nonce[4][12]);
+void cfx_chacha20_block4(cfx_chacha20_ctx4_t* ctx, const uint32_t counter[4], uint8_t out[4][64]);
 
 void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
                                 uint8_t out[64]);

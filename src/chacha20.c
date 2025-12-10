@@ -7,6 +7,16 @@
 
 #include <string.h>
 
+
+typedef struct {
+    uint32_t s[16];
+} cfx_chacha20_state_t;
+
+
+typedef struct {
+    vec4_u32 s[16];  /*s[0] is word0 for 4 blocks, etc. */
+} cfx_chacha20_state4_t;
+
 #define ROTL32(x, n) CFX_CHACHA20_ROTL32(x, n)
 #define QR(a, b, c, d) CFX_CHACHA20_QR(a, b, c, d)
 
@@ -15,29 +25,32 @@
 #define _2_BY 0x79622d32u
 #define _TE_K 0x6b206574u
 
-void cfx_chacha20_state_init(cfx_chacha_state_t* ctx, const uint8_t key[32], const uint8_t nonce[12]) {
-    ctx->s[0]  = _EXPA;
-    ctx->s[1]  = _ND_3;
-    ctx->s[2]  = _2_BY;
-    ctx->s[3]  = _TE_K;
-    ctx->s[4]  = CFX_LOAD32_LE(key + 0);
-    ctx->s[5]  = CFX_LOAD32_LE(key + 4);
-    ctx->s[6]  = CFX_LOAD32_LE(key + 8);
-    ctx->s[7]  = CFX_LOAD32_LE(key + 12);
-    ctx->s[8]  = CFX_LOAD32_LE(key + 16);
-    ctx->s[9]  = CFX_LOAD32_LE(key + 20);
-    ctx->s[10] = CFX_LOAD32_LE(key + 24);
-    ctx->s[11] = CFX_LOAD32_LE(key + 28);
-    ctx->s[12] = 0;     /* counter */
-    ctx->s[13] = CFX_LOAD32_LE(nonce + 0);
-    ctx->s[14] = CFX_LOAD32_LE(nonce + 4);
-    ctx->s[15] = CFX_LOAD32_LE(nonce + 8);
+void cfx_chacha20_ctx_init(cfx_chacha20_ctx_t* ctx, const uint8_t key[32], const uint8_t nonce[12]) {
+    cfx_chacha20_state_t* st = (cfx_chacha20_state_t*)ctx->opaque;
+
+    st->s[0]  = _EXPA;
+    st->s[1]  = _ND_3;
+    st->s[2]  = _2_BY;
+    st->s[3]  = _TE_K;
+    st->s[4]  = CFX_LOAD32_LE(key + 0);
+    st->s[5]  = CFX_LOAD32_LE(key + 4);
+    st->s[6]  = CFX_LOAD32_LE(key + 8);
+    st->s[7]  = CFX_LOAD32_LE(key + 12);
+    st->s[8]  = CFX_LOAD32_LE(key + 16);
+    st->s[9]  = CFX_LOAD32_LE(key + 20);
+    st->s[10] = CFX_LOAD32_LE(key + 24);
+    st->s[11] = CFX_LOAD32_LE(key + 28);
+    st->s[12] = 0;     /* counter */
+    st->s[13] = CFX_LOAD32_LE(nonce + 0);
+    st->s[14] = CFX_LOAD32_LE(nonce + 4);
+    st->s[15] = CFX_LOAD32_LE(nonce + 8);
 }
 
-void cfx_chacha20_block(cfx_chacha_state_t* ctx, uint32_t counter, uint8_t out[64]) {
+void cfx_chacha20_block(cfx_chacha20_ctx_t* ctx, uint32_t counter, uint8_t out[64]) {
+    cfx_chacha20_state_t* st = (cfx_chacha20_state_t*)ctx->opaque;
     uint32_t w[16];
-    ctx->s[12] = counter;
-    memcpy(w, ctx->s, sizeof(w));
+    st->s[12] = counter;
+    memcpy(w, st->s, sizeof(w));
 
     for (size_t i = 0; i < 10; ++i){
         /* column rounds */
@@ -52,11 +65,11 @@ void cfx_chacha20_block(cfx_chacha_state_t* ctx, uint32_t counter, uint8_t out[6
         QR(w[3], w[4], w[9], w[14])
     }
 
-    for (size_t i = 0; i < 16; ++i) w[i] += ctx->s[i];
+    for (size_t i = 0; i < 16; ++i) w[i] += st->s[i];
     for (size_t i = 0; i < 16; ++i) CFX_STORE32_LE(out + 4 * i, w[i]);
 }
 
-void cfx_chacha20_encrypt_ctx(cfx_chacha_state_t* ctx, uint32_t* const counter, const uint8_t* pt, size_t pt_len, uint8_t* ct) {
+void cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t* ctx, uint32_t* const counter, const uint8_t* pt, size_t pt_len, uint8_t* ct) {
     uint8_t ks[64];
 
     while (pt_len) {
@@ -298,8 +311,8 @@ void cfx_chacha20_encrypt_bytes(const uint8_t key[32], uint32_t counter, const u
                           const uint8_t *pt, size_t pt_len, uint8_t *ct) {
     uint8_t ks[64];
 
-    cfx_chacha_state_t ctx;
-    cfx_chacha20_state_init(&ctx, key, nonce);
+    cfx_chacha20_ctx_t ctx;
+    cfx_chacha20_ctx_init(&ctx, key, nonce);
 
     while (pt_len) {
         cfx_chacha20_block(&ctx, counter, ks);
@@ -438,34 +451,36 @@ static inline void v_store32_le_4(uint8_t *out0, uint8_t *out1,
 #define VQR(a,b,c,d) CFX_CHACHA20_VQR(a,b,c,d)
 
 
-void cfx_chacha20_state_init4(cfx_chacha_state4_t* ctx, const uint8_t key[32], const uint8_t nonce[4][12]) {
-    ctx->s[0]  = v_set1(_EXPA);
-    ctx->s[1]  = v_set1(_ND_3);
-    ctx->s[2]  = v_set1(_2_BY);
-    ctx->s[3]  = v_set1(_TE_K);
+void cfx_chacha20_state_init4(cfx_chacha20_ctx4_t* ctx, const uint8_t key[32], const uint8_t nonce[4][12]) {
+    cfx_chacha20_state4_t*st = (cfx_chacha20_state4_t*)ctx;
+    st->s[0]  = v_set1(_EXPA);
+    st->s[1]  = v_set1(_ND_3);
+    st->s[2]  = v_set1(_2_BY);
+    st->s[3]  = v_set1(_TE_K);
 
-    ctx->s[4]  = v_load32_le_1(key + 0);
-    ctx->s[5]  = v_load32_le_1(key + 4);
-    ctx->s[6]  = v_load32_le_1(key + 8);
-    ctx->s[7]  = v_load32_le_1(key + 12);
-    ctx->s[8]  = v_load32_le_1(key + 16);
-    ctx->s[9]  = v_load32_le_1(key + 20);
-    ctx->s[10] = v_load32_le_1(key + 24);
-    ctx->s[11] = v_load32_le_1(key + 28);
+    st->s[4]  = v_load32_le_1(key + 0);
+    st->s[5]  = v_load32_le_1(key + 4);
+    st->s[6]  = v_load32_le_1(key + 8);
+    st->s[7]  = v_load32_le_1(key + 12);
+    st->s[8]  = v_load32_le_1(key + 16);
+    st->s[9]  = v_load32_le_1(key + 20);
+    st->s[10] = v_load32_le_1(key + 24);
+    st->s[11] = v_load32_le_1(key + 28);
 
-    ctx->s[12] = v_set1(0);
+    st->s[12] = v_set1(0);
 
-    ctx->s[13] = v_load32_le_4(nonce[0] + 0, nonce[1] + 0, nonce[2] + 0, nonce[3] + 0);
-    ctx->s[14] = v_load32_le_4(nonce[0] + 4, nonce[1] + 4, nonce[2] + 4, nonce[3] + 4);
-    ctx->s[15] = v_load32_le_4(nonce[0] + 8, nonce[1] + 8, nonce[2] + 8, nonce[3] + 8);
+    st->s[13] = v_load32_le_4(nonce[0] + 0, nonce[1] + 0, nonce[2] + 0, nonce[3] + 0);
+    st->s[14] = v_load32_le_4(nonce[0] + 4, nonce[1] + 4, nonce[2] + 4, nonce[3] + 4);
+    st->s[15] = v_load32_le_4(nonce[0] + 8, nonce[1] + 8, nonce[2] + 8, nonce[3] + 8);
 }
 
-void cfx_chacha20_block4(cfx_chacha_state4_t* ctx, const uint32_t counter[4], uint8_t out[4][64]) {
+void cfx_chacha20_block4(cfx_chacha20_ctx4_t* ctx, const uint32_t counter[4], uint8_t out[4][64]) {
+    cfx_chacha20_state4_t*st = (cfx_chacha20_state4_t*)ctx;
     vec4_u32 w[16];
 
-    ctx->s[12] = v_set4(counter[0], counter[1], counter[2], counter[3]);
+    st->s[12] = v_set4(counter[0], counter[1], counter[2], counter[3]);
 
-    memcpy(w, ctx->s, sizeof(w));
+    memcpy(w, st->s, sizeof(w));
 
     for (size_t i = 0; i < 10; ++i){
         /* column rounds */
@@ -481,7 +496,7 @@ void cfx_chacha20_block4(cfx_chacha_state4_t* ctx, const uint32_t counter[4], ui
     }
 
     for (size_t i = 0; i < 16; ++i) {
-        w[i] = v_add(w[i], ctx->s[i]);
+        w[i] = v_add(w[i], st->s[i]);
     }
 
     for (size_t i = 0; i < 16; ++i) {

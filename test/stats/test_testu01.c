@@ -58,8 +58,9 @@ static void usage(const char *prog) {
     for (size_t i = 0; i < g_rand_gen_cnt; ++i) {
         fprintf(stderr, "                   %s\n", g_rand_gens[i].name);
     }
+#if CFX_HAVE_OPENSSL
     fprintf(stderr, "                   %s\n", g_openssl_desc.name);
-
+#endif
 }
 
 
@@ -101,11 +102,14 @@ int main(int argc, char **argv) {
                     selected_gen = &g_rand_gens[j];
                     found = 1;
                     break;
-                } else if (strcmp(name, g_openssl_desc.name) == 0) {
+                }
+                #if CFX_HAVE_OPENSSL
+                else if (strcmp(name, g_openssl_desc.name) == 0) {
                     selected_gen = &g_openssl_desc;
                     found = 1;
                     break;
                 }
+                #endif
             }
             if (!found) {
                 fprintf(stderr, "Unknown RNG: %s\n\n", name);

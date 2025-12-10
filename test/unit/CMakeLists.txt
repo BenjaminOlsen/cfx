@@ -1,5 +1,6 @@
 
 set(CFX_UNIT_TESTS
+    test_arith
     test_big
     test_big_mont
     test_fac
@@ -12,6 +13,7 @@ set(CFX_UNIT_TESTS
     test_mul_csa_pthreads
     test_rand
     test_aead_chacha20_poly1305
+    test_sha256
 )
 
 foreach(test_name IN LISTS CFX_UNIT_TESTS)

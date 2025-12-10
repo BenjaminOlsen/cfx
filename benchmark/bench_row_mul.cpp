@@ -1,7 +1,3 @@
-// bm_mul_rows.cc
-// Benchmark for cfx_big_mul_rows_pthreads (row-parallel, single carry pass).
-// Build example (adjust include/lib paths):
-//   c++ -O3 -DNDEBUG -std=c++17 bm_mul_rows.cc -I./include -L./build -lcfx -lbenchmark -lpthread -o bm_mul_rows
 
 #include "cfx/big.h"
 

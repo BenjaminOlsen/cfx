@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-int dec_digits(cfx_limb_t n) {
+static int dec_digits(cfx_limb_t n) {
     if (n < 10ULL) return 1;
     if (n < 100ULL) return 2;
     if (n < 1000ULL) return 3;

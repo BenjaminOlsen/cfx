@@ -9,12 +9,18 @@ endif()
 option(CFX_BUILD_SHARED "Build shared library" ON)
 option(CFX_BUILD_TESTS  "Build tests" ON)
 option(CFX_BUILD_EXAMPLES "Build examples" ON)
+option(CFX_NO_FP "No floating point math" OFF)
+
+set(CFX_ARCH "native" CACHE STRING "Target architecture")
+set_property(CACHE CFX_ARCH PROPERTY STRINGS native x86_64 armv7m)
 
 find_package(OpenSSL QUIET)
 
 if(OpenSSL_FOUND)
     add_compile_definitions(CFX_HAVE_OPENSSL=1)
 endif()
+
+include(cmake/cfxCompileFlags.cmake)
 
 # ---------------- static prime list
 # specify with cmake -S . -B build -DCFX_PRIMES_COUNT=XXXX
@@ -38,13 +44,15 @@ set(CFX_HEADERS
     include/cfx/algo.h
     include/cfx/rand.h
     include/cfx/primes.h
-    include/cfx/vector.h
+    include/cfx/vec.h
+    include/cfx/big_vec.h
     include/cfx/macros.h
     include/cfx/memory.h
     include/cfx/version.h
+    include/cfx/sha256.h
     include/cfx/poly1305.h
     include/cfx/chacha20.h
-    include/cfx/types.h
+    include/cfx/arith.h
     include/cfx/aead_chacha20_poly1305.h
 )
 
@@ -53,7 +61,9 @@ set(CFX_SOURCES
     src/fac.c
     src/algo.c
     src/rand.c
-    src/vector.c
+    src/vec.c
+    src/big_vec.c
+    src/sha256.c
     src/chacha20.c
     src/poly1305.c
     src/aead_chacha20_poly1305.c
@@ -62,6 +72,8 @@ set(CFX_SOURCES
 
 add_library(cfx ${CFX_SOURCES})
 add_library(cfx::cfx ALIAS cfx)
+
+cfx_apply_compile_flags(cfx)
 
 set_property(TARGET cfx PROPERTY C_STANDARD 99)
 set_property(TARGET cfx PROPERTY C_STANDARD_REQUIRED ON)
@@ -78,13 +90,38 @@ target_include_directories(cfx
     $<INSTALL_INTERFACE:include>
 )
 
-if (UNIX AND NOT APPLE)
-  target_link_libraries(cfx PUBLIC m)
-  message(STATUS "Linking to libm")
+include(CheckLibraryExists)
+check_library_exists(m log "" HAVE_LIBM)
+
+if (HAVE_LIBM)
+    target_link_libraries(cfx PUBLIC m)
+    message(STATUS "Linking to libm")
+else()
+    message(STATUS "Target has no libm")  # (OK for macOS or freestanding)
 endif()
 
-include(cmake/cfxCompileFlags.cmake)
+if (CFX_NO_FP)
+    target_compile_definitions(cfx PUBLIC CFX_NO_FP)
+    message(STATUS "cfx: No floating point math")
+endif()
 
+# ---------------- ASAN
+option(ASAN "Enable ASAN" OFF)
+
+if (ASAN)
+    message(STATUS "ASAN enabled")
+    set(ASAN_FLAGS "-fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ASAN_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASAN_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ASAN_FLAGS}")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ASAN_FLAGS}")
+
+    # macOS specific: use fast unwinder (much nicer stack traces)
+    if (APPLE)
+        set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -fsanitize-address-use-after-return=always")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize-address-use-after-return=always")
+    endif()
+endif()
 
 # ---------------- Examples
 if(CFX_BUILD_EXAMPLES)
@@ -98,6 +135,20 @@ include(CTest)
 if(CFX_BUILD_TESTS)
     message(STATUS "Building tests...")
     add_subdirectory(test)
+endif()
+
+# ---------------- Limb bit selection
+# use with -DCFX_LIMB_BITS=64 or 32
+set(CFX_LIMB_BITS "64" CACHE STRING "Limb size for cfx: 32 or 64")
+# set_property(CACHE CFX_LIMB_BITS PROPERTY STRINGS 32 64)
+if (CFX_LIMB_BITS STREQUAL "32")
+    add_compile_definitions(CFX_FORCE_LIMB_32)
+    message(STATUS "using 32 bit limbs")
+elseif (CFX_LIMB_BITS STREQUAL "64")
+    add_compile_definitions(CFX_FORCE_LIMB_64)
+    message(STATUS "using 64 bit limbs")
+else()
+    message(FATAL_ERROR "Invalid CFX_LIMB_BITS value: ${CFX_LIMB_BITS}")
 endif()
 
 # ---------------- Install
@@ -120,7 +171,7 @@ install(TARGETS cfx
 )
 install(FILES ${CFX_HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cfx)
 
-# Package config (find_package)
+# ---------------- Package config (find_package)
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
   cmake/cfxConfig.cmake.in
@@ -143,8 +194,9 @@ install(FILES
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cfx
 )
 
-# ---------------- benchmarking:::::
+# ---------------- benchmarking
 option(CFX_BUILD_BENCHMARKS "Build microbenchmarks" OFF)
 if (CFX_BUILD_BENCHMARKS)
+    message(STATUS "Building benchmarks...")
     add_subdirectory(benchmark)
 endif()

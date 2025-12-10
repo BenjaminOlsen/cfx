@@ -13,8 +13,7 @@
 
 /* ---- Tiny helpers ----------------------------------------------------------- */
 
-static void big_set_limbs(cfx_big_t* x, const cfx_limb_t* limbs, size_t n)
-{
+static void big_set_limbs(cfx_big_t* x, const cfx_limb_t* limbs, size_t n) {
     cfx_big_reserve(x, n);
     if (n) memcpy(x->limb, limbs, n * sizeof(cfx_limb_t));
     x->n = n;
@@ -22,16 +21,14 @@ static void big_set_limbs(cfx_big_t* x, const cfx_limb_t* limbs, size_t n)
     while (x->n && x->limb[x->n - 1] == 0) x->n--;
 }
 
-static int big_equal(const cfx_big_t* a, const cfx_big_t* b)
-{
+static int big_equal(const cfx_big_t* a, const cfx_big_t* b) {
     if (a->n != b->n) return 0;
     for (size_t i = 0; i < a->n; ++i)
         if (a->limb[i] != b->limb[i]) return 0;
     return 1;
 }
 
-static void big_print(const char* tag, const cfx_big_t* x)
-{
+static void big_print(const char* tag, const cfx_big_t* x) {
     printf("%s n=%zu [", tag, x->n);
     for (size_t i = x->n; i-- > 0;) {
         printf("" CFX_PRI0xLIMB "", x->limb[i]);
@@ -41,13 +38,11 @@ static void big_print(const char* tag, const cfx_big_t* x)
 }
 
 /* Reference schoolbook multiply: out = a * b  (no threading, exact) */
-static void big_mul_ref(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
-{
+static void big_mul_ref(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) {
     cfx_big_reserve(out, a->n + b->n + 1);
     memset(out->limb, 0, (a->n + b->n + 1) * sizeof(cfx_limb_t));
     out->n = a->n + b->n + 1;
 
-#if defined(__SIZEOF_INT128__)
     for (size_t j = 0; j < b->n; ++j) {
         cfx_acc_t carry = 0;
         for (size_t i = 0; i < a->n; ++i) {
@@ -64,10 +59,6 @@ static void big_mul_ref(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
             ++k;
         }
     }
-#else
-#  error "This reference multiply needs __int128. For MSVC, port to _umul128/_addcarry_u64."
-#endif
-
     /* normalize */
     while (out->n && out->limb[out->n - 1] == 0) out->n--;
 }
@@ -80,8 +71,7 @@ static cfx_limb_t splitmix64(cfx_limb_t* s) {
     return z ^ (z >> 31);
 }
 
-static void big_rand(cfx_big_t* x, size_t n, cfx_limb_t* seed)
-{
+static void big_rand(cfx_big_t* x, size_t n, cfx_limb_t* seed) {
     cfx_big_reserve(x, n);
     for (size_t i = 0; i < n; ++i) x->limb[i] = splitmix64(seed);
     x->n = n;
@@ -91,23 +81,21 @@ static void big_rand(cfx_big_t* x, size_t n, cfx_limb_t* seed)
 
 /* ---- Tests ------------------------------------------------------------------ */
 
-static void test_mul_zero_zero(void)
-{
+static void test_mul_zero_zero(void) {
     cfx_big_t a, b;
     cfx_big_init(&a); cfx_big_init(&b);
-    cfx_big_from_u64(&a, 0);
-    cfx_big_from_u64(&b, 0);
+    cfx_big_from_limb(&a, 0);
+    cfx_big_from_limb(&b, 0);
 
     cfx_big_mul_rows_pthreads(&a, &b, 1);
     CFX_ASSERT(a.n == 0 || (a.n == 1 && a.limb[0] == 0));
     cfx_big_free(&a); cfx_big_free(&b);
 }
 
-static void test_mul_zero_x(void)
-{
+static void test_mul_zero_x(void) {
     cfx_big_t a, b;
     cfx_big_init(&a); cfx_big_init(&b);
-    cfx_big_from_u64(&a, 0);
+    cfx_big_from_limb(&a, 0);
     cfx_limb_t one = 123456789ULL;
     big_set_limbs(&b, &one, 1);
 
@@ -116,27 +104,25 @@ static void test_mul_zero_x(void)
     cfx_big_free(&a); cfx_big_free(&b);
 }
 
-static void test_mul_x_zero(void)
-{
+static void test_mul_x_zero(void) {
     cfx_big_t a, b;
     cfx_big_init(&a); cfx_big_init(&b);
     cfx_limb_t one = 987654321ULL;
     big_set_limbs(&a, &one, 1);
-    cfx_big_from_u64(&b, 0);
+    cfx_big_from_limb(&b, 0);
 
     cfx_big_mul_rows_pthreads(&a, &b, 2);
     CFX_ASSERT(a.n == 0 || (a.n == 1 && a.limb[0] == 0));
     cfx_big_free(&a); cfx_big_free(&b);
 }
 
-static void test_mul_by_one(void)
-{
+static void test_mul_by_one(void) {
     cfx_big_t a, m, ref;
     cfx_big_init(&a); cfx_big_init(&m); cfx_big_init(&ref);
 
     cfx_limb_t limbs[] = {0x0123456789abcdefULL, 0xfedcba9876543210ULL};
     big_set_limbs(&a, limbs, 2);
-    cfx_big_from_u64(&m, 1);
+    cfx_big_from_limb(&m, 1);
 
     /* reference: a * 1 = a */
     big_set_limbs(&ref, limbs, 2);
@@ -147,8 +133,7 @@ static void test_mul_by_one(void)
     cfx_big_free(&a); cfx_big_free(&m); cfx_big_free(&ref);
 }
 
-static void test_cross_limb_carry_small(void)
-{
+static void test_cross_limb_carry_small(void) {
     /* (2^64 - 1)^2 = high: 0xfffffffffffffffe, low: 0x0000000000000001 */
     cfx_big_t a, m, ref;
     cfx_big_init(&a); cfx_big_init(&m); cfx_big_init(&ref);
@@ -166,8 +151,7 @@ static void test_cross_limb_carry_small(void)
     cfx_big_free(&a); cfx_big_free(&m); cfx_big_free(&ref);
 }
 
-static void test_small_vector_known(void)
-{
+static void test_small_vector_known(void) {
     /* [1,1] * [1,1] = [1,2,1]  (i.e., (1 + B)^2) */
     cfx_big_t a, m, ref;
     cfx_big_init(&a); cfx_big_init(&m); cfx_big_init(&ref);
@@ -185,8 +169,7 @@ static void test_small_vector_known(void)
     cfx_big_free(&a); cfx_big_free(&m); cfx_big_free(&ref);
 }
 
-static void test_random_compare_ref(size_t na, size_t nb, int threads, cfx_limb_t seed_init, char* msg)
-{
+static void test_random_compare_ref(size_t na, size_t nb, int threads, cfx_limb_t seed_init, char* msg) {
     cfx_big_t a, b, ref, tmpa;
     cfx_big_init(&a); cfx_big_init(&b); cfx_big_init(&ref); cfx_big_init(&tmpa);
 
@@ -213,8 +196,7 @@ static void test_random_compare_ref(size_t na, size_t nb, int threads, cfx_limb_
     cfx_big_free(&a); cfx_big_free(&b); cfx_big_free(&ref); cfx_big_free(&tmpa);
 }
 
-static void test_thread_counts_agree(void)
-{
+static void test_thread_counts_agree(void) {
     cfx_big_t a, b, t0, t1, t8, t32;
     cfx_big_init(&a);
     cfx_big_init(&b);
@@ -258,8 +240,7 @@ static void test_thread_counts_agree(void)
     test_random_compare_ref(na, nb, threads, seed_init, \
         "test_random_compare_ref(" STR(na) ", " STR(nb) ", " STR(threads) ", " STR(seed_init) ") - OK")
 
-int main(void)
-{
+int main(void) {
     CFX_TEST(test_mul_zero_zero);
     CFX_TEST(test_mul_zero_x);
     CFX_TEST(test_mul_x_zero);

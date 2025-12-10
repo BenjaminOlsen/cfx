@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     }
 
 
-    const uint8_t* msg = (uint8_t*)msg_in;
+    const uint8_t* msg = (const uint8_t*)msg_in;
     size_t len = strlen(msg_in);
     uint8_t tag[16];
     uint8_t key[32];

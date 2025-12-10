@@ -12,8 +12,8 @@ extern "C" {
 #include "cfx/fac.h"
 #include "cfx/macros.h"
 #include "cfx/primes.h"
-#include "cfx/types.h"
-#include "cfx/vector.h"
+#include "cfx/arith.h"
+#include "cfx/vec.h"
 #include "cfx/version.h"
 
 #ifdef __cplusplus
