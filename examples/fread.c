@@ -17,7 +17,7 @@ static void usage(const char* prog) {
 }
 
 int main(int argc, char* argv[]) {
-    int print_hex = 0;
+    int cfx_print_hex = 0;
     int print_bin = 0;
     const char* fname = NULL;
 
@@ -31,9 +31,9 @@ int main(int argc, char* argv[]) {
     int base = 10; /* default */
 
     if (strcmp(argv[argi], "-x") == 0) {
-        print_hex = 1; argi++;
+        cfx_print_hex = 1; argi++;
     } else if (strcmp(argv[argi], "-d") == 0) {
-        print_hex = 0; argi++;
+        cfx_print_hex = 0; argi++;
     } else if (strcmp(argv[argi], "-b") == 0) {
         print_bin = 1; argi++;
     }
@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
     size_t sz = 0;
     char* s = NULL;
 
-    if (print_hex) {
+    if (cfx_print_hex) {
         s = cfx_big_to_hex(&big, &sz);
     } else if (print_bin) {
         s = cfx_big_to_bin(&big, &sz);

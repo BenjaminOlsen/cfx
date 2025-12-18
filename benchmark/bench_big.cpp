@@ -60,7 +60,7 @@ static void BM_DivSm(benchmark::State& state) {
     cfx_big_t a;
     cfx_big_init(&a);
     const char* s = "1239487123698471263948712630489172364019823740192384701237864012837461923876501293874619283746192348751602398476";
-    cfx_big_from_str(&a, s);
+    cfx_big_from_dec(&a, s);
     
     for (auto _ : state) {
         cfx_big_t tmp;
@@ -79,7 +79,7 @@ static void BM_DivBig(benchmark::State& state) {
     cfx_big_t u;
     cfx_big_init(&u);
     const char* s = "1239487123691239872398127309183701928370918237019283709870708711037507120306120489389261001010192743768471263948712630489172364019823740192384701237864012837461923876501293874619283746192348751602398476";
-    cfx_big_from_str(&u, s);
+    cfx_big_from_dec(&u, s);
     
     for (auto _ : state) {
         cfx_big_t v;

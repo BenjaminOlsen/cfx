@@ -6,10 +6,20 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <string.h>
+
+#if defined(_WIN32) || defined(_WIN64)
+#  define WIN32_LEAN_AND_MEAN
+#  include <windows.h>
+#  include <bcrypt.h>
+#  ifdef _MSC_VER
+#    pragma comment(lib, "bcrypt.lib")
+#  endif
+#else
+#  include <unistd.h>
+#  include <fcntl.h>
+#  include <errno.h>
+#endif
 
 #define RNG_ENTRY(ID) { "cfx_" #ID, cfx_##ID##_gen32, cfx_##ID##_seed, cfx_##ID##_bytes }
 
@@ -224,7 +234,16 @@ int cfx_rng(void* ctx, uint8_t* out, size_t len) {
 }
 
 /* ---------------------------------------------- */
-/* /dev/urandom based RNG. */
+/* OS-specific cryptographic RNG */
+#if defined(_WIN32) || defined(_WIN64)
+/* Windows: BCryptGenRandom */
+static int os_getrandom(void* out, size_t len) {
+    NTSTATUS status = BCryptGenRandom(NULL, (PUCHAR)out, (ULONG)len,
+                                       BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+    return BCRYPT_SUCCESS(status) ? 0 : -1;
+}
+#else
+/* POSIX: /dev/urandom */
 static int os_getrandom(void* out, size_t len) {
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd < 0) return -1;
@@ -242,6 +261,7 @@ static int os_getrandom(void* out, size_t len) {
     close(fd);
     return 0;
 }
+#endif
 
 /* Fill global rand state from OS RNG (key, nonce, counter) */
 void cfx_srand_os(void) {
@@ -540,7 +560,7 @@ uint32_t cfx_pcg32(uint64_t* s) {
     *s = oldstate * UINT64_C(6364136223846793005) + (pcg_inc | 1);
     uint32_t xorshifted = (uint32_t)(((oldstate >> 18u) ^ oldstate) >> 27u);
     uint32_t rot = oldstate >> 59u;
-    return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+    return (xorshifted >> rot) | (xorshifted << ((32 - rot) & 31));
 }
 
 /* ---------------------------------------------------------------------------------------------- */

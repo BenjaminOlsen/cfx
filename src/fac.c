@@ -208,9 +208,9 @@ cfx_fac_t cfx_fac_binom(cfx_limb_t n, cfx_limb_t k){
     return fn; /* sorted, coalesced */
 }
 
-/* Public entry: factor n (cfx_limb_t) into fac (coalesced). */
+/* Public entry: factor n (uint64_t) into fac (coalesced). */
 /* Returns 1 on success; 0 for n==0 (degenerate) or allocation failures. */
-int cfx_fac_from_u64(cfx_fac_t* fac, cfx_limb_t n) {
+int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n) {
     if (n == 0) return 0;
     if (n == 1) return 1;
 

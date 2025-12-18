@@ -10,12 +10,18 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdint.h>
-#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#ifdef _POSIX_THREADS
-    #define CFX_HAS_PTHREAD 1
-    #include <pthread.h>
+
+/* Platform-specific includes */
+#if defined(_WIN32) || defined(_WIN64)
+    #include <intrin.h>  /* MSVC intrinsics for _BitScanReverse, etc. */
+#else
+    #include <unistd.h>
+    #ifdef _POSIX_THREADS
+        #define CFX_HAS_PTHREAD 1
+        #include <pthread.h>
+    #endif
 #endif
 #include <assert.h>
 #include <inttypes.h>
@@ -41,8 +47,6 @@ void cfx_big_free(cfx_big_t* b) {
     b->cap = 0;
     if (b->limb) free(b->limb);
     b->limb = NULL;
-    if (b->cache) free(b->cache);
-    b->cache = NULL;
 }
 
 int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src) {
@@ -91,6 +95,19 @@ void cfx_big_assign_sm(cfx_big_t* dst, const cfx_limb_t src) {
     dst->limb[0] = src;
 }
 
+void cfx_big_assign_zero(cfx_big_t* b) {
+    b->n = 0;
+    if (b->cap == 0) cfx_big_reserve(b, 1);
+    b->limb[0] = 0;
+}
+
+void cfx_big_assign_one(cfx_big_t* b) {
+    if (b->cap == 0) cfx_big_reserve(b, 1);
+    b->n = 1;
+    b->limb[0] = 1;
+}
+
+
 void cfx_big_move(cfx_big_t* dst, cfx_big_t* src) {
     if (dst == src) return;
     cfx_big_free(dst);
@@ -104,6 +121,11 @@ int cfx_big_is_zero(const cfx_big_t* b) {
 
 int cfx_big_is_one(const cfx_big_t* b) {
     return (b->n == 1 && b->limb[0] == 1);
+}
+
+int cfx_big_is_even(const cfx_big_t* b) {
+    /* zero is even (0 = 2*0), otherwise check least significant bit */
+    return (b->n == 0) || !(b->limb[0] & 0x1);
 }
 
 int cfx_big_eq_u64(const cfx_big_t* b, cfx_limb_t n) {
@@ -163,6 +185,210 @@ void cfx_big_swap(cfx_big_t* a, cfx_big_t* b) {
     *b = tmp;
 }
 
+/* ---- Bitwise operations ---- */
+
+typedef enum { BITOP_AND, BITOP_OR, BITOP_XOR } bitop_t;
+
+static inline cfx_limb_t bitop_apply(cfx_limb_t x, cfx_limb_t y, bitop_t op) {
+    switch (op) {
+        case BITOP_AND: return x & y;
+        case BITOP_OR:  return x | y;
+        case BITOP_XOR: return x ^ y;
+    }
+    return 0;
+}
+
+/*
+ * Shared helper for AND, OR, XOR.
+ * - AND: result size = min(a.n, b.n), high limbs vanish
+ * - OR/XOR: result size = max(a.n, b.n), high limbs copied from larger
+ */
+static void big_bitop(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, bitop_t op) {
+    /* XOR with self is zero */
+    if (op == BITOP_XOR && a == b) {
+        cfx_big_assign_zero(out);
+        return;
+    }
+
+    const size_t an = a->n, bn = b->n;
+    const size_t min_n = (an < bn) ? an : bn;
+    const size_t max_n = (an > bn) ? an : bn;
+    const cfx_big_t* lg = (an >= bn) ? a : b;
+
+    /* AND shrinks to min, OR/XOR grow to max */
+    const size_t out_n = (op == BITOP_AND) ? min_n : max_n;
+
+    /* Handle aliasing: copy inputs if out overlaps */
+    cfx_big_t tmp_a, tmp_b;
+    int alias_a = (out == a), alias_b = (out == b);
+    if (alias_a) { cfx_big_init(&tmp_a); cfx_big_copy(&tmp_a, a); a = &tmp_a; }
+    if (alias_b) { cfx_big_init(&tmp_b); cfx_big_copy(&tmp_b, b); b = &tmp_b; }
+
+    cfx_big_reserve(out, out_n);
+    out->n = out_n;
+
+    /* Apply op to overlapping limbs */
+    for (size_t i = 0; i < min_n; ++i)
+        out->limb[i] = bitop_apply(a->limb[i], b->limb[i], op);
+
+    /* For OR/XOR, copy remaining limbs from the larger operand */
+    if (op != BITOP_AND) {
+        for (size_t i = min_n; i < max_n; ++i)
+            out->limb[i] = lg->limb[i];
+    }
+
+    cfx_big_trim(out);
+
+    if (alias_a) cfx_big_free(&tmp_a);
+    if (alias_b) cfx_big_free(&tmp_b);
+}
+
+void cfx_big_and(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) {
+    big_bitop(out, a, b, BITOP_AND);
+}
+
+void cfx_big_or(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) {
+    big_bitop(out, a, b, BITOP_OR);
+}
+
+void cfx_big_xor(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) {
+    big_bitop(out, a, b, BITOP_XOR);
+}
+
+/* In-place variants */
+void cfx_big_and_eq(cfx_big_t* a, const cfx_big_t* b) {
+    big_bitop(a, a, b, BITOP_AND);
+}
+
+void cfx_big_or_eq(cfx_big_t* a, const cfx_big_t* b) {
+    big_bitop(a, a, b, BITOP_OR);
+}
+
+void cfx_big_xor_eq(cfx_big_t* a, const cfx_big_t* b) {
+    big_bitop(a, a, b, BITOP_XOR);
+}
+
+int cfx_big_endswith_u64(const cfx_big_t* x, uint64_t value) {
+    if (!x || x->n == 0) {
+        return value == 0;
+    }
+
+#if CFX_LIMB_BITS >= 64
+    /* Single limb covers 64 bits */
+    return x->limb[0] == (cfx_limb_t)value;
+
+#else
+    /* 32-bit limbs: need up to two limbs */
+    uint64_t lo = 0;
+
+    if (x->n >= 1) {
+        lo |= (uint64_t)x->limb[0];
+    }
+    if (x->n >= 2) {
+        lo |= ((uint64_t)x->limb[1] << 32);
+    }
+
+    return lo == value;
+#endif
+}
+
+int cfx_big_bit_is_set(const cfx_big_t* x, size_t bit) {
+    if (!x || x->n == 0) return 0;
+
+    const size_t limb_idx = bit / CFX_LIMB_BITS;
+    const size_t bit_idx  = bit % CFX_LIMB_BITS;
+
+    if (limb_idx >= x->n) return 0;
+
+    return (x->limb[limb_idx] >> bit_idx) & 1;
+}
+
+void cfx_big_bit_set(cfx_big_t* x, size_t bit) {
+    const size_t limb_idx = bit / CFX_LIMB_BITS;
+    const size_t bit_idx  = bit % CFX_LIMB_BITS;
+
+    /* Grow if needed */
+    if (limb_idx >= x->n) {
+        cfx_big_reserve(x, limb_idx + 1);
+        for (size_t i = x->n; i <= limb_idx; ++i)
+            x->limb[i] = 0;
+        x->n = limb_idx + 1;
+    }
+
+    x->limb[limb_idx] |= (cfx_limb_t)1 << bit_idx;
+}
+
+void cfx_big_bit_clear(cfx_big_t* x, size_t bit) {
+    const size_t limb_idx = bit / CFX_LIMB_BITS;
+    const size_t bit_idx  = bit % CFX_LIMB_BITS;
+
+    if (limb_idx >= x->n) return; /* already zero */
+
+    x->limb[limb_idx] &= ~((cfx_limb_t)1 << bit_idx);
+    cfx_big_trim(x);
+}
+
+void cfx_big_bit_flip(cfx_big_t* x, size_t bit) {
+    const size_t limb_idx = bit / CFX_LIMB_BITS;
+    const size_t bit_idx  = bit % CFX_LIMB_BITS;
+
+    /* Grow if needed (flipping a zero bit to one) */
+    if (limb_idx >= x->n) {
+        cfx_big_reserve(x, limb_idx + 1);
+        for (size_t i = x->n; i <= limb_idx; ++i)
+            x->limb[i] = 0;
+        x->n = limb_idx + 1;
+    }
+
+    x->limb[limb_idx] ^= (cfx_limb_t)1 << bit_idx;
+    cfx_big_trim(x);
+}
+
+size_t cfx_big_popcount(const cfx_big_t* x) {
+    if (!x || x->n == 0) return 0;
+
+    size_t count = 0;
+    for (size_t i = 0; i < x->n; ++i) {
+        cfx_limb_t v = x->limb[i];
+        /* Portable popcount via bit manipulation */
+        while (v) {
+            count += v & 1;
+            v >>= 1;
+        }
+    }
+    return count;
+}
+
+/*
+ * Constant-time (maybe) conditional swap: if condition != 0, swap a and b.
+ */
+void cfx_big_cswap(cfx_big_t* a, cfx_big_t* b, int condition) {
+    if (a == b) return;
+
+    /* create all ones or all-zeros mask (without triggering MSVC warning) */
+    const cfx_limb_t mask = (cfx_limb_t)0 - (cfx_limb_t)(condition != 0);
+    const size_t max_n = (a->n > b->n) ? a->n : b->n;
+
+    cfx_big_reserve(a, max_n);
+    cfx_big_reserve(b, max_n);
+
+    for (size_t i = a->n; i < max_n; ++i) a->limb[i] = 0;
+    for (size_t i = b->n; i < max_n; ++i) b->limb[i] = 0;
+
+    for (size_t i = 0; i < max_n; ++i) {
+        cfx_limb_t diff = mask & (a->limb[i] ^ b->limb[i]);
+        a->limb[i] ^= diff;
+        b->limb[i] ^= diff;
+    }
+
+    size_t n_diff = (size_t)(mask & (cfx_limb_t)(a->n ^ b->n));
+    a->n ^= n_diff;
+    b->n ^= n_diff;
+
+    cfx_big_trim(a);
+    cfx_big_trim(b);
+}
+
 size_t cfx_big_bitlen(const cfx_big_t* b) {
     /* assumes b->limb[b->n - 1] != 0 */
     size_t n = b->n;
@@ -216,38 +442,6 @@ int cfx_big_reserve(cfx_big_t* b, size_t need) {
 }
 
 
-void cfx_big_enable_cache(cfx_big_t* b) {
-    if (!b->cache) {
-        b->cache = (cfx_fac_cache_t*)malloc(sizeof(struct cfx_fac_cache));
-        cfx_fac_init(&b->cache->primes);
-        cfx_big_init(&b->cache->cofactor);
-        b->cache->state = CFX_FAC_NONE;
-        b->cache->bnd = 0;
-    }
-}
-
-void cfx_big_disable_cache(cfx_big_t* b) {
-    if (b->cache) {
-        cfx_fac_free(&b->cache->primes);
-        cfx_big_free(&b->cache->cofactor);
-        free(b->cache);
-        b->cache = NULL;
-    }
-}
-
-static inline void cfx_clear_cache(cfx_big_t* b) {
-    if (b->cache) {
-        free(b->cache);
-        b->cache = NULL;
-    }
-}
-
-static inline void cfx_big_set_zero(cfx_big_t* b) {
-    b->n = 0;
-    if (b->cap) b->limb[0] = 0;   /* belt-and-suspenders for sloppy callers */
-    cfx_clear_cache(b);
-}
-
 int cfx_big_from_u64(cfx_big_t* b, uint64_t v) {
     cfx_limb_t limbs[2];
 
@@ -276,7 +470,7 @@ int cfx_big_from_u64(cfx_big_t* b, uint64_t v) {
 /* assumes b is already initted */
 int cfx_big_from_limb(cfx_big_t* b, cfx_limb_t v) {
     if (v == 0) {
-        cfx_big_set_zero(b);
+        cfx_big_assign_zero(b);
         return 0;
     }
 
@@ -293,7 +487,6 @@ int cfx_big_from_limb(cfx_big_t* b, cfx_limb_t v) {
     }
 
     b->n = 1;
-    cfx_clear_cache(b);
 
     /* cheap invariant */
     /* CFX_ASSERT(b->n == 1 && b->limb[0] != 0); */
@@ -529,7 +722,8 @@ void cfx_big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_limb_t p) {
     cfx_big_free(&acc);
 }
 
-void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, const cfx_big_t* m) {
+/* if p is secret, this leaks info */
+void cfx_big_mod_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, const cfx_big_t* m) {
     if (cfx_big_is_zero(p))  { cfx_big_from_limb(out, 1); return; }
     if (cfx_big_is_zero(n))  { cfx_big_from_limb(out, 0); return; }
     if (cfx_big_eq_u64(n, 1)) { cfx_big_from_limb(out, 1); return; }
@@ -555,9 +749,6 @@ void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, con
     cfx_big_free(&acc);
 }
 
-static int cfx_big_is_even(const cfx_big_t* n) {
-    return ((n->n >=1) && !(n->limb[0] & 0x1));
-}
 
 /* out = (a^e) mod m */
 static void powmod_u64_base(cfx_big_t* out, cfx_limb_t a, const cfx_big_t* e, const cfx_big_t* mod) {
@@ -587,78 +778,128 @@ static void powmod_u64_base(cfx_big_t* out, cfx_limb_t a, const cfx_big_t* e, co
 
 }
 
+/* Single Miller–Rabin round.
+ * n must be odd > 2.  n-1 = d * 2^s, with d odd.
+ * a is a small base (2,3,5,7,...) < 2^64.
+ */
 static int miller_rabin_once(const cfx_big_t* n, cfx_limb_t a,
                              const cfx_big_t* d, cfx_limb_t s) {
-    /* Handle a % n == 0 (i.e., a is multiple of n) => base is ineffective; skip as "pass" */
-    /* We can check with n mod a, but since a < 2^64 and n is big, just do (a % p == 0 && n == p) cases via small sieve. */
-    /* Compute x = a^d mod n */
     cfx_big_t x, nm1;
+    int rc = 0;
+
     cfx_big_init(&x);
     cfx_big_init(&nm1);
+
+    /* x = a^d mod n */
     powmod_u64_base(&x, a, d, n);
 
-    /* if x == 1 or x == n-1 => base passes */
-    /* Compute n-1 */
+    /* nm1 = n-1 */
     cfx_big_copy(&nm1, n);
     cfx_big_sub_sm(&nm1, 1);
 
-    /* Compare x == 1 */
-    if (cfx_big_is_one(&x)) return 1;
-    /* Compare x == n-1 */
-    if (cfx_big_cmp(&x, &nm1) == 0) return 1;
+    if (cfx_big_is_one(&x)) {
+        rc = 1;
+        goto cleanup;
+    }
+    if (cfx_big_cmp(&x, &nm1) == 0) {
+        rc = 1;
+        goto cleanup;
+    }
 
-    /* Repeat s-1 times: x = x^2 mod n; if x == n-1 => pass */
     for (cfx_limb_t r = 1; r < s; ++r) {
         cfx_big_mulmod(&x, &x, &x, n);
-        if (cfx_big_cmp(&x, &nm1) == 0) return 1;
+        if (cfx_big_cmp(&x, &nm1) == 0) {
+            rc = 1;
+            goto cleanup;
+        }
     }
-    return 0;     /* witness: composite */
+
+    rc = 0;     /* witness: composite */
+
+cleanup:
+    cfx_big_free(&x);
+    cfx_big_free(&nm1);
+    return rc;
 }
+
+
 
 /* Does miller - rabin's primality test on a big */
 int cfx_big_is_prime(const cfx_big_t* n) {
 
-    if (cfx_big_cmp_sm(n, 2) < 0) { return 0; }
+    if (cfx_big_cmp_sm(n, 2) < 0)
+        return 0;
 
     static const uint32_t small[] = {
         2,3,5,7,11,13,17,19,23,29,31,37,
         41,43,47,53,59,61,67,71,73,79,83,89,97,0
     };
+
+    /* Small trial division first */
     for (int i = 0; small[i]; ++i) {
         uint32_t p = small[i];
-        if (cfx_big_cmp_sm(n, p) == 0) { return 1; }
-        if (cfx_big_mod_sm(n, p) == 0) { return 0; }
+        int cmp = cfx_big_cmp_sm(n, p);
+        if (cmp == 0)
+            return 1;
+        if (cmp > 0 && cfx_big_mod_sm(n, p) == 0)
+            return 0;
     }
 
-    if (cfx_big_is_even(n)) return 0;
+    if (cfx_big_is_even(n))
+        return 0;
 
     /* Write n-1 = d * 2^s with d odd */
     cfx_big_t d;
     cfx_big_init(&d);
     cfx_limb_t s = 0;
+
     cfx_big_copy(&d, n);
-    cfx_big_sub_sm(&d, 1);                    /* d = n-1 */
+    cfx_big_sub_sm(&d, 1);          /* d = n-1 */
+
     while (!cfx_big_is_zero(&d) && cfx_big_is_even(&d)) {
         cfx_big_shr_bits_eq(&d, 1);
         ++s;
     }
-    /* If d == 0 (i.e., n == 1), we already handled earlier, but guard anyway: */
-    if (cfx_big_is_zero(&d)) { return 0; }
 
-    static const cfx_limb_t bases[] = {
-        2ULL, 3ULL, 5ULL, 7ULL, 11ULL, 13ULL, 17ULL, 19ULL, 23ULL, 29ULL, 31ULL, 37ULL, 0
-    };
-
-    for (size_t i = 0; bases[i]; ++i) {
-        /* Skip if base and n share a factor (already handled by small trial division) */
-        if (!miller_rabin_once(n, bases[i], &d, s)) { return 0; }
+    if (cfx_big_is_zero(&d)) {
+        cfx_big_free(&d);
+        return 0;
     }
 
-    /* todo: for “crypto grade”, add random bases:
-    for (k extra rounds) pick random a in [2, n-2] and call miller_rabin_once. */
+    /* For numbers up to 64 bits, use the "Sinclair 7" bases which are
+       deterministic for all 64-bit inputs. For larger numbers, use
+       additional small prime bases for higher confidence. */
+    size_t bitlen = cfx_big_bitlen(n);
 
-    return 1;  /* probably prime! */
+    if (bitlen <= 64) {
+        /* Sinclair 7 bases - deterministic for 64-bit */
+        static const uint64_t bases64[] = {
+            2ULL, 325ULL, 9375ULL, 28178ULL, 450775ULL, 9780504ULL, 1795265022ULL, 0
+        };
+        for (size_t i = 0; bases64[i]; ++i) {
+            if (!miller_rabin_once(n, (cfx_limb_t)bases64[i], &d, s)) {
+                cfx_big_free(&d);
+                return 0;
+            }
+        }
+    } else {
+        /* For larger numbers, use first 12 primes as witnesses.
+           This is probabilistic but with very low false positive rate. */
+        static const cfx_limb_t bases[] = {
+            2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 0
+        };
+        for (size_t i = 0; bases[i]; ++i) {
+            if (!miller_rabin_once(n, bases[i], &d, s)) {
+                cfx_big_free(&d);
+                return 0;
+            }
+        }
+    }
+
+    cfx_big_free(&d);
+    return 1;
 }
+
 
 void cfx_big_sq(cfx_big_t* b) {
 #if 0
@@ -963,7 +1204,6 @@ void cfx_big_add_sm(cfx_big_t* b, cfx_limb_t n) {
         b->limb[i] = (cfx_limb_t)s;
         n = (cfx_limb_t)(s >> CFX_LIMB_BITS);
         if (n == 0) {
-            cfx_clear_cache(b);
             return;
         }
         ++i;
@@ -972,7 +1212,6 @@ void cfx_big_add_sm(cfx_big_t* b, cfx_limb_t n) {
     /* carry left; append one limb */
     cfx_big_reserve(b, b->n + 1);
     b->limb[b->n++] = n;      /* n < 2^64 here */
-    cfx_clear_cache(b);
 }
 
 void cfx_big_sub(cfx_big_t* a, const cfx_big_t* b) {
@@ -1292,11 +1531,15 @@ int cfx_fac_from_big(cfx_fac_t* fac, const cfx_big_t* in) {
     return 0;
 }
 
-static inline size_t hex_digits_u64(cfx_limb_t v) {
+static inline size_t hex_digits_limb(cfx_limb_t v) {
     if (!v) return 1;
 #if defined(__GNUC__) || defined(__clang__)
-    unsigned lead = (unsigned)__builtin_clzll(v);
-    unsigned bits = 64u - lead;
+    #if CFX_LIMB_BITS == 64
+        unsigned lead = (unsigned)__builtin_clzll(v);
+    #else
+        unsigned lead = (unsigned)__builtin_clz(v);
+    #endif
+    unsigned bits = CFX_LIMB_BITS - lead;
     return (bits + 3u) / 4u; /* ceil(bits/4) */
 #else
     size_t d = 0;
@@ -1304,10 +1547,14 @@ static inline size_t hex_digits_u64(cfx_limb_t v) {
     return d;
 #endif
 }
-static size_t bits_in_u64(cfx_limb_t x) {
+static size_t bits_in_limb(cfx_limb_t x) {
     if (!x) return 0;
 #if defined(__GNUC__) || defined(__clang__)
-    return 64u - (size_t)__builtin_clzll(x);
+    #if CFX_LIMB_BITS == 64
+        return CFX_LIMB_BITS - (size_t)__builtin_clzll(x);
+    #else
+        return CFX_LIMB_BITS - (size_t)__builtin_clz(x);
+    #endif
 #else
     size_t n = 0;
     while (x) { ++n; x >>= 1; }
@@ -1326,8 +1573,8 @@ char* cfx_big_to_bin(const cfx_big_t* src, size_t* sz_out) {
 
     const size_t ms_idx  = src->n - 1;              /* most-significant limb index */
     const cfx_limb_t msval  = src->limb[ms_idx];
-    const size_t ms_bits  = bits_in_u64(msval);      /* 1..64 */
-    const size_t total_len = ms_bits + 64u * ms_idx; /* total bits as characters */
+    const size_t ms_bits  = bits_in_limb(msval);      /* 1..CFX_LIMB_BITS */
+    const size_t total_len = ms_bits + (size_t)CFX_LIMB_BITS * ms_idx; /* total bits as characters */
 
     char* s = (char*)malloc(total_len + 1);
     if (!s) return NULL;
@@ -1342,7 +1589,7 @@ char* cfx_big_to_bin(const cfx_big_t* src, size_t* sz_out) {
 
     for (size_t i = ms_idx; i-- > 0; ) {
         cfx_limb_t limb = src->limb[i];
-        for (size_t b = 64; b-- > 0; ) {
+        for (size_t b = CFX_LIMB_BITS; b-- > 0; ) {
             s[pos++] = bch[(size_t)((limb >> b) & 1u)];
         }
     }
@@ -1366,8 +1613,9 @@ char* cfx_big_to_hex(const cfx_big_t* src, size_t* sz_out) {
     size_t ms = src->n;
 
     const cfx_limb_t ms_val = src->limb[ms - 1];
-    const size_t ms_digits = hex_digits_u64(ms_val);
-    const size_t total_len = ms_digits + (ms - 1) * 16;  /* 16 hex chars per remaining limb */
+    const size_t ms_digits = hex_digits_limb(ms_val);
+    const size_t hex_per_limb = CFX_LIMB_BITS / 4;  /* 8 for 32-bit, 16 for 64-bit */
+    const size_t total_len = ms_digits + (ms - 1) * hex_per_limb;
 
     char* s = (char*)malloc(total_len + 1); /* +1 for NUL */
     if (!s) return NULL;
@@ -1381,25 +1629,31 @@ char* cfx_big_to_hex(const cfx_big_t* src, size_t* sz_out) {
     p   += written;
     rem -= (size_t)written;
 
-    /* Remaining limbs, zero-padded to 16 hex chars each */
+    /* Remaining limbs, zero-padded to hex_per_limb hex chars each */
+    #ifdef CFX_DEBUG
     size_t k = 0;
     size_t cnt = 0;
+    #endif
     for (size_t i = ms-1; i--;) {
         written = snprintf(p, rem, "" CFX_PRI0xLIMB, (cfx_limb_t)src->limb[i]);
-        assert(written == 16);
+        assert(written == (int)hex_per_limb);
         p   += written;
+        #ifdef CFX_DEBUG
         cnt += written;
+        #endif
         rem -= (size_t)written;
 
+        #ifdef CFX_DEBUG
         if (!(cnt % 7)) {  /* some number.. */
             const char spinner[] = "|/-\\";
             ++k;
-            printf("%zu hex digits done... %zu/%zu limbs remain... %c        \r",
+            CFX_PRINT_DBG("%zu hex digits done... %zu/%zu limbs remain... %c        \r",
                 cnt, rem, total_len, spinner[k % 4]);
             fflush(stdout);
         }
+        #endif
     }
-    printf("\n");
+    CFX_PRINT_DBG("\n");
     /* `snprintf` already wrote the final '\0' on the last call */
     if (sz_out) *sz_out = total_len;
     return s;
@@ -1426,16 +1680,20 @@ char* cfx_big_to_str(const cfx_big_t* src, size_t *sz_out) {
     size_t k = 0;
 
     /* printf("[cfx_big_to_str] building base %u representation... max digits: %zu\n",CHUNK_BASE, maxdig); */
+    #ifdef CFX_DEBUG
     int cnt = 0;
     const size_t n0 = tmp.n;
+    #endif
     while (tmp.n) {
 
+        #ifdef CFX_DEBUG
         if (!(tmp.n % 100)) {
             const char spinner[] = "|/-\\";
-            printf("%zu decimal digits done... %zu/%zu limbs remain... %c        \r",
+            CFX_PRINT_DBG("%zu decimal digits done... %zu/%zu limbs remain... %c        \r",
                 k*9, tmp.n, n0, spinner[cnt++ % 4]);
             fflush(stdout);
         }
+        #endif
         chunks[k++] = cfx_big_div_sm_u32(&tmp, CHUNK_BASE);
     }
     /* printf("\n"); */
@@ -1519,7 +1777,7 @@ int cfx_big_from_hex(cfx_big_t* out, const char* s) {
     return 0;
 }
 
-int cfx_big_from_str(cfx_big_t* out, const char* s) {
+int cfx_big_from_dec(cfx_big_t* out, const char* s) {
     cfx_big_from_limb(out, 0);
 
     while (isspace((unsigned char)*s)) s++;
@@ -1534,24 +1792,76 @@ int cfx_big_from_str(cfx_big_t* out, const char* s) {
 }
 
 /* ------------------------------------------------------------- */
-static inline unsigned _clz64(cfx_limb_t x) { return x ? __builtin_clzll(x) : 64u; }
+/* NOTE: Use cfx_clz() from algo.h for limb-aware leading-zero count */
 
-/* b <<= s*/
+/* b <<= s (in-place, no temp allocation) */
 void cfx_big_shl_bits_eq(cfx_big_t* b, unsigned s) {
-    cfx_big_t tmp;
-    cfx_big_init(&tmp);
-    cfx_big_shl_bits(&tmp, b, s);
-    cfx_big_swap(b, &tmp);
-    cfx_big_free(&tmp);
+    if (s == 0 || cfx_big_is_zero(b)) return;
+
+    const unsigned W = CFX_LIMB_BITS;
+    const unsigned limb_shift = s / W;
+    const unsigned bit_shift = s % W;
+    const size_t old_n = b->n;
+    const size_t new_n = old_n + limb_shift + (bit_shift ? 1 : 0);
+
+    cfx_big_reserve(b, new_n);
+
+    if (bit_shift == 0) {
+        /* Pure limb shift: move right-to-left to avoid overwriting */
+        for (size_t i = old_n; i-- > 0; )
+            b->limb[i + limb_shift] = b->limb[i];
+        b->n = old_n + limb_shift;
+    } else {
+        /* Combined limb + bit shift: work right-to-left */
+        const unsigned r = W - bit_shift;
+        cfx_limb_t carry = 0;
+        for (size_t i = old_n; i-- > 0; ) {
+            cfx_limb_t cur = b->limb[i];
+            b->limb[i + limb_shift + 1] = carry | (cur >> r);
+            carry = cur << bit_shift;
+        }
+        b->limb[limb_shift] = carry;
+        b->n = new_n;
+    }
+
+    /* Zero the low limbs */
+    for (size_t i = 0; i < limb_shift; ++i)
+        b->limb[i] = 0;
+
+    cfx_big_trim(b);
 }
 
-/* b >>= s */
+/* b >>= s (in-place, no temp allocation) */
 void cfx_big_shr_bits_eq(cfx_big_t* b, unsigned s) {
-    cfx_big_t tmp;
-    cfx_big_init(&tmp);
-    cfx_big_shr_bits(&tmp, b, s);
-    cfx_big_swap(b, &tmp);
-    cfx_big_free(&tmp);
+    if (s == 0 || cfx_big_is_zero(b)) return;
+
+    const unsigned W = CFX_LIMB_BITS;
+    const unsigned limb_shift = s / W;
+    const unsigned bit_shift = s % W;
+
+    if (b->n <= limb_shift) {
+        cfx_big_assign_zero(b);
+        return;
+    }
+
+    const size_t new_n = b->n - limb_shift;
+
+    if (bit_shift == 0) {
+        /* Pure limb shift: move left-to-right */
+        for (size_t i = 0; i < new_n; ++i)
+            b->limb[i] = b->limb[i + limb_shift];
+    } else {
+        /* Combined limb + bit shift: work left-to-right */
+        const unsigned r = W - bit_shift;
+        for (size_t i = 0; i < new_n; ++i) {
+            cfx_limb_t lo = b->limb[i + limb_shift];
+            cfx_limb_t hi = (i + limb_shift + 1 < b->n) ? b->limb[i + limb_shift + 1] : 0;
+            b->limb[i] = (lo >> bit_shift) | (hi << r);
+        }
+    }
+
+    b->n = new_n;
+    cfx_big_trim(b);
 }
 
 
@@ -1562,107 +1872,102 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
         return;
     }
 
-    cfx_big_t* p;
     cfx_big_t tmp;
     cfx_big_init(&tmp);
 
+    cfx_big_t* p = out;
     int alias = 0;
+
     if (a == out) {
+        cfx_big_copy(&tmp, a);
         p = &tmp;
-        cfx_big_copy(p, a);
         alias = 1;
-    } else {
-        p = out;
+        a = &tmp; /* important: read from tmp now */
     }
 
-    unsigned limb_shift = s >> 6; /* s / 64 */
-    unsigned bit_shift  = s & 63; /* s & 64 */
-
-    /* printf("cfx_big_shl_bits - limb shift: %u, bit shift: %u\n", limb_shift, bit_shift); */
-
-    /* bits from the right coming in to each limb */
-    unsigned r = (bit_shift ? 64 - bit_shift : 0);
+    const unsigned W = CFX_LIMB_BITS;
+    const unsigned limb_shift = s / W;
+    const unsigned bit_shift  = s % W;
+    const unsigned r = bit_shift ? (W - bit_shift) : 0;
 
     size_t new_n = a->n + limb_shift + (bit_shift ? 1 : 0);
     cfx_big_reserve(p, new_n);
+
     for (size_t i = 0; i < limb_shift; ++i) p->limb[i] = 0;
 
     if (bit_shift == 0) {
         for (size_t i = 0; i < a->n; ++i) {
             p->limb[i + limb_shift] = a->limb[i];
-            /* printf("s: %u, bit_shift: %u, limb_shift: %u, i: %zx -> p->limb[%zu] = a->limb[%zu]\n", s, bit_shift, limb_shift, i, i+limb_shift, i); */
         }
         p->n = a->n + limb_shift;
-
     } else {
         cfx_limb_t carry = 0;
         for (size_t i = 0; i < a->n; ++i) {
             cfx_limb_t lo = a->limb[i];
             p->limb[i + limb_shift] = (lo << bit_shift) | carry;
             carry = (r ? (lo >> r) : 0);
-            /* printf("s: %u, bit_shift: %u, limb_shift: %u, lo: "CFX_PRI0xLIMB", carry: %zx, i: "CFX_PRI0xLIMB"\n", s, bit_shift, limb_shift, lo, i, carry); */
         }
         p->limb[limb_shift + a->n] = carry;
         p->n = limb_shift + a->n + (carry ? 1 : 0);
     }
 
     cfx_big_trim(p);
+
     if (alias) {
         cfx_big_move(out, p);
     }
+
+    cfx_big_free(&tmp);
 }
+
 
 
 /* out = a >> s (0..63)  */
 /* out = a >> s  (bitwise), base b = 2^64 */
-void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
+void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s)
+{
     if (cfx_big_is_zero(a) || s == 0) {
         cfx_big_copy(out, a);
         return;
     }
 
-    unsigned limb_shift = s >> 6;      /* s / 64 */
-    unsigned bit_shift  = s & 63;      /* s % 64 */
+    const unsigned W = CFX_LIMB_BITS;
+    const unsigned limb_shift = s / W;
+    const unsigned bit_shift  = s % W;
 
-    if (a->n <= limb_shift) {          /* everything shifts out */
+    if (a->n <= limb_shift) {
         cfx_big_from_limb(out, 0);
         return;
     }
 
-    cfx_big_t* p;
     cfx_big_t tmp;
     cfx_big_init(&tmp);
 
-    int alias = 0;
+    /* If aliasing, copy source into tmp and read from tmp. */
     if (a == out) {
-        p = &tmp;
-        cfx_big_copy(p, a);
-        alias = 1;
-    } else {
-        p = out;
+        cfx_big_copy(&tmp, a);
+        a = &tmp;
     }
 
-    size_t new_n = a->n - limb_shift;
-    cfx_big_reserve(p, new_n);
-    p->n = new_n;
+    const size_t new_n = a->n - limb_shift;
+    cfx_big_reserve(out, new_n);
+    out->n = new_n;
 
     if (bit_shift == 0) {
-        /* Pure limb drop */
-        for (size_t i = 0; i < new_n; ++i)
-            p->limb[i] = a->limb[i + limb_shift];
-    } else {
-        unsigned r = 64 - bit_shift;
         for (size_t i = 0; i < new_n; ++i) {
-            cfx_limb_t lo = a->limb[i + limb_shift];
-            cfx_limb_t hi = (i + limb_shift + 1 < a->n) ? a->limb[i + limb_shift + 1] : 0;
-            p->limb[i] = (lo >> bit_shift) | (hi << r);
+            out->limb[i] = a->limb[i + limb_shift];
+        }
+    } else {
+        const unsigned r = W - bit_shift; /* 1..W-1 */
+        for (size_t i = 0; i < new_n; ++i) {
+            const cfx_limb_t lo = a->limb[i + limb_shift];
+            const cfx_limb_t hi = (i + limb_shift + 1 < a->n) ? a->limb[i + limb_shift + 1] : 0;
+            out->limb[i] = (lo >> bit_shift) | (hi << r);
         }
     }
 
-    cfx_big_trim(p);
-    if (alias) {
-        cfx_big_move(out, p);
-    }
+    cfx_big_trim(out);
+    cfx_big_free(&tmp);
 }
 
 /* Core: q = u / v; r = u % v; any of q or r may be NULL. Returns 0, or -1 if v==0. */
@@ -1711,7 +2016,7 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
 
     /* ---- Algorithm D (Knuth) */
     /* D1. Normalize so MSB of V's top limb is set. */
-    unsigned s = _clz64(v->limb[v->n - 1]);
+    unsigned s = cfx_clz(v->limb[v->n - 1]);
     cfx_big_t V, U;
     cfx_big_init(&V);
     cfx_big_init(&U);
@@ -2144,11 +2449,10 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
     free(args);
     free(a_copy);
     #else
-    /* TODO */
-    (void)b; 
-    (void)m;
+    /* Fallback: use regular multiplication when pthreads not available */
     (void)threads;
-    #endif 
+    cfx_big_mul(b, m);
+    #endif
 }
 
 void cfx_big_mul_auto(cfx_big_t* b, const cfx_big_t* m) {
@@ -2528,8 +2832,8 @@ int cfx_big_modexp_binary(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* e
     size_t msb;
     {
         cfx_limb_t top = e->limb[e->n - 1];
-        unsigned lz  = _clz64(top);
-        msb = (e->n * 64u) - 1u - lz;
+        unsigned lz  = cfx_clz(top);
+        msb = (e->n * CFX_LIMB_BITS) - 1u - lz;
     }
 
     /* LTR binary exponentiation */
@@ -2538,7 +2842,7 @@ int cfx_big_modexp_binary(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* e
         if (!cfx_big_mont_mul(&accR, &accR, &accR, ctx)) goto FAIL;
 
         /* conditional multiply when bit is 1 */
-        size_t limb = i >> 6, bit = i & 63;
+        size_t limb = i / CFX_LIMB_BITS, bit = i % CFX_LIMB_BITS;
         if (limb < e->n && ((e->limb[limb] >> bit) & 1u)) {
             if (!cfx_big_mont_mul(&accR, &accR, &baseR, ctx)) goto FAIL;
         }

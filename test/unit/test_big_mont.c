@@ -30,6 +30,9 @@ static void test_mont_ctx_rejects_even_n(void) {
     cfx_big_free(&n);
 }
 
+#if CFX_LIMB_BITS == 64
+/* All functions below use 64-bit constants that don't work with 32-bit limbs */
+
 static void test_mont_mul_matches_scalar(void) {
     cfx_limb_t n64 = 0xffffffff00000001ull; /* odd */
     cfx_limb_t a64 = 0x123456789abcdef0ull % n64;
@@ -458,9 +461,14 @@ static void test_modexp_binary_exponent_reduction(void) {
     cfx_big_free(&n);
 }
 
+#endif /* CFX_LIMB_BITS == 64 */
+
 /*..........................................................*/
 int main(void) {
     CFX_TEST(test_mont_ctx_rejects_even_n);
+
+#if CFX_LIMB_BITS == 64
+    /* These tests use 64-bit constants that don't fit in 32-bit limbs */
     CFX_TEST(test_mont_mul_matches_scalar);
     CFX_TEST(test_mont_modexp_matches_scalar);
     CFX_TEST(test_mont_roundtrip_1);
@@ -471,6 +479,9 @@ int main(void) {
     CFX_TEST(test_modexp_binary_aliasing);
     CFX_TEST(test_modexp_binary_fermat_mersenne61);
     CFX_TEST(test_modexp_binary_exponent_reduction);
+#else
+    puts("(skipping 64-bit specific tests on 32-bit limbs)");
+#endif
 
     puts("ok!\n");
     return 0;

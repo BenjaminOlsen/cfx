@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
     if (base == 16) {
         cfx_big_from_hex(&n, nstr);
     } else if (base == 10) {
-        cfx_big_from_str(&n, nstr);
+        cfx_big_from_dec(&n, nstr);
     }
 
     size_t sz = 0;

@@ -138,15 +138,27 @@ if(CFX_BUILD_TESTS)
 endif()
 
 # ---------------- Limb bit selection
-# use with -DCFX_LIMB_BITS=64 or 32
-set(CFX_LIMB_BITS "64" CACHE STRING "Limb size for cfx: 32 or 64")
-# set_property(CACHE CFX_LIMB_BITS PROPERTY STRINGS 32 64)
-if (CFX_LIMB_BITS STREQUAL "32")
+# use with -DCFX_LIMB_BITS=auto, 32 or 64
+# "auto" = 32 on MSVC (no __uint128_t), 64 on GCC/Clang (has __uint128_t)
+set(CFX_LIMB_BITS "auto" CACHE STRING "Limb size for cfx: auto, 32 or 64")
+set_property(CACHE CFX_LIMB_BITS PROPERTY STRINGS auto 32 64)
+
+if (CFX_LIMB_BITS STREQUAL "auto")
+    if (MSVC)
+        # MSVC has no __uint128_t, so force 32-bit limbs for 64-bit accumulator
+        add_compile_definitions(CFX_FORCE_LIMB_32)
+        message(STATUS "cfx: using 32-bit limbs (auto for MSVC)")
+    else()
+        # GCC/Clang with __uint128_t can use 64-bit limbs
+        add_compile_definitions(CFX_FORCE_LIMB_64)
+        message(STATUS "cfx: using 64-bit limbs (auto for GCC/Clang)")
+    endif()
+elseif (CFX_LIMB_BITS STREQUAL "32")
     add_compile_definitions(CFX_FORCE_LIMB_32)
-    message(STATUS "using 32 bit limbs")
+    message(STATUS "cfx: using 32-bit limbs")
 elseif (CFX_LIMB_BITS STREQUAL "64")
     add_compile_definitions(CFX_FORCE_LIMB_64)
-    message(STATUS "using 64 bit limbs")
+    message(STATUS "cfx: using 64-bit limbs")
 else()
     message(FATAL_ERROR "Invalid CFX_LIMB_BITS value: ${CFX_LIMB_BITS}")
 endif()
@@ -197,6 +209,10 @@ install(FILES
 # ---------------- benchmarking
 option(CFX_BUILD_BENCHMARKS "Build microbenchmarks" OFF)
 if (CFX_BUILD_BENCHMARKS)
-    message(STATUS "Building benchmarks...")
-    add_subdirectory(benchmark)
+    if (MSVC)
+        message(WARNING "Benchmarks are not supported on MSVC (require GCC intrinsics and x86intrin.h)")
+    else()
+        message(STATUS "Building benchmarks...")
+        add_subdirectory(benchmark)
+    endif()
 endif()

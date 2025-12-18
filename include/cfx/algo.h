@@ -31,20 +31,20 @@ cfx_vec_t cfx_sieve_primes(cfx_limb_t n);
 /* uses legendre's formula to give the power of p that divides n! */
 cfx_limb_t cfx_legendre(cfx_limb_t n, cfx_limb_t p);
 
-int cfx_is_prime_u64(cfx_limb_t n);
+int cfx_is_prime_u64(uint64_t n);
 
 /* modular multiplication (a*b) mod m */
-cfx_limb_t cfx_mulmod_u64(cfx_limb_t a, cfx_limb_t b, cfx_limb_t m);
+uint64_t cfx_mulmod_u64(uint64_t a, uint64_t b, uint64_t m);
 
 /* modular exponentiation (a^e) mod m */
-cfx_limb_t cfx_powmod_u64(cfx_limb_t a, cfx_limb_t e, cfx_limb_t m);
+uint64_t cfx_powmod_u64(uint64_t a, uint64_t e, uint64_t m);
 
-cfx_limb_t cfx_gcd_u64(cfx_limb_t a, cfx_limb_t b);
+uint64_t cfx_gcd_u64(uint64_t a, uint64_t b);
 
 /* returns a non-trivial factor of n (probabilistic) */
-cfx_limb_t cfx_pollard_rho_brent(cfx_limb_t n);
+uint64_t cfx_pollard_rho_brent(uint64_t n);
 
-int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n);
+int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n);
 
 /* A * B -> R  (schoolbook) with carry-save accumulation.
    - A has na limbs, B has nb limbs

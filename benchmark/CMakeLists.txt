@@ -18,13 +18,23 @@ set(CFX_BENCHMARKS
     bench_aead_chacha20_poly1305
 )
 
+find_package(Threads REQUIRED)
+
 foreach(bench_name IN LISTS CFX_BENCHMARKS)
     add_executable(${bench_name} ${bench_name}.cpp)
-    target_compile_options(${bench_name} PRIVATE -O1 -march=native)
+    if(MSVC)
+        # Use generator expressions to avoid /O2 vs /RTC1 conflict in Debug builds
+        target_compile_options(${bench_name} PRIVATE
+            $<$<CONFIG:Release>:/O2>
+            $<$<CONFIG:RelWithDebInfo>:/O2>
+        )
+    else()
+        target_compile_options(${bench_name} PRIVATE -O1 -march=native)
+    endif()
     target_link_libraries(${bench_name} PRIVATE
         benchmark::benchmark
         cfx::cfx
-        pthread
+        Threads::Threads
     )
 endforeach()
 

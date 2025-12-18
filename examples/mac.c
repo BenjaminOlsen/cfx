@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
             cfx_rand_bytes_os((void*)key, sizeof(key));
         }
     } else if (strncmp(key_in, "0x", 2) == 0) {
-        if (parse_hex(key_in + 2, key, sizeof(key)) != 0) {
+        if (cfx_parse_hex(key_in + 2, key, sizeof(key)) != 0) {
             fprintf(stderr, "error: -k expects hex: with exactly 32 bytes\n");
             return EXIT_FAILURE;
         }

@@ -41,6 +41,11 @@
     #include <stdalign.h>
     #define CFX_ALIGNOF(T) alignof(T)
     #define CFX_ALIGNAS(N) alignas(N)
+#elif defined(_MSC_VER)
+    #include <stddef.h>
+    struct offset_struct_32 {char c; uint32_t x;};
+    #define CFX_ALIGNOF(T) __alignof(T)
+    #define CFX_ALIGNAS(N) __declspec(align(N))
 #else
     #include <stddef.h>
     struct offset_struct_32 {char c; uint32_t x;};

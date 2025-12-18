@@ -6,6 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void print_big(const cfx_big_t* b) {
+    const char* s = cfx_big_to_str(b, NULL); /* decimal, default */
+    printf("%s", s);
+    /* If cfx_big_to_str() allocates, free(s) here. */
+}
 
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s [-x|-d] n\n", prog);
@@ -47,9 +52,8 @@ int main(int argc, char* argv[]) {
     if (base == 16) {
         cfx_big_from_hex(&n, nstr);
     } else if (base == 10) {
-        cfx_big_from_str(&n, nstr);
+        cfx_big_from_dec(&n, nstr);
     }
-
     int isprime = cfx_big_is_prime(&n);
     printf("prime? %s\n", isprime ? "YES!" : "no");
     return 0;

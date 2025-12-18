@@ -33,8 +33,8 @@ int main(int argc, char* argv[]) {
         cfx_big_from_hex(&u, u_in);
         cfx_big_from_hex(&v, v_in);
     } else {
-        cfx_big_from_str(&u, u_in);
-        cfx_big_from_str(&v, v_in);
+        cfx_big_from_dec(&u, u_in);
+        cfx_big_from_dec(&v, v_in);
     }
 
     cfx_big_t q,r;

@@ -10,8 +10,12 @@
 #include <stdint.h>
 #include <string.h>   /* memset */
 #include <assert.h>
+#include <math.h>     /* sqrt, floor */
 
-#if defined(__GNUC__) || defined(__clang__)
+/* alloca - stack allocation */
+#if defined(_WIN32) || defined(_WIN64)
+#  include <malloc.h>   /* alloca on Windows (MSVC and MinGW) */
+#elif defined(__GNUC__) || defined(__clang__)
 #  include <alloca.h>   /* alloca on GCC/Clang for POSIX */
 #endif
 
@@ -22,7 +26,7 @@
 static inline cfx_limb_t isqrt_u64(cfx_limb_t n) {
     /* Integer sqrt via double for speed, then correct by adjustment. */
     double d = (double)n;
-    cfx_limb_t x = (cfx_limb_t)(d > 0 ? __builtin_floor(__builtin_sqrt(d)) : 0);
+    cfx_limb_t x = (cfx_limb_t)(d > 0 ? floor(sqrt(d)) : 0);
     while ((x + 1) > 0 && (x + 1) <= n / (x+1)) ++x;
     while (x > 0 && x > n / x) --x;
     return x;
@@ -88,17 +92,57 @@ cfx_limb_t cfx_legendre(cfx_limb_t n, cfx_limb_t p) {
     return e;
 }
 
-static inline cfx_limb_t _cfx_mulmod_u64(cfx_limb_t a, cfx_limb_t b, cfx_limb_t m) {
-    cfx_acc_t p = (cfx_acc_t)a * b;
-    return (cfx_limb_t) (p % m);
+/* ---- Portable 64-bit modular arithmetic ---- */
+
+/* (a + b) mod m, avoiding overflow */
+static inline uint64_t _addmod_u64(uint64_t a, uint64_t b, uint64_t m) {
+    a %= m;
+    b %= m;
+    if (a >= m - b) {
+        return a - (m - b);
+    }
+    return a + b;
+}
+
+/* (2 * a) mod m, avoiding overflow */
+static inline uint64_t _doublemod_u64(uint64_t a, uint64_t m) {
+    return _addmod_u64(a, a, m);
+}
+
+/* (a * b) mod m using double-and-add method */
+static inline uint64_t _cfx_mulmod_u64(uint64_t a, uint64_t b, uint64_t m) {
+#if defined(CFX_HAS_UINT128)
+    __uint128_t p = (__uint128_t)a * (__uint128_t)b;
+    return (uint64_t)(p % m);
+#else
+    /* Portable: use double-and-add (Russian peasant multiplication) */
+    if (m == 0) return 0;
+    if (m == 1) return 0;
+
+    a %= m;
+    b %= m;
+
+    /* Ensure a <= b for fewer iterations */
+    if (a > b) { uint64_t t = a; a = b; b = t; }
+
+    uint64_t result = 0;
+    while (a > 0) {
+        if (a & 1) {
+            result = _addmod_u64(result, b, m);
+        }
+        a >>= 1;
+        b = _doublemod_u64(b, m);
+    }
+    return result;
+#endif
 }
 
 /* binary exponentiation mod m */
-static inline cfx_limb_t _cfx_powmod_u64(cfx_limb_t a, cfx_limb_t e, cfx_limb_t m) {
+static inline uint64_t _cfx_powmod_u64(uint64_t a, uint64_t e, uint64_t m) {
     if (m == 0) return 0;
     if (m == 1) return 0;
     a %= m;
-    cfx_limb_t r = 1;
+    uint64_t r = 1;
     while (e) {
         if (e & 1) r = _cfx_mulmod_u64(r, a, m);
         a = _cfx_mulmod_u64(a, a, m);
@@ -107,12 +151,12 @@ static inline cfx_limb_t _cfx_powmod_u64(cfx_limb_t a, cfx_limb_t e, cfx_limb_t 
     return r;
 }
 
-cfx_limb_t cfx_mulmod_u64(cfx_limb_t a, cfx_limb_t b, cfx_limb_t m) {
+uint64_t cfx_mulmod_u64(uint64_t a, uint64_t b, uint64_t m) {
     return _cfx_mulmod_u64(a, b, m);
 }
 
 /* modular exponentiation (a^e) mod m */
-cfx_limb_t cfx_powmod_u64(cfx_limb_t a, cfx_limb_t e, cfx_limb_t m) {
+uint64_t cfx_powmod_u64(uint64_t a, uint64_t e, uint64_t m) {
     return _cfx_powmod_u64(a, e, m);
 }
 
@@ -123,7 +167,7 @@ cfx_limb_t cfx_powmod_u64(cfx_limb_t a, cfx_limb_t e, cfx_limb_t m) {
  *      - a^d == 1 mod n, or
  *      - a^(2r*d) == -1 mod n for some 0 <= r < s;
 */
-int cfx_is_prime_u64(cfx_limb_t n) {
+int cfx_is_prime_u64(uint64_t n) {
    if (n < 2) return 0;
 
     /* small primes precheck */
@@ -135,20 +179,20 @@ int cfx_is_prime_u64(cfx_limb_t n) {
     }
 
     /* write n-1 = d * 2^s with d odd */
-    cfx_limb_t d = n - 1, s = 0;
+    uint64_t d = n - 1, s = 0;
     while ((d & 1) == 0) { d >>= 1; ++s; }
 
-    /* The "Sinclair 7" bases, determinstic for 64 bit */
-    static const cfx_limb_t bases[] = {2, 325, 9375, 28178, 450775, 9780504, 1795265022, 0};
+    /* The "Sinclair 7" bases, deterministic for 64 bit */
+    static const uint64_t bases[] = {2, 325, 9375, 28178, 450775, 9780504, 1795265022, 0};
 
     for (size_t i = 0; i < sizeof(bases)/sizeof(bases[0]); ++i) {
-        cfx_limb_t a = bases[i];
+        uint64_t a = bases[i];
         if (a % n == 0) continue;             /* skip if a == n */
-        cfx_limb_t x = _cfx_powmod_u64(a, d, n);
+        uint64_t x = _cfx_powmod_u64(a, d, n);
         if (x == 1 || x == n - 1) continue;   /* this base passes */
 
         int witness = 1;
-        for (cfx_limb_t r = 1; r < s; ++r) {
+        for (uint64_t r = 1; r < s; ++r) {
             x = _cfx_mulmod_u64(x, x, n);
             if (x == n - 1) { witness = 0; break; }
         }
@@ -158,35 +202,47 @@ int cfx_is_prime_u64(cfx_limb_t n) {
 }
 
 
-cfx_limb_t cfx_gcd_u64(cfx_limb_t a, cfx_limb_t b) {
-    while (b) { cfx_limb_t t = a % b; a = b; b = t; }
+uint64_t cfx_gcd_u64(uint64_t a, uint64_t b) {
+    while (b) { uint64_t t = a % b; a = b; b = t; }
     return a;
+}
+
+/* Helper: get a 64-bit random value */
+static inline uint64_t _rand_u64(void) {
+#if CFX_LIMB_BITS == 64
+    return cfx_rand_limb();
+#else
+    /* Combine two 32-bit values */
+    uint64_t hi = cfx_rand_limb();
+    uint64_t lo = cfx_rand_limb();
+    return (hi << 32) | lo;
+#endif
 }
 
 /* Pollard's rho method of finding a non-trivial factor of some
 integer n. It uses the fact that if there is some divisor p (not necessarily prime)
 of n, then there are cycles in a well chosen function that's applied repeatedly
 to element in Zp... */
-cfx_limb_t cfx_pollard_rho_brent(cfx_limb_t n) {
+uint64_t cfx_pollard_rho_brent(uint64_t n) {
     if ((n & 1) == 0) return 2;
-    cfx_limb_t y =  cfx_rand_limb() % (n-1) + 1;
-    cfx_limb_t c = cfx_rand_limb() % (n-1) + 1;
+    uint64_t y = _rand_u64() % (n-1) + 1;
+    uint64_t c = _rand_u64() % (n-1) + 1;
     /* we must choose c != 0, but less evidently we must also choose c != −2 because (y + 1/y)2 − 2 = y2 + 1/y2 */
-    cfx_limb_t m = 128;
+    uint64_t m = 128;
 
-    cfx_limb_t g = 1, r = 1, q = 1, x, ys;
+    uint64_t g = 1, r = 1, q = 1, x, ys = 0;
     while (g == 1) {
         x = y;
-        for (cfx_limb_t i=0; i<r; ++i)
-            y = (_cfx_mulmod_u64(y,y,n) + c) % n;
+        for (uint64_t i = 0; i < r; ++i)
+            y = (_cfx_mulmod_u64(y, y, n) + c) % n;
 
-        cfx_limb_t k = 0;
+        uint64_t k = 0;
         while (k < r && g == 1) {
             ys = y;
-            cfx_limb_t lim = (m < (r - k)) ? m : (r - k);
-            for (cfx_limb_t i = 0; i < lim; ++i) {
+            uint64_t lim = (m < (r - k)) ? m : (r - k);
+            for (uint64_t i = 0; i < lim; ++i) {
                 y = (_cfx_mulmod_u64(y, y, n) + c) % n;
-                cfx_limb_t diff = x > y ? x - y : y - x;
+                uint64_t diff = x > y ? x - y : y - x;
                 q = _cfx_mulmod_u64(q, diff, n);
             }
             g = cfx_gcd_u64(q, n);
@@ -198,7 +254,7 @@ cfx_limb_t cfx_pollard_rho_brent(cfx_limb_t n) {
     if (g == n) {
         do {
             ys = (_cfx_mulmod_u64(ys, ys, n) + c) % n;
-            cfx_limb_t diff = x > ys ? x - ys : ys - x;
+            uint64_t diff = x > ys ? x - ys : ys - x;
             g = cfx_gcd_u64(diff, n);
         } while (g == 1);
     }
@@ -207,63 +263,64 @@ cfx_limb_t cfx_pollard_rho_brent(cfx_limb_t n) {
 
 /* comparator fn for qsort */
 static int cmp_u64(const void* a, const void* b) {
-    cfx_limb_t x = *(const cfx_limb_t*)a, y = *(const cfx_limb_t*)b;
+    uint64_t x = *(const uint64_t*)a, y = *(const uint64_t*)b;
     return (x < y) ? -1 : (x > y);
 }
 
 
-int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n) {
+int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n) {
 
     if (n == 0) return -1;
     if (n == 1) return 0;
 
-    cfx_vec_t v; /* local vec for all primes */
-    cfx_vec_init(&v);
+    /* Use a local array for 64-bit prime storage during computation */
+    uint64_t plist[256];  /* enough for any 64-bit factorization */
+    size_t pcount = 0;
 
     cfx_vec_init(primes);
     cfx_vec_init(exps);
 
     /* 1) Strip tiny (<255) primes fast */
     for (size_t i = 0; i < 54; ++i) {
-        cfx_limb_t p = cfx_primes[i];
+        uint64_t p = cfx_primes[i];
         while ((n % p) == 0) {
-            cfx_vec_push(&v, p);
+            if (pcount < 256) plist[pcount++] = p;
             n /= p;
         }
         if (n == 1) break;
     }
 
     /* 2) Iterative stack of composites to split */
-    cfx_limb_t st[64]; /* plenty for 64-bit factoring */
+    uint64_t st[64]; /* plenty for 64-bit factoring */
     size_t top = 0;
     if (n > 1) st[top++] = n;
 
     while (top) {
-        cfx_limb_t m = st[--top];
+        uint64_t m = st[--top];
         if (m == 1) continue;
 
         /* If small enough, finish by trial division quickly */
         if (m < 1ull<<20) {
-            /* trial divide from 3 upward (skip even-shouldn’t be even here often) */
-
-            for (cfx_limb_t p = 3; p*p <= m; p += 2) {
+            /* trial divide from 3 upward (skip even-shouldn't be even here often) */
+            for (uint64_t p = 3; p*p <= m; p += 2) {
                 while ((m % p) == 0) {
-                    cfx_vec_push(&v, p); m /= p;
+                    if (pcount < 256) plist[pcount++] = p;
+                    m /= p;
                 }
             }
-            if (m > 1) cfx_vec_push(&v, m);
+            if (m > 1 && pcount < 256) plist[pcount++] = m;
             continue;
         }
 
         if (cfx_is_prime_u64(m)) {
-            cfx_vec_push(&v, m);
+            if (pcount < 256) plist[pcount++] = m;
             continue;
         }
 
         /* 3) Split with Brent–Rho; allow a few retries with different seeds */
-        cfx_limb_t d = 0;
+        uint64_t d = 0;
         for (int tries = 0; tries < 8; ++tries) {
-            cfx_srand(0xC0FFEEu + tries);
+            cfx_srand(0xC0FFEEu + (uint32_t)tries);
             d = cfx_pollard_rho_brent(m);
             if (d > 1 && d < m && (m % d) == 0) break;
             d = 0;
@@ -272,40 +329,38 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, cfx_limb_t n) {
         if (d == 0) {
             /* Very rare fallback: as a last resort, do a bounded trial division up to 2^32 */
             /* (For 64-bit inputs this almost never triggers with a decent rho.) */
-            /* TODO call SQUFOF here? */
-            cfx_limb_t found = 0;
-            for (cfx_limb_t p = 3; p*p <= m; p += 2) {
+            uint64_t found = 0;
+            for (uint64_t p = 3; p*p <= m; p += 2) {
                 if (m % p == 0) { found = p; break; }
             }
             if (!found) { /* if we still failed, treat as prime to avoid infinite loop */
-                cfx_vec_push(&v, m);
+                if (pcount < 256) plist[pcount++] = m;
                 continue;
             }
             d = found;
         }
 
-        /* Push the two factors back for further processing (order doesn’t matter) */
-        cfx_limb_t a = d;
-        cfx_limb_t b = m / d;
+        /* Push the two factors back for further processing (order doesn't matter) */
+        uint64_t a = d;
+        uint64_t b = m / d;
         /* Prefer to push the larger first (optional), purely heuristic */
-        if (a < b) { cfx_limb_t t=a; a=b; b=t; }
+        if (a < b) { uint64_t t=a; a=b; b=t; }
         st[top++] = a;
         st[top++] = b;
     }
 
     /* 4) Sort & coalesce -> emit (p, e) */
-    qsort(v.data, v.size, sizeof(cfx_limb_t), cmp_u64);
+    qsort(plist, pcount, sizeof(uint64_t), cmp_u64);
 
-    for (size_t i = 0; i < v.size; ) {
-        cfx_limb_t p = v.data[i];
+    for (size_t i = 0; i < pcount; ) {
+        uint64_t p = plist[i];
         uint32_t e = 1;
         size_t j = i + 1;
-        while (j < v.size && v.data[j] == p) { ++e; ++j; }
-        cfx_vec_push(primes, p);
+        while (j < pcount && plist[j] == p) { ++e; ++j; }
+        cfx_vec_push(primes, (cfx_limb_t)p);  /* Note: truncates if limb is 32-bit and p > 2^32 */
         cfx_vec_push(exps, e);
         i = j;
     }
-    cfx_vec_free(&v);
     return 0;
 }
 

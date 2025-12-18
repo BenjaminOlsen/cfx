@@ -9,7 +9,7 @@ int hexval(int c) {
 }
 
 /* parse hex string into exactly outlen bytes. returns 0 on success, -1 on error */
-int parse_hex(const char* s, uint8_t* out, size_t outlen) {
+int cfx_parse_hex(const char* s, uint8_t* out, size_t outlen) {
     if (s[0]=='0' && (s[1]=='x' || s[1]=='X')) s += 2;
 
     size_t n = strlen(s);
@@ -24,7 +24,7 @@ int parse_hex(const char* s, uint8_t* out, size_t outlen) {
     return 0;
 }
 
-void print_hex(const uint8_t *buf, size_t len) {
+void cfx_print_hex(const uint8_t *buf, size_t len) {
     for (size_t i = 0; i < len; ++i) {
         printf("%02x", (unsigned)buf[i]);
     }

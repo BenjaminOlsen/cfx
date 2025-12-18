@@ -24,6 +24,8 @@ foreach(test_name IN LISTS CFX_UNIT_TESTS)
     target_compile_options(${test_name} PRIVATE
         ${CFX_CFLAGS}
         ${CFX_SILENCED}
-        -Wno-missing-prototypes
     )
+    if(NOT MSVC)
+        target_compile_options(${test_name} PRIVATE -Wno-missing-prototypes)
+    endif()
 endforeach()

@@ -170,7 +170,7 @@ static void test_nist_vectors(void) {
         "bba3130888c5f47a375e6179be789fbb");
 }
 
-static void abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq(void) {
+static void test_long_fips_msg(void) {
     const uint8_t msg[] =
         "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
     const size_t msg_len = strlen((const char *)msg);
@@ -182,7 +182,9 @@ static void abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq(void) {
 }
 
 static void empty_string(void) {
-    const uint8_t msg[] = { /* empty */ };
+    /* Note: Using pointer instead of empty array `uint8_t msg[] = {}` because
+       MSVC has an internal compiler error (ICE C1001) with zero-length arrays. */
+    const uint8_t *msg = (const uint8_t *)"";
     const char *expected =
         "e3b0c44298fc1c149afbf4c8996fb924"
         "27ae41e4649b934ca495991b7852b855";
@@ -199,7 +201,7 @@ static void abc(void) {
     check_incremental("SHA256(\"abc\")", msg, sizeof(msg));
 }
 
-static void aaaaaaaaaaamillion(void) {
+static void test_million_a(void) {
     const size_t N = 1000000;
     uint8_t *msg = (uint8_t *)malloc(N);
     CFX_ASSERT(msg);
@@ -219,8 +221,8 @@ int main(void) {
     CFX_TEST(test_nist_vectors);
     CFX_TEST(abc);
     CFX_TEST(empty_string);
-    CFX_TEST(abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq);
-    CFX_TEST(aaaaaaaaaaamillion);
+    CFX_TEST(test_long_fips_msg);
+    CFX_TEST(test_million_a);
     printf("All SHA-256 tests passed.\n");
     return 0;
 }

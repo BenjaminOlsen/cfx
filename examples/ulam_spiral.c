@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "cfx/algo.h"
+#include "cfx/compat.h"
 
 static void usage(const char* prog) {
     fprintf(stderr,
@@ -38,7 +39,7 @@ static unsigned digits10(uint32_t v) {
     /* approximate lg(v): 32 - clz(v) == ~lg(v) */
     /* approximate log10(2) == ~0.3010299956639812 */
     /* integer approx of log10(2): log10(2) * 4096 / 4096 == 1233 >> 12 */
-    unsigned t = (32 - __builtin_clz(v | 1)) * 1233 >> 12;
+    unsigned t = (32 - cfx_clz32(v | 1)) * 1233 >> 12;
     return t + (v >= powers_of_10[t]); /* corrects off-by-one error */
 }
 

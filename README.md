@@ -20,6 +20,17 @@ build for armv7m: `cmake -B build-armv7m -S . -DCMAKE_TOOLCHAIN_FILE=cmake/toolc
 
 `cmake --build build -j` or `cd build && make` or `make VERBOSE=1`
 
+### Windows (MSVC)
+
+```
+cmake -S . -B build
+cmake --build build --config Release
+```
+
+Or for Debug builds: `cmake --build build --config Debug`
+
+Note: Benchmarks require GCC/Clang intrinsics and are not available on MSVC. Some POSIX-only examples are also skipped on Windows.
+
 ## Tests
 
 The tests are divided into two categories, unit test and statistical tests:
@@ -45,6 +56,19 @@ Note, some of the RNGs are toy examples (like using poly1305 as an RNG), but oth
 ## Examples
 
 In examples, there are some interesting ways of using cfx, most have a `-h` or `--help` usage print.
+
+## Rust Bindings
+
+cfx includes Rust bindings in `rust/cfx/`. The bindings provide a safe wrapper around the C library.
+
+### Build and Test
+
+```
+cd rust/cfx
+cargo test
+```
+
+The Rust bindings require the C library to be built first. The build script (`build.rs`) will compile the C library automatically using cmake.
 
 ## License
 The cfx library is dual-licensed.

@@ -57,7 +57,7 @@ int cfx_fac_factorial(cfx_fac_t* f, cfx_limb_t n, const cfx_vec_t *primes);
 /* Factorization of C(n,k) = n! / (k! (n-k)!) */
 cfx_fac_t cfx_fac_binom(cfx_limb_t n, cfx_limb_t k);
 
-int cfx_fac_from_u64(cfx_fac_t* fac, cfx_limb_t n);
+int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n);
 
 #ifdef __cplusplus
 }

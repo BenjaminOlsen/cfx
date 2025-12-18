@@ -1,10 +1,10 @@
 
 #include "cfx/rand.h"
+#include "cfx/compat.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <errno.h>
 
 static void usage(const char* prog) {
@@ -24,9 +24,7 @@ static void usage(const char* prog) {
 
 
 int main(int argc, char** argv) {
-    struct timespec res;
-    clock_gettime(CLOCK_REALTIME, &res);
-    long ns = res.tv_nsec;
+    uint64_t ns = cfx_time_ns();
     uint32_t seed = (uint32_t)ns;
 
     size_t n = 4;

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 
-static void print_hex(const uint8_t *buf, size_t len) {
+static void cfx_print_hex(const uint8_t *buf, size_t len) {
     for (size_t i = 0; i < len; ++i) {
         printf("%02x", (unsigned)buf[i]);
     }
@@ -18,9 +18,9 @@ static int expect_tag(const char *name, const uint8_t tag[16], const uint8_t exp
     if (memcmp(tag, expected, 16) != 0) {
         printf("[FAIL] %s\n", name);
         printf("  expected: ");
-        print_hex(expected, 16);
+        cfx_print_hex(expected, 16);
         printf("\n  got:      ");
-        print_hex(tag, 16);
+        cfx_print_hex(tag, 16);
         printf("\n");
         return 1;
     }

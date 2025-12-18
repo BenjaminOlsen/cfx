@@ -13,10 +13,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    int print_hex = 0;
+    int cfx_print_hex = 0;
 
     if ((argc == 3) && (strcmp(argv[2], "-x")==0)) {
-        print_hex = 1;
+        cfx_print_hex = 1;
     }
 
     cfx_limb_t n = (cfx_limb_t)strtol(argv[1], NULL, 10);
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     size_t sz = 0;
     char* s;
 
-    if (print_hex) {
+    if (cfx_print_hex) {
         s = cfx_big_to_hex(&b, &sz);
     } else {
         s = cfx_big_to_str(&b, &sz);

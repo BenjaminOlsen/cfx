@@ -2,14 +2,12 @@
 #include "cfx/rand.h"
 #include "cfx/primes.h"
 #include "cfx/macros.h"
+#include "cfx/compat.h"
 
-#include <fcntl.h>
-#include <unistd.h>
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
-#include <pthread.h>
 
 #define SMALL_PRIME_CNT 1024u
 #define MAX_THREAD_CNT 16
@@ -141,8 +139,8 @@ static void print_big_hex(const cfx_big_t* b) {
     putchar('\n');
 }
 
-#define ATOMIC_LOAD(p) __atomic_load_n(p, __ATOMIC_SEQ_CST)
-#define ATOMIC_STORE(p, v) __atomic_store_n(p, v, __ATOMIC_SEQ_CST);
+#define ATOMIC_LOAD(p) cfx_atomic_load(p)
+#define ATOMIC_STORE(p, v) cfx_atomic_store(p, v)
 
 /* prime search summary: 
 1) Choose a random 'bits' bit odd number
@@ -226,9 +224,9 @@ typedef struct {
     uint32_t base_seed;
     int thread_id;
     cfx_big_t *result;
-    volatile int *stop_flag;       /* 0 = keep going, 1 = someone won */
+    cfx_atomic_int *stop_flag;       /* 0 = keep going, 1 = someone won */
     int verbose;
-    pthread_mutex_t *result_mutex;
+    cfx_mutex_t *result_mutex;
 } prime_worker_args_t;
 
 
@@ -264,9 +262,9 @@ static void* worker(void* arg) {
     }
 
     /* We found a prime. Try to publish it if we're first. */
-    pthread_mutex_lock(w->result_mutex);
+    cfx_mutex_lock(w->result_mutex);
     if (!ATOMIC_LOAD(w->stop_flag)) {
-        /* We’re the first winner */
+        /* We're the first winner */
         cfx_big_copy(w->result, &local);
         ATOMIC_STORE(w->stop_flag, 1);
         if (w->verbose) {
@@ -277,7 +275,7 @@ static void* worker(void* arg) {
         printf("[thread %d] found a prime but not the first...\n", w->thread_id);
         print_big_hex(&local);
     }
-    pthread_mutex_unlock(w->result_mutex);
+    cfx_mutex_unlock(w->result_mutex);
 
     cfx_big_free(&local);
     return NULL;
@@ -355,9 +353,9 @@ int main(int argc, char* argv[]) {
 
     cfx_big_t result;
     cfx_big_init(&result);
-    volatile int stop_flag = 0;
-    pthread_mutex_t result_mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_t threads[MAX_THREAD_CNT];
+    cfx_atomic_int stop_flag = 0;
+    cfx_mutex_t result_mutex = CFX_MUTEX_INITIALIZER;
+    cfx_thread_t threads[MAX_THREAD_CNT];
     prime_worker_args_t args[MAX_THREAD_CNT];
 
     for (int i = 0; i < threadcnt; ++i) {
@@ -371,16 +369,16 @@ int main(int argc, char* argv[]) {
         args[i].verbose         = verbose;
         
 
-        int rc = pthread_create(&threads[i], NULL, worker, &args[i]);
+        int rc = cfx_thread_create(&threads[i], worker, &args[i]);
         if (rc != 0) {
-            fprintf(stderr, "pthread_create failed: %d\n", rc);
-            ATOMIC_STORE(&stop_flag, 1);  /* don’t start more if the first failed.... */
+            fprintf(stderr, "thread_create failed: %d\n", rc);
+            ATOMIC_STORE(&stop_flag, 1);  /* don't start more if the first failed.... */
             /* you might want to join already-started threads and abort */
         }
     }
 
     for (int i = 0; i < threadcnt; ++i) {
-        pthread_join(threads[i], NULL);
+        cfx_thread_join(threads[i], NULL);
     }
 
     if (!ATOMIC_LOAD(&stop_flag)) {

@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
 
     uint8_t key[32] = {0};
     if (strncmp(key_in, "0x", 2) == 0) {
-        if (parse_hex(key_in + 2, key, sizeof(key)) != 0) {
+        if (cfx_parse_hex(key_in + 2, key, sizeof(key)) != 0) {
             fprintf(stderr, "error: -k expects hex: with exactly 64 hex chars\n");
             return EXIT_FAILURE;
         }
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
     uint8_t nonce[12] = {0};
     if (nonce_in) {
         if (strncmp(nonce_in, "0x", 2) != 0 ||
-            parse_hex(nonce_in + 2, nonce, sizeof(nonce)) != 0) {
+            cfx_parse_hex(nonce_in + 2, nonce, sizeof(nonce)) != 0) {
             fprintf(stderr, "error: -n expects hex: with exactly 24 hex chars, using default\n");
         }
     }

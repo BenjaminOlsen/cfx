@@ -17,7 +17,7 @@ static void usage(const char* prog) {
 
 
 int main(int argc, char* argv[]) {
-    int print_hex = 0;
+    int cfx_print_hex = 0;
     int print_bin = 0;
 
     if (argc < 2) {
@@ -30,9 +30,9 @@ int main(int argc, char* argv[]) {
     int base = 10; /* default */
 
     if (strcmp(argv[argi], "-x") == 0) {
-        print_hex = 1; argi++;
+        cfx_print_hex = 1; argi++;
     } else if (strcmp(argv[argi], "-d") == 0) {
-        print_hex = 0; argi++;
+        cfx_print_hex = 0; argi++;
     } else if (strcmp(argv[argi], "-b") == 0) {
         print_bin = 1; argi++;
     } 
@@ -56,8 +56,8 @@ int main(int argc, char* argv[]) {
         cfx_big_from_hex(&n, nstr);
         cfx_big_from_hex(&p, pstr);
     } else if (base == 10) {
-        cfx_big_from_str(&n, nstr);
-        cfx_big_from_str(&p, pstr);
+        cfx_big_from_dec(&n, nstr);
+        cfx_big_from_dec(&p, pstr);
     }
 
     cfx_big_t np;
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
 
     char* npstr;
     size_t sz;
-    if (print_hex) {
+    if (cfx_print_hex) {
         npstr = cfx_big_to_hex(&np, &sz);
     } else if (print_bin) {
         npstr = cfx_big_to_bin(&np, &sz);

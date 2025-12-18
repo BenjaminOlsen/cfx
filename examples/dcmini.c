@@ -1,5 +1,6 @@
 /* ---- dcmini.c ---- */
 #include "cfx/cfx.h"
+#include "cfx/compat.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,7 +83,7 @@ static token_vec_t tokenize(const char* s, base_t inb) {
         if (is_num_char(s[i], inb)) {
             size_t j = i;
             while (is_num_char(s[j], inb)) ++j;
-            token_t tk = {.t = T_NUM, .op = 0, .num = strndup(s+i, j-i) };
+            token_t tk = {.t = T_NUM, .op = 0, .num = cfx_strndup(s+i, j-i) };
             tv_push(&tv, tk); i = j;
             continue;
         }
@@ -125,7 +126,7 @@ static token_vec_t tokenize_rpn(const char* s, base_t inb) {
             tv_push(&tv, tk);
         } else {
             /* treat as number; validation happens in cfx parse anyway */
-            token_t tk = {.t = T_NUM, .op = 0, .num = strndup(start, len)};
+            token_t tk = {.t = T_NUM, .op = 0, .num = cfx_strndup(start, len)};
             tv_push(&tv, tk);
         }
     }
@@ -310,7 +311,7 @@ static void eval_rpn(const token_vec_t* rpn, cfx_big_t* result, base_t inb) {
         if (tk.t == T_NUM) {
             PUSH();
             switch (inb) {
-                case BASE_DEC: cfx_big_from_str(&st[n-1], tk.num); break;
+                case BASE_DEC: cfx_big_from_dec(&st[n-1], tk.num); break;
                 case BASE_HEX: cfx_big_from_hex(&st[n-1], tk.num); break;
                 case BASE_BIN: break; /* TODO: cfx_big_from_bin(&st[n-1], tk.num); */ 
                 default: break;

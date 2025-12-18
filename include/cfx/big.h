@@ -25,14 +25,6 @@ extern "C" {
         } \
     } while (0)
 
-typedef enum {
-    CFX_FAC_NONE,
-    CFX_FAC_PARTIAL,
-    CFX_FAC_FULL
-} cfx_fac_state_e;
-
-typedef struct cfx_fac_cache cfx_fac_cache_t;
-
 /** cfx_big_t - arbitrary precision positive integer type, represented in base 2^64 limbs
  * limb: ptr to array of limbs
  * n: current number of limbs
@@ -44,27 +36,7 @@ typedef struct {
     cfx_limb_t* limb; /* the 'digits' of the number with base BIG_BASE */
     size_t n;
     size_t cap;
-    cfx_fac_cache_t* cache;  /* == NULL if prime factor caching disabled */
 } cfx_big_t;
-
-/**  cache for prime factors of a cfx_big_t.
- *
- * Invariants: (assume value N of cfx_big_t:)
- *  - N == (∏ p_i^e_i) * cofactor.
- *  - cofactor ≥ 1.
- *  - cofactor has no prime factor ≤ bnd.
- *  - state == CFX_FAC_FULL iff cofactor == 1.
- *
- * for N = 1: primes empty, cofactor = 1, state = CFX_FAC_FULL.
-*/
-struct cfx_fac_cache {
-    cfx_fac_t primes;      /* your (p, exp) list; can be sorted & coalesced */
-    cfx_big_t cofactor;    /* remaining unfactored part (>= 1) */
-    cfx_fac_state_e state;
-    cfx_limb_t bnd;           /* proven “B-smoothness” bound:
-                             * "all primes <= bnd have been factored out of cofactor already"
-                             */
-};
 
 void cfx_big_init(cfx_big_t* b);
 void cfx_big_clear(cfx_big_t* b);
@@ -72,17 +44,40 @@ void cfx_big_free(cfx_big_t* b);
 int cfx_big_reserve(cfx_big_t* b, size_t need);
 void cfx_big_assign(cfx_big_t* dst, const cfx_big_t* src);
 void cfx_big_assign_sm(cfx_big_t* dst, const cfx_limb_t src);
+void cfx_big_assign_zero(cfx_big_t* b);
+void cfx_big_assign_one(cfx_big_t* b);
+int cfx_big_endswith_u64(const cfx_big_t* x, uint64_t value);
 int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src);
 void cfx_big_move(cfx_big_t* dst, cfx_big_t* src);
 int cfx_big_is_zero(const cfx_big_t* b);
+
 int cfx_big_is_one(const cfx_big_t* b);
+int cfx_big_is_even(const cfx_big_t* b);
 int cfx_big_eq_u64(const cfx_big_t* b, cfx_limb_t n);
 int cfx_big_eq(const cfx_big_t* b1, const cfx_big_t* b2);
 int cfx_big_cmp(const cfx_big_t* a, const cfx_big_t* b);
 int cfx_big_cmp_sm(const cfx_big_t* a, cfx_limb_t n);
 void cfx_big_swap(cfx_big_t* a, cfx_big_t* b);
-size_t cfx_big_bitlen(const cfx_big_t* b);      /* assumes b->limb[b->n - 1] != 0 */
+void cfx_big_cswap(cfx_big_t* a, cfx_big_t* b, int condition); /* (maybe) constant-time conditional swap */
 
+/* Bitwise operations: out = a OP b */
+void cfx_big_and(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b);
+void cfx_big_or(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b);
+void cfx_big_xor(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b);
+
+/* In-place bitwise: a OP= b */
+void cfx_big_and_eq(cfx_big_t* a, const cfx_big_t* b);
+void cfx_big_or_eq(cfx_big_t* a, const cfx_big_t* b);
+void cfx_big_xor_eq(cfx_big_t* a, const cfx_big_t* b);
+
+/* Single-bit operations */
+int cfx_big_bit_is_set(const cfx_big_t* x, size_t bit);
+void cfx_big_bit_set(cfx_big_t* x, size_t bit);
+void cfx_big_bit_clear(cfx_big_t* x, size_t bit);
+void cfx_big_bit_flip(cfx_big_t* x, size_t bit);
+size_t cfx_big_popcount(const cfx_big_t* x);
+
+size_t cfx_big_bitlen(const cfx_big_t* b);      /* assumes b->limb[b->n - 1] != 0 */
 int cfx_big_from_u64(cfx_big_t* b, uint64_t v);
 int cfx_big_from_limb(cfx_big_t* b, cfx_limb_t v);
 int cfx_big_from_bytes_be(cfx_big_t* out, const uint8_t* be, size_t len);
@@ -139,9 +134,6 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s);
 /* out = x >> s (0..63)  */
 void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s);
 
-void cfx_big_enable_cache(cfx_big_t* b);
-void cfx_big_disable_cache(cfx_big_t* b);
-
 /* Multiply by p^e by repeated squaring using small chunks to avoid overflow */
 void cfx_big_expmul_prime(cfx_big_t* b, cfx_limb_t p, cfx_limb_t e);
 
@@ -153,7 +145,7 @@ void cfx_big_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p);
 void cfx_big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_limb_t p);
 
 /* out = (n^p) mod m */
-void cfx_big_exp_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, const cfx_big_t* m);
+void cfx_big_mod_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p, const cfx_big_t* m);
 
 /* out = (a*b) mod m*/
 int cfx_big_mulmod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_t* m);
@@ -171,7 +163,7 @@ char* cfx_big_to_hex(const cfx_big_t* src, size_t *sz_out);
 char* cfx_big_to_bin(const cfx_big_t* b, size_t *sz_out);
 int cfx_big_to_sci(const cfx_big_t* x, unsigned base, int sig_digits, char* out, size_t outsz);
 
-int cfx_big_from_str(cfx_big_t* b, const char* str);
+int cfx_big_from_dec(cfx_big_t* b, const char* str);
 int cfx_big_from_hex(cfx_big_t* out, const char* s);
 int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base);
 

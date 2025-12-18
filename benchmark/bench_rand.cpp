@@ -46,17 +46,34 @@ static void BM_RNG(benchmark::State& state, const cfx_rand_desc_t* desc) {
     state.SetItemsProcessed(static_cast<int64_t>(iters * inner_loop));
 }
 
+std::vector<const cfx_rand_desc_t> rngs_ut = {
+    {
+        "cfx_rand",
+        cfx_urand,
+        cfx_srand,
+        cfx_rand_bytes
+    },
+    #if CFX_HAVE_OPENSSL
+    {
+        "OpenSSL RAND_bytes",
+        nullptr, /* gen32 = */ 
+        nullptr, /* seed  = */ 
+        openssl_bytes
+    }
+    #endif
+};
 
-#define BENCH_ARGS(b) b->Arg(1<<6)->Arg(1<<8)->Arg(1<<10)->Arg(1<<14)
+
+#define BENCH_ARGS(b) b->Arg(1<<4)->Arg(1<<5)->Arg(1<<6)->Arg(1<<7)->Arg(1<<8)->Arg(1<<9)->Arg(1<<10)->Arg(1<<12)->Arg(1<<14)->Arg(1<<15)->Arg(1<<16)->Arg(1<<17)->Arg(1<<18)->Arg(1<<19)->Arg(1<<20)->Arg(1<<21)->Arg(1<<22)
 // #define BENCH_ARGS(b) b->Arg(1<<12)
 
 int main(int argc, char** argv) {
 
     std::vector<const cfx_rand_desc_t*> rngs;
-    rngs.reserve(g_rand_gen_cnt + 1);
+    rngs.reserve(rngs_ut.size());
 
-    for (size_t i = 0; i < g_rand_gen_cnt; ++i) {
-        rngs.push_back(&g_rand_gens[i]);
+    for (size_t i = 0; i < rngs_ut.size(); ++i) {
+        rngs.push_back(&rngs_ut[i]);
     }
 
     for (const cfx_rand_desc_t* desc : rngs) {
@@ -66,16 +83,9 @@ int main(int argc, char** argv) {
             [desc](benchmark::State& state) { BM_RNG(state, desc); });
 
         // Generate N words per iteration; tune this to your liking.
-        // 1<<10 = 1024 words ~ 4 KiB per iteration
+        // (1<<10) = 1024 words ~ 4 KiB per iteration
         BENCH_ARGS(b);
     }
-
-    #if CFX_HAVE_OPENSSL
-    auto* b = benchmark::RegisterBenchmark(
-        "OpenSSL RAND_bytes",
-        [](benchmark::State& state) { BM_RNG(state, &g_openssl_desc); } );
-    BENCH_ARGS(b);
-    #endif
 
 
     // .-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
