@@ -12,6 +12,7 @@ set(CFX_UNIT_TESTS
     test_chacha_avx2_transpose
     test_mul_csa_pthreads
     test_rand
+    test_base64
     test_aead_chacha20_poly1305
     test_sha256
 )

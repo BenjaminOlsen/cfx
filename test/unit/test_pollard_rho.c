@@ -3,6 +3,7 @@
 #include "cfx/algo.h"
 #include "cfx/arith.h"
 #include "cfx/macros.h"
+#include "cfx/rand.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -30,7 +31,7 @@ static void expect_factor(uint64_t n) {
         return;
     }
 
-    srand(123456u);
+    cfx_srand(123456u);
 
     /* Try a few times in case the internal random choices hit a bad cycle */
     for (int attempts = 0; attempts < 5; ++attempts) {
@@ -43,7 +44,7 @@ static void expect_factor(uint64_t n) {
             /* Either side may still be composite; that's fine (we only test rho's split) */
             return;
         }
-        srand(123456u + (unsigned)attempts + 1);
+        cfx_srand(123456u + (unsigned)attempts + 1);
     }
     fprintf(stderr, "cfx_pollard_rho_brent failed to find a factor for %" PRIu64 "\n",
             n);
@@ -91,7 +92,7 @@ static void test_primes_do_not_yield_factors(void) {
     /* We only CFX_ASSERT it does NOT return a valid factor. */
     uint64_t primes[] = {29, 97, 257, 65537};
     for (size_t i = 0; i < sizeof(primes)/sizeof(primes[0]); ++i) {
-        srand(42u);
+        cfx_srand(42u);
         uint64_t d = cfx_pollard_rho_brent(primes[i]);
         CFX_ASSERT(!is_valid_factor(primes[i], d));
     }

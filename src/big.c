@@ -5,6 +5,7 @@
 #include "cfx/algo.h"
 #include "cfx/arith.h"
 #include "cfx/macros.h"
+#include "cfx/base64.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -12,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 /* Platform-specific includes */
 #if defined(_WIN32) || defined(_WIN64)
@@ -52,19 +54,35 @@ void cfx_big_free(cfx_big_t* b) {
 int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src) {
     if (dst == src) return 0;
 
+    if (src->n == 0) {
+        dst->n = 0;
+        if (dst->cap) dst->limb[0] = 0;
+        return 0;
+    }
+
+    /* fast path - dst already has enough capacity */
+    if (dst->cap >= src->n) {
+        memcpy(dst->limb, src->limb, src->n * sizeof(*src->limb));
+        dst->n = src->n;
+        if (dst->n < dst->cap) dst->limb[dst->n] = 0;
+        return 0;
+    }
+
+    /*
+     * Slow path: allocate new storage without clobbering dst on OOM.
+     * Build in tmp, then swap (commit), then free old dst through tmp.
+     */
     cfx_big_t tmp;
     cfx_big_init(&tmp);
 
-    if (src->n) {
-        if (cfx_big_reserve(&tmp, src->n) != 0) {
-            cfx_big_free(&tmp);
-            return -1;   /* OOM */
-        }
-        memcpy(tmp.limb, src->limb, src->n * sizeof(*src->limb));
-        tmp.n = src->n;
-    } else {
-        tmp.n = 0;
+    if (cfx_big_reserve(&tmp, src->n) != 0) {
+        cfx_big_free(&tmp);
+        return -1;
     }
+
+    memcpy(tmp.limb, src->limb, src->n * sizeof(*src->limb));
+    tmp.n = src->n;
+
     cfx_big_swap(&tmp, dst);
     cfx_big_free(&tmp);
     return 0;
@@ -255,6 +273,8 @@ void cfx_big_xor(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) {
     big_bitop(out, a, b, BITOP_XOR);
 }
 
+
+
 /* In-place variants */
 void cfx_big_and_eq(cfx_big_t* a, const cfx_big_t* b) {
     big_bitop(a, a, b, BITOP_AND);
@@ -266,6 +286,84 @@ void cfx_big_or_eq(cfx_big_t* a, const cfx_big_t* b) {
 
 void cfx_big_xor_eq(cfx_big_t* a, const cfx_big_t* b) {
     big_bitop(a, a, b, BITOP_XOR);
+}
+
+void cfx_big_rotl_w(cfx_big_t* out, const cfx_big_t* b, unsigned r, unsigned w) {
+    if (w == 0) {
+        cfx_big_from_limb(out, 0);
+        return;
+    }
+
+    unsigned rot = r % w;
+    if (rot == 0) {
+        cfx_big_copy(out, b);
+        cfx_big_mask_bits(out, w);
+        return;
+    }
+
+    cfx_big_t hi, lo;
+    cfx_big_init(&hi);
+    cfx_big_init(&lo);
+    cfx_big_shl_bits(&hi, b, rot);
+    cfx_big_shr_bits(&lo, b, w - rot);
+    cfx_big_or(out, &hi, &lo);
+    cfx_big_mask_bits(out, w);
+    cfx_big_free(&hi);
+    cfx_big_free(&lo);
+}
+
+void cfx_big_rotl(cfx_big_t* out, const cfx_big_t* b, unsigned r) {
+    cfx_big_rotl_w(out, b, r, cfx_big_bitlen(b));
+}
+
+void cfx_big_rotr_w(cfx_big_t* out, const cfx_big_t* b, unsigned r, unsigned w) {
+    if (w == 0) {
+        cfx_big_from_limb(out, 0);
+        return;
+    }
+
+    unsigned rot = r % w;
+    if (rot == 0) {
+        cfx_big_copy(out, b);
+        cfx_big_mask_bits(out, w);
+        return;
+    }
+
+    cfx_big_t hi, lo;
+    cfx_big_init(&hi);
+    cfx_big_init(&lo);
+    cfx_big_shr_bits(&lo, b, rot);
+    cfx_big_shl_bits(&hi, b, w - rot);
+    cfx_big_or(out, &hi, &lo);
+    cfx_big_mask_bits(out, w);
+    cfx_big_free(&hi);
+    cfx_big_free(&lo);
+}
+
+void cfx_big_rotr(cfx_big_t* out, const cfx_big_t* b, unsigned r) {
+    cfx_big_rotr_w(out, b, r, cfx_big_bitlen(b));
+}
+
+void cfx_big_mask_bits(cfx_big_t* a, unsigned nbits) {
+    if (nbits == 0) {
+        cfx_big_assign_zero(a);
+        return;
+    }
+    unsigned full_limbs = nbits / CFX_LIMB_BITS;
+    unsigned rem_bits   = nbits % CFX_LIMB_BITS;
+
+    /* all bits fit in existing limbs */
+    if (full_limbs >= a->n) return;
+
+    /* truncate to full_limbs (+1 if partial) */
+    if (rem_bits == 0) {
+        a->n = full_limbs;
+    } else {
+        a->n = full_limbs + 1;
+        cfx_limb_t mask = ((cfx_limb_t)1 << rem_bits) - 1;
+        a->limb[full_limbs] &= mask;
+    }
+    cfx_big_trim(a);
 }
 
 int cfx_big_endswith_u64(const cfx_big_t* x, uint64_t value) {
@@ -490,6 +588,39 @@ int cfx_big_from_limb(cfx_big_t* b, cfx_limb_t v) {
 
     /* cheap invariant */
     /* CFX_ASSERT(b->n == 1 && b->limb[0] != 0); */
+    return 0;
+}
+
+/* out == NULL is allowed, as a size query;
+ returns 0 on success, -1 buf too small*/
+int cfx_big_to_bytes_be(uint8_t* out, size_t* outlen, const cfx_big_t* b) {
+
+    if (b->n == 0) {
+        if (outlen) *outlen = 0;
+        return 0;
+    }
+
+    cfx_limb_t limb = b->limb[b->n-1];
+    size_t bits = cfx_big_bitlen(b);
+    size_t bytes = (bits + 7) / 8;
+
+    if (!out) {
+        *outlen = bytes;
+        return 0;
+    }
+
+    size_t o = bytes;
+    if (*outlen < bytes) return -1;
+    for (size_t i = 0; i < b->n; ++i) {
+        limb = b->limb[i];
+        for (size_t k = 0; k < sizeof(cfx_limb_t); ++k) {
+            if (o == 0) break;
+            out[--o] = (uint8_t)(limb & 0xFF);
+            limb >>= 8;
+        }
+    }
+
+    *outlen = bytes;
     return 0;
 }
 
@@ -1365,7 +1496,7 @@ static size_t floor_log2_size_t(size_t x) {
 #endif
 }
 
-static void bucket_clear(cfx_big_t* b) { cfx_big_free(b); cfx_big_init(b); } 
+static void bucket_clear(cfx_big_t* b) { cfx_big_free(b); cfx_big_init(b); }
 
 
 void cfx_big_from_fac_faster(cfx_big_t* out, const cfx_fac_t* f) {
@@ -1391,11 +1522,9 @@ void cfx_big_from_fac_faster(cfx_big_t* out, const cfx_fac_t* f) {
             continue;
         }
 
-
         size_t bl = cfx_big_bitlen(&x);
         size_t level = (bl > 0) ? floor_log2_size_t(bl) : 0;
         if (level >= CFX_FAC_BUCKETS) level = CFX_FAC_BUCKETS - 1;
-
 
         for (;;) {
             if (!used[level]) {
@@ -1562,11 +1691,34 @@ static size_t bits_in_limb(cfx_limb_t x) {
 #endif
 }
 
+char* cfx_big_to_b64(const cfx_big_t* src, size_t* sz_out) {
+    if (!src || src->n == 0) {
+        char* s = (char*)malloc(2);
+        if (!s) return NULL;
+        s[0] = '0';
+        s[1] = '\0';
+        if (sz_out) *sz_out = 1;
+        return s;
+    }
+
+    size_t bytecnt = 0;
+    cfx_big_to_bytes_be(NULL, &bytecnt, src);
+    uint8_t* bytes = (uint8_t*)malloc(bytecnt);
+    cfx_big_to_bytes_be(bytes, &bytecnt, src);
+    size_t charcnt = 0;
+    cfx_base64_encode(NULL, &charcnt, bytes, bytecnt);
+    char* s = (char*)malloc(charcnt);
+    cfx_base64_encode(s, &charcnt, bytes, bytecnt);
+    free(bytes);
+    return s;
+}
+
 char* cfx_big_to_bin(const cfx_big_t* src, size_t* sz_out) {
     if (!src || src->n == 0) {
         char* s = (char*)malloc(2);
         if (!s) return NULL;
-        s[0] = '0'; s[1] = '\0';
+        s[0] = '0';
+        s[1] = '\0';
         if (sz_out) *sz_out = 1;
         return s;
     }
@@ -1723,13 +1875,100 @@ char* cfx_big_to_str(const cfx_big_t* src, size_t *sz_out) {
     return s;
 }
 
-/* static inline int hexval(unsigned char c) { */
-/*     unsigned v = c - '0'; */
-/*     if (v <= 9) return (int)v; */
-/*     v = (c | 32) - 'a'; // to lowercase trick, then to [0,5]: 'A' | 32 -> 'a'; 'a' | 32 -> 'a' */
-/*     if (v <= 5) return (int)(v + 10); */
-/*     return -1;                   // not a hex digit */
-/* } */
+/* Scan a single numeric literal token at in[0..in_len).
+   Accepts optional prefixes: 0x/0X, 0b/0B, 0o/0O.
+   No internal whitespace, no sign.
+   On success: parses into out, sets *consumed to total chars consumed, returns 0.
+   On failure (not a number at start): sets *consumed=0, returns -1. */
+int cfx_big_scan_num_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed) {
+    if (consumed) *consumed = 0;
+    if (!out || (!in && in_len)) return -1;
+    if (in_len == 0) return -1;
+
+    size_t prefix = 0;
+    int ret = 0;
+    size_t digits = 0;
+
+    /* base prefix detection */
+    if (in_len >= 2 && in[0] == (uint8_t)'0') {
+        uint8_t p = in[1];
+        if (p == (uint8_t)'x' || p == (uint8_t)'X' ||
+            p == (uint8_t)'b' || p == (uint8_t)'B' ||
+            p == (uint8_t)'o' || p == (uint8_t)'O') {
+            prefix = 2;
+        }
+    } else if (in_len >= 4 && strncmp((const char*)in, "b64:", 4) == 0) {
+        prefix = 4;
+    }
+
+    // printf("SCAN_NUM prefix=0%c, calling bin on '%c' '%c' '%c'...\n",
+    //     (char)in[1],
+    //     (char)in[prefix + 0],
+    //     (char)in[prefix + 1],
+    //     (char)in[prefix + 2]);
+
+    if (prefix) {
+        if (prefix == 2) {
+            uint8_t p = in[1];
+            if (p == (uint8_t)'x' || p == (uint8_t)'X') {
+                ret = cfx_big_scan_hex_n(out, in + prefix, in_len - prefix, &digits);
+            } else if (p == (uint8_t)'b' || p == (uint8_t)'B') {
+                ret = cfx_big_scan_bin_n(out, in + prefix, in_len - prefix, &digits);
+            } else { /* o/O */
+                ret = cfx_big_from_oct_n(out, in + prefix, in_len - prefix, &digits);
+            }
+        } else if (prefix == 4) {
+            ret = cfx_big_scan_b64_n(out, in + prefix, in_len - prefix, &digits);
+        }
+
+        if (ret != 0) return -1;          /* no digits after prefix */
+        if (consumed) *consumed = prefix + digits;
+        return 0;
+    }
+
+    /* no prefix => decimal */
+    ret = cfx_big_scan_dec_n(out, in, in_len, &digits);
+    if (ret != 0) return -1;
+    if (consumed) *consumed = digits;
+    return 0;
+}
+
+int cfx_big_from_str(cfx_big_t* out, const char* s) {
+    if (!out || !s) return -1;
+
+    size_t len = strlen(s);
+    if (len == 0) return -1;
+
+    while (len > 0 && isspace(s[0])) {
+        ++s;
+        --len;
+    }
+
+    size_t consumed = 0;  /* digits consumed */
+    size_t prefix_len = 0;
+    int ret = 0;
+
+    if (len >= 2 && (s[0]=='0' && (s[1]=='x' || s[1]=='X'))) {
+        prefix_len = 2;
+        ret = cfx_big_scan_hex_n(out, (const uint8_t*)(s+prefix_len), len-prefix_len, &consumed);
+    } else if (len >=2 && (s[0]=='0' && (s[1]=='b' || s[1]=='B'))) {
+        prefix_len = 2;
+        ret = cfx_big_scan_bin_n(out, (const uint8_t*)(s+prefix_len), len-prefix_len, &consumed);
+    } else if (len >= 4 && (s[0]=='b' || s[0]=='B') && s[1]=='6' && s[2]=='4' && s[3]==':') {
+        prefix_len = 4;
+        ret = cfx_big_scan_b64_n(out, (const uint8_t*)(s + prefix_len), len - prefix_len, &consumed);
+    } else {
+        prefix_len = 0;
+        ret = cfx_big_scan_dec_n(out, (const uint8_t*)s, len, &consumed);
+    }
+
+    s += (prefix_len + consumed);
+
+    while (*s && isspace((unsigned char)*s)) ++s;   /* allow trailing spaces only */
+    if (ret != 0 || *s != '\0') return -1;          /* no digits or junk trailing */
+
+    return 0;
+}
 
 static const int8_t hex_table[256] = {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -1750,46 +1989,188 @@ static const int8_t hex_table[256] = {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 };
 
-int cfx_big_from_hex(cfx_big_t* out, const char* s) {
-    cfx_big_init(out);
-    cfx_big_from_limb(out, 0);
+int cfx_big_scan_hex_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed) {
+    cfx_big_assign_zero(out);
+    if (consumed) *consumed = 0;
+    size_t pos = 0;
+    for (; pos < in_len; ++pos) {
+        const uint8_t c = in[pos];
+        int d = hex_table[c];
+        if (d < 0) break;
+        cfx_big_shl_bits(out, out, 4);
+        cfx_big_add_sm(out, (cfx_limb_t)d);
+    }
+    if (pos == 0) return -1;
+    if (consumed) *consumed = pos;
+    return 0;
+}
 
+int cfx_big_from_hex(cfx_big_t* out, const char* s) {
     while (*s && isspace((unsigned char)*s)) ++s;
 
     if (s[0]=='0' && (s[1]=='x' || s[1]=='X')) s += 2;
+    size_t len = strlen(s);
+    size_t digits = 0;
+    int ret = cfx_big_scan_hex_n(out, (const uint8_t*)s, len, &digits);
+    s += digits;
+    while (isspace((unsigned char)*s)) ++s;
+    if (ret != 0 || *s != '\0') return -1;
+    return 0;
+}
 
-    int any = 0;
-    for (; *s; ++s) {
-        int d = hex_table[(unsigned char)*s];   /* -1 if not hex */
-        if (d < 0) { /*printf("stopping, non.hex digit found: 0x%d\n", d);*/ break; }                       /* stop on first non-hex */
-        /* else { printf("decoded %c -> %d\n", *s, d);} */
-        /* out = (out << 4) + d; */
-        cfx_big_shl_bits(out, out, 4);               /* or cfx_big_mul_sm(out, 16) */
-        /* PRINT_BIG("shifted ", out); */
-        cfx_big_add_sm(out, (cfx_limb_t)d);
-        any = 1;
+int cfx_big_scan_bin_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed) {
+    size_t ndig = 0;
+
+    if (consumed) *consumed = 0;
+    if (!out || (!in && in_len)) return -1;
+
+    while (ndig < in_len) {
+        uint8_t c = in[ndig];
+        if (c != (uint8_t)'0' && c != (uint8_t)'1') break;
+        ++ndig;
     }
 
-    /* allow trailing spaces only */
-    while (*s && isspace((unsigned char)*s)) ++s;
+    if (consumed) *consumed = ndig;
+    if (ndig == 0) { cfx_big_assign_zero(out); return -1; }
 
-    if (!any || *s != '\0') return -1;          /* no digits or junk trailing */
+    cfx_big_assign_zero(out);
+
+    size_t limb_cnt = (ndig + CFX_LIMB_BITS - 1) / CFX_LIMB_BITS;
+    if (cfx_big_reserve(out, limb_cnt) != 0) return -2;
+    out->n = limb_cnt;
+
+    for (size_t j = 0; j < ndig; ++j) {
+        if (in[ndig - 1 - j] == (uint8_t)'1') {
+            out->limb[j / CFX_LIMB_BITS] |= (cfx_limb_t)1 << (j % CFX_LIMB_BITS);
+        }
+    }
+
+    while (out->n > 0 && out->limb[out->n - 1] == 0) --out->n;
+    return 0;
+}
+
+
+
+int cfx_big_from_oct_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed) {
+    (void)out;
+    (void)in;
+    (void)in_len;
+    (void)consumed;
+    return 0;
+}
+
+int cfx_big_from_bin(cfx_big_t* b, const char* s) {
+    size_t len = strlen(s);
+    if ((len > 2) && (s[0] == '0' && ((s[1] == 'b') || (s[1] == 'B')))) {
+        s += 2;
+        len -= 2;
+    }
+    size_t digits = 0;
+    int ret = cfx_big_scan_bin_n(b, (const uint8_t*)s, len, &digits);
+    return ret;
+}
+
+int cfx_big_scan_dec_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed) {
+    cfx_big_assign_zero(out);
+    if (consumed) *consumed = 0;
+    size_t pos = 0;
+    while (pos < in_len) {
+        if (!isdigit((unsigned char)in[pos])) break;
+        uint32_t digit = (uint32_t)(in[pos] - '0');
+        cfx_big_mul_sm(out, 10); /* out = out * 10 */
+        cfx_big_add_sm(out, digit); /* out = out + digit */
+        ++pos;
+    }
+    if (pos == 0) return -1;
+    if (consumed) *consumed = pos;
     return 0;
 }
 
 int cfx_big_from_dec(cfx_big_t* out, const char* s) {
-    cfx_big_from_limb(out, 0);
-
+    printf("%s\n", __func__);
     while (isspace((unsigned char)*s)) s++;
+    size_t len = strlen(s);
+    size_t digits = 0;
+    int ret = cfx_big_scan_dec_n(out, (const uint8_t*)s, len, &digits);
+    return ret;
+}
 
-    for (; *s; ++s) {
-        if (!isdigit((unsigned char)*s)) return -1;
-        uint32_t digit = (uint32_t)(*s - '0');
-        cfx_big_mul_sm(out, 10); /* out = out * 10 */
-        cfx_big_add_sm(out, digit); /* out = out + digit */
-    }
+static int is_b64_char(unsigned char c) {
+    if (c == '+' || c == '/' || c == '=') return 1;
+    if (c >= 'A' && c <= 'Z') return 1;
+    if (c >= 'a' && c <= 'z') return 1;
+    if (c >= '0' && c <= '9') return 1;
+    /*if (isspace(c)) return 1;*/
     return 0;
 }
+
+/* Decodes 'in' as base 64 into 'out', up until the end of token: either '=' padding or first invalid character.
+   Writes consumed characters to *consumed. */
+int cfx_big_scan_b64_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed) {
+    if (!out || !in || !consumed) return -1;
+
+    size_t n = 0;        /* bytes consumed from input */
+    size_t nonws = 0;    /* count of non-ws chars consumed */
+    size_t eq = 0;
+    int seen_eq = 0;
+
+    /* consume one base64 token */
+    while (n < in_len) {
+        unsigned char c = (unsigned char)in[n];
+
+        if (isspace(c)) { n++; continue; } /* allow internal whitespace */
+
+        if (c == '=') {
+            seen_eq = 1;
+            eq++;
+            nonws++;
+            n++;
+            continue;
+        }
+
+        if (is_b64_char(c)) {
+            if (seen_eq) break;      /* data after '=' ends token */
+            nonws++;
+            n++;
+            continue;
+        }
+
+        break; /* non-b64, non-ws terminates token */
+    }
+
+    if (nonws == 0) return -1;
+    if ((nonws % 4) != 0) return -1;
+    if (eq > 2) return -1;
+
+    /* now decode n bytes of base64: */
+    size_t bin_len = 0;
+    if (cfx_base64_decode(NULL, &bin_len, (const char *)in, n) != 0) return -1;
+
+    uint8_t stack_buf[256];
+    uint8_t *bin = stack_buf;
+
+    if (bin_len > sizeof(stack_buf)) {
+        bin = (uint8_t *)malloc(bin_len);
+        if (!bin) return -1;
+    }
+
+    size_t got = bin_len;
+    if (cfx_base64_decode(bin, &got, (const char *)in, n) != 0 || got != bin_len) {
+        if (bin != stack_buf) free(bin);
+        return -1;
+    }
+
+    if (cfx_big_from_bytes_be(out, bin, bin_len) != 0) {
+        if (bin != stack_buf) free(bin);
+        return -1;
+    }
+
+    if (bin != stack_buf) free(bin);
+
+    *consumed = n;
+    return 0;
+}
+
 
 /* ------------------------------------------------------------- */
 /* NOTE: Use cfx_clz() from algo.h for limb-aware leading-zero count */
@@ -1875,14 +2256,10 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
     cfx_big_t tmp;
     cfx_big_init(&tmp);
 
-    cfx_big_t* p = out;
-    int alias = 0;
-
     if (a == out) {
         cfx_big_copy(&tmp, a);
-        p = &tmp;
-        alias = 1;
-        a = &tmp; /* important: read from tmp now */
+        a = &tmp;          /* read from tmp */
+        /* write into out */
     }
 
     const unsigned W = CFX_LIMB_BITS;
@@ -1891,32 +2268,28 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
     const unsigned r = bit_shift ? (W - bit_shift) : 0;
 
     size_t new_n = a->n + limb_shift + (bit_shift ? 1 : 0);
-    cfx_big_reserve(p, new_n);
+    cfx_big_reserve(out, new_n);
 
-    for (size_t i = 0; i < limb_shift; ++i) p->limb[i] = 0;
+    /* (optional but good hygiene) clear destination region you’ll use */
+    for (size_t i = 0; i < new_n; ++i) out->limb[i] = 0;
 
     if (bit_shift == 0) {
         for (size_t i = 0; i < a->n; ++i) {
-            p->limb[i + limb_shift] = a->limb[i];
+            out->limb[i + limb_shift] = a->limb[i];
         }
-        p->n = a->n + limb_shift;
+        out->n = a->n + limb_shift;
     } else {
         cfx_limb_t carry = 0;
         for (size_t i = 0; i < a->n; ++i) {
             cfx_limb_t lo = a->limb[i];
-            p->limb[i + limb_shift] = (lo << bit_shift) | carry;
+            out->limb[i + limb_shift] = (lo << bit_shift) | carry;
             carry = (r ? (lo >> r) : 0);
         }
-        p->limb[limb_shift + a->n] = carry;
-        p->n = limb_shift + a->n + (carry ? 1 : 0);
+        out->limb[limb_shift + a->n] = carry;
+        out->n = limb_shift + a->n + (carry ? 1 : 0);
     }
 
-    cfx_big_trim(p);
-
-    if (alias) {
-        cfx_big_move(out, p);
-    }
-
+    cfx_big_trim(out);
     cfx_big_free(&tmp);
 }
 
@@ -1924,8 +2297,7 @@ void cfx_big_shl_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
 
 /* out = a >> s (0..63)  */
 /* out = a >> s  (bitwise), base b = 2^64 */
-void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s)
-{
+void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* a, unsigned s) {
     if (cfx_big_is_zero(a) || s == 0) {
         cfx_big_copy(out, a);
         return;

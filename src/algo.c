@@ -93,7 +93,7 @@ cfx_limb_t cfx_legendre(cfx_limb_t n, cfx_limb_t p) {
 }
 
 /* ---- Portable 64-bit modular arithmetic ---- */
-
+#ifndef CFX_HAS_UINT128
 /* (a + b) mod m, avoiding overflow */
 static inline uint64_t _addmod_u64(uint64_t a, uint64_t b, uint64_t m) {
     a %= m;
@@ -104,10 +104,12 @@ static inline uint64_t _addmod_u64(uint64_t a, uint64_t b, uint64_t m) {
     return a + b;
 }
 
+
 /* (2 * a) mod m, avoiding overflow */
 static inline uint64_t _doublemod_u64(uint64_t a, uint64_t m) {
     return _addmod_u64(a, a, m);
 }
+#endif
 
 /* (a * b) mod m using double-and-add method */
 static inline uint64_t _cfx_mulmod_u64(uint64_t a, uint64_t b, uint64_t m) {

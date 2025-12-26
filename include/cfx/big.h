@@ -70,6 +70,13 @@ void cfx_big_and_eq(cfx_big_t* a, const cfx_big_t* b);
 void cfx_big_or_eq(cfx_big_t* a, const cfx_big_t* b);
 void cfx_big_xor_eq(cfx_big_t* a, const cfx_big_t* b);
 
+void cfx_big_rotl(cfx_big_t* out, const cfx_big_t* b, unsigned r);
+void cfx_big_rotr(cfx_big_t* out, const cfx_big_t* b, unsigned r);
+void cfx_big_rotl_w(cfx_big_t* out, const cfx_big_t* b, unsigned r, unsigned w);
+void cfx_big_rotr_w(cfx_big_t* out, const cfx_big_t* b, unsigned r, unsigned w);
+
+void cfx_big_mask_bits(cfx_big_t* a, unsigned nbits);
+
 /* Single-bit operations */
 int cfx_big_bit_is_set(const cfx_big_t* x, size_t bit);
 void cfx_big_bit_set(cfx_big_t* x, size_t bit);
@@ -80,6 +87,7 @@ size_t cfx_big_popcount(const cfx_big_t* x);
 size_t cfx_big_bitlen(const cfx_big_t* b);      /* assumes b->limb[b->n - 1] != 0 */
 int cfx_big_from_u64(cfx_big_t* b, uint64_t v);
 int cfx_big_from_limb(cfx_big_t* b, cfx_limb_t v);
+int cfx_big_to_bytes_be(uint8_t *out, size_t *out_len, const cfx_big_t *b);
 int cfx_big_from_bytes_be(cfx_big_t* out, const uint8_t* be, size_t len);
 void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
 void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
@@ -158,14 +166,28 @@ void cfx_big_from_fac_fast(cfx_big_t* out, const cfx_fac_t* f);
 void cfx_big_from_fac_faster(cfx_big_t* out, const cfx_fac_t* f);
 void cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b);
 
+/* note these char* returning functions allocate internally, the returned pointer must be freed */
 char* cfx_big_to_str(const cfx_big_t* b, size_t *sz_out);
 char* cfx_big_to_hex(const cfx_big_t* src, size_t *sz_out);
 char* cfx_big_to_bin(const cfx_big_t* b, size_t *sz_out);
+char* cfx_big_to_b64(const cfx_big_t* b, size_t *sz_out);
 int cfx_big_to_sci(const cfx_big_t* x, unsigned base, int sig_digits, char* out, size_t outsz);
 
-int cfx_big_from_dec(cfx_big_t* b, const char* str);
+int cfx_big_from_str(cfx_big_t* out, const char* s);
+
+int cfx_big_from_bin(cfx_big_t* out, const char* s);
+int cfx_big_from_dec(cfx_big_t* out, const char* str);
 int cfx_big_from_hex(cfx_big_t* out, const char* s);
+int cfx_big_from_oct(cfx_big_t* out, const char* s);
 int cfx_big_from_file(cfx_big_t* out, FILE* fp, int base);
+
+int cfx_big_scan_num_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed);
+int cfx_big_scan_hex_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed);
+int cfx_big_scan_dec_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed);
+int cfx_big_scan_bin_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed);
+int cfx_big_scan_b64_n(cfx_big_t *out, const uint8_t *s, size_t len, size_t *consumed);
+int cfx_big_from_oct_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed);
+
 
 /* ================== Montgomery ================== */
 /**

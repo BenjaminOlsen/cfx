@@ -53,6 +53,7 @@ set(CFX_HEADERS
     include/cfx/poly1305.h
     include/cfx/chacha20.h
     include/cfx/arith.h
+    include/cfx/base64.h
     include/cfx/aead_chacha20_poly1305.h
 )
 
@@ -62,8 +63,9 @@ set(CFX_SOURCES
     src/algo.c
     src/rand.c
     src/vec.c
-    src/big_vec.c
     src/sha256.c
+    src/base64.c
+    src/big_vec.c
     src/chacha20.c
     src/poly1305.c
     src/aead_chacha20_poly1305.c

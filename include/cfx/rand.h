@@ -59,11 +59,6 @@ uint32_t    cfx_lcg_gen32(void);
 uint32_t    cfx_lcg(uint32_t* s);
 void        cfx_lcg_bytes(uint32_t seed, uint8_t *data, size_t len);
 
-/* ------- poly1305 ------- */
-void        cfx_poly1305_seed(uint32_t seed);
-uint32_t    cfx_poly1305_gen32(void);
-void        cfx_poly1305_bytes(void* buf, size_t len);
-
 /* ------- chacha20 ------- */
 void        cfx_chacha20_seed(uint32_t seed);
 uint32_t    cfx_chacha20_gen32(void);
