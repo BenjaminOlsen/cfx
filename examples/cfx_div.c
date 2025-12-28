@@ -63,8 +63,7 @@ int main(int argc, char* argv[]) {
     /* double check: */
     cfx_big_t p;
     cfx_big_init(&p);
-    cfx_big_copy(&p, &v);
-    cfx_big_mul(&p, &q); /* p = v*q */
+    cfx_big_mul(&p, &v, &q); /* p = v*q */
     cfx_big_add(&p, &r); /* p = v*q + r */
 
     int eq = cfx_big_eq(&p, &u);

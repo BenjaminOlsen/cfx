@@ -57,6 +57,33 @@ Note, some of the RNGs are toy examples (like using poly1305 as an RNG), but oth
 
 In examples, there are some interesting ways of using cfx, most have a `-h` or `--help` usage print.
 
+### Installing as CLI Tools
+
+The examples can be installed as command-line utilities for everyday use:
+
+**Mac/Linux:**
+```bash
+# Build and install to ~/bin
+cmake --build build && cmake --install build --prefix ~
+
+# Add ~/bin to PATH (one-time, add to ~/.zshrc or ~/.bashrc)
+export PATH="$HOME/bin:$PATH"
+```
+
+**Windows:**
+```powershell
+# Build and install to %USERPROFILE%\bin
+cmake --build build --config Release
+cmake --install build --config Release --prefix %USERPROFILE%
+
+# Add to PATH via System Properties > Environment Variables > User variables > Path
+# Add: %USERPROFILE%\bin
+```
+
+After installation, run tools directly: `cfx_dc`, `cfx_factor 12345`, `cfx_primes 100`, etc.
+
+To update after making changes, just re-run the build and install commands.
+
 ## Rust Bindings
 
 cfx includes Rust bindings in `rust/cfx/`. The bindings provide a safe wrapper around the C library.

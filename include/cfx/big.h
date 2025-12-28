@@ -89,15 +89,19 @@ int cfx_big_from_u64(cfx_big_t* b, uint64_t v);
 int cfx_big_from_limb(cfx_big_t* b, cfx_limb_t v);
 int cfx_big_to_bytes_be(uint8_t *out, size_t *out_len, const cfx_big_t *b);
 int cfx_big_from_bytes_be(cfx_big_t* out, const uint8_t* be, size_t len);
-void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m);
-void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
-void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m);
+/* out = a * b (non-in-place) */
+void cfx_big_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b);
+
+/* In-place multiplication: b *= m */
+void cfx_big_mul_eq(cfx_big_t* b, const cfx_big_t* m);
+void cfx_big_mul_eq_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
+void cfx_big_mul_eq_csa(cfx_big_t* b, const cfx_big_t* m);
 /* assumes scratch is allocated with the appropriate size b->n + m->n already. */
 void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t* scratch);
 /* if CFX_HAS_PTHREAD */
 void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads);
 
-/* chooses the fastest multiplication for the size of the multiplicands */
+/* chooses the fastest in-place multiplication for the size of the multiplicands */
 void cfx_big_mul_auto(cfx_big_t* b, const cfx_big_t* m);
 
 void cfx_big_sq(cfx_big_t* b);
@@ -160,11 +164,28 @@ int cfx_big_mulmod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const
 
 int cfx_big_is_prime(const cfx_big_t* b);
 
+/* Binary GCD algorithm for big integers */
+void cfx_big_gcd(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b);
+
+/* Pollard-Rho factorization using Montgomery multiplication.
+ * Returns a non-trivial factor, or a copy of n if n is prime/unfactorable. */
+void cfx_big_pollard_rho(cfx_big_t* factor, const cfx_big_t* n);
+
 void cfx_big_from_limbs(cfx_big_t* b, const cfx_limb_t* limbs, size_t n);
 void cfx_big_from_fac(cfx_big_t* b, const cfx_fac_t* f);
 void cfx_big_from_fac_fast(cfx_big_t* out, const cfx_fac_t* f);
 void cfx_big_from_fac_faster(cfx_big_t* out, const cfx_fac_t* f);
-void cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b);
+/*
+ * Factorize b into prime factors, storing results in f.
+ * If remainder is non-NULL and factorization is incomplete, the unfactored
+ * composite is written there.
+ *
+ * Returns:
+ *   0  - complete factorization
+ *   1  - incomplete (remainder holds unfactored composite > 64 bits)
+ *  -1  - error
+ */
+int cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b, cfx_big_t* remainder);
 
 /* note these char* returning functions allocate internally, the returned pointer must be freed */
 char* cfx_big_to_str(const cfx_big_t* b, size_t *sz_out);

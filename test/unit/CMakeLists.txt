@@ -3,6 +3,7 @@ set(CFX_UNIT_TESTS
     test_arith
     test_big
     test_big_mont
+    test_ecm
     test_fac
     test_algo
     test_pollard_rho
@@ -15,6 +16,8 @@ set(CFX_UNIT_TESTS
     test_base64
     test_aead_chacha20_poly1305
     test_sha256
+    test_mul_debug
+    test_div_debug
 )
 
 foreach(test_name IN LISTS CFX_UNIT_TESTS)

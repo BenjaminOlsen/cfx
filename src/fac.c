@@ -5,19 +5,24 @@
 #include "cfx/vec.h"
 #include "cfx/macros.h"
 #include "cfx/primes.h"
+#include "cfx/rand.h"
 
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 void cfx_fac_print(cfx_fac_t* f) {
-    printf("f: %p, cap: %zu, len: %zu: ", (void*)f, f->cap, f->len);
+    if (f->len == 0) {
+        printf("(empty)\n");
+        return;
+    }
     for (size_t k = 0; k < f->len-1; ++k) {
         cfx_pf_t* pf = &f->data[k];
-        printf("" CFX_PRIuLIMB "^" CFX_PRIuLIMB " * ", pf->p, pf->e);
+        printf("%" PRIu64 "^%" PRIu32 " * ", pf->p, pf->e);
     }
     cfx_pf_t* pf = &f->data[f->len-1];
-    printf("" CFX_PRIuLIMB "^" CFX_PRIuLIMB "\n", pf->p, pf->e);
+    printf("%" PRIu64 "^%" PRIu32 "\n", pf->p, pf->e);
 }
 
 void cfx_fac_init(cfx_fac_t* f) {
@@ -62,7 +67,7 @@ int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
     return 0;
 }
 
-int cfx_fac_push(cfx_fac_t* f, cfx_limb_t p, cfx_limb_t e) {
+int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint32_t e) {
     if (e == 0) return -1;
     int ret = cfx_fac_reserve(f, f->len + 1);
     if (ret != 0) return -1;
@@ -109,8 +114,8 @@ void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src) {
             ++j;
         } else {
             /* p is in src and dst */
-            cfx_limb_t p = pf1->p;
-            cfx_limb_t e = pf1->e + pf2->e;
+            uint64_t p = pf1->p;
+            uint32_t e = pf1->e + pf2->e;
             if (e) cfx_fac_push(&out, p, e);
             ++i;
             ++j;
@@ -144,15 +149,15 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
             j++;
         } else {
             /* p is in both src and dst: */
-            cfx_limb_t p = pf1->p;
-            cfx_limb_t e;
+            uint64_t p = pf1->p;
+            uint32_t e;
             if (pf1->e > pf2->e) { /* dst divides src */
                 e = pf1->e - pf2->e;
                 cfx_fac_push(&out, p, e);
             } else if (pf2->e > pf1->e) { /* dst does not divide src! */
                 assert(0 && "cfx_fac_sub underflow");
             }
-            /* else, e == 0, p is cancelled out!ç */
+            /* else, e == 0, p is cancelled out! */
             ++i;
             ++j;
         }
@@ -208,28 +213,101 @@ cfx_fac_t cfx_fac_binom(cfx_limb_t n, cfx_limb_t k){
     return fn; /* sorted, coalesced */
 }
 
-/* Public entry: factor n (uint64_t) into fac (coalesced). */
-/* Returns 1 on success; 0 for n==0 (degenerate) or allocation failures. */
+/* Compare function for qsort */
+static int cmp_u64_fac(const void* a, const void* b) {
+    uint64_t x = *(const uint64_t*)a;
+    uint64_t y = *(const uint64_t*)b;
+    return (x > y) - (x < y);
+}
+
+/* Public entry: factor n (uint64_t) into fac (coalesced).
+ * Returns 0 on success, -1 on error (n==0). */
 int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n) {
-    if (n == 0) return 0;
-    if (n == 1) return 1;
+    cfx_fac_init(fac);
+    if (n == 0) return -1;
+    if (n == 1) return 0;
 
-    cfx_vec_t primes;
-    cfx_vec_t exps;
-    cfx_vec_init(&primes);
-    cfx_vec_init(&exps);
-    int ret = cfx_factor_u64(&primes, &exps, n);
+    /* Use a local array for 64-bit prime storage during computation */
+    uint64_t plist[256];  /* enough for any 64-bit factorization */
+    size_t pcount = 0;
 
-    /* debug */
-    assert(primes.size == exps.size);
-
-    if (ret != 0) return 0;
-
-    for (size_t i = 0; i < primes.size; ++i) {
-        cfx_fac_push(fac, primes.data[i], exps.data[i]);
+    /* 1) Strip small primes using precomputed list */
+    for (size_t i = 0; i < cfx_primes_len && i < 54; ++i) {
+        uint64_t p = cfx_primes[i];
+        while ((n % p) == 0) {
+            if (pcount < 256) plist[pcount++] = p;
+            n /= p;
+        }
+        if (n == 1) break;
     }
-    cfx_vec_free(&primes);
-    cfx_vec_free(&exps);
-    return 1;
+
+    /* 2) Iterative stack of composites to split */
+    uint64_t st[64]; /* plenty for 64-bit factoring */
+    size_t top = 0;
+    if (n > 1) st[top++] = n;
+
+    while (top) {
+        uint64_t m = st[--top];
+        if (m == 1) continue;
+
+        /* If small enough, finish by trial division quickly */
+        if (m < 1ull<<20) {
+            for (uint64_t p = 3; p*p <= m; p += 2) {
+                while ((m % p) == 0) {
+                    if (pcount < 256) plist[pcount++] = p;
+                    m /= p;
+                }
+            }
+            if (m > 1 && pcount < 256) plist[pcount++] = m;
+            continue;
+        }
+
+        if (cfx_is_prime_u64(m)) {
+            if (pcount < 256) plist[pcount++] = m;
+            continue;
+        }
+
+        /* Split with Brent–Rho; allow a few retries with different seeds */
+        uint64_t d = 0;
+        for (int tries = 0; tries < 8; ++tries) {
+            cfx_srand(0xC0FFEEu + (uint32_t)tries);
+            d = cfx_pollard_rho_brent(m);
+            if (d > 1 && d < m && (m % d) == 0) break;
+            d = 0;
+        }
+
+        if (d == 0) {
+            /* Last resort: bounded trial division */
+            uint64_t found = 0;
+            for (uint64_t p = 3; p*p <= m; p += 2) {
+                if (m % p == 0) { found = p; break; }
+            }
+            if (!found) {
+                if (pcount < 256) plist[pcount++] = m;
+                continue;
+            }
+            d = found;
+        }
+
+        /* Push the two factors back for further processing */
+        uint64_t a = d;
+        uint64_t b = m / d;
+        if (a < b) { uint64_t t=a; a=b; b=t; }
+        st[top++] = a;
+        st[top++] = b;
+    }
+
+    /* 3) Sort & coalesce -> push to fac */
+    qsort(plist, pcount, sizeof(uint64_t), cmp_u64_fac);
+
+    for (size_t i = 0; i < pcount; ) {
+        uint64_t p = plist[i];
+        uint32_t e = 1;
+        size_t j = i + 1;
+        while (j < pcount && plist[j] == p) { ++e; ++j; }
+        cfx_fac_push(fac, p, e);
+        i = j;
+    }
+    return 0;
 }
 

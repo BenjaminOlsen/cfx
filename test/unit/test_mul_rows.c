@@ -211,7 +211,7 @@ static void test_thread_counts_agree(void) {
 
     /* normal mul sanity check */
     cfx_big_copy(&t0, &a);
-    cfx_big_mul(&t0, &b);
+    cfx_big_mul_eq(&t0, &b);
 
     big_set_limbs(&t1, a.limb, a.n);
     cfx_big_mul_rows_pthreads(&t1, &b, 1);

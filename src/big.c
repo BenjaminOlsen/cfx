@@ -5,6 +5,7 @@
 #include "cfx/algo.h"
 #include "cfx/arith.h"
 #include "cfx/macros.h"
+#include "cfx/primes.h"
 #include "cfx/base64.h"
 
 #include <math.h>
@@ -961,14 +962,14 @@ int cfx_big_is_prime(const cfx_big_t* n) {
     if (cfx_big_cmp_sm(n, 2) < 0)
         return 0;
 
-    static const uint32_t small[] = {
+    static const uint32_t small_primes[] = {
         2,3,5,7,11,13,17,19,23,29,31,37,
         41,43,47,53,59,61,67,71,73,79,83,89,97,0
     };
 
     /* Small trial division first */
-    for (int i = 0; small[i]; ++i) {
-        uint32_t p = small[i];
+    for (int i = 0; small_primes[i]; ++i) {
+        uint32_t p = small_primes[i];
         int cmp = cfx_big_cmp_sm(n, p);
         if (cmp == 0)
             return 1;
@@ -997,18 +998,17 @@ int cfx_big_is_prime(const cfx_big_t* n) {
         return 0;
     }
 
-    /* For numbers up to 64 bits, use the "Sinclair 7" bases which are
+    /* for numbers up to 64 bits, use the "Sinclair 7" bases which are
        deterministic for all 64-bit inputs. For larger numbers, use
        additional small prime bases for higher confidence. */
     size_t bitlen = cfx_big_bitlen(n);
 
     if (bitlen <= 64) {
-        /* Sinclair 7 bases - deterministic for 64-bit */
-        static const uint64_t bases64[] = {
+        static const uint64_t sinclair7[] = {
             2ULL, 325ULL, 9375ULL, 28178ULL, 450775ULL, 9780504ULL, 1795265022ULL, 0
         };
-        for (size_t i = 0; bases64[i]; ++i) {
-            if (!miller_rabin_once(n, (cfx_limb_t)bases64[i], &d, s)) {
+        for (size_t i = 0; sinclair7[i]; ++i) {
+            if (!miller_rabin_once(n, (cfx_limb_t)sinclair7[i], &d, s)) {
                 cfx_big_free(&d);
                 return 0;
             }
@@ -1031,116 +1031,230 @@ int cfx_big_is_prime(const cfx_big_t* n) {
     return 1;
 }
 
+/* Binary GCD algorithm for big integers */
+void cfx_big_gcd(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) {
+    if (cfx_big_is_zero(a)) {
+        cfx_big_copy(out, b);
+        return;
+    }
+    if (cfx_big_is_zero(b)) {
+        cfx_big_copy(out, a);
+        return;
+    }
+
+    cfx_big_t u, v;
+    cfx_big_init(&u);
+    cfx_big_init(&v);
+    cfx_big_copy(&u, a);
+    cfx_big_copy(&v, b);
+
+    /* cnt common factors of 2 */
+    size_t shift = 0;
+    while (cfx_big_is_even(&u) && cfx_big_is_even(&v)) {
+        cfx_big_shr_bits_eq(&u, 1);
+        cfx_big_shr_bits_eq(&v, 1);
+        shift++;
+    }
+
+    /* remove remaining factors of 2 from u */
+    while (cfx_big_is_even(&u)) {
+        cfx_big_shr_bits_eq(&u, 1);
+    }
+
+    do {
+        /* remove factors of 2 from v */
+        while (cfx_big_is_even(&v)) {
+            cfx_big_shr_bits_eq(&v, 1);
+        }
+
+        /* make sure u <= v */
+        if (cfx_big_cmp(&u, &v) > 0) {
+            cfx_big_swap(&u, &v);
+        }
+
+        cfx_big_sub(&v, &u);
+        cfx_big_trim(&v);
+
+    } while (!cfx_big_is_zero(&v));
+
+    /* restore common factors of 2 */
+    cfx_big_shl_bits_eq(&u, shift);
+
+    cfx_big_swap(out, &u);
+    cfx_big_free(&u);
+    cfx_big_free(&v);
+}
+
+/* Pollard-Rho factorization using Montgomery multiplication (Brent's improvement).
+ * Returns a non-trivial factor in 'factor', or copies n if n is prime/unfactorable. */
+void cfx_big_pollard_rho(cfx_big_t* factor, const cfx_big_t* n) {
+    if (cfx_big_cmp_sm(n, 2) < 0) {
+        cfx_big_copy(factor, n);
+        return;
+    }
+    if (cfx_big_is_even(n)) {
+        cfx_big_from_limb(factor, 2);
+        return;
+    }
+    if (cfx_big_cmp_sm(n, 3) == 0) {
+        cfx_big_from_limb(factor, 3);
+        return;
+    }
+
+    /* monty context for modular arithmetic mod n */
+    cfx_big_mont_ctx_t ctx;
+    if (cfx_big_mont_ctx_init(&ctx, n) == 0) {
+        cfx_big_copy(factor, n);
+        return;
+    }
+
+    cfx_big_t y, c, x, ys, q, g, one, diff, temp;
+    cfx_big_init(&y);
+    cfx_big_init(&c);
+    cfx_big_init(&x);
+    cfx_big_init(&ys);
+    cfx_big_init(&q);
+    cfx_big_init(&g);
+    cfx_big_init(&one);
+    cfx_big_init(&diff);
+    cfx_big_init(&temp);
+
+    /* init one in Montgomery form */
+    cfx_big_from_limb(&one, 1);
+    cfx_big_mont_to(&one, &one, &ctx);
+
+    /* Try different c values if we fail with the first one */
+    static const cfx_limb_t c_vals[] = {1, 2, 3, 5, 7, 11, 13, 17, 19, 23};
+    const size_t num_c_vals = sizeof(c_vals) / sizeof(c_vals[0]);
+
+    for (size_t c_idx = 0; c_idx < num_c_vals; ++c_idx) {
+        /* Initialize with new c value */
+        cfx_big_from_limb(&y, 2);
+        cfx_big_mont_to(&y, &y, &ctx);
+        cfx_big_from_limb(&c, c_vals[c_idx]);
+        cfx_big_mont_to(&c, &c, &ctx);
+
+        cfx_big_copy(&x, &y);
+        cfx_big_copy(&ys, &y);
+        cfx_big_copy(&q, &one);
+        cfx_big_from_limb(&g, 1);
+
+        size_t nbits = n->n * CFX_LIMB_BITS;
+        size_t max_iters = 1ULL << (nbits / 4 + 4);  // e.g., 128-bit -> 2^36
+        if (max_iters > (1ULL << 32)) max_iters = 1ULL << 32;  // cap at 4B
+
+        size_t r = 1;
+        const size_t batch = 128;
+        size_t iters = 0;
+
+        while (cfx_big_is_one(&g)) {
+            cfx_big_copy(&x, &y);
+
+            /* advance y by r steps: y = y^2 + c mod n */
+            for (size_t i = 0; i < r; ++i) {
+                cfx_big_mont_sqr(&y, &y, &ctx);
+                cfx_big_add(&y, &c);
+                if (cfx_big_cmp(&y, n) >= 0) {
+                    cfx_big_sub(&y, n);
+                }
+            }
+
+            /* GCD computation batch*/
+            for (size_t k = 0; k < r && cfx_big_is_one(&g); k += batch) {
+                cfx_big_copy(&ys, &y);
+                size_t lim = (batch < r - k) ? batch : (r - k);
+
+                for (size_t i = 0; i < lim; ++i) {
+                    /* y = y^2 + c mod n */
+                    cfx_big_mont_sqr(&y, &y, &ctx);
+                    cfx_big_add(&y, &c);
+                    if (cfx_big_cmp(&y, n) >= 0) {
+                        cfx_big_sub(&y, n);
+                    }
+
+                    /* diff = |x - y| */
+                    if (cfx_big_cmp(&x, &y) >= 0) {
+                        cfx_big_copy(&diff, &x);
+                        cfx_big_sub(&diff, &y);
+                    } else {
+                        cfx_big_copy(&diff, &y);
+                        cfx_big_sub(&diff, &x);
+                    }
+
+                    /* q = q * diff mod n (in Montgomery form) */
+                    if (!cfx_big_is_zero(&diff)) {
+                        cfx_big_mont_mul(&q, &q, &diff, &ctx);
+                    }
+                }
+
+                /* g = gcd(q, n) */
+                cfx_big_mont_from(&temp, &q, &ctx);
+                cfx_big_gcd(&g, &temp, n);
+            }
+
+            r <<= 1;
+            iters += r;
+            if (iters > max_iters) {
+                /* Try next c value */
+                break;
+            }
+        }
+
+        /* If g == n, backtrack step-by-step */
+        if (cfx_big_cmp(&g, n) == 0) {
+            cfx_big_from_limb(&g, 1);
+            cfx_big_mont_from(&x, &x, &ctx);  /* Convert x back from Montgomery */
+
+            for (size_t i = 0; i < batch && cfx_big_is_one(&g); ++i) {
+                /* ys = ys^2 + c mod n */
+                cfx_big_mont_sqr(&ys, &ys, &ctx);
+                cfx_big_add(&ys, &c);
+                if (cfx_big_cmp(&ys, n) >= 0) {
+                    cfx_big_sub(&ys, n);
+                }
+
+                /* Convert ys from Montgomery form for GCD */
+                cfx_big_mont_from(&temp, &ys, &ctx);
+
+                /* diff = |x - ys| */
+                if (cfx_big_cmp(&x, &temp) >= 0) {
+                    cfx_big_copy(&diff, &x);
+                    cfx_big_sub(&diff, &temp);
+                } else {
+                    cfx_big_copy(&diff, &temp);
+                    cfx_big_sub(&diff, &x);
+                }
+
+                cfx_big_gcd(&g, &diff, n);
+            }
+        }
+
+        /* Check if we found a non-trivial factor */
+        if (cfx_big_cmp(&g, n) != 0 && !cfx_big_is_one(&g)) {
+            cfx_big_copy(factor, &g);
+            goto cleanup;
+        }
+    }
+
+    /* All c values exhausted - return n (failure) */
+    cfx_big_copy(factor, n);
+
+cleanup:
+    cfx_big_free(&y);
+    cfx_big_free(&c);
+    cfx_big_free(&x);
+    cfx_big_free(&ys);
+    cfx_big_free(&q);
+    cfx_big_free(&g);
+    cfx_big_free(&one);
+    cfx_big_free(&diff);
+    cfx_big_free(&temp);
+    cfx_big_mont_ctx_free(&ctx);
+}
+
 
 void cfx_big_sq(cfx_big_t* b) {
-#if 0
-    if (b->n == 0) return;
-    cfx_big_t ret;
-    cfx_big_init(&ret);
-    size_t n = b->n;
-    size_t szout = 2*n;
-    cfx_big_reserve(&ret, szout);
-    ret.n = szout;
 
-    for (size_t i = 0; i < n; ++i) {
-        cfx_acc_t carry = 0;
-        cfx_acc_t bi = b->limb[i];
-        /* terms ij == terms ji -> iterate over half the terms but double them*/
-        for (size_t j = i+1; j < n; ++j) {
-            cfx_acc_t prod = bi * b->limb[j];
-            prod <<= 1; /* double */
-            prod |= carry;
-            prod += ret.limb[i+j];
-            ret.limb[i+j] = (cfx_limb_t)prod;
-            carry = prod >> CFX_LIMB_BITS;
-            /* printf("doubling term i: %zu, j: %zu; prod: " CFX_PRIuLIMB ", carry: " CFX_PRIuLIMB "\n", i, j, prod, (cfx_limb_t)carry); */
-        }
-        cfx_acc_t sq = bi*bi;
-        sq += ret.limb[2*i];
-        cfx_limb_t lo = (cfx_limb_t)sq;
-        cfx_acc_t c2 = sq >> CFX_LIMB_BITS;
-        /* printf("squaring term i: %zu, lo: " CFX_PRIuLIMB ", carry: " CFX_PRIuLIMB "\n", i, lo, (cfx_limb_t)carry); */
-
-        /* propagate carry from cross terms into next limb */
-        cfx_acc_t u = (cfx_acc_t)ret.limb[i + n] + carry + c2;
-        ret.limb[i + n] = (cfx_limb_t)u;
-        /* store fixed lower */
-        ret.limb[2 * i] = lo;
-        /* carry continues if u overflowed 64 bits */
-        cfx_acc_t k = u >> CFX_LIMB_BITS;
-        if (k) {
-            size_t idx = i + n + 1;
-            while (k) {
-                printf("carry continues " CFX_PRIuLIMB "\n", (cfx_limb_t)k);
-                if (idx >= szout) break;
-                cfx_acc_t w = (cfx_acc_t)ret.limb[idx] + (cfx_limb_t)k;
-                ret.limb[idx] = (cfx_limb_t)w;
-                k = w >> CFX_LIMB_BITS;
-                ++idx;
-            }
-        }
-    }
-    cfx_big_trim(&ret);
-    cfx_big_swap(&ret, b);
-    cfx_big_free(&ret);
-
-#elif 0
-    if (b->n == 0) return;
-
-    size_t n = b->n;
-    size_t out_n = 2 * n;
-    /* temp buffer initialized to zero */
-    cfx_limb_t* tmp = (cfx_limb_t*)calloc(out_n, sizeof(cfx_limb_t));
-    if (!tmp) { /* OOM handling as per your policy */ return; }
-
-    for (size_t i = 0; i < n; ++i) {
-        cfx_acc_t carry = 0;
-
-        /* cross terms j > i counted twice */
-        size_t j = i + 1;
-        for (; j < n; ++j) {
-            cfx_acc_t t = (cfx_acc_t)b->limb[i] * (cfx_acc_t)b->limb[j];
-            t <<= 1; /* times 2 */
-            t += tmp[i + j];
-            t += carry;
-            tmp[i + j] = (cfx_limb_t)t;
-            carry = t >> CFX_LIMB_BITS;
-        }
-
-        /* add the square term (i,i) */
-        cfx_acc_t t2 = (cfx_acc_t)b->limb[i] * (cfx_acc_t)b->limb[i];
-        t2 += tmp[2 * i];
-        cfx_limb_t lo = (cfx_limb_t)t2;
-        cfx_acc_t c2 = t2 >> CFX_LIMB_BITS;
-
-        /* propagate carry from cross terms into next limb */
-        cfx_acc_t u = (cfx_acc_t)tmp[i + n] + carry + c2;
-        tmp[i + n] = (cfx_limb_t)u;
-        /* store fixed lower */
-        tmp[2 * i] = lo;
-        /* carry continues if u overflowed 64 bits */
-        cfx_acc_t k = u >> CFX_LIMB_BITS;
-        if (k) {
-            size_t idx = i + n + 1;
-            while (k) {
-                if (idx >= out_n) break;
-                cfx_acc_t w = (cfx_acc_t)tmp[idx] + (cfx_limb_t)k;
-                tmp[idx] = (cfx_limb_t)w;
-                k = w >> CFX_LIMB_BITS;
-                ++idx;
-            }
-        }
-    }
-
-    /* move tmp into ret */
-    cfx_big_t ret;
-    cfx_big_reserve(ret, out_n);
-    memcpy(ret->limb, tmp, out_n * sizeof(cfx_limb_t));
-    ret->n = out_n;
-    cfx_big_trim(ret);
-    free(tmp);
-    return ret;
-#else
     const size_t n = b->n;
     cfx_big_t ret;
     cfx_big_init(&ret);
@@ -1184,7 +1298,7 @@ void cfx_big_sq(cfx_big_t* b) {
         }
     }
 
-    /* 2) Diagonals: add b[i]^2 once at ret[2*i] */
+    /* 2) diagonals: add b[i]^2 once at ret[2*i] */
     for (size_t i = 0; i < n; ++i) {
         cfx_acc_t sq = (cfx_acc_t)b->limb[i] * b->limb[i];
 
@@ -1205,15 +1319,14 @@ void cfx_big_sq(cfx_big_t* b) {
     while (ret.n && ret.limb[ret.n - 1] == 0) --ret.n;
     cfx_big_swap(&ret, b);
     cfx_big_free(&ret);
-#endif
 }
 
 /* TODO */
-void cfx_big_mul_fft(cfx_big_t* b, const cfx_big_t* m) {
-    cfx_big_mul(b, m);
+void cfx_big_mul_eq_fft(cfx_big_t* b, const cfx_big_t* m) {
+    cfx_big_mul_eq(b, m);
 }
 
-void cfx_big_mul_csa(cfx_big_t* b, const cfx_big_t* m) {
+void cfx_big_mul_eq_csa(cfx_big_t* b, const cfx_big_t* m) {
     if (cfx_big_is_zero(b) || cfx_big_is_zero(m)) {
         cfx_big_from_limb(b, 0);
         return;
@@ -1251,7 +1364,46 @@ void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t
     cfx_big_free(&tmp);
 }
 
-void cfx_big_mul(cfx_big_t* b, const cfx_big_t* m) {
+/*  out = a * b */
+void cfx_big_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) {
+    if (cfx_big_is_zero(a) || cfx_big_is_zero(b)) {
+        cfx_big_from_limb(out, 0);
+        return;
+    }
+
+    size_t na = a->n;
+    size_t nb = b->n;
+
+    cfx_big_reserve(out, na + nb);
+    out->n = na + nb;
+    memset(out->limb, 0, out->n * sizeof(cfx_limb_t));
+
+    for (size_t i = 0; i < nb; ++i) {
+        cfx_acc_t carry = 0;
+        cfx_acc_t bi = (cfx_acc_t)b->limb[i];
+
+        size_t k = i;
+        for (size_t j = 0; j < na; ++j, ++k) {
+            cfx_acc_t s = (cfx_acc_t)out->limb[k]
+                        + bi * (cfx_acc_t)a->limb[j]
+                        + carry;
+            out->limb[k] = (cfx_limb_t)s;
+            carry = s >> CFX_LIMB_BITS;
+        }
+
+        while (carry) {
+            cfx_acc_t s = (cfx_acc_t)out->limb[k] + carry;
+            out->limb[k] = (cfx_limb_t)s;
+            carry = s >> CFX_LIMB_BITS;
+            ++k;
+        }
+    }
+
+    cfx_big_trim(out);
+}
+
+/* In-place multiplication: b *= m */
+void cfx_big_mul_eq(cfx_big_t* b, const cfx_big_t* m) {
 
     if (cfx_big_is_zero(b) || cfx_big_is_zero(m)) {
         cfx_big_from_limb(b, 0);
@@ -1562,9 +1714,206 @@ void cfx_big_from_fac_faster(cfx_big_t* out, const cfx_fac_t* f) {
 }
 
 
-void cfx_big_to_fac(cfx_fac_t *f, const cfx_big_t *b) {
-    (void)f;
-    (void)b;
+/* Helper: check if a big integer fits in 64 bits */
+static int big_fits_in_64(const cfx_big_t* b) {
+#if CFX_LIMB_BITS == 64
+    return b->n <= 1;
+#elif CFX_LIMB_BITS == 32
+    return b->n <= 2;
+#endif
+}
+
+/* Helper: convert big integer to uint64 (assumes it fits) */
+static uint64_t big_to_u64(const cfx_big_t* b) {
+    if (b->n == 0) return 0;
+#if CFX_LIMB_BITS == 64
+    return b->limb[0];
+#elif CFX_LIMB_BITS == 32
+    uint64_t val = b->limb[0];
+    if (b->n >= 2) val |= ((uint64_t)b->limb[1] << 32);
+    return val;
+#endif
+}
+
+/*
+ * Factorize a big integer into prime factors.
+ * Strategy:
+ *   1. Trial division by small primes from cfx_primes[]
+ *   2. If remainder fits in 64 bits, delegate to cfx_fac_from_u64
+ *   3. Otherwise, use Pollard-Rho to find factors recursively
+ *   4. If we encounter a prime > 64 bits, return incomplete
+ *
+ * Returns:
+ *   0  - complete factorization
+ *   1  - incomplete (remainder holds unfactored prime > 64 bits)
+ *  -1  - error
+ */
+int cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b, cfx_big_t* remainder) {
+    cfx_fac_init(f);
+
+    if (remainder) {
+        cfx_big_from_limb(remainder, 1);
+    }
+
+    if (cfx_big_is_zero(b)) return 0;
+    if (b->n == 1 && b->limb[0] == 1) return 0;
+
+    /* work on a copy */
+    cfx_big_t work;
+    cfx_big_init(&work);
+    cfx_big_copy(&work, b);
+
+    /* Trial division by small primes */
+    for (size_t i = 0; i < cfx_primes_len && !cfx_big_is_zero(&work); ++i) {
+        uint32_t p = cfx_primes[i];
+
+        /* If work < p, we're done with trial division */
+        if (work.n == 1 && work.limb[0] < p) break;
+
+        /* Count exponent */
+        uint32_t e = 0;
+        while (cfx_big_mod_sm(&work, p) == 0) {
+            cfx_big_div_sm(&work, p);
+            cfx_big_trim(&work);
+            e++;
+        }
+        if (e > 0) {
+            cfx_fac_push(f, (uint64_t)p, e);
+        }
+
+        if (cfx_big_is_one(&work)) break;
+    }
+
+    /* If work == 1, factorization is complete */
+    if (cfx_big_is_zero(&work) || cfx_big_is_one(&work)) {
+        cfx_big_free(&work);
+        return 0;
+    }
+
+    /* use a stack for iterative factorization */
+    cfx_big_t stack[64];  /* Enough for any reasonable factorization */
+    size_t stack_top = 0;
+    stack_top = 1;
+    cfx_big_init(&stack[0]);
+    cfx_big_swap(&stack[0], &work);
+
+    int result = 0;  /* 0 = complete */
+
+    while (stack_top > 0) {
+        cfx_big_t* cur = &stack[--stack_top];
+
+        if (cfx_big_is_one(cur) || cfx_big_is_zero(cur)) {
+            cfx_big_free(cur);
+            continue;
+        }
+
+        /* If it fits in 64 bits, use fast 64-bit factorization */
+        if (big_fits_in_64(cur)) {
+            uint64_t val = big_to_u64(cur);
+            cfx_fac_t fac64;
+            if (cfx_fac_from_u64(&fac64, val) == 0) {
+                for (size_t i = 0; i < fac64.len; ++i) {
+                    cfx_fac_push(f, fac64.data[i].p, fac64.data[i].e);
+                }
+            }
+            cfx_fac_free(&fac64);
+            cfx_big_free(cur);
+            continue;
+        }
+
+        /* Check if it's prime */
+        if (cfx_big_is_prime(cur)) {
+            /* Prime > 64 bits - can't store in fac_t */
+            if (remainder) {
+                /* Multiply remainder by this prime (remainder *= cur) */
+                cfx_big_mul_eq(remainder, cur);
+            }
+            result = 1;  /* incomplete */
+            cfx_big_free(cur);
+            continue;
+        }
+
+        /* Use Pollard-Rho to find a factor */
+        cfx_big_t factor;
+        cfx_big_init(&factor);
+        cfx_big_pollard_rho(&factor, cur);
+
+        /* If Pollard-Rho failed (returned n), try a different approach */
+        if (cfx_big_cmp(&factor, cur) == 0) {
+            /* Last resort: the number might be a prime we couldn't detect */
+            if (remainder) {
+                /* Multiply remainder by this composite */
+                cfx_big_mul_eq(remainder, cur);
+            }
+            result = 1;  /* incomplete */
+            cfx_big_free(&factor);
+            cfx_big_free(cur);
+            continue;
+        }
+
+        /* Push both factors onto the stack */
+        cfx_big_t quotient;
+        cfx_big_init(&quotient);
+        cfx_big_copy(&quotient, cur);
+        cfx_big_div_eq(&quotient, &factor, NULL);
+        cfx_big_trim(&quotient);
+
+        /* Push factor and quotient */
+        if (stack_top < 62) {
+            cfx_big_init(&stack[stack_top]);
+            cfx_big_swap(&stack[stack_top], &factor);
+            stack_top++;
+
+            cfx_big_init(&stack[stack_top]);
+            cfx_big_swap(&stack[stack_top], &quotient);
+            stack_top++;
+        }
+
+        cfx_big_free(&factor);
+        cfx_big_free(&quotient);
+        cfx_big_free(cur);
+    }
+
+    cfx_big_free(&work);
+
+    /* Sort and coalesce the factorization */
+    /* (cfx_fac_push maintains sorted order, but we might have duplicates) */
+    if (f->len > 1) {
+        /* Coalesce duplicate primes */
+        cfx_fac_t coalesced;
+        cfx_fac_init(&coalesced);
+
+        /* Sort by prime (bubble sort - factors are usually few) */
+        for (size_t i = 0; i < f->len; ++i) {
+            for (size_t j = i + 1; j < f->len; ++j) {
+                if (f->data[i].p > f->data[j].p) {
+                    cfx_pf_t tmp = f->data[i];
+                    f->data[i] = f->data[j];
+                    f->data[j] = tmp;
+                }
+            }
+        }
+
+        /* Coalesce adjacent equal primes */
+        uint64_t cur_p = f->data[0].p;
+        uint32_t cur_e = f->data[0].e;
+        for (size_t i = 1; i < f->len; ++i) {
+            if (f->data[i].p == cur_p) {
+                cur_e += f->data[i].e;
+            } else {
+                cfx_fac_push(&coalesced, cur_p, cur_e);
+                cur_p = f->data[i].p;
+                cur_e = f->data[i].e;
+            }
+        }
+        cfx_fac_push(&coalesced, cur_p, cur_e);
+
+        /* Swap */
+        cfx_fac_free(f);
+        *f = coalesced;
+    }
+
+    return result;
 }
 
 cfx_limb_t cfx_big_div_sm(cfx_big_t* b, cfx_limb_t d) {
@@ -2087,7 +2436,6 @@ int cfx_big_scan_dec_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t*
 }
 
 int cfx_big_from_dec(cfx_big_t* out, const char* s) {
-    printf("%s\n", __func__);
     while (isspace((unsigned char)*s)) s++;
     size_t len = strlen(s);
     size_t digits = 0;
@@ -2193,7 +2541,7 @@ void cfx_big_shl_bits_eq(cfx_big_t* b, unsigned s) {
             b->limb[i + limb_shift] = b->limb[i];
         b->n = old_n + limb_shift;
     } else {
-        /* Combined limb + bit shift: work right-to-left */
+        /* combined limb + bit shift: work right-to-left */
         const unsigned r = W - bit_shift;
         cfx_limb_t carry = 0;
         for (size_t i = old_n; i-- > 0; ) {
@@ -2205,9 +2553,10 @@ void cfx_big_shl_bits_eq(cfx_big_t* b, unsigned s) {
         b->n = new_n;
     }
 
-    /* Zero the low limbs */
-    for (size_t i = 0; i < limb_shift; ++i)
+    
+    for (size_t i = 0; i < limb_shift; ++i) {
         b->limb[i] = 0;
+    }
 
     cfx_big_trim(b);
 }
@@ -2433,39 +2782,54 @@ int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r,
         cfx_limb_t Ujm  = U.limb[j + n];       /* U_{j+n} */
         cfx_limb_t Ujm1 = U.limb[j + n - 1];   /* U_{j+n-1} */
 
-        cfx_limb_t qhat, rhat;
+        cfx_limb_t qhat;
+        cfx_acc_t rhat;  /* Use wider type to detect overflow */
+        int skip_d3_refine = 0;
 
         if (Ujm == Vn1) {
-            /* clamp qhat to b-1; rhat reflects the "borrowed" v_{n-1} */
+            /* Ujm == Vn1 means the trial quotient would be >= b, so clamp to b-1.
+             * According to Knuth, rhat = (Ujm*b + Ujm1) - qhat*Vn1
+             *                         = (Vn1*b + Ujm1) - (b-1)*Vn1
+             *                         = Ujm1 + Vn1
+             * If this overflows (>= b), then D3 refinement is skipped entirely
+             * since rhat >= b means the test qhat*Vn2 > rhat*b + Ujm2 is always false. */
             qhat = CFX_LIMB_MAX;               /* b-1 */
-            rhat = Ujm1 + Vn1;               /* may wrap; that’s okay for the D3 test */
-            /* PRINT_DBG("j=%zd  qhat CLAMP (Ujm==Vn1)  qhat=" CFX_PRI0xLIMB " rhat=" CFX_PRI0xLIMB "\n", */
-            /*        j, qhat, rhat); */
+            rhat = (cfx_acc_t)Ujm1 + Vn1;      /* may be >= b */
+            if (rhat >= ((cfx_acc_t)1 << CFX_LIMB_BITS)) {
+                skip_d3_refine = 1;            /* rhat >= b, skip refinement */
+            }
+            /* PRINT_DBG("j=%zd  qhat CLAMP (Ujm==Vn1)  qhat=" CFX_PRI0xLIMB " rhat=0x%" PRIx64 " skip=%d\n", */
+            /*        j, qhat, (uint64_t)rhat, skip_d3_refine); */
         } else {
             cfx_acc_t top = ((cfx_acc_t)Ujm << CFX_LIMB_BITS) | Ujm1;
             qhat = (cfx_limb_t)(top / Vn1);
-            rhat = (cfx_limb_t)(top % Vn1);
+            rhat = top % Vn1;
             /* PRINT_DBG("j=%zd  top=[" CFX_PRI0xLIMB "|" CFX_PRI0xLIMB "]/" CFX_PRI0xLIMB " -> qhat=" CFX_PRI0xLIMB " rhat=" CFX_PRI0xLIMB "\n", */
             /*        j, Ujm, Ujm1, */
-            /*        Vn1, qhat, rhat); */
+            /*        Vn1, qhat, (cfx_limb_t)rhat); */
         }
 
-        /* D3 refine: if qhat*V[n-2] > rhat*b + U[j+n-2], decrement */
-        cfx_limb_t Ujm2 = U.limb[j + n - 2];
-        cfx_acc_t lhs = (cfx_acc_t)qhat * Vn2;
-        cfx_acc_t rhs = ((cfx_acc_t)rhat << CFX_LIMB_BITS) | Ujm2;
+        /* D3 refine: while qhat*V[n-2] > rhat*b + U[j+n-2], decrement qhat.
+         * Only do this if rhat < b (i.e., fits in a limb). */
+        if (!skip_d3_refine) {
+            cfx_limb_t Ujm2 = U.limb[j + n - 2];
+            cfx_acc_t lhs = (cfx_acc_t)qhat * Vn2;
+            cfx_acc_t rhs = (rhat << CFX_LIMB_BITS) | Ujm2;
 
-        if (qhat == CFX_LIMB_MAX || lhs > rhs) {
-            /* PRINT_DBG("  D3: adjust qhat (lhs>rhs or qhat=b-1): qhat--, rhat+=Vn1\n"); */
-            qhat--;
-            rhat += Vn1; /* may wrap mod b */
-            /* second possible decrement only if rhat did NOT wrap (i.e., rhat >= Vn1 now) */
-            lhs = (cfx_acc_t)qhat * Vn2;
-            rhs = ((cfx_acc_t)rhat << CFX_LIMB_BITS) | Ujm2;
-            if (rhat >= Vn1 && (qhat == CFX_LIMB_MAX || lhs > rhs)) {
-                /* PRINT_DBG("  D3: second adjust qhat: qhat--, rhat+=Vn1\n"); */
+            /* First possible decrement */
+            if (lhs > rhs) {
+                /* PRINT_DBG("  D3: adjust qhat (lhs>rhs): qhat--, rhat+=Vn1\n"); */
                 qhat--;
-                rhat += Vn1;
+                rhat += Vn1; /* may now be >= b */
+                /* Second possible decrement only if rhat < b */
+                if (rhat < ((cfx_acc_t)1 << CFX_LIMB_BITS)) {
+                    lhs = (cfx_acc_t)qhat * Vn2;
+                    rhs = (rhat << CFX_LIMB_BITS) | Ujm2;
+                    if (lhs > rhs) {
+                        /* PRINT_DBG("  D3: second adjust qhat: qhat--, rhat+=Vn1\n"); */
+                        qhat--;
+                    }
+                }
             }
         }
 
@@ -2576,8 +2940,7 @@ int cfx_big_mod(cfx_big_t* r, const cfx_big_t* u, const cfx_big_t* v) {
 int cfx_big_mulmod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_t* m) {
     cfx_big_t tmp;
     cfx_big_init(&tmp);
-    cfx_big_copy(&tmp, a);
-    cfx_big_mul(&tmp, b);
+    cfx_big_mul(&tmp, a, b);
     int ret = cfx_big_mod(out, &tmp, m);
     cfx_big_free(&tmp);
     return ret;
@@ -2823,7 +3186,7 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads)
     #else
     /* Fallback: use regular multiplication when pthreads not available */
     (void)threads;
-    cfx_big_mul(b, m);
+    cfx_big_mul_eq(b, m);
     #endif
 }
 
@@ -2845,7 +3208,7 @@ void cfx_big_mul_auto(cfx_big_t* b, const cfx_big_t* m) {
 
     if (mn < 256) {
         /* small/skinny -> classic single-thread */
-        cfx_big_mul(b, m);
+        cfx_big_mul_eq(b, m);
         return;
     }
 

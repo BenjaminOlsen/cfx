@@ -274,7 +274,7 @@ static void test_sub(void) {
     cfx_big_from_limb(&two, 2);
 
     cfx_big_copy(&t, &a);
-    cfx_big_mul(&t, &two);
+    cfx_big_mul_eq(&t, &two);
     cfx_big_sub(&t, &a);
     CFX_ASSERT(cfx_big_eq(&t, &a));
     PRINT_TEST(1);
@@ -994,7 +994,7 @@ static void test_zero_right(void) {
     cfx_big_init(&m);
     cfx_big_from_limb(&m, 0);
 
-    cfx_big_mul(&b, &m);
+    cfx_big_mul_eq(&b, &m);
     CFX_ASSERT(cfx_big_is_zero(&b));
 
     cfx_big_free(&b);
@@ -1009,7 +1009,7 @@ static void test_zero_left(void) {
     cfx_big_init(&m);
     cfx_big_from_limb(&m, 987);
 
-    cfx_big_mul(&b, &m);
+    cfx_big_mul_eq(&b, &m);
 
     CFX_ASSERT(cfx_big_is_zero(&b));
 
@@ -1042,7 +1042,7 @@ static void test_mul1(void) {
     cfx_big_init(&m);
     cfx_big_from_limb(&m, 7);
 
-    cfx_big_mul(&b, &m);
+    cfx_big_mul_eq(&b, &m);
     cfx_limb_t expect[] = {35};
     CFX_BIG_PRINT(b);
     big_expect_limbs(__func__, &b, expect, 1);
@@ -1080,7 +1080,7 @@ static void test_carry_two_limbs_times_2(void) {
     cfx_big_init(&m);
     cfx_big_from_limb(&m, 2);
 
-    cfx_big_mul(&b, &m);
+    cfx_big_mul_eq(&b, &m);
 #if CFX_LIMB_BITS == 64
     cfx_limb_t expect[] = {UINT64_C(0xFFFFFFFFFFFFFFFE), UINT64_C(0xFFFFFFFFFFFFFFFF), UINT64_C(1)};
 #elif CFX_LIMB_BITS == 32
@@ -1117,7 +1117,7 @@ static void test_mul_by_base_2_64_shift(void) {
 
     for (size_t n = 1; n < N; ++n) {
 
-        cfx_big_mul(&b, &m);
+        cfx_big_mul_eq(&b, &m);
         cfx_limb_t* expect = (cfx_limb_t*)malloc((n + sz0)*sizeof(cfx_limb_t));
         for (size_t k = 0; k < n; ++k) {
             expect[k] = 0;
@@ -1155,7 +1155,7 @@ static void test_self_multiply_square(void) {
 
     cfx_big_from_limbs(&b, limbs, 1);
     big_expect_limbs(__func__, &b, limbs, 1);
-    cfx_big_mul(&b, &b); /* self-mul path */
+    cfx_big_mul_eq(&b, &b); /* self-mul path */
 #if CFX_LIMB_BITS == 64
     cfx_limb_t expect[] = {UINT64_C(1), UINT64_C(0xFFFFFFFFFFFFFFFE)};
 #elif CFX_LIMB_BITS == 32
@@ -1177,7 +1177,7 @@ static void test_self_multiply_big(void) {
     }
     cfx_big_from_limbs(&b, limbs, N);
     printf("before: "); CFX_BIG_PRINT(b);
-    cfx_big_mul(&b, &b);
+    cfx_big_mul_eq(&b, &b);
     printf("after: "); CFX_BIG_PRINT(b);
     cfx_big_free(&b);
     free(limbs);
@@ -1327,7 +1327,7 @@ static void test_known_squares(void) {
 
 
     /* cfx_big_sq(&b); // 8 */
-    cfx_big_mul(&b, &b);
+    cfx_big_mul_eq(&b, &b);
     free(s);
     s = cfx_big_to_str(&b, NULL);
     /*// sanity check: */
@@ -1353,26 +1353,26 @@ static void test_known_squares(void) {
     CFX_ASSERT(strcmp(s, expect) == 0);
     int cnt = 0;
 
-    cfx_big_mul(&b, &b); /* 16 */
+    cfx_big_mul_eq(&b, &b); /* 16 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
 
-    cfx_big_mul(&b, &b); /* 32 */
+    cfx_big_mul_eq(&b, &b); /* 32 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); /* 64 */
+    cfx_big_mul_eq(&b, &b); /* 64 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); /* 128 */
+    cfx_big_mul_eq(&b, &b); /* 128 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); /* 256 */
+    cfx_big_mul_eq(&b, &b); /* 256 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul(&b, &b); /* 512 */
+    cfx_big_mul_eq(&b, &b); /* 512 */
     printf("mul %d len: %zu \n", ++cnt, b.n);
-    /* cfx_big_mul(&b, &b); // 1024 */
+    /* cfx_big_mul_eq(&b, &b); // 1024 */
     /* printf("mul %d len: %zu \n", ++cnt, b.n); */
-    /* cfx_big_mul(&b, &b); // 2048 */
+    /* cfx_big_mul_eq(&b, &b); // 2048 */
     /* printf("mul %d len: %zu \n", ++cnt, b.n); */
-    /* cfx_big_mul(&b, &b); // 4096 */
+    /* cfx_big_mul_eq(&b, &b); // 4096 */
     /* printf("mul %d len: %zu \n", ++cnt, b.n); */
-    /* cfx_big_mul(&b, &b); // 8192 */
+    /* cfx_big_mul_eq(&b, &b); // 8192 */
     /* printf("mul %d len: %zu \n", ++cnt, b.n); */
 
     /* for (size_t i = 0; i < b.n; ++i) { */
@@ -1396,7 +1396,7 @@ static void test_known_squares_2(void) {
         "2564742658586426229545514803499564697000372"
         "3095350971345437292114654548843072761868784"
         "674125049315509629339381027496416991005114370");
-    cfx_big_mul_csa(&b, &b); /* 1 */
+    cfx_big_mul_eq_csa(&b, &b); /* 1 */
     char* s = cfx_big_to_str(&b, NULL);
 
     char* expect =
@@ -1412,7 +1412,7 @@ static void test_known_squares_2(void) {
     CFX_ASSERT(strcmp(s, expect) == 0);
 
     /* ----------------------------------- */
-    cfx_big_mul_csa(&b, &b); /* 2 */
+    cfx_big_mul_eq_csa(&b, &b); /* 2 */
     free(s);
     s = cfx_big_to_str(&b, NULL);
 
@@ -1435,7 +1435,7 @@ static void test_known_squares_2(void) {
         "610000";
     CFX_ASSERT(strcmp(s, expect) == 0);
 
-    cfx_big_mul_csa(&b, &b); /* 4 */
+    cfx_big_mul_eq_csa(&b, &b); /* 4 */
     free(s);
     s = cfx_big_to_str(&b, NULL);
     /* write_string_wrapped(s, "", 80); */
@@ -1476,7 +1476,7 @@ static void test_known_squares_2(void) {
     /* CFX_BIG_PRINT_LIMBS(b); */
 
 
-    cfx_big_mul(&b, &b); /* 8 */
+    cfx_big_mul_eq(&b, &b); /* 8 */
     free(s);
     s = cfx_big_to_str(&b, NULL);
 
@@ -1506,23 +1506,23 @@ static void test_known_squares_2(void) {
     /* ----------------------------------------------------------- */
 
     int cnt = 0;
-    cfx_big_mul_csa(&b, &b); /* 16 */
+    cfx_big_mul_eq_csa(&b, &b); /* 16 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); /* 32 */
+    cfx_big_mul_eq_csa(&b, &b); /* 32 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); /* 64 */
+    cfx_big_mul_eq_csa(&b, &b); /* 64 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); /* 128 */
+    cfx_big_mul_eq_csa(&b, &b); /* 128 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); /* 256 */
+    cfx_big_mul_eq_csa(&b, &b); /* 256 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    cfx_big_mul_csa(&b, &b); /* 512 */
+    cfx_big_mul_eq_csa(&b, &b); /* 512 */
     printf("mul csa %d len: %zu \n", ++cnt, b.n);
-    /* cfx_big_mul_csa(&b, &b); // 1024 */
+    /* cfx_big_mul_eq_csa(&b, &b); // 1024 */
     /* printf("mul csa %d len: %zu \n", ++cnt, b.n); */
-    /* cfx_big_mul_csa(&b, &b); // 2048 */
+    /* cfx_big_mul_eq_csa(&b, &b); // 2048 */
     /* printf("mul csa %d len: %zu \n", ++cnt, b.n); */
-    /* cfx_big_mul_csa(&b, &b); // 4096 */
+    /* cfx_big_mul_eq_csa(&b, &b); // 4096 */
     /* printf("mul csa %d len: %zu \n", ++cnt, b.n); */
 
     /* for (size_t i = 0; i < b.n; ++i) { */
@@ -1567,7 +1567,7 @@ static void assert_n_eq_qd_plus_r(const cfx_big_t* n, const cfx_big_t* q,
     cfx_big_t tmp;
     cfx_big_init(&tmp);
 
-    cfx_big_mul(&check, d);
+    cfx_big_mul_eq(&check, d);
     cfx_big_copy(&tmp, r);
     cfx_big_add(&check, &tmp);
 
@@ -1691,7 +1691,7 @@ static void test_big_div_multi_limb_divisor_exact_and_remainder(void) {
     cfx_big_from_dec(&r, "12345678901234567890");
 
     cfx_big_copy(&n, &a);
-    cfx_big_mul(&n, &b);
+    cfx_big_mul_eq(&n, &b);
     cfx_big_add(&n, &r);
 
     int rc = cfx_big_divrem(&q, &rem, &n, &b);
@@ -1719,7 +1719,7 @@ static void test_big_div_in_place_eq_with_remainder(void) {
     cfx_big_from_dec(&a, "1122334455667788990011223344556677889900");
     cfx_big_from_dec(&b, "18446744073709551616"); /* 2^64 */
     cfx_big_copy(&n, &a);
-    cfx_big_mul(&n, &b);
+    cfx_big_mul_eq(&n, &b);
     cfx_big_from_limb(&forty_two, 42);
     cfx_big_add(&n, &forty_two);
 
@@ -1748,7 +1748,7 @@ static void test_big_div_quotient_only_and_remainder_only(void) {
 
     /* n = a*b + (b-1) */
     cfx_big_copy(&n, &a);
-    cfx_big_mul(&n, &b);
+    cfx_big_mul_eq(&n, &b);
 
     cfx_big_copy(&b_minus_1, &b);
     big_dec1(&b_minus_1);
@@ -3164,6 +3164,183 @@ static void test_big_to_bytes_be_buffer_too_small(void) {
     cfx_big_free(&b);
 }
 
+/* ------------------------------------------------------------------ */
+/* Tests for cfx_big_gcd                                              */
+/* ------------------------------------------------------------------ */
+
+static void test_big_gcd_basic(void) {
+    cfx_big_t a, b, g;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+    cfx_big_init(&g);
+
+    /* gcd(12, 8) = 4 */
+    cfx_big_from_limb(&a, 12);
+    cfx_big_from_limb(&b, 8);
+    cfx_big_gcd(&g, &a, &b);
+    CFX_ASSERT(g.n == 1 && g.limb[0] == 4);
+
+    /* gcd(17, 13) = 1 (coprime) */
+    cfx_big_from_limb(&a, 17);
+    cfx_big_from_limb(&b, 13);
+    cfx_big_gcd(&g, &a, &b);
+    CFX_ASSERT(g.n == 1 && g.limb[0] == 1);
+
+    /* gcd(0, 5) = 5 */
+    cfx_big_from_limb(&a, 0);
+    cfx_big_from_limb(&b, 5);
+    cfx_big_gcd(&g, &a, &b);
+    CFX_ASSERT(g.n == 1 && g.limb[0] == 5);
+
+    /* gcd(100, 0) = 100 */
+    cfx_big_from_limb(&a, 100);
+    cfx_big_from_limb(&b, 0);
+    cfx_big_gcd(&g, &a, &b);
+    CFX_ASSERT(g.n == 1 && g.limb[0] == 100);
+
+    /* gcd(48, 18) = 6 */
+    cfx_big_from_limb(&a, 48);
+    cfx_big_from_limb(&b, 18);
+    cfx_big_gcd(&g, &a, &b);
+    CFX_ASSERT(g.n == 1 && g.limb[0] == 6);
+
+    cfx_big_free(&a);
+    cfx_big_free(&b);
+    cfx_big_free(&g);
+}
+
+static void test_big_gcd_large(void) {
+    cfx_big_t a, b, g;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+    cfx_big_init(&g);
+
+    /* gcd of two large numbers with known gcd */
+    /* a = 123456789 * 1000, b = 123456789 * 777 => gcd = 123456789 */
+    cfx_big_from_str(&a, "123456789000");
+    cfx_big_from_str(&b, "95925925053");  /* 123456789 * 777 */
+    cfx_big_gcd(&g, &a, &b);
+
+    cfx_big_t expected;
+    cfx_big_init(&expected);
+    cfx_big_from_limb(&expected, 123456789);
+    CFX_ASSERT(cfx_big_cmp(&g, &expected) == 0);
+
+    cfx_big_free(&a);
+    cfx_big_free(&b);
+    cfx_big_free(&g);
+    cfx_big_free(&expected);
+}
+
+/* ------------------------------------------------------------------ */
+/* Tests for cfx_big_pollard_rho                                      */
+/* ------------------------------------------------------------------ */
+
+static void test_big_pollard_rho_small_composite(void) {
+    cfx_big_t n, factor;
+    cfx_big_init(&n);
+    cfx_big_init(&factor);
+
+    /* n = 15 = 3 * 5 */
+    cfx_big_from_limb(&n, 15);
+    cfx_big_pollard_rho(&factor, &n);
+    /* Should find either 3 or 5 */
+    CFX_ASSERT(factor.n == 1);
+    CFX_ASSERT(factor.limb[0] == 3 || factor.limb[0] == 5);
+
+    /* n = 21 = 3 * 7 */
+    cfx_big_from_limb(&n, 21);
+    cfx_big_pollard_rho(&factor, &n);
+    CFX_ASSERT(factor.n == 1);
+    CFX_ASSERT(factor.limb[0] == 3 || factor.limb[0] == 7);
+
+    cfx_big_free(&n);
+    cfx_big_free(&factor);
+}
+
+static void test_big_pollard_rho_semiprime(void) {
+    cfx_big_t n, factor, quotient, check;
+    cfx_big_init(&n);
+    cfx_big_init(&factor);
+    cfx_big_init(&quotient);
+    cfx_big_init(&check);
+
+    /* n = 1000003 * 1000033 = 1000036000099 (semiprime) */
+    cfx_big_from_str(&n, "1000036000099");
+    cfx_big_pollard_rho(&factor, &n);
+
+    /* factor should be non-trivial (not 1 and not n) */
+    CFX_ASSERT(!cfx_big_is_one(&factor));
+    CFX_ASSERT(cfx_big_cmp(&factor, &n) != 0);
+
+    /* Verify: n should be divisible by factor */
+    cfx_big_copy(&quotient, &n);
+    cfx_big_div_eq(&quotient, &factor, NULL);
+    cfx_big_mul(&check, &quotient, &factor);
+    CFX_ASSERT(cfx_big_cmp(&check, &n) == 0);
+
+    cfx_big_free(&n);
+    cfx_big_free(&factor);
+    cfx_big_free(&quotient);
+    cfx_big_free(&check);
+}
+
+static void test_big_pollard_rho_prime(void) {
+    cfx_big_t n, factor;
+    cfx_big_init(&n);
+    cfx_big_init(&factor);
+
+    /* n = 104729 (prime) - Pollard-Rho should return n itself */
+    cfx_big_from_limb(&n, 104729);
+    cfx_big_pollard_rho(&factor, &n);
+    /* For a prime, it should return the prime itself (can't factor) */
+    CFX_ASSERT(cfx_big_cmp(&factor, &n) == 0);
+
+    cfx_big_free(&n);
+    cfx_big_free(&factor);
+}
+
+static void test_big_pollard_rho_even(void) {
+    cfx_big_t n, factor;
+    cfx_big_init(&n);
+    cfx_big_init(&factor);
+
+    /* Even number should return 2 */
+    cfx_big_from_limb(&n, 1234567890);
+    cfx_big_pollard_rho(&factor, &n);
+    CFX_ASSERT(factor.n == 1 && factor.limb[0] == 2);
+
+    cfx_big_free(&n);
+    cfx_big_free(&factor);
+}
+
+static void test_big_pollard_rho_large_semiprime(void) {
+    cfx_big_t n, factor, quotient, check;
+    cfx_big_init(&n);
+    cfx_big_init(&factor);
+    cfx_big_init(&quotient);
+    cfx_big_init(&check);
+
+    /* n = 10007 * 10009 = 100160063 */
+    cfx_big_from_str(&n, "100160063");
+    cfx_big_pollard_rho(&factor, &n);
+
+    /* factor should be non-trivial */
+    CFX_ASSERT(!cfx_big_is_one(&factor));
+    CFX_ASSERT(cfx_big_cmp(&factor, &n) != 0);
+
+    /* Verify divisibility */
+    cfx_big_copy(&quotient, &n);
+    cfx_big_div_eq(&quotient, &factor, NULL);
+    cfx_big_mul(&check, &quotient, &factor);
+    CFX_ASSERT(cfx_big_cmp(&check, &n) == 0);
+
+    cfx_big_free(&n);
+    cfx_big_free(&factor);
+    cfx_big_free(&quotient);
+    cfx_big_free(&check);
+}
+
 
 /* ------------------------------------------------------------------ */
 int main(void) {
@@ -3292,6 +3469,13 @@ int main(void) {
     CFX_TEST(test_big_to_bytes_be_zero);
     CFX_TEST(test_big_to_bytes_be);
     CFX_TEST(test_big_to_bytes_be_buffer_too_small);
+    CFX_TEST(test_big_gcd_basic);
+    CFX_TEST(test_big_gcd_large);
+    CFX_TEST(test_big_pollard_rho_small_composite);
+    CFX_TEST(test_big_pollard_rho_semiprime);
+    CFX_TEST(test_big_pollard_rho_prime);
+    CFX_TEST(test_big_pollard_rho_even);
+    CFX_TEST(test_big_pollard_rho_large_semiprime);
     puts("OK");
     return 0;
 }

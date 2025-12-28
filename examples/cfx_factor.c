@@ -1,4 +1,5 @@
 #include "cfx/big.h"
+#include "cfx/fac.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -46,15 +47,21 @@ int main(int argc, char* argv[]) {
         cfx_big_from_dec(&n, nstr);
     }
 
-    size_t sz = 0;
-    char* s =  cfx_big_to_hex(&n, &sz);
-    printf("%s\n", s);
-
     cfx_fac_t fac;
-    cfx_fac_init(&fac);
-    cfx_big_to_fac(&fac, &n);
+    cfx_big_t remainder;
+    cfx_big_init(&remainder);
+
+    int rc = cfx_big_to_fac(&fac, &n, &remainder);
     cfx_fac_print(&fac);
+
+    if (rc == 1) {
+        char* rem_str = cfx_big_to_str(&remainder, NULL);
+        fprintf(stderr, "(incomplete: unfactored composite = %s)\n", rem_str);
+        free(rem_str);
+    }
+
     cfx_fac_free(&fac);
+    cfx_big_free(&remainder);
     cfx_big_free(&n);
     return 0;
 }

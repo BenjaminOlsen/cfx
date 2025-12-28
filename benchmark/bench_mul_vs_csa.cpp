@@ -44,11 +44,11 @@ struct InplaceInputs {
 static void verify_correctness(InplaceInputs& I) {
     // out_ref = b0; out_ref *= m using CSA
     cfx_big_copy(&I.out_ref, &I.b0);
-    cfx_big_mul_csa(&I.out_ref, &I.m);
+    cfx_big_mul_eq_csa(&I.out_ref, &I.m);
 
     // bt = b0; bt *= m using schoolbook
     cfx_big_copy(&I.bt, &I.b0);
-    cfx_big_mul(&I.bt, &I.m);
+    cfx_big_mul_eq(&I.bt, &I.m);
 
     if (!eq_limbs(I.out_ref, I.bt)) {
         fprintf(stderr, "[verify] mismatch nb=%zu nm=%zu\n", I.nb, I.nm);
@@ -78,13 +78,13 @@ static void bench_inplace(benchmark::State& state, F&& inplace_mul) {
 
 static void BM_cfx_big_mul(benchmark::State& state) {
     bench_inplace(state, [](cfx_big_t& b, const cfx_big_t& m){
-        cfx_big_mul(&b, &m);
+        cfx_big_mul_eq(&b, &m);
     });
 }
 
 static void BM_cfx_big_mul_csa(benchmark::State& state) {
     bench_inplace(state, [](cfx_big_t& b, const cfx_big_t& m){
-        cfx_big_mul_csa(&b, &m);
+        cfx_big_mul_eq_csa(&b, &m);
     });
 }
 
@@ -97,7 +97,7 @@ static void BM_cfx_big_mul_csa_scratch(benchmark::State& state) {
     {
         cfx_big_t tmp; cfx_big_init(&tmp);
         cfx_big_copy(&tmp, &I.b0);
-        cfx_big_mul(&tmp, &I.m);  // legacy
+        cfx_big_mul_eq(&tmp, &I.m);  // legacy
         cfx_mul_scratch_t s{};    // temp scratch just for verify
         cfx_mul_scratch_alloc(&s, I.nb + I.nm);
         cfx_mul_scratch_zero(&s, I.nb + I.nm);

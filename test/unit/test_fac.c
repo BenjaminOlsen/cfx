@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 static void test_init(void) {
     cfx_fac_t f;
@@ -154,7 +155,7 @@ char* F[] = {
 
 static void test_factorial_to_100(int quiet) {
     int aok = 1;
-    const size_t N = 2;
+    const size_t N = 100;
     cfx_vec_t primes = cfx_sieve_primes(N);
     for (size_t n = 0; n < N; ++n) {
         cfx_fac_t f;
@@ -185,7 +186,7 @@ static void fac(cfx_big_t* out, const cfx_big_t* in) {
     cfx_big_from_limb(out, 1);
 
     while (!cfx_big_is_zero(&tmp)) {
-        cfx_big_mul(out, &tmp);
+        cfx_big_mul_eq(out, &tmp);
         cfx_big_sub_sm(&tmp, 1);
         char* s = cfx_big_to_str(&tmp, NULL);
         /* printf("tmp: %s\n", s); */
@@ -230,12 +231,12 @@ static void test_facs(cfx_fac_t* f, uint64_t primes[], uint64_t exps[], size_t n
     }
 
     int ok = cfx_fac_from_u64(f, n);
-    CFX_ASSERT(ok);
+    CFX_ASSERT(ok == 0);
     CFX_ASSERT(f->len == nprimes);
     for (size_t i = 0; i < nprimes; ++i) {
-        CFX_PRINT_DBG("p: " CFX_PRIuLIMB ", e: " CFX_PRIuLIMB "\n", f->data[i].p, f->data[i].e);
+        CFX_PRINT_DBG("p: %" PRIu64 ", e: %" PRIu32 "\n", f->data[i].p, f->data[i].e);
         CFX_ASSERT(f->data[i].p == primes[i]);
-        CFX_ASSERT(f->data[i].e == exps[i]);
+        CFX_ASSERT(f->data[i].e == (uint32_t)exps[i]);
     }
     cfx_fac_free(f);
 }
@@ -259,9 +260,74 @@ static void test_fac_from_u64(void) {
     uint64_t n4 = 0xFFFFFFFFFFFFFFFFULL;
     int ok = cfx_fac_from_u64(&f, n4);
     cfx_fac_print(&f);
-    CFX_ASSERT(ok);
+    CFX_ASSERT(ok == 0);
     cfx_fac_free(&f);
 
+}
+
+static void test_big_to_fac(void) {
+    cfx_big_t b;
+    cfx_fac_t f;
+    int rc;
+
+    /* Test 1: small number 60 = 2^2 * 3 * 5 */
+    cfx_big_init(&b);
+    cfx_big_from_limb(&b, 60);
+    rc = cfx_big_to_fac(&f, &b, NULL);
+    CFX_ASSERT(rc == 0);  /* complete */
+    CFX_ASSERT(f.len == 3);
+    CFX_ASSERT(f.data[0].p == 2 && f.data[0].e == 2);
+    CFX_ASSERT(f.data[1].p == 3 && f.data[1].e == 1);
+    CFX_ASSERT(f.data[2].p == 5 && f.data[2].e == 1);
+    cfx_fac_free(&f);
+    cfx_big_free(&b);
+
+    /* Test 2: prime number 97 */
+    cfx_big_init(&b);
+    cfx_big_from_limb(&b, 97);
+    rc = cfx_big_to_fac(&f, &b, NULL);
+    CFX_ASSERT(rc == 0);
+    CFX_ASSERT(f.len == 1);
+    CFX_ASSERT(f.data[0].p == 97 && f.data[0].e == 1);
+    cfx_fac_free(&f);
+    cfx_big_free(&b);
+
+    /* Test 3: power of 2: 1024 = 2^10 */
+    cfx_big_init(&b);
+    cfx_big_from_limb(&b, 1024);
+    rc = cfx_big_to_fac(&f, &b, NULL);
+    CFX_ASSERT(rc == 0);
+    CFX_ASSERT(f.len == 1);
+    CFX_ASSERT(f.data[0].p == 2 && f.data[0].e == 10);
+    cfx_fac_free(&f);
+    cfx_big_free(&b);
+
+    /* Test 4: larger semiprime that requires Pollard-Rho */
+    /* 1000003 * 1000033 = 1000036000099 */
+    cfx_big_init(&b);
+    cfx_big_from_str(&b, "1000036000099");
+    rc = cfx_big_to_fac(&f, &b, NULL);
+    CFX_ASSERT(rc == 0);
+    CFX_ASSERT(f.len == 2);
+    CFX_ASSERT(f.data[0].p == 1000003 && f.data[0].e == 1);
+    CFX_ASSERT(f.data[1].p == 1000033 && f.data[1].e == 1);
+    cfx_fac_free(&f);
+    cfx_big_free(&b);
+
+    /* Test 5: round-trip: factor then reconstruct */
+    cfx_big_init(&b);
+    cfx_big_from_str(&b, "123456789012345678");
+    rc = cfx_big_to_fac(&f, &b, NULL);
+    CFX_ASSERT(rc == 0);
+
+    cfx_big_t reconstructed;
+    cfx_big_init(&reconstructed);
+    cfx_big_from_fac(&reconstructed, &f);
+    CFX_ASSERT(cfx_big_cmp(&b, &reconstructed) == 0);
+
+    cfx_fac_free(&f);
+    cfx_big_free(&b);
+    cfx_big_free(&reconstructed);
 }
 
 int main(void) {
@@ -271,6 +337,7 @@ int main(void) {
     CFX_TEST(test_reserve);
     CFX_TEST(test_push);
     CFX_TEST(test_fac_from_u64);
+    CFX_TEST(test_big_to_fac);
     test_factorial_to_100(quiet);
     test_big_factorial_to_100(quiet);
     return 0;

@@ -1,0 +1,41 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Unit Test",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/test/unit/Debug/${input:testName}.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testName",
+            "type": "pickString",
+            "description": "Select test to debug",
+            "options": [
+                "test_fac",
+                "test_algo",
+                "test_big",
+                "test_big_mont",
+                "test_base64",
+                "test_pollard_rho",
+                "test_rand",
+                "test_sha256",
+                "test_chacha20",
+                "test_poly1305",
+                "test_aead_chacha20_poly1305",
+                "test_arith",
+                "test_mul_rows",
+                "test_mul_csa_pthreads",
+                "test_chacha_avx2_transpose"
+            ],
+            "default": "test_fac"
+        }
+    ]
+}

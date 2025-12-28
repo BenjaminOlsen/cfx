@@ -47,7 +47,7 @@ static void BM_MulBig(benchmark::State& state) {
     cfx_big_from_limb(&b, 987654321ULL);
     for (auto _ : state) {
         cfx_big_from_limb(&a, 123456789ULL);
-        cfx_big_mul(&a, &b);
+        cfx_big_mul_eq(&a, &b);
         benchmark::DoNotOptimize(a);
         benchmark::DoNotOptimize(b);
     }

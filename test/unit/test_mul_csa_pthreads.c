@@ -95,7 +95,7 @@ static void run_case(const char* name, const cfx_big_t* b0_in, const cfx_big_t* 
     PRINT_BIG("b_pt after ensure", &b_pt);
 
     /* reference multiply (single-thread schoolbook) */
-    cfx_big_mul(&b_ref, m_in);
+    cfx_big_mul_eq(&b_ref, m_in);
 
     cfx_big_mul_rows_pthreads(&b_pt, m_in, threads);
 

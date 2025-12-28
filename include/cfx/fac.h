@@ -15,8 +15,8 @@ extern "C" {
 
  /* a single prime factor: */
 typedef struct {
-    cfx_limb_t p;  /* prime */
-    cfx_limb_t e;  /* exponent */
+    uint64_t p;    /* prime (up to 64-bit) */
+    uint32_t e;    /* exponent */
 } cfx_pf_t;
 
 /**
@@ -39,7 +39,7 @@ void cfx_fac_init(cfx_fac_t* f);
 void cfx_fac_clear(cfx_fac_t* f);
 void cfx_fac_free(cfx_fac_t* f) ;
 int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap);
-int cfx_fac_push(cfx_fac_t* f, cfx_limb_t p, cfx_limb_t e);
+int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint32_t e);
 
 /* Deep copy: dst becomes a copy of src, using cfx_fac_push for each element. */
 void cfx_fac_copy(cfx_fac_t *dst, const cfx_fac_t *src);
@@ -57,6 +57,8 @@ int cfx_fac_factorial(cfx_fac_t* f, cfx_limb_t n, const cfx_vec_t *primes);
 /* Factorization of C(n,k) = n! / (k! (n-k)!) */
 cfx_fac_t cfx_fac_binom(cfx_limb_t n, cfx_limb_t k);
 
+/* Factorize n directly into fac, bypassing cfx_vec_t.
+ * Returns 0 on success, -1 on error (n==0). */
 int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n);
 
 #ifdef __cplusplus

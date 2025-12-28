@@ -37,28 +37,31 @@ cfx_generate_primes("${CFX_PRIMES_TXT}"
                     ${CFX_PRIMES_COUNT})
 
 set(CFX_HEADERS
-    include/cfx/cfx.h
-    include/cfx/cpu.h
-    include/cfx/big.h
-    include/cfx/fac.h
+    include/cfx/aead_chacha20_poly1305.h
     include/cfx/algo.h
-    include/cfx/rand.h
-    include/cfx/primes.h
-    include/cfx/vec.h
-    include/cfx/big_vec.h
-    include/cfx/macros.h
-    include/cfx/memory.h
-    include/cfx/version.h
-    include/cfx/sha256.h
-    include/cfx/poly1305.h
-    include/cfx/chacha20.h
+    include/cfx/arch.h
     include/cfx/arith.h
     include/cfx/base64.h
-    include/cfx/aead_chacha20_poly1305.h
+    include/cfx/big.h
+    include/cfx/big_vec.h
+    include/cfx/chacha20.h
+    include/cfx/compat.h
+    include/cfx/ecm.h
+    include/cfx/fac.h
+    include/cfx/macros.h
+    include/cfx/memory.h
+    include/cfx/mont.h
+    include/cfx/poly1305.h
+    include/cfx/primes.h
+    include/cfx/rand.h
+    include/cfx/sha256.h
+    include/cfx/vec.h
+    include/cfx/version.h
 )
 
 set(CFX_SOURCES
     src/big.c
+    src/ecm.c
     src/fac.c
     src/algo.c
     src/rand.c

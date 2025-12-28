@@ -71,7 +71,8 @@ pub mod ffi {
         pub fn cfx_big_add_sm(b: *mut cfx_big_t, n: cfx_limb_t);
         pub fn cfx_big_sub(a: *mut cfx_big_t, b: *const cfx_big_t);
         pub fn cfx_big_sub_sm(b: *mut cfx_big_t, n: cfx_limb_t);
-        pub fn cfx_big_mul(b: *mut cfx_big_t, m: *const cfx_big_t);
+        pub fn cfx_big_mul(out: *mut cfx_big_t, a: *const cfx_big_t, b: *const cfx_big_t);
+        pub fn cfx_big_mul_eq(b: *mut cfx_big_t, m: *const cfx_big_t);
         pub fn cfx_big_mul_sm(b: *mut cfx_big_t, m: cfx_limb_t);
         pub fn cfx_big_sq(b: *mut cfx_big_t);
         pub fn cfx_big_div_eq(b: *mut cfx_big_t, d: *const cfx_big_t, r: *mut cfx_big_t) -> c_int;
@@ -470,7 +471,7 @@ impl Sub<u64> for Big {
 impl Mul for Big {
     type Output = Big;
     fn mul(mut self, rhs: Big) -> Big {
-        unsafe { ffi::cfx_big_mul(&mut self.inner, &rhs.inner) };
+        unsafe { ffi::cfx_big_mul_eq(&mut self.inner, &rhs.inner) };
         self
     }
 }
@@ -478,7 +479,7 @@ impl Mul for Big {
 impl<'a> Mul<&'a Big> for Big {
     type Output = Big;
     fn mul(mut self, rhs: &'a Big) -> Big {
-        unsafe { ffi::cfx_big_mul(&mut self.inner, &rhs.inner) };
+        unsafe { ffi::cfx_big_mul_eq(&mut self.inner, &rhs.inner) };
         self
     }
 }
@@ -487,7 +488,7 @@ impl<'a, 'b> Mul<&'b Big> for &'a Big {
     type Output = Big;
     fn mul(self, rhs: &'b Big) -> Big {
         let mut result = self.clone();
-        unsafe { ffi::cfx_big_mul(&mut result.inner, &rhs.inner) };
+        unsafe { ffi::cfx_big_mul_eq(&mut result.inner, &rhs.inner) };
         result
     }
 }
@@ -602,7 +603,7 @@ impl SubAssign<u64> for Big {
 
 impl MulAssign<&Big> for Big {
     fn mul_assign(&mut self, rhs: &Big) {
-        unsafe { ffi::cfx_big_mul(&mut self.inner, &rhs.inner) };
+        unsafe { ffi::cfx_big_mul_eq(&mut self.inner, &rhs.inner) };
     }
 }
 

@@ -7,8 +7,8 @@
  *   -DCFX_FORCE_NO_UINT128 (pretend no __uint128_t)
  */
 
-#ifndef CFX_TYPES_H
-#define CFX_TYPES_H
+#ifndef CFX_ARITH_H
+#define CFX_ARITH_H
 
 #include "cfx/arch.h"
 
@@ -371,4 +371,4 @@ CFX_INLINE void cfx_acc_divrem(cfx_acc_t* q, cfx_acc_t* r,
 #endif
 }
 
-#endif /* CFX_TYPES_H */
+#endif /* CFX_ARITH_H */

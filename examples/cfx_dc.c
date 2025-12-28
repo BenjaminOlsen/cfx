@@ -1,5 +1,5 @@
 /* ---- dcmini.c ---- */
-#include "cfx/cfx.h"
+#include "cfx/big.h"
 #include "cfx/compat.h"
 
 #include <stdio.h>

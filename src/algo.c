@@ -3,6 +3,7 @@
 #include "cfx/algo.h"
 #include "cfx/arith.h"
 #include "cfx/macros.h"
+#include "cfx/mont.h"
 #include "cfx/primes.h"
 #include "cfx/rand.h"
 
@@ -18,6 +19,7 @@
 #elif defined(__GNUC__) || defined(__clang__)
 #  include <alloca.h>   /* alloca on GCC/Clang for POSIX */
 #endif
+
 
 /* bit index i -> x = 2i + 3 */
 #define BIT_GET(A,i)  (((A)[(i)>>3] >> ((i)&7)) & 1u)
@@ -92,77 +94,17 @@ cfx_limb_t cfx_legendre(cfx_limb_t n, cfx_limb_t p) {
     return e;
 }
 
-/* ---- Portable 64-bit modular arithmetic ---- */
-#ifndef CFX_HAS_UINT128
-/* (a + b) mod m, avoiding overflow */
-static inline uint64_t _addmod_u64(uint64_t a, uint64_t b, uint64_t m) {
-    a %= m;
-    b %= m;
-    if (a >= m - b) {
-        return a - (m - b);
-    }
-    return a + b;
-}
-
-
-/* (2 * a) mod m, avoiding overflow */
-static inline uint64_t _doublemod_u64(uint64_t a, uint64_t m) {
-    return _addmod_u64(a, a, m);
-}
-#endif
-
-/* (a * b) mod m using double-and-add method */
-static inline uint64_t _cfx_mulmod_u64(uint64_t a, uint64_t b, uint64_t m) {
-#if defined(CFX_HAS_UINT128)
-    __uint128_t p = (__uint128_t)a * (__uint128_t)b;
-    return (uint64_t)(p % m);
-#else
-    /* Portable: use double-and-add (Russian peasant multiplication) */
-    if (m == 0) return 0;
-    if (m == 1) return 0;
-
-    a %= m;
-    b %= m;
-
-    /* Ensure a <= b for fewer iterations */
-    if (a > b) { uint64_t t = a; a = b; b = t; }
-
-    uint64_t result = 0;
-    while (a > 0) {
-        if (a & 1) {
-            result = _addmod_u64(result, b, m);
-        }
-        a >>= 1;
-        b = _doublemod_u64(b, m);
-    }
-    return result;
-#endif
-}
-
-/* binary exponentiation mod m */
-static inline uint64_t _cfx_powmod_u64(uint64_t a, uint64_t e, uint64_t m) {
-    if (m == 0) return 0;
-    if (m == 1) return 0;
-    a %= m;
-    uint64_t r = 1;
-    while (e) {
-        if (e & 1) r = _cfx_mulmod_u64(r, a, m);
-        a = _cfx_mulmod_u64(a, a, m);
-        e >>= 1;
-    }
-    return r;
-}
+/* ---- 64-bit modular arithmetic (uses centralized primitives from arch.h) ---- */
 
 uint64_t cfx_mulmod_u64(uint64_t a, uint64_t b, uint64_t m) {
-    return _cfx_mulmod_u64(a, b, m);
+    return cfx_mulmod64(a, b, m);
 }
 
-/* modular exponentiation (a^e) mod m */
 uint64_t cfx_powmod_u64(uint64_t a, uint64_t e, uint64_t m) {
-    return _cfx_powmod_u64(a, e, m);
+    return cfx_powmod64(a, e, m);
 }
 
-/** Uses Miller–Rabin 'probable primality' test
+/** Uses Miller–Rabin 'probable primality' test with Montgomery multiplication
  * - take n-1 (which is even), express it as d*2^s.
  * - find a which is coprime to n
  * - then n is "probably" prime if either:
@@ -170,10 +112,12 @@ uint64_t cfx_powmod_u64(uint64_t a, uint64_t e, uint64_t m) {
  *      - a^(2r*d) == -1 mod n for some 0 <= r < s;
 */
 int cfx_is_prime_u64(uint64_t n) {
-   if (n < 2) return 0;
+    if (n < 2) return 0;
+    if (n == 2) return 1;
+    if ((n & 1) == 0) return 0;
 
     /* small primes precheck */
-    static const uint32_t small[] = {2,3,5,7,11,13,17,19,23,29,31,37,0};
+    static const uint32_t small[] = {3,5,7,11,13,17,19,23,29,31,37,0};
     for (int i = 0; small[i]; ++i) {
         uint32_t p = small[i];
         if (n == p) return 1;
@@ -184,19 +128,30 @@ int cfx_is_prime_u64(uint64_t n) {
     uint64_t d = n - 1, s = 0;
     while ((d & 1) == 0) { d >>= 1; ++s; }
 
+    /* Initialize Montgomery context (n is odd) */
+    cfx_mont64_t mont;
+    cfx_mont64_init(&mont, n);
+
+    uint64_t one_mont = cfx_mont64_to(&mont, 1);
+    uint64_t nm1_mont = cfx_mont64_to(&mont, n - 1);
+
     /* The "Sinclair 7" bases, deterministic for 64 bit */
     static const uint64_t bases[] = {2, 325, 9375, 28178, 450775, 9780504, 1795265022, 0};
 
     for (size_t i = 0; i < sizeof(bases)/sizeof(bases[0]); ++i) {
         uint64_t a = bases[i];
         if (a % n == 0) continue;             /* skip if a == n */
-        uint64_t x = _cfx_powmod_u64(a, d, n);
-        if (x == 1 || x == n - 1) continue;   /* this base passes */
+
+        /* Compute a^d mod n using Montgomery */
+        uint64_t aR = cfx_mont64_to(&mont, a % n);
+        uint64_t x = cfx_mont64_pow(&mont, aR, d);
+
+        if (x == one_mont || x == nm1_mont) continue;   /* this base passes */
 
         int witness = 1;
         for (uint64_t r = 1; r < s; ++r) {
-            x = _cfx_mulmod_u64(x, x, n);
-            if (x == n - 1) { witness = 0; break; }
+            x = cfx_mont64_sqr(&mont, x);
+            if (x == nm1_mont) { witness = 0; break; }
         }
         if (witness) return 0; /* composite */
     }
@@ -224,43 +179,65 @@ static inline uint64_t _rand_u64(void) {
 /* Pollard's rho method of finding a non-trivial factor of some
 integer n. It uses the fact that if there is some divisor p (not necessarily prime)
 of n, then there are cycles in a well chosen function that's applied repeatedly
-to element in Zp... */
-uint64_t cfx_pollard_rho_brent(uint64_t n) {
-    if ((n & 1) == 0) return 2;
-    uint64_t y = _rand_u64() % (n-1) + 1;
-    uint64_t c = _rand_u64() % (n-1) + 1;
-    /* we must choose c != 0, but less evidently we must also choose c != −2 because (y + 1/y)2 − 2 = y2 + 1/y2 */
-    uint64_t m = 128;
+to element in Zp...
 
-    uint64_t g = 1, r = 1, q = 1, x, ys = 0;
+Uses Montgomery multiplication to avoid expensive divisions - */
+uint64_t cfx_pollard_rho_brent(uint64_t n) {
+    if (n < 2) return 0;
+    if ((n & 1) == 0) return 2;
+    if (n == 3) return n;
+
+    cfx_mont64_t mont;
+    cfx_mont64_init(&mont, n);
+
+    /* Pick random start y in [1, n-1] and constant c in [1, n-3] (avoids c=0 and c=n-2=-2) */
+    uint64_t y = cfx_mont64_to(&mont, _rand_u64() % (n - 1) + 1);
+    uint64_t c_val = _rand_u64() % (n - 3) + 1;  /* [1, n-3] avoids 0 and -2 */
+    uint64_t c = cfx_mont64_to(&mont, c_val);
+
+    uint64_t x = y, ys = y;
+    uint64_t q = cfx_mont64_to(&mont, 1);
+    uint64_t g = 1, r = 1;
+    const uint64_t batch = 128;
+    const uint64_t max_iters = 1ULL << 30;
+    uint64_t iters = 0;
+
     while (g == 1) {
         x = y;
         for (uint64_t i = 0; i < r; ++i)
-            y = (_cfx_mulmod_u64(y, y, n) + c) % n;
+            y = cfx_mont64_add(&mont, cfx_mont64_sqr(&mont, y), c);
 
-        uint64_t k = 0;
-        while (k < r && g == 1) {
+        for (uint64_t k = 0; k < r && g == 1; k += batch) {
             ys = y;
-            uint64_t lim = (m < (r - k)) ? m : (r - k);
+            uint64_t lim = (batch < r - k) ? batch : (r - k);
             for (uint64_t i = 0; i < lim; ++i) {
-                y = (_cfx_mulmod_u64(y, y, n) + c) % n;
-                uint64_t diff = x > y ? x - y : y - x;
-                q = _cfx_mulmod_u64(q, diff, n);
+                y = cfx_mont64_add(&mont, cfx_mont64_sqr(&mont, y), c);
+                /* diff in Montgomery form; if x==y, diff=0, q=0, g=n triggers backtrack */
+                uint64_t diff = (x >= y) ? cfx_mont64_sub(&mont, x, y)
+                                         : cfx_mont64_sub(&mont, y, x);
+                q = cfx_mont64_mul(&mont, q, diff);
             }
-            g = cfx_gcd_u64(q, n);
-            k += lim;
+            g = cfx_gcd_u64(cfx_mont64_from(&mont, q), n);
         }
+
         r <<= 1;
+        iters += r;
+        if (iters > max_iters) return n; /* give up */
     }
 
     if (g == n) {
-        do {
-            ys = (_cfx_mulmod_u64(ys, ys, n) + c) % n;
-            uint64_t diff = x > ys ? x - ys : ys - x;
-            g = cfx_gcd_u64(diff, n);
-        } while (g == 1);
+        /* GCD overshot; backtrack step-by-step from ys */
+        g = 1;
+        uint64_t x_val = cfx_mont64_from(&mont, x);
+        for (uint64_t i = 0; i < batch && g == 1; ++i) {
+            ys = cfx_mont64_add(&mont, cfx_mont64_sqr(&mont, ys), c);
+            uint64_t ys_val = cfx_mont64_from(&mont, ys);
+            uint64_t d = (x_val >= ys_val) ? (x_val - ys_val) : (ys_val - x_val);
+            g = cfx_gcd_u64(d, n);
+        }
     }
-    return g;
+
+    return (g != n) ? g : n;
 }
 
 /* comparator fn for qsort */
@@ -405,12 +382,17 @@ void cfx_mul_scratch_free(cfx_mul_scratch_t* s) {
     s->cap = 0;
 }
 
+/* CSA (Carry-Save Adder) Multiplication
+
+  Core Concept
+
+  CSA is an optimization for big-integer multiplication that defers carry propagation
+  during the accumulation phase. Instead of propagating carries immediately (which 
+  creates serial dependencies), it stores partial results in a "carry-save" format */
 /* Assumes scratch->acc[0..nout-1] and scratch->spill[0..nout-1] are zeroed by the caller. */
 void cfx_mul_csa_portable_fast(const cfx_limb_t* A, size_t na,
                                const cfx_limb_t* B, size_t nb,
-                               cfx_limb_t* R,
-                               cfx_mul_scratch_t* scratch)
-{
+                               cfx_limb_t* R, cfx_mul_scratch_t* scratch) {
     const size_t nout = na + nb;
     csa128_t* acc = scratch->acc;
     cfx_limb_t* spill = scratch->spill;

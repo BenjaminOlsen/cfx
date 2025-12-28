@@ -33,7 +33,7 @@ static void modmul_plain(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b,
     cfx_big_t prod;
     cfx_big_init(&prod);
     cfx_big_copy(&prod, a);
-    cfx_big_mul(&prod, b);
+    cfx_big_mul_eq(&prod, b);
     cfx_big_mod(out, &prod, n);
     cfx_big_free(&prod);
 }
