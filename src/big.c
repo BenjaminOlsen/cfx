@@ -765,7 +765,7 @@ static inline void cfx_big_mul_small_inplace(cfx_big_t* out, cfx_limb_t m) {
 }
 
 /* out = p^e (p is a limb prime) */
-void cfx_big_primepow(cfx_big_t* out, cfx_limb_t p, cfx_limb_t e) {
+void cfx_big_pow_sm(cfx_big_t* out, cfx_limb_t p, cfx_limb_t e) {
     cfx_big_from_limb(out, 1);
     if (e == 0) return;
 
@@ -1667,7 +1667,7 @@ void cfx_big_from_fac_faster(cfx_big_t* out, const cfx_fac_t* f) {
 
         cfx_big_t x;
         cfx_big_init(&x);
-        cfx_big_primepow(&x, p, e);
+        cfx_big_pow_sm(&x, p, e);
 
         if (cfx_big_is_one(&x)) {
             cfx_big_free(&x);
@@ -1858,6 +1858,10 @@ int cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b, cfx_big_t* remainder) {
         cfx_big_div_eq(&quotient, &factor, NULL);
         cfx_big_trim(&quotient);
 
+        /* Free cur BEFORE pushing, since cur points into the stack array
+         * and we're about to reuse that slot. This avoids double-free. */
+        cfx_big_free(cur);
+
         /* Push factor and quotient */
         if (stack_top < 62) {
             cfx_big_init(&stack[stack_top]);
@@ -1871,7 +1875,6 @@ int cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b, cfx_big_t* remainder) {
 
         cfx_big_free(&factor);
         cfx_big_free(&quotient);
-        cfx_big_free(cur);
     }
 
     cfx_big_free(&work);

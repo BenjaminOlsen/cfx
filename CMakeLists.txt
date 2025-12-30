@@ -8,8 +8,19 @@ endif()
 
 option(CFX_BUILD_SHARED "Build shared library" ON)
 option(CFX_BUILD_TESTS  "Build tests" ON)
-option(CFX_BUILD_EXAMPLES "Build examples" ON)
+option(CFX_BUILD_UTILS "Build utility programs" ON)
 option(CFX_NO_FP "No floating point math" OFF)
+option(CFX_COVERAGE "Enable code coverage (GCC/Clang only)" OFF)
+
+if(CFX_COVERAGE)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(--coverage -O0 -g)
+        add_link_options(--coverage)
+        message(STATUS "Code coverage enabled")
+    else()
+        message(WARNING "CFX_COVERAGE requires GCC or Clang")
+    endif()
+endif()
 
 set(CFX_ARCH "native" CACHE STRING "Target architecture")
 set_property(CACHE CFX_ARCH PROPERTY STRINGS native x86_64 armv7m)
@@ -43,7 +54,6 @@ set(CFX_HEADERS
     include/cfx/arith.h
     include/cfx/base64.h
     include/cfx/big.h
-    include/cfx/big_vec.h
     include/cfx/chacha20.h
     include/cfx/compat.h
     include/cfx/ecm.h
@@ -68,7 +78,6 @@ set(CFX_SOURCES
     src/vec.c
     src/sha256.c
     src/base64.c
-    src/big_vec.c
     src/chacha20.c
     src/poly1305.c
     src/aead_chacha20_poly1305.c
@@ -128,10 +137,10 @@ if (ASAN)
     endif()
 endif()
 
-# ---------------- Examples
-if(CFX_BUILD_EXAMPLES)
-    message(STATUS "Building examples...")
-    add_subdirectory(examples)
+# ---------------- Utilities
+if(CFX_BUILD_UTILS)
+    message(STATUS "Building utilities...")
+    add_subdirectory(utils)
 endif()
 
 # ---------------- Tests (CTest)

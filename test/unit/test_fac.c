@@ -20,6 +20,13 @@ static void test_init(void) {
     CFX_ASSERT(f.len == 0);
 }
 
+static void test_print_empty(void) {
+    cfx_fac_t f;
+    cfx_fac_init(&f);
+    cfx_fac_print(&f);
+    cfx_fac_free(&f);
+}
+
 static void test_reserve(void) {
     cfx_fac_t f;
     cfx_fac_init(&f);
@@ -47,6 +54,15 @@ static void test_push(void) {
     CFX_ASSERT(f.len == 3);
     cfx_fac_push(&f, 5, 800);
     CFX_ASSERT(f.len == 4);
+    cfx_fac_free(&f);
+}
+
+static void test_push_zero_exp(void) {
+    cfx_fac_t f;
+    cfx_fac_init(&f);
+    int rc = cfx_fac_push(&f, 2, 0);
+    CFX_ASSERT(rc == -1);
+    CFX_ASSERT(f.len == 0);
     cfx_fac_free(&f);
 }
 
@@ -330,15 +346,190 @@ static void test_big_to_fac(void) {
     cfx_big_free(&reconstructed);
 }
 
+static void test_fac_copy(void) {
+    cfx_fac_t src, dst;
+    cfx_fac_init(&src);
+    cfx_fac_init(&dst);
+
+    /* Build src = 2^3 * 5^2 * 7 */
+    cfx_fac_push(&src, 2, 3);
+    cfx_fac_push(&src, 5, 2);
+    cfx_fac_push(&src, 7, 1);
+
+    cfx_fac_copy(&dst, &src);
+
+    CFX_ASSERT(dst.len == src.len);
+    for (size_t i = 0; i < src.len; i++) {
+        CFX_ASSERT(dst.data[i].p == src.data[i].p);
+        CFX_ASSERT(dst.data[i].e == src.data[i].e);
+    }
+
+    /* Modify src, dst should be unchanged */
+    cfx_fac_push(&src, 11, 5);
+    CFX_ASSERT(dst.len == 3);
+
+    cfx_fac_free(&src);
+    cfx_fac_free(&dst);
+}
+
+static void test_fac_copy_self(void) {
+    cfx_fac_t f;
+    cfx_fac_init(&f);
+    cfx_fac_push(&f, 2, 3);
+    cfx_fac_push(&f, 5, 2);
+    cfx_fac_copy(&f, &f);
+    CFX_ASSERT(f.len == 2);
+    CFX_ASSERT(f.data[0].p == 2 && f.data[0].e == 3);
+    CFX_ASSERT(f.data[1].p == 5 && f.data[1].e == 2);
+    cfx_fac_free(&f);
+}
+
+static void test_from_u64_zero(void) {
+    cfx_fac_t f;
+    int rc = cfx_fac_from_u64(&f, 0);
+    CFX_ASSERT(rc == -1);
+}
+
+static void test_from_u64_one(void) {
+    cfx_fac_t f;
+    int rc = cfx_fac_from_u64(&f, 1);
+    CFX_ASSERT(rc == 0);
+    CFX_ASSERT(f.len == 0);
+    cfx_fac_free(&f);
+}
+
+static void test_binom_k_greater_than_n(void) {
+    cfx_fac_t f = cfx_fac_binom(5, 10);
+    CFX_ASSERT(f.len == 0);
+    cfx_fac_free(&f);
+}
+
+static void test_binom_k_greater_than_half(void) {
+    cfx_fac_t f = cfx_fac_binom(10, 8);
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_from_fac(&b, &f);
+    CFX_ASSERT(cfx_big_eq_u64(&b, 45));
+    cfx_big_free(&b);
+    cfx_fac_free(&f);
+}
+
+static void test_fac_add(void) {
+    cfx_fac_t a, b;
+    cfx_fac_init(&a);
+    cfx_fac_init(&b);
+
+    /* a = 2^2 * 3, b = 2 * 3^2 * 5 */
+    /* a + b (as exponent addition) = 2^3 * 3^3 * 5 */
+    cfx_fac_push(&a, 2, 2);
+    cfx_fac_push(&a, 3, 1);
+
+    cfx_fac_push(&b, 2, 1);
+    cfx_fac_push(&b, 3, 2);
+    cfx_fac_push(&b, 5, 1);
+
+    cfx_fac_add(&a, &b);
+
+    /* Verify: a should now have 2^3 * 3^3 * 5 */
+    CFX_ASSERT(a.len == 3);
+    CFX_ASSERT(a.data[0].p == 2 && a.data[0].e == 3);
+    CFX_ASSERT(a.data[1].p == 3 && a.data[1].e == 3);
+    CFX_ASSERT(a.data[2].p == 5 && a.data[2].e == 1);
+
+    cfx_fac_free(&a);
+    cfx_fac_free(&b);
+}
+
+static void test_fac_sub(void) {
+    cfx_fac_t a, b;
+    cfx_fac_init(&a);
+    cfx_fac_init(&b);
+
+    /* a = 2^5 * 3^3 * 5^2, b = 2^2 * 3 * 5 */
+    /* a - b = 2^3 * 3^2 * 5 */
+    cfx_fac_push(&a, 2, 5);
+    cfx_fac_push(&a, 3, 3);
+    cfx_fac_push(&a, 5, 2);
+
+    cfx_fac_push(&b, 2, 2);
+    cfx_fac_push(&b, 3, 1);
+    cfx_fac_push(&b, 5, 1);
+
+    cfx_fac_sub(&a, &b);
+
+    CFX_ASSERT(a.len == 3);
+    CFX_ASSERT(a.data[0].p == 2 && a.data[0].e == 3);
+    CFX_ASSERT(a.data[1].p == 3 && a.data[1].e == 2);
+    CFX_ASSERT(a.data[2].p == 5 && a.data[2].e == 1);
+
+    cfx_fac_free(&a);
+    cfx_fac_free(&b);
+}
+
+static void test_fac_binom(void) {
+    /* C(10, 3) = 120 = 2^3 * 3 * 5 */
+    cfx_fac_t f = cfx_fac_binom(10, 3);
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_from_fac(&b, &f);
+    CFX_ASSERT(cfx_big_eq_u64(&b, 120));
+    cfx_big_free(&b);
+    cfx_fac_free(&f);
+
+    /* C(20, 10) = 184756 */
+    f = cfx_fac_binom(20, 10);
+    cfx_big_init(&b);
+    cfx_big_from_fac(&b, &f);
+    CFX_ASSERT(cfx_big_eq_u64(&b, 184756));
+    cfx_big_free(&b);
+    cfx_fac_free(&f);
+
+    /* C(n, 0) = 1 */
+    f = cfx_fac_binom(100, 0);
+    cfx_big_init(&b);
+    cfx_big_from_fac(&b, &f);
+    CFX_ASSERT(cfx_big_eq_u64(&b, 1));
+    cfx_big_free(&b);
+    cfx_fac_free(&f);
+
+    /* C(n, n) = 1 */
+    f = cfx_fac_binom(50, 50);
+    cfx_big_init(&b);
+    cfx_big_from_fac(&b, &f);
+    CFX_ASSERT(cfx_big_eq_u64(&b, 1));
+    cfx_big_free(&b);
+    cfx_fac_free(&f);
+
+    /* C(n, 1) = n */
+    f = cfx_fac_binom(42, 1);
+    cfx_big_init(&b);
+    cfx_big_from_fac(&b, &f);
+    CFX_ASSERT(cfx_big_eq_u64(&b, 42));
+    cfx_big_free(&b);
+    cfx_fac_free(&f);
+}
+
 int main(void) {
-    int quiet = 0;
+    int quiet = 1;
 
     CFX_TEST(test_init);
+    CFX_TEST(test_print_empty);
     CFX_TEST(test_reserve);
     CFX_TEST(test_push);
+    CFX_TEST(test_push_zero_exp);
     CFX_TEST(test_fac_from_u64);
+    CFX_TEST(test_from_u64_zero);
+    CFX_TEST(test_from_u64_one);
     CFX_TEST(test_big_to_fac);
+    CFX_TEST(test_fac_copy);
+    CFX_TEST(test_fac_copy_self);
+    CFX_TEST(test_fac_add);
+    CFX_TEST(test_fac_sub);
+    CFX_TEST(test_fac_binom);
+    CFX_TEST(test_binom_k_greater_than_n);
+    CFX_TEST(test_binom_k_greater_than_half);
     test_factorial_to_100(quiet);
     test_big_factorial_to_100(quiet);
+    puts("OK");
     return 0;
 }

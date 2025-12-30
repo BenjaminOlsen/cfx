@@ -20,9 +20,15 @@ build for armv7m: `cmake -B build-armv7m -S . -DCMAKE_TOOLCHAIN_FILE=cmake/toolc
 
 `cmake --build build -j` or `cd build && make` or `make VERBOSE=1`
 
+other helpful commands: 
+
+`cmake -L build `
+
 ### Windows (MSVC)
 
-```
+with 
+
+```powershell
 cmake -S . -B build
 cmake --build build --config Release
 ```
@@ -53,6 +59,28 @@ You can see the options for running SmallCrush, Crush, and BigCrush:
 
 Note, some of the RNGs are toy examples (like using poly1305 as an RNG), but others pass BigCrush.
 
+### Code Coverage
+
+Generate test coverage reports locally (requires GCC or Clang and gcovr):
+
+```bash
+pip install gcovr
+
+# Configure with coverage enabled
+cmake -S . -B build-cov -DCFX_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+
+# Build and run tests
+cmake --build build-cov -j
+ctest --test-dir build-cov
+
+# Generate HTML report
+gcovr --root . --exclude 'test/*' --exclude 'utils/*' --exclude 'build-cov/*' --html-details coverage.html
+
+# Open coverage.html in browser
+```
+
+Coverage is also run automatically on CI via GitHub Actions.
+
 ## Examples
 
 In examples, there are some interesting ways of using cfx, most have a `-h` or `--help` usage print.
@@ -70,6 +98,13 @@ cmake --build build && cmake --install build --prefix ~
 export PATH="$HOME/bin:$PATH"
 ```
 
+or to compile and install in one step:
+
+```bash
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=~
+cmake --build build -j --target install
+```  
+
 **Windows:**
 ```powershell
 # Build and install to %USERPROFILE%\bin
@@ -79,6 +114,14 @@ cmake --install build --config Release --prefix %USERPROFILE%
 # Add to PATH via System Properties > Environment Variables > User variables > Path
 # Add: %USERPROFILE%\bin
 ```
+
+or to compile and install in one step:
+
+```powershell
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=%USERPROFILE%
+cmake --build build --config Release -j --target install
+```
+
 
 After installation, run tools directly: `cfx_dc`, `cfx_factor 12345`, `cfx_primes 100`, etc.
 
@@ -90,7 +133,7 @@ cfx includes Rust bindings in `rust/cfx/`. The bindings provide a safe wrapper a
 
 ### Build and Test
 
-```
+```bash
 cd rust/cfx
 cargo test
 ```

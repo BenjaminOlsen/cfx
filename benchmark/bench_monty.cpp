@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include "cfx/cfx.h"
+#include "cfx/big.h"
 
 
 // ----------------------- helpers -----------------------

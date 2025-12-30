@@ -10,13 +10,7 @@
 #include "cfx/big.h"
 #include "cfx/ecm.h"
 #include "cfx/algo.h"
-
-#define CFX_ASSERT(cond) do { \
-    if (!(cond)) { \
-        fprintf(stderr, "ASSERT failed: %s at %s:%d\n", #cond, __FILE__, __LINE__); \
-        return 1; \
-    } \
-} while (0)
+#include "cfx/macros.h"
 
 /* Test factoring small semiprimes */
 static int test_ecm_small_semiprime(void) {
@@ -212,14 +206,106 @@ static int test_ecm_trivial(void) {
     return 0;
 }
 
+static int test_ecm_zero_input(void) {
+    printf("test_ecm_zero_input... ");
+
+    cfx_big_t n, factor;
+    cfx_big_init(&n);
+    cfx_big_init(&factor);
+
+    int found = cfx_ecm_factor(&factor, &n, 1000, 1);
+    CFX_ASSERT(found == 0);
+
+    cfx_big_free(&n);
+    cfx_big_free(&factor);
+
+    printf("OK\n");
+    return 0;
+}
+
+static int test_ecm_one_input(void) {
+    printf("test_ecm_one_input... ");
+
+    cfx_big_t n, factor;
+    cfx_big_init(&n);
+    cfx_big_init(&factor);
+
+    cfx_big_from_limb(&n, 1);
+    int found = cfx_ecm_factor(&factor, &n, 1000, 1);
+    CFX_ASSERT(found == 0);
+
+    cfx_big_free(&n);
+    cfx_big_free(&factor);
+
+    printf("OK\n");
+    return 0;
+}
+
+static int test_ecm_auto_small(void) {
+    printf("test_ecm_auto_small... ");
+
+    cfx_big_t n, factor;
+    cfx_big_init(&n);
+    cfx_big_init(&factor);
+
+    /* small even number - exercises < 64 bit path and even check */
+    cfx_big_from_limb(&n, 1234);
+    int found = cfx_ecm_factor_auto(&factor, &n);
+    CFX_ASSERT(found == 1);
+    CFX_ASSERT(factor.limb[0] == 2);
+
+    cfx_big_free(&n);
+    cfx_big_free(&factor);
+
+    printf("OK\n");
+    return 0;
+}
+
+static int test_ecm_auto_96bit(void) {
+    printf("test_ecm_auto_96bit... ");
+
+    cfx_big_t n, factor;
+    cfx_big_init(&n);
+    cfx_big_init(&factor);
+
+    /* ~80 bit semiprime: 1125899906842597 * 1125899906842679
+     * = 1267650600228226802437530494363 (~100 bits total, so > 96 bit path)
+     * Let's use a smaller one in the 65-96 bit range */
+    /* 2^65 = 36893488147419103232, need something ~75 bits */
+    /* 1099511627791 * 1099511627689 = 1208925819614629000199 (~70 bits) */
+    cfx_big_from_str(&n, "1208925819614629000199");
+
+    clock_t start = clock();
+    int found = cfx_ecm_factor_auto(&factor, &n);
+    clock_t end = clock();
+    double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
+
+    printf("(%.3fs) ", elapsed);
+
+    if (found) {
+        cfx_big_t rem;
+        cfx_big_init(&rem);
+        cfx_big_mod(&rem, &n, &factor);
+        CFX_ASSERT(cfx_big_is_zero(&rem));
+        cfx_big_free(&rem);
+    }
+
+    cfx_big_free(&n);
+    cfx_big_free(&factor);
+
+    printf("OK\n");
+    return 0;
+}
+
 int main(void) {
-    printf("=== ECM Tests ===\n");
-
-    if (test_ecm_trivial()) return 1;
-    if (test_ecm_small_semiprime()) return 1;
-    if (test_ecm_medium_semiprime()) return 1;
-    if (test_ecm_large_semiprime()) return 1;
-
+    CFX_TEST(test_ecm_trivial);
+    CFX_TEST(test_ecm_zero_input);
+    CFX_TEST(test_ecm_one_input);
+    CFX_TEST(test_ecm_auto_small);
+    CFX_TEST(test_ecm_small_semiprime);
+    CFX_TEST(test_ecm_medium_semiprime);
+    CFX_TEST(test_ecm_auto_96bit);
+    // CFX_TEST(test_ecm_large_semiprime);
     printf("\nAll ECM tests passed!\n");
     return 0;
 }

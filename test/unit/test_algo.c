@@ -267,6 +267,133 @@ static void test_sqrt(void) {
     PRINT_TEST(1);
 }
 
+
+static void test_factor_u64(void) {
+    cfx_vec_t primes, exps;
+
+    /* should return -1 */
+    CFX_ASSERT(cfx_factor_u64(&primes, &exps, 0) == -1);
+
+    /* should return 0 with empty vectors */
+    CFX_ASSERT(cfx_factor_u64(&primes, &exps, 1) == 0);
+    CFX_ASSERT(primes.size == 0);
+    CFX_ASSERT(exps.size == 0);
+    cfx_vec_free(&primes);
+    cfx_vec_free(&exps);
+
+    /* test prime: 17 */
+    CFX_ASSERT(cfx_factor_u64(&primes, &exps, 17) == 0);
+    CFX_ASSERT(primes.size == 1);
+    CFX_ASSERT(primes.data[0] == 17);
+    CFX_ASSERT(exps.data[0] == 1); 
+    cfx_vec_free(&primes);
+    cfx_vec_free(&exps);
+
+    /* test power of 2: 64 = 2^6 */
+    CFX_ASSERT(cfx_factor_u64(&primes, &exps, 64) == 0);
+    CFX_ASSERT(primes.size == 1);
+    CFX_ASSERT(primes.data[0] == 2);
+    CFX_ASSERT(exps.data[0] == 6);
+    cfx_vec_free(&primes);
+    cfx_vec_free(&exps);
+
+    /* test composite: 60 = 2^2 * 3 * 5 */
+    CFX_ASSERT(cfx_factor_u64(&primes, &exps, 60) == 0);
+    CFX_ASSERT(primes.size == 3);
+    CFX_ASSERT(primes.data[0] == 2 && exps.data[0] == 2);
+    CFX_ASSERT(primes.data[1] == 3 && exps.data[1] == 1);
+    CFX_ASSERT(primes.data[2] == 5 && exps.data[2] == 1);
+    cfx_vec_free(&primes);
+    cfx_vec_free(&exps);
+
+    /* test semiprime: 15 = 3 * 5 */
+    CFX_ASSERT(cfx_factor_u64(&primes, &exps, 15) == 0);
+    CFX_ASSERT(primes.size == 2);
+    CFX_ASSERT(primes.data[0] == 3 && exps.data[0] == 1);
+    CFX_ASSERT(primes.data[1] == 5 && exps.data[1] == 1);
+    cfx_vec_free(&primes);
+    cfx_vec_free(&exps);
+
+    /* test larger: 1000003 * 1000033 = 1000036000099 */
+    CFX_ASSERT(cfx_factor_u64(&primes, &exps, 1000036000099ULL) == 0);
+    CFX_ASSERT(primes.size == 2);
+    CFX_ASSERT(primes.data[0] == 1000003 && exps.data[0] == 1);
+    CFX_ASSERT(primes.data[1] == 1000033 && exps.data[1] == 1);
+    cfx_vec_free(&primes);
+    cfx_vec_free(&exps);
+
+    /* round-trip: product of factors equals original */
+    uint64_t n = 123456789ULL;
+    CFX_ASSERT(cfx_factor_u64(&primes, &exps, n) == 0);
+    uint64_t product = 1;
+    for (size_t i = 0; i < primes.size; i++) {
+        for (uint64_t j = 0; j < exps.data[i]; j++) {
+            product *= primes.data[i];
+        }
+    }
+    CFX_ASSERT(product == n);
+    cfx_vec_free(&primes);
+    cfx_vec_free(&exps);
+}
+
+static void test_mul_csa_portable_fast(void) {
+    cfx_mul_scratch_t scratch = {0};  /* must be zero-initialized before first alloc */
+    cfx_limb_t A[4], B[4], R[8], R_ref[8];
+
+    /* simple 1x1 multiplication */
+    A[0] = 7;
+    B[0] = 6;
+    cfx_mul_scratch_alloc(&scratch, 2);
+    cfx_mul_scratch_zero(&scratch, 2);
+    cfx_mul_csa_portable_fast(A, 1, B, 1, R, &scratch);
+    CFX_ASSERT(R[0] == 42);
+    cfx_mul_scratch_free(&scratch);
+
+    /* 2x2 multiplication with known result */
+    /* (B + 1) * (B + 1) = B^2 + 2B + 1, where B = 2^LIMB_BITS */
+    /* Result: R[0]=1, R[1]=2, R[2]=1, R[3]=0 */
+    A[0] = 1; A[1] = 1;
+    B[0] = 1; B[1] = 1;
+    cfx_mul_scratch_alloc(&scratch, 4);
+    cfx_mul_scratch_zero(&scratch, 4);
+    cfx_mul_csa_portable_fast(A, 2, B, 2, R, &scratch);
+    CFX_ASSERT(R[0] == 1);
+    CFX_ASSERT(R[1] == 2);
+    CFX_ASSERT(R[2] == 1);
+    CFX_ASSERT(R[3] == 0);
+    cfx_mul_scratch_free(&scratch);
+
+    /* compare with cfx_mul_csa_portable (reference) using limb-safe values */
+    A[0] = 0xDEADBEEF; A[1] = 0xCAFEBABE;
+    B[0] = 0x12345678; B[1] = 0x9ABCDEF0;
+
+    cfx_mul_csa_portable(A, 2, B, 2, R_ref);
+
+    cfx_mul_scratch_alloc(&scratch, 4);
+    cfx_mul_scratch_zero(&scratch, 4);
+    cfx_mul_csa_portable_fast(A, 2, B, 2, R, &scratch);
+
+    for (size_t i = 0; i < 4; i++) {
+        CFX_ASSERT(R[i] == R_ref[i]);
+    }
+    cfx_mul_scratch_free(&scratch);
+
+    /* asymmetric sizes with max limb values */
+    A[0] = CFX_LIMB_MAX;
+    B[0] = CFX_LIMB_MAX; B[1] = CFX_LIMB_MAX;
+
+    cfx_mul_csa_portable(A, 1, B, 2, R_ref);
+
+    cfx_mul_scratch_alloc(&scratch, 3);
+    cfx_mul_scratch_zero(&scratch, 3);
+    cfx_mul_csa_portable_fast(A, 1, B, 2, R, &scratch);
+
+    for (size_t i = 0; i < 3; i++) {
+        CFX_ASSERT(R[i] == R_ref[i]);
+    }
+    cfx_mul_scratch_free(&scratch);
+}
+
 int main(void) {
     CFX_TEST(test_prime_sieve);
     CFX_TEST(test_primality_test);
@@ -282,7 +409,9 @@ int main(void) {
     CFX_TEST(test_fuzz_small);
     CFX_TEST(test_cfz);
     CFX_TEST(test_sqrt);
-    puts("OK: cfx_mul_csa_portable tests passed.\n");
+    CFX_TEST(test_factor_u64);
+    CFX_TEST(test_mul_csa_portable_fast);
+    puts("OK");
     return 0;
 }
 

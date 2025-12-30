@@ -150,7 +150,7 @@ void cfx_big_shr_bits(cfx_big_t* out, const cfx_big_t* x, unsigned s);
 void cfx_big_expmul_prime(cfx_big_t* b, cfx_limb_t p, cfx_limb_t e);
 
 /* out = p^e */
-void cfx_big_primepow(cfx_big_t* out, cfx_limb_t p, cfx_limb_t e);
+void cfx_big_pow_sm(cfx_big_t* out, cfx_limb_t p, cfx_limb_t e);
 
 /* out = n ^ p */
 void cfx_big_exp(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* p);

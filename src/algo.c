@@ -250,14 +250,15 @@ static int cmp_u64(const void* a, const void* b) {
 int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n) {
 
     if (n == 0) return -1;
+    
+    cfx_vec_init(primes);
+    cfx_vec_init(exps);
+
     if (n == 1) return 0;
 
     /* Use a local array for 64-bit prime storage during computation */
     uint64_t plist[256];  /* enough for any 64-bit factorization */
     size_t pcount = 0;
-
-    cfx_vec_init(primes);
-    cfx_vec_init(exps);
 
     /* 1) Strip tiny (<255) primes fast */
     for (size_t i = 0; i < 54; ++i) {
