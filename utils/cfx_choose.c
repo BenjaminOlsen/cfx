@@ -7,7 +7,7 @@
 #include "cfx/fac.h"
 #include "cfx/big.h"
 #include "cfx/algo.h"
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 
 static void print_binom(cfx_limb_t n, cfx_limb_t k){
@@ -15,7 +15,7 @@ static void print_binom(cfx_limb_t n, cfx_limb_t k){
     cfx_big_t B;
     cfx_big_init(&B);
     cfx_big_from_fac(&B, &f);
-    char *s = cfx_big_to_str(&B, NULL);
+    char *s = cfx_big_dec_alloc(&B, NULL);
     size_t sz = strlen(s);
     printf("C(" CFX_PRIuLIMB ", " CFX_PRIuLIMB ") = %s\nlen: %zu\n", n, k, s, sz);
     free(s);

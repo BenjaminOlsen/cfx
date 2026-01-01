@@ -190,7 +190,6 @@ static inline uint64_t cfx_time_ns(void) {
 
 /* strndup: duplicate at most n characters of a string */
 static inline char* cfx_strndup(const char* s, size_t n) {
-#if defined(_WIN32) || !defined(_GNU_SOURCE)
     size_t len = 0;
     while (len < n && s[len] != '\0') len++;
     char* dup = (char*)malloc(len + 1);
@@ -199,9 +198,6 @@ static inline char* cfx_strndup(const char* s, size_t n) {
         dup[len] = '\0';
     }
     return dup;
-#else
-    return strndup(s, n);
-#endif
 }
 
 /* ============================================================
@@ -242,6 +238,42 @@ static inline int cfx_clz64(uint64_t x) {
     return __builtin_clzll(x);
 #endif
 }
+
+/* ============================================================
+ * 128-bit Arithmetic (for MSVC without __uint128_t)
+ * ============================================================ */
+
+#ifdef _MSC_VER
+typedef struct { uint64_t lo, hi; } cfx_uint128_t;
+
+static inline cfx_uint128_t cfx_mul64(uint64_t a, uint64_t b) {
+    cfx_uint128_t r;
+    r.lo = _umul128(a, b, &r.hi);
+    return r;
+}
+
+static inline cfx_uint128_t cfx_add128(cfx_uint128_t a, cfx_uint128_t b) {
+    cfx_uint128_t r;
+    r.lo = a.lo + b.lo;
+    r.hi = a.hi + b.hi + (r.lo < a.lo);
+    return r;
+}
+
+static inline uint64_t cfx_shr128_51(cfx_uint128_t x) {
+    return (x.hi << 13) | (x.lo >> 51);
+}
+
+static inline uint64_t cfx_lo128(cfx_uint128_t x) {
+    return x.lo;
+}
+
+static inline cfx_uint128_t cfx_u128_from_u64(uint64_t x) {
+    cfx_uint128_t r;
+    r.lo = x;
+    r.hi = 0;
+    return r;
+}
+#endif
 
 #ifdef __cplusplus
 }

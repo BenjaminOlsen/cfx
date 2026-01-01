@@ -9,7 +9,11 @@
 #include "cfx/macros.h"
 #include "cfx/rand.h"
 
-#include <x86intrin.h>  // for __rdtscp, cycles/cnt calculation
+#if defined(_MSC_VER)
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
 
 /* Encrypt benchmark: AEAD( key, nonce, pt, aad ) -> ct, tag */
 static void BM_AEAD_Encrypt(benchmark::State& state, size_t aad_len) {

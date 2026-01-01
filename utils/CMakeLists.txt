@@ -18,15 +18,21 @@ set(UTIL_NAMES
     primes_near_pow2
     rand
     ulam_spiral
+    pi
+    x25519
+    ed25519
 )
 
 # Helper library with misc utilities (hex parsing, etc.)
 add_library(cfx_misc misc.h misc.c)
+target_link_libraries(cfx_misc PUBLIC cfx::cfx)
 
 # Library containing all utility logic (without main functions)
 set(UTIL_SOURCES)
 foreach(util_name IN LISTS UTIL_NAMES)
     list(APPEND UTIL_SOURCES cfx_${util_name}.c)
+        message(STATUS "added utility '${util_name}'")
+
 endforeach()
 
 add_library(cfx_util_lib STATIC ${UTIL_SOURCES})

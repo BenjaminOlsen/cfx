@@ -265,16 +265,20 @@ int main(void) {
     CFX_TEST(test_strndup_exact);
     CFX_TEST(test_strndup_embedded_null);
 
+    /* sanity checks */
     CFX_TEST(test_cpu_count);
     CFX_TEST(test_time_ns_monotonic);
     CFX_TEST(test_time_ns_advances);
 
+    /* threading */
     CFX_TEST(test_thread_create_join);
     CFX_TEST(test_thread_multiple);
 
+    /* mutex */
     CFX_TEST(test_mutex_basic);
     CFX_TEST(test_mutex_contention);
 
+    /* atomics */
     CFX_TEST(test_atomic_basic);
     CFX_TEST(test_atomic_synchronization);
 

@@ -22,23 +22,20 @@ if(CFX_COVERAGE)
     endif()
 endif()
 
-set(CFX_ARCH "native" CACHE STRING "Target architecture")
-set_property(CACHE CFX_ARCH PROPERTY STRINGS native x86_64 armv7m)
-
 find_package(OpenSSL QUIET)
 
 if(OpenSSL_FOUND)
     add_compile_definitions(CFX_HAVE_OPENSSL=1)
 endif()
 
-include(cmake/cfxCompileFlags.cmake)
+include(cmake/compile_flags.cmake)
 
 # ---------------- static prime list
 # specify with cmake -S . -B build -DCFX_PRIMES_COUNT=XXXX
 set(CFX_PRIMES_COUNT 664579 CACHE STRING
     "Number of primes to include in cfx_primes[] (<= 664579)")
 
-include(cmake/cfxPrimes.cmake)
+include(cmake/primes.cmake)
 
 set(CFX_PRIMES_TXT "${CMAKE_CURRENT_SOURCE_DIR}/data/primes.txt")
 set(CFX_PRIMES_C   "${CMAKE_CURRENT_BINARY_DIR}/cfx_primes.c")
@@ -57,30 +54,39 @@ set(CFX_HEADERS
     include/cfx/chacha20.h
     include/cfx/compat.h
     include/cfx/ecm.h
+    include/cfx/ed25519.h
     include/cfx/fac.h
+    include/cfx/fe25519.h
+    include/cfx/ge25519.h
+    include/cfx/sc25519.h
     include/cfx/macros.h
     include/cfx/memory.h
     include/cfx/mont.h
+    include/cfx/ntt.h
     include/cfx/poly1305.h
     include/cfx/primes.h
     include/cfx/rand.h
     include/cfx/sha256.h
+    include/cfx/sha512.h
     include/cfx/vec.h
     include/cfx/version.h
+    include/cfx/sbig.h
+    include/cfx/x25519.h
 )
 
+# Source modules
+add_subdirectory(src/core)
+add_subdirectory(src/crypto)
+add_subdirectory(src/rng)
+add_subdirectory(src/big)
+add_subdirectory(src/math)
+
 set(CFX_SOURCES
-    src/big.c
-    src/ecm.c
-    src/fac.c
-    src/algo.c
-    src/rand.c
-    src/vec.c
-    src/sha256.c
-    src/base64.c
-    src/chacha20.c
-    src/poly1305.c
-    src/aead_chacha20_poly1305.c
+    ${CFX_CORE_SOURCES}
+    ${CFX_CRYPTO_SOURCES}
+    ${CFX_RNG_SOURCES}
+    ${CFX_BIG_SOURCES}
+    ${CFX_MATH_SOURCES}
     "${CFX_PRIMES_GENERATED_SRC}"
 )
 
@@ -117,6 +123,13 @@ endif()
 if (CFX_NO_FP)
     target_compile_definitions(cfx PUBLIC CFX_NO_FP)
     message(STATUS "cfx: No floating point math")
+endif()
+
+# Feature test macros for POSIX extensions (clock_gettime, sysconf, etc.)
+# Use _GNU_SOURCE on Linux (implies _POSIX_C_SOURCE + extensions)
+# macOS doesn't need this - it exposes everything by default
+if (NOT WIN32 AND NOT APPLE)
+    target_compile_definitions(cfx PUBLIC _GNU_SOURCE)
 endif()
 
 # ---------------- ASAN
@@ -160,18 +173,18 @@ set_property(CACHE CFX_LIMB_BITS PROPERTY STRINGS auto 32 64)
 if (CFX_LIMB_BITS STREQUAL "auto")
     if (MSVC)
         # MSVC has no __uint128_t, so force 32-bit limbs for 64-bit accumulator
-        add_compile_definitions(CFX_FORCE_LIMB_32)
+        target_compile_definitions(cfx PUBLIC CFX_FORCE_LIMB_32)
         message(STATUS "cfx: using 32-bit limbs (auto for MSVC)")
     else()
         # GCC/Clang with __uint128_t can use 64-bit limbs
-        add_compile_definitions(CFX_FORCE_LIMB_64)
+        target_compile_definitions(cfx PUBLIC CFX_FORCE_LIMB_64)
         message(STATUS "cfx: using 64-bit limbs (auto for GCC/Clang)")
     endif()
 elseif (CFX_LIMB_BITS STREQUAL "32")
-    add_compile_definitions(CFX_FORCE_LIMB_32)
+    target_compile_definitions(cfx PUBLIC CFX_FORCE_LIMB_32)
     message(STATUS "cfx: using 32-bit limbs")
 elseif (CFX_LIMB_BITS STREQUAL "64")
-    add_compile_definitions(CFX_FORCE_LIMB_64)
+    target_compile_definitions(cfx PUBLIC CFX_FORCE_LIMB_64)
     message(STATUS "cfx: using 64-bit limbs")
 else()
     message(FATAL_ERROR "Invalid CFX_LIMB_BITS value: ${CFX_LIMB_BITS}")
@@ -200,7 +213,7 @@ install(FILES ${CFX_HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cfx)
 # ---------------- Package config (find_package)
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
-  cmake/cfxConfig.cmake.in
+  cmake/config.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/cfxConfig.cmake
   INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cfx
 )
@@ -223,10 +236,6 @@ install(FILES
 # ---------------- benchmarking
 option(CFX_BUILD_BENCHMARKS "Build microbenchmarks" OFF)
 if (CFX_BUILD_BENCHMARKS)
-    if (MSVC)
-        message(WARNING "Benchmarks are not supported on MSVC (require GCC intrinsics and x86intrin.h)")
-    else()
-        message(STATUS "Building benchmarks...")
-        add_subdirectory(benchmark)
-    endif()
+    message(STATUS "Building benchmarks...")
+    add_subdirectory(benchmark)
 endif()

@@ -105,7 +105,7 @@ static int test_ecm_large_semiprime(void) {
     /* Compute n = p * q */
     cfx_big_mul(&n, &p, &q);
 
-    char* str = cfx_big_to_str(&n, NULL);
+    char* str = cfx_big_dec_alloc(&n, NULL);
     printf("\nn = %s\n", str);
     printf("expected = 340282366920938460843936948965011886881\n");
     free(str);
@@ -116,10 +116,10 @@ static int test_ecm_large_semiprime(void) {
     cfx_big_from_str(&expected_n, "340282366920938460843936948965011886881");
     if (cfx_big_cmp(&n, &expected_n) != 0) {
         printf("ERROR: n != p*q!\n");
-        str = cfx_big_to_str(&p, NULL);
+        str = cfx_big_dec_alloc(&p, NULL);
         printf("p = %s\n", str);
         free(str);
-        str = cfx_big_to_str(&q, NULL);
+        str = cfx_big_dec_alloc(&q, NULL);
         printf("q = %s\n", str);
         free(str);
     }
@@ -134,7 +134,7 @@ static int test_ecm_large_semiprime(void) {
 
     if (found) {
         /* Print factor as decimal */
-        char* str = cfx_big_to_str(&factor, NULL);
+        char* str = cfx_big_dec_alloc(&factor, NULL);
         printf("Found factor: %s\n", str);
         free(str);
 
@@ -145,22 +145,22 @@ static int test_ecm_large_semiprime(void) {
 
         /* Check if factor divides n */
         cfx_big_copy(&quot, &n);
-        cfx_big_div_eq(&quot, &factor, &rem);
+        cfx_big_divrem_eq(&quot, &factor, &rem);
 
-        str = cfx_big_to_str(&quot, NULL);
+        str = cfx_big_dec_alloc(&quot, NULL);
         printf("n / factor = %s\n", str);
         free(str);
 
-        str = cfx_big_to_str(&rem, NULL);
+        str = cfx_big_dec_alloc(&rem, NULL);
         printf("remainder = %s\n", str);
         free(str);
 
         /* Factor should be p or q */
-        str = cfx_big_to_str(&p, NULL);
+        str = cfx_big_dec_alloc(&p, NULL);
         printf("Expected p = %s\n", str);
         free(str);
 
-        str = cfx_big_to_str(&q, NULL);
+        str = cfx_big_dec_alloc(&q, NULL);
         printf("Expected q = %s\n", str);
         free(str);
 

@@ -42,7 +42,7 @@ static void test_big_pollard_rho_semiprime(void) {
 
     /* Verify: n should be divisible by factor */
     cfx_big_copy(&quotient, &n);
-    cfx_big_div_eq(&quotient, &factor, NULL);
+    cfx_big_divrem_eq(&quotient, &factor, NULL);
     cfx_big_mul(&check, &quotient, &factor);
     CFX_ASSERT(cfx_big_cmp(&check, &n) == 0);
 
@@ -98,7 +98,7 @@ static void test_big_pollard_rho_large_semiprime(void) {
 
     /* Verify divisibility */
     cfx_big_copy(&quotient, &n);
-    cfx_big_div_eq(&quotient, &factor, NULL);
+    cfx_big_divrem_eq(&quotient, &factor, NULL);
     cfx_big_mul(&check, &quotient, &factor);
     CFX_ASSERT(cfx_big_cmp(&check, &n) == 0);
 

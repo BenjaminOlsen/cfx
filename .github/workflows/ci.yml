@@ -32,7 +32,7 @@ jobs:
         run: cmake --build build --parallel
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --output-on-failure --timeout 120 -j
 
       - name: Upload CTest logs on failure
         if: failure()

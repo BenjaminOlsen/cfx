@@ -3,7 +3,7 @@
 
 #include "cfx/big.h"
 #include "cfx/macros.h"
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s <base> <exp> <mod>\n", prog);
@@ -32,7 +32,7 @@ int cfx_modexp_run(int argc, char* argv[]) {
     cfx_big_mod_exp(&r, &base, &exp, &mod);
 
     PRINT_BIG("ayy", &r);
-    char* s = cfx_big_to_str(&r, NULL);
+    char* s = cfx_big_dec_alloc(&r, NULL);
     printf("%s\n", s);
     cfx_big_free(&mod);
     cfx_big_free(&base);

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s [-x|-d] [-ix|-id] n p\n", prog);
@@ -69,11 +69,11 @@ int cfx_pow_run(int argc, char* argv[]) {
     char* npstr;
     size_t sz;
     if (cfx_print_hex) {
-        npstr = cfx_big_to_hex(&np, &sz);
+        npstr = cfx_big_hex_alloc(&np, &sz);
     } else if (print_bin) {
-        npstr = cfx_big_to_bin(&np, &sz);
+        npstr = cfx_big_bin_alloc(&np, &sz);
     } else {
-        npstr = cfx_big_to_str(&np, &sz);
+        npstr = cfx_big_dec_alloc(&np, &sz);
     }
 
     printf("n: %s\np: %s\nn^p: %s\ndigits: %zu\n", nstr, pstr, npstr, sz);

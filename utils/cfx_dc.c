@@ -1,7 +1,7 @@
 /* ---- cfx_dc.c - Desktop calculator for big integers ---- */
 #include "cfx/big.h"
 #include "cfx/compat.h"
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -153,7 +153,7 @@ static token_vec_t tokenize(const char* s, base_t inb) {
             token_t tk = {.t = T_NUM, .num=cfx_strndup(s+i, ncons)};
             tv_push(&tv, tk);
             i += ncons;
-            const char* st = cfx_big_to_str(&tmp, NULL);
+            const char* st = cfx_big_dec_alloc(&tmp, NULL);
             #if TOK_DBG
             printf("NUM %s\n", st);
             #endif
@@ -308,7 +308,7 @@ static void apply_un_op(cfx_big_t* out, const cfx_big_t* A, char op) {
             return;
         }
         if (A->n > 1) {
-            char* s = cfx_big_to_str(A, NULL);
+            char* s = cfx_big_dec_alloc(A, NULL);
             printf("You are trying to take the factorial of %s, rethink things...\n", s);
             free(s);
             return;
@@ -331,7 +331,7 @@ static void apply_bin_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B,
             cfx_big_t tmp;
             cfx_big_init(&tmp);
             cfx_big_copy(&tmp, A);
-            cfx_big_add(&tmp, B);
+            cfx_big_add_eq(&tmp, B);
             cfx_big_move(out, &tmp);
             return;
         }
@@ -339,7 +339,7 @@ static void apply_bin_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B,
             cfx_big_t tmp;
             cfx_big_init(&tmp);
             cfx_big_copy(&tmp, A);
-            cfx_big_sub(&tmp, B);
+            cfx_big_sub_eq(&tmp, B);
             cfx_big_move(out, &tmp);
             return;
         }
@@ -422,7 +422,7 @@ static void apply_bin_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B,
             if (B->n == 1) {
                 cfx_big_shl_bits(out, A, (int)B->limb[0]);
             } else {
-                const char* s = cfx_big_to_str(B, NULL);
+                const char* s = cfx_big_dec_alloc(B, NULL);
                 fprintf(stderr, "you're trying to shift left by %s\n, rethink things...\n", s);
             }
             return;
@@ -431,7 +431,7 @@ static void apply_bin_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B,
             if (B->n == 1) {
                 cfx_big_shr_bits(out, A, (int)B->limb[0]);
             } else {
-                const char* s = cfx_big_to_str(B, NULL);
+                const char* s = cfx_big_dec_alloc(B, NULL);
                 fprintf(stderr, "you're trying to shift right by %s\n, rethink things...\n", s);
             }
             return;
@@ -440,7 +440,7 @@ static void apply_bin_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B,
             if (B->n == 1 && B->limb[0] < UINT_MAX) {
                 cfx_big_rotr(out, A, (unsigned)B->limb[0]);
             } else {
-                const char* s = cfx_big_to_str(B, NULL);
+                const char* s = cfx_big_dec_alloc(B, NULL);
                 fprintf(stderr, "you're trying to rotate right by %s\n, rethink things...\n", s);
             }
             return;
@@ -449,7 +449,7 @@ static void apply_bin_op(cfx_big_t* out, const cfx_big_t* A, const cfx_big_t* B,
             if (B->n == 1&& B->limb[0] < UINT_MAX) {
                 cfx_big_rotl(out, A, (unsigned)B->limb[0]);
             } else {
-                const char* s = cfx_big_to_str(B, NULL);
+                const char* s = cfx_big_dec_alloc(B, NULL);
                 fprintf(stderr, "you're trying to rotate left by %s\n, rethink things...\n", s);
             }
             return;
@@ -603,19 +603,19 @@ int cfx_dc_run(int argc, char** argv) {
     size_t digits;
     switch (outb) {
         case BASE_DEC:
-            out = cfx_big_to_str(&res, &digits);
+            out = cfx_big_dec_alloc(&res, &digits);
             prefix = "";
             break;
         case BASE_HEX:
-            out = cfx_big_to_hex(&res, &digits);
+            out = cfx_big_hex_alloc(&res, &digits);
             prefix = "0x";
             break;
         case BASE_BIN:
-            out = cfx_big_to_bin(&res, &digits);
+            out = cfx_big_bin_alloc(&res, &digits);
             prefix = "0b";
             break;
         case BASE_64:
-            out = cfx_big_to_b64(&res, &digits);
+            out = cfx_big_b64_alloc(&res, &digits);
             prefix = "b64:";
             break;
     }

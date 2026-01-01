@@ -7,13 +7,13 @@ static void test_mul_by_zero(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_from_limb(&b, 123);
-    cfx_big_mul_sm(&b, 2838);
-    cfx_big_mul_sm(&b, 1928);
-    cfx_big_mul_sm(&b, 9);
-    cfx_big_mul_sm(&b, 123765);
-    cfx_big_mul_sm(&b, 0);
+    cfx_big_mul_sm_eq(&b, 2838);
+    cfx_big_mul_sm_eq(&b, 1928);
+    cfx_big_mul_sm_eq(&b, 9);
+    cfx_big_mul_sm_eq(&b, 123765);
+    cfx_big_mul_sm_eq(&b, 0);
     size_t sz = 0;
-    char* s = cfx_big_to_str(&b, &sz);
+    char* s = cfx_big_dec_alloc(&b, &sz);
     CFX_ASSERT(sz == 1);
     CFX_ASSERT(strcmp(s, "0") == 0);
     free(s);
@@ -26,12 +26,12 @@ static void test_add_sm(void) {
     cfx_big_init(&b);
 
     cfx_big_from_limb(&b, 123);
-    cfx_big_add_sm(&b, 321);
+    cfx_big_add_sm_eq(&b, 321);
     CFX_ASSERT(b.limb[0] == 444);
 
     cfx_big_from_limb(&b, CFX_LIMB_MAX);
     CFX_ASSERT(b.limb[0] == CFX_LIMB_MAX);
-    cfx_big_add_sm(&b, 1);
+    cfx_big_add_sm_eq(&b, 1);
     CFX_ASSERT(b.limb[0] == 0);
     CFX_ASSERT(b.limb[1] == 1);
 
@@ -44,24 +44,24 @@ static void test_sub_sm(void) {
     cfx_big_init(&b);
 
     cfx_big_from_limb(&b, 1);
-    cfx_big_sub_sm(&b, 1);
+    cfx_big_sub_sm_eq(&b, 1);
     CFX_ASSERT(b.limb[0] == 0);
-    cfx_big_sub_sm(&b, 1);
+    cfx_big_sub_sm_eq(&b, 1);
     CFX_ASSERT(b.limb[0] == 0);
 
     cfx_big_from_limb(&b, CFX_LIMB_MAX);
     CFX_ASSERT(b.limb[0] == CFX_LIMB_MAX);
-    cfx_big_add_sm(&b, 1);
+    cfx_big_add_sm_eq(&b, 1);
     CFX_ASSERT(b.limb[0] == 0);
     CFX_ASSERT(b.limb[1] == 1);
 
-    cfx_big_sub_sm(&b, 1);
+    cfx_big_sub_sm_eq(&b, 1);
     CFX_ASSERT(b.limb[0] == CFX_LIMB_MAX);
     CFX_ASSERT(b.n == 1);
 
     const cfx_limb_t N = 12;
     for (cfx_limb_t n = 0; n < N; ++n) {
-        cfx_big_sub_sm(&b, 1);
+        cfx_big_sub_sm_eq(&b, 1);
     }
     CFX_ASSERT(b.limb[0] == CFX_LIMB_MAX - N);
 
@@ -69,11 +69,11 @@ static void test_sub_sm(void) {
     cfx_limb_t orig = b.limb[0];
     for (cfx_limb_t n = 0; n < 2; ++n) {
         cfx_acc_t s = (cfx_acc_t)b.limb[0] + q;
-        cfx_big_add_sm(&b, q);
+        cfx_big_add_sm_eq(&b, q);
         CFX_ASSERT(b.limb[0] == (cfx_limb_t)s);
         CFX_ASSERT(b.n > 1);
         CFX_ASSERT(b.limb[1] == (cfx_limb_t)(s >> CFX_LIMB_BITS));
-        cfx_big_sub_sm(&b, q);
+        cfx_big_sub_sm_eq(&b, q);
         CFX_ASSERT(b.limb[0] == orig);
     }
 
@@ -97,17 +97,17 @@ static void test_sub(void) {
     CFX_ASSERT(cfx_big_eq(&a, &b));
     CFX_ASSERT(cfx_big_eq(&a, &t));
 
-    cfx_big_sub(&t, &a);
+    cfx_big_sub_eq(&t, &a);
     CFX_ASSERT(cfx_big_is_zero(&t));
 
     cfx_big_copy(&t, &a);
-    cfx_big_add_sm(&t, 0xFABADA);
-    cfx_big_sub(&t, &a);
+    cfx_big_add_sm_eq(&t, 0xFABADA);
+    cfx_big_sub_eq(&t, &a);
     CFX_ASSERT(cfx_big_eq_u64(&t, 0xFABADA));
 
     cfx_big_copy(&t, &a);
-    cfx_big_mul_sm(&t, 2);
-    cfx_big_sub(&t, &a);
+    cfx_big_mul_sm_eq(&t, 2);
+    cfx_big_sub_eq(&t, &a);
     CFX_ASSERT(cfx_big_eq(&t, &a));
 
     cfx_big_t two;
@@ -116,7 +116,7 @@ static void test_sub(void) {
 
     cfx_big_copy(&t, &a);
     cfx_big_mul_eq(&t, &two);
-    cfx_big_sub(&t, &a);
+    cfx_big_sub_eq(&t, &a);
     CFX_ASSERT(cfx_big_eq(&t, &a));
 
     cfx_big_free(&a);
@@ -201,6 +201,110 @@ static void test_is_even_zero(void) {
     cfx_big_free(&a);
 }
 
+static void test_add_non_inplace(void) {
+    cfx_big_t a, b, out;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+    cfx_big_init(&out);
+
+    /* basic addition */
+    cfx_big_from_limb(&a, 100);
+    cfx_big_from_limb(&b, 200);
+    cfx_big_add(&out, &a, &b);
+    CFX_ASSERT(cfx_big_eq_u64(&out, 300));
+    CFX_ASSERT(cfx_big_eq_u64(&a, 100));  /* a unchanged */
+    CFX_ASSERT(cfx_big_eq_u64(&b, 200));  /* b unchanged */
+
+    /* addition with carry */
+    cfx_big_from_limb(&a, CFX_LIMB_MAX);
+    cfx_big_from_limb(&b, 1);
+    cfx_big_add(&out, &a, &b);
+    CFX_ASSERT(out.n == 2);
+    CFX_ASSERT(out.limb[0] == 0);
+    CFX_ASSERT(out.limb[1] == 1);
+
+    /* aliasing: out == a */
+    cfx_big_from_limb(&a, 50);
+    cfx_big_from_limb(&b, 25);
+    cfx_big_add(&a, &a, &b);
+    CFX_ASSERT(cfx_big_eq_u64(&a, 75));
+
+    /* aliasing: out == b */
+    cfx_big_from_limb(&a, 50);
+    cfx_big_from_limb(&b, 25);
+    cfx_big_add(&b, &a, &b);
+    CFX_ASSERT(cfx_big_eq_u64(&b, 75));
+
+    /* large numbers */
+    cfx_big_from_hex(&a, "ffffffffffffffffffffffffffffffff");
+    cfx_big_from_hex(&b, "1");
+    cfx_big_add(&out, &a, &b);
+    char* s = cfx_big_hex_alloc(&out, NULL);
+    CFX_ASSERT(strcmp(s, "100000000000000000000000000000000") == 0);
+    free(s);
+
+    cfx_big_free(&a);
+    cfx_big_free(&b);
+    cfx_big_free(&out);
+    PRINT_TEST(1);
+}
+
+static void test_sub_non_inplace(void) {
+    cfx_big_t a, b, out;
+    cfx_big_init(&a);
+    cfx_big_init(&b);
+    cfx_big_init(&out);
+
+    /* basic subtraction */
+    cfx_big_from_limb(&a, 300);
+    cfx_big_from_limb(&b, 200);
+    cfx_big_sub(&out, &a, &b);
+    CFX_ASSERT(cfx_big_eq_u64(&out, 100));
+    CFX_ASSERT(cfx_big_eq_u64(&a, 300));  /* a unchanged */
+    CFX_ASSERT(cfx_big_eq_u64(&b, 200));  /* b unchanged */
+
+    /* subtraction with borrow */
+    cfx_big_t big;
+    cfx_big_init(&big);
+    cfx_big_from_limb(&big, 1);
+    cfx_big_shl_bits_eq(&big, CFX_LIMB_BITS);  /* big = 2^64 or 2^32 */
+    cfx_big_from_limb(&b, 1);
+    cfx_big_sub(&out, &big, &b);
+    CFX_ASSERT(out.n == 1);
+    CFX_ASSERT(out.limb[0] == CFX_LIMB_MAX);
+    cfx_big_free(&big);
+
+    /* a - a = 0 */
+    cfx_big_from_limb(&a, 12345);
+    cfx_big_sub(&out, &a, &a);
+    CFX_ASSERT(cfx_big_is_zero(&out));
+
+    /* aliasing: out == a */
+    cfx_big_from_limb(&a, 100);
+    cfx_big_from_limb(&b, 30);
+    cfx_big_sub(&a, &a, &b);
+    CFX_ASSERT(cfx_big_eq_u64(&a, 70));
+
+    /* aliasing: out == b */
+    cfx_big_from_limb(&a, 100);
+    cfx_big_from_limb(&b, 30);
+    cfx_big_sub(&b, &a, &b);
+    CFX_ASSERT(cfx_big_eq_u64(&b, 70));
+
+    /* large numbers */
+    cfx_big_from_hex(&a, "100000000000000000000000000000000");
+    cfx_big_from_hex(&b, "1");
+    cfx_big_sub(&out, &a, &b);
+    char* s = cfx_big_hex_alloc(&out, NULL);
+    CFX_ASSERT(strcmp(s, "ffffffffffffffffffffffffffffffff") == 0);
+    free(s);
+
+    cfx_big_free(&a);
+    cfx_big_free(&b);
+    cfx_big_free(&out);
+    PRINT_TEST(1);
+}
+
 int main(void) {
     CFX_TEST(test_mul_by_zero);
     CFX_TEST(test_add_sm);
@@ -211,6 +315,8 @@ int main(void) {
     CFX_TEST(test_cmp_sm_branches);
     CFX_TEST(test_eq_u64_branches);
     CFX_TEST(test_is_even_zero);
+    CFX_TEST(test_add_non_inplace);
+    CFX_TEST(test_sub_non_inplace);
     puts("OK");
     return 0;
 }

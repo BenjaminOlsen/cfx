@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "cfx/big.h"
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s [-x|-d] [-ix|-id|ib] file\n", prog);
@@ -74,11 +74,11 @@ int cfx_fread_run(int argc, char* argv[]) {
     char* s = NULL;
 
     if (cfx_print_hex) {
-        s = cfx_big_to_hex(&big, &sz);
+        s = cfx_big_hex_alloc(&big, &sz);
     } else if (print_bin) {
-        s = cfx_big_to_bin(&big, &sz);
+        s = cfx_big_bin_alloc(&big, &sz);
     } else {
-        s = cfx_big_to_str(&big, &sz);
+        s = cfx_big_dec_alloc(&big, &sz);
     }
 
     if (!s) {

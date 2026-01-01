@@ -2,6 +2,7 @@
 
 #include "cfx/sha256.h"
 #include "cfx/base64.h"
+#include "misc.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,12 +13,8 @@
 #include <fcntl.h>
 #endif
 
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
-enum output_format {
-    FMT_HEX,
-    FMT_BASE64
-};
 
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s [options] [file...]\n", prog);
@@ -34,8 +31,8 @@ static void usage(const char* prog) {
     fprintf(stderr, "  echo data | %s        Hash stdin\n", prog);
 }
 
-static void print_hash(const uint8_t hash[32], const char* name, enum output_format fmt) {
-    if (fmt == FMT_BASE64) {
+static void print_hash(const uint8_t hash[32], const char* name, enum cfx_str_format fmt) {
+    if (fmt == CFX_STR_FMT_BASE64) {
         size_t b64_len = cfx_base64_enc_len(32);
         char b64[64]; /* SHA256 = 32 bytes -> 44 base64 chars + null */
         cfx_base64_encode(b64, &b64_len, hash, 32);
@@ -52,7 +49,7 @@ static void print_hash(const uint8_t hash[32], const char* name, enum output_for
     printf("\n");
 }
 
-static int hash_string(const char* str, enum output_format fmt) {
+static int hash_string(const char* str, enum cfx_str_format fmt) {
     cfx_sha256_ctx ctx;
     uint8_t hash[32];
 
@@ -64,7 +61,7 @@ static int hash_string(const char* str, enum output_format fmt) {
     return 0;
 }
 
-static int hash_file(FILE* f, const char* filename, enum output_format fmt) {
+static int hash_file(FILE* f, const char* filename, enum cfx_str_format fmt) {
     cfx_sha256_ctx ctx;
     uint8_t hash[32];
     uint8_t buf[8192];
@@ -94,7 +91,7 @@ int cfx_hash_run(int argc, char** argv) {
     int argi = 1;
     int had_input = 0;
     int rc = 0;
-    enum output_format fmt = FMT_HEX;
+    enum cfx_str_format fmt = CFX_STR_FMT_HEX;
 
     while (argi < argc) {
         if (strcmp(argv[argi], "-s") == 0) {
@@ -107,10 +104,10 @@ int cfx_hash_run(int argc, char** argv) {
             had_input = 1;
             argi += 2;
         } else if (strcmp(argv[argi], "-x") == 0) {
-            fmt = FMT_HEX;
+            fmt = CFX_STR_FMT_HEX;
             argi++;
         } else if (strcmp(argv[argi], "-b64") == 0) {
-            fmt = FMT_BASE64;
+            fmt = CFX_STR_FMT_BASE64;
             argi++;
         } else if (argv[argi][0] == '-' && argv[argi][1] != '\0') {
             fprintf(stderr, "Unknown option: %s\n", argv[argi]);

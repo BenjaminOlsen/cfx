@@ -114,7 +114,7 @@ static void test_big_div_multi_limb_divisor_exact_and_remainder(void) {
 
     cfx_big_copy(&n, &a);
     cfx_big_mul_eq(&n, &b);
-    cfx_big_add(&n, &r);
+    cfx_big_add_eq(&n, &r);
 
     int rc = cfx_big_divrem(&q, &rem, &n, &b);
     CFX_ASSERT(rc == 0);
@@ -142,9 +142,9 @@ static void test_big_div_in_place_eq_with_remainder(void) {
     cfx_big_copy(&n, &a);
     cfx_big_mul_eq(&n, &b);
     cfx_big_from_limb(&forty_two, 42);
-    cfx_big_add(&n, &forty_two);
+    cfx_big_add_eq(&n, &forty_two);
 
-    int rc = cfx_big_div_eq(&n, &b, &rem);
+    int rc = cfx_big_divrem_eq(&n, &b, &rem);
     CFX_ASSERT(rc == 0);
     CFX_ASSERT(cfx_big_eq(&n, &a));
     expect_dec_eq(&rem, "42");
@@ -173,9 +173,9 @@ static void test_big_div_quotient_only_and_remainder_only(void) {
     cfx_big_copy(&b_minus_1, &b);
     big_dec1(&b_minus_1);
 
-    cfx_big_add(&n, &b_minus_1);
+    cfx_big_add_eq(&n, &b_minus_1);
 
-    CFX_ASSERT(cfx_big_div_out(&q, &n, &b) == 0);
+    CFX_ASSERT(cfx_big_div(&q, &n, &b) == 0);
     CFX_ASSERT(cfx_big_eq(&q, &a));
 
     CFX_ASSERT(cfx_big_mod(&r, &n, &b) == 0);

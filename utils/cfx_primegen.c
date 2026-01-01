@@ -11,12 +11,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
+#include "misc.h"
 
-enum output_format {
-    FMT_HEX,
-    FMT_BASE64
-};
 
 #define SMALL_PRIME_CNT 1024u
 #define MAX_THREAD_CNT 16
@@ -32,9 +29,14 @@ static void usage(const char* prog) {
         "  --threads=<int> Thread count (default: 1)\n"
         "  -x              Output as hex (default)\n"
         "  -b64            Output as base64\n"
+        "  -q              Quiet/pipe mode (number only)\n"
         "  -v, --verbose   Verbose output\n"
-        "  -h, --help      Show this help\n",
-        prog);
+        "  -h, --help      Show this help\n\n"
+        "Examples:\n"
+        "  %s 128\n"
+        "  %s 64 -q | cfx factor\n"
+        "  %s 64 -q | cfx prime_test\n",
+        prog, prog, prog, prog);
 }
 
 enum {
@@ -133,7 +135,7 @@ static int is_safe_prime(const cfx_big_t* p) {
     cfx_big_t q;
     cfx_big_init(&q);
     cfx_big_copy(&q, p);
-    cfx_big_sub_sm(&q, 1);
+    cfx_big_sub_sm_eq(&q, 1);
     cfx_big_shr_bits_eq(&q, 1);  /* q = (p-1)/2 */
     int is_safe = cfx_big_is_prime(&q);
     cfx_big_free(&q);
@@ -184,7 +186,7 @@ int cfx_big_gen_nbit_prime(cfx_big_t* p, size_t bits,
     for (size_t i = 0; i < SMALL_PRIME_CNT; ++i) {
         if (cfx_big_cmp_sm(&n, SMALL_PRIMES[i]) == 0) {
             /* bump by 2 to avoid returning small primes */
-            cfx_big_add_sm(&n, 2);
+            cfx_big_add_sm_eq(&n, 2);
             remainders_add_step(rem, step, SMALL_PRIMES, SMALL_PRIME_CNT);
             break;
         }
@@ -216,7 +218,7 @@ int cfx_big_gen_nbit_prime(cfx_big_t* p, size_t bits,
         }
 
         /* Next odd candidate: n += step */
-        cfx_big_add_sm(&n, step);
+        cfx_big_add_sm_eq(&n, step);
         remainders_add_step(rem, step, SMALL_PRIMES, SMALL_PRIME_CNT);
 
         /* Keep within N bits: if we overflowed (rare), redraw. */
@@ -296,8 +298,8 @@ static void* worker(void* arg) {
     return NULL;
 }
 
-static void print_big_result(const cfx_big_t* b, enum output_format fmt) {
-    if (fmt == FMT_BASE64) {
+static void print_big_result(const cfx_big_t* b, enum cfx_str_format fmt) {
+    if (fmt == CFX_STR_FMT_BASE64) {
         size_t nbytes = (cfx_big_bitlen(b) + 7) / 8;
         uint8_t* bytes = (uint8_t*)malloc(nbytes);
         if (bytes) {
@@ -332,8 +334,9 @@ int cfx_primegen_run(int argc, char* argv[]) {
     unsigned flags = CFX_PRIME_FLAG_NONE;
     size_t bits = 0;
     int verbose = 0;
+    int quiet = 0;
     unsigned threadcnt = 1;
-    enum output_format fmt = FMT_HEX;
+    enum cfx_str_format fmt = CFX_STR_FMT_HEX;
     cfx_srand_os();
     unsigned seed = cfx_rand_os();
 
@@ -365,9 +368,11 @@ int cfx_primegen_run(int argc, char* argv[]) {
         } else if (strcmp(arg, "--verbose") == 0 || strcmp(arg, "-v") == 0) {
             verbose = 1;
         } else if (strcmp(arg, "-x") == 0) {
-            fmt = FMT_HEX;
+            fmt = CFX_STR_FMT_HEX;
         } else if (strcmp(arg, "-b64") == 0) {
-            fmt = FMT_BASE64;
+            fmt = CFX_STR_FMT_BASE64;
+        } else if (strcmp(arg, "-q") == 0) {
+            quiet = 1;
         } else {
             char* endp = NULL;
             bits = (size_t)strtol(arg, &endp, 10);
@@ -425,9 +430,9 @@ int cfx_primegen_run(int argc, char* argv[]) {
         return 1;
     }
 
-    puts("---------------");
+    if (!quiet) puts("---------------");
     print_big_result(&result, fmt);
-    printf(" bits = %zu\n", cfx_big_bitlen(&result));
+    if (!quiet) printf(" bits = %zu\n", cfx_big_bitlen(&result));
 
     cfx_big_free(&result);
     return 0;

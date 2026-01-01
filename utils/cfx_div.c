@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s [-x] [-ox] <dividend> <divisor>\n", prog);
@@ -60,15 +60,15 @@ int cfx_div_run(int argc, char* argv[]) {
 
     char* u_str, *q_str, *r_str, *v_str;
     if (hex_out) {
-        u_str = cfx_big_to_hex(&u, NULL);
-        q_str = cfx_big_to_hex(&q, NULL);
-        r_str = cfx_big_to_hex(&r, NULL);
-        v_str = cfx_big_to_hex(&v, NULL);
+        u_str = cfx_big_hex_alloc(&u, NULL);
+        q_str = cfx_big_hex_alloc(&q, NULL);
+        r_str = cfx_big_hex_alloc(&r, NULL);
+        v_str = cfx_big_hex_alloc(&v, NULL);
     } else {
-        u_str = cfx_big_to_str(&u, NULL);
-        q_str = cfx_big_to_str(&q, NULL);
-        r_str = cfx_big_to_str(&r, NULL);
-        v_str = cfx_big_to_str(&v, NULL);
+        u_str = cfx_big_dec_alloc(&u, NULL);
+        q_str = cfx_big_dec_alloc(&q, NULL);
+        r_str = cfx_big_dec_alloc(&r, NULL);
+        v_str = cfx_big_dec_alloc(&v, NULL);
     }
 
     printf("u: %s\nd: %s\nu/v: %s\nr: %s\n",
@@ -78,7 +78,7 @@ int cfx_div_run(int argc, char* argv[]) {
     cfx_big_t p;
     cfx_big_init(&p);
     cfx_big_mul(&p, &v, &q); /* p = v*q */
-    cfx_big_add(&p, &r); /* p = v*q + r */
+    cfx_big_add_eq(&p, &r); /* p = v*q + r */
 
     int eq = cfx_big_eq(&p, &u);
     printf("ok? %s\n", eq ? "yes!" : "NO.");
@@ -89,18 +89,18 @@ int cfx_div_run(int argc, char* argv[]) {
         cfx_big_init(&diff);
         if (cmp < 0) {
             cfx_big_copy(&diff, &u);
-            cfx_big_sub(&diff, &p);
+            cfx_big_sub_eq(&diff, &p);
         } else {
             cfx_big_copy(&diff, &p);
-            cfx_big_sub(&diff, &u);
+            cfx_big_sub_eq(&diff, &u);
         }
-        char* diff_str = hex_out ? cfx_big_to_hex(&diff, NULL):cfx_big_to_str(&diff, NULL);
+        char* diff_str = hex_out ? cfx_big_hex_alloc(&diff, NULL):cfx_big_dec_alloc(&diff, NULL);
         printf("diff: %s\n", diff_str);
         free(diff_str);
         cfx_big_free(&diff);
     }
 
-    char* p_str = hex_out ? cfx_big_to_hex(&p, NULL):cfx_big_to_str(&p, NULL);
+    char* p_str = hex_out ? cfx_big_hex_alloc(&p, NULL):cfx_big_dec_alloc(&p, NULL);
     printf("p = v*q + r: %s\n", p_str);
 
     /* sanity check: */
@@ -111,7 +111,7 @@ int cfx_div_run(int argc, char* argv[]) {
     PRINT_BIG("u", &u);
     printf("u, %s\n", u_str);
     PRINT_BIG("v", &v);
-    printf("v, %s\n", hex_out ? cfx_big_to_hex(&v, NULL) : cfx_big_to_str(&v, NULL));
+    printf("v, %s\n", hex_out ? cfx_big_hex_alloc(&v, NULL) : cfx_big_dec_alloc(&v, NULL));
     PRINT_BIG("p", &p);
     printf("p, %s\n", p_str);
     PRINT_BIG("q", &q);

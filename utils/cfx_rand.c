@@ -7,12 +7,9 @@
 #include <string.h>
 #include <errno.h>
 
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
+#include "misc.h"
 
-enum output_format {
-    FMT_HEX,
-    FMT_BASE64
-};
 
 static void usage(const char* prog) {
     fprintf(stderr,
@@ -34,8 +31,8 @@ static void usage(const char* prog) {
     }
 }
 
-static void print_bytes(const uint8_t* bytes, size_t n, enum output_format fmt) {
-    if (fmt == FMT_BASE64) {
+static void print_bytes(const uint8_t* bytes, size_t n, enum cfx_str_format fmt) {
+    if (fmt == CFX_STR_FMT_BASE64) {
         size_t b64_len = cfx_base64_enc_len(n);
         char* b64 = (char*)malloc(b64_len + 1);
         if (b64) {
@@ -58,7 +55,7 @@ int cfx_rand_run(int argc, char** argv) {
 
     size_t n = 4;
     int verbose = 0;
-    enum output_format fmt = FMT_HEX;
+    enum cfx_str_format fmt = CFX_STR_FMT_HEX;
     const char* prog = argv[0];
 
     const cfx_rand_desc_t* rand_gen = &g_rand_gens[0]; /* default */
@@ -94,9 +91,9 @@ int cfx_rand_run(int argc, char** argv) {
         } else if ((strcmp(arg, "-v") == 0) || (strcmp(arg, "--verbose") == 0)) {
             verbose = 1;
         } else if (strcmp(arg, "-x") == 0) {
-            fmt = FMT_HEX;
+            fmt = CFX_STR_FMT_HEX;
         } else if (strcmp(arg, "-b64") == 0) {
-            fmt = FMT_BASE64;
+            fmt = CFX_STR_FMT_BASE64;
         } else {
             n = strtoull(arg, NULL, 0);
             if (errno) {

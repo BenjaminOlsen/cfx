@@ -2,12 +2,13 @@
 #include "cfx/arith.h"
 #include "cfx/algo.h"
 #include <benchmark/benchmark.h>
+#include <cmath>
 
 extern "C" {
 static inline cfx_limb_t isqrt_u64(cfx_limb_t n) {
     /* Integer sqrt via double for speed, then adjust */
     double d = (double)n;
-    cfx_limb_t x = (cfx_limb_t)(d > 0 ? __builtin_floor(__builtin_sqrt(d)) : 0);
+    cfx_limb_t x = (cfx_limb_t)(d > 0 ? std::floor(std::sqrt(d)) : 0);
     while ((x + 1) > 0 && (x + 1) <= n / (x+1)) ++x;
     while (x > 0 && x > n / x) --x;
     return x;

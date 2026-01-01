@@ -369,6 +369,7 @@ static void BM_Chacha20_Block4_Simd_2(benchmark::State& state) {
     state.counters["total_bytes"] = static_cast<double>(total_bytes);
 }
 
+#if CFX_HAVE_AVX2
 static void BM_Chacha20_Block8_avx2(benchmark::State& state) {
 
     uint8_t key[32];
@@ -392,6 +393,7 @@ static void BM_Chacha20_Block8_avx2(benchmark::State& state) {
     state.counters["total_bytes"] = static_cast<double>(total_bytes);
 
 }
+#endif 
 
 BENCHMARK(BM_Chacha20_Block_Scalar4)->Arg(1 << 16 );
 BENCHMARK(BM_Chacha20_Block_Scalar4_2)->Arg(1 << 16 );
@@ -399,6 +401,8 @@ BENCHMARK(BM_Chacha20_Block_Scalar4_3)->Arg(1 << 16 );
 BENCHMARK(BM_Chacha20_Block_Ctx)->Arg(1 << 16 );
 BENCHMARK(BM_Chacha20_Block4_Simd)->Arg(1 << 16 );
 BENCHMARK(BM_Chacha20_Block4_Simd_2)->Arg(1 << 16 );
+#if CFX_HAVE_AVX2
 BENCHMARK(BM_Chacha20_Block8_avx2)->Arg(1 << 16 );
+#endif
 
 BENCHMARK_MAIN();

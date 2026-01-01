@@ -158,6 +158,7 @@ static void big_copy_from(const cfx_big_t* src, cfx_big_t* dst) {
 
 // --- Benchmark ---------------------------------------------------------------
 // state.range(0) = na, range(1) = nb, range(2) = threads (<=0 => auto)
+#if !defined(_MSC_VER)
 static void BM_MulRows(benchmark::State& state) {
     const size_t na = static_cast<size_t>(state.range(0));
     const size_t nb = static_cast<size_t>(state.range(1));
@@ -192,6 +193,7 @@ static void BM_MulRows(benchmark::State& state) {
     cfx_big_free(&a);
     cfx_big_free(&m);
 }
+#endif
 
 static void BM_MulAuto(benchmark::State& state) {
     const size_t na = static_cast<size_t>(state.range(0));
@@ -246,6 +248,13 @@ static void BM_MulAuto(benchmark::State& state) {
 
 
 // ---- Register sizes --------------------------------------------------------
+#if defined(_MSC_VER)
+#define REG(sz) \
+    BENCHMARK(BM_cfx_big_mul)->Arg(sz); \
+    BENCHMARK(BM_cfx_big_mul_csa)->Arg(sz); \
+    BENCHMARK(BM_cfx_big_mul_csa_scratch)->Arg(sz); \
+    BENCHMARK(BM_MulAuto)->Args({sz, sz})
+#else
 #define REG(sz) \
     BENCHMARK(BM_cfx_big_mul)->Arg(sz); \
     BENCHMARK(BM_cfx_big_mul_csa)->Arg(sz); \
@@ -257,6 +266,7 @@ static void BM_MulAuto(benchmark::State& state) {
     BENCHMARK(BM_MulRows)->Args({sz, sz, 8}); \
     BENCHMARK(BM_MulRows)->Args({sz, sz, 16}); \
     BENCHMARK(BM_MulAuto)->Args({sz, sz})
+#endif
    
 
 REG(4);     // 256 bits

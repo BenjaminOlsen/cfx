@@ -6,6 +6,11 @@
 #include <cstring>
 #include <string>
 
+#if defined(_MSC_VER)
+// pthreads not available on MSVC - benchmarks disabled
+#define CFX_BENCH_NO_PTHREADS
+#endif
+
 
 // --- Helpers -----------------------------------------------------------------
 static inline cfx_limb_t splitmix64(cfx_limb_t& s) {
@@ -31,6 +36,7 @@ static void big_copy_from(const cfx_big_t* src, cfx_big_t* dst) {
 
 // --- Benchmark ---------------------------------------------------------------
 // state.range(0) = na, range(1) = nb, range(2) = threads (<=0 => auto)
+#ifndef CFX_BENCH_NO_PTHREADS
 static void BM_MulRows(benchmark::State& state) {
     const size_t na = static_cast<size_t>(state.range(0));
     const size_t nb = static_cast<size_t>(state.range(1));
@@ -65,6 +71,7 @@ static void BM_MulRows(benchmark::State& state) {
     cfx_big_free(&a);
     cfx_big_free(&m);
 }
+
 BENCHMARK(BM_MulRows)
     ->Args({64,   64,   1})
     ->Args({64,   64,   8})
@@ -116,5 +123,7 @@ BENCHMARK(BM_MulRows_AutoThreads)
     ->Args({16384, 16384})
     // ->Unit(benchmark::kMillisecond)
     ->UseRealTime();
+
+#endif // !CFX_BENCH_NO_PTHREADS
 
 BENCHMARK_MAIN();

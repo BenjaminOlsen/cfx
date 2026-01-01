@@ -39,7 +39,9 @@ using rng32_fn = uint32_t(*)(void*);
 
 // Make the core accessible via a function taking void* state.
 // Mark noinline to avoid compiler "helpfully" inlining anyway.
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
 __attribute__((noinline))
 #endif
 static uint32_t pcg32_core_void(void* p) {

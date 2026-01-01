@@ -74,19 +74,19 @@ static void ecm_point_double(cfx_ecm_point_t* R, const cfx_ecm_point_t* P,
 
     /* u = (X + Z)^2 */
     cfx_big_copy(&u, &P->X);
-    cfx_big_add(&u, &P->Z);
-    if (cfx_big_cmp(&u, &ctx->n) >= 0) cfx_big_sub(&u, &ctx->n);
+    cfx_big_add_eq(&u, &P->Z);
+    if (cfx_big_cmp(&u, &ctx->n) >= 0) cfx_big_sub_eq(&u, &ctx->n);
     cfx_big_mont_sqr(&u, &u, ctx);
 
     /* v = (X - Z)^2 */
     cfx_big_copy(&v, &P->X);
     if (cfx_big_cmp(&v, &P->Z) >= 0) {
-        cfx_big_sub(&v, &P->Z);
+        cfx_big_sub_eq(&v, &P->Z);
     } else {
         cfx_big_copy(&t1, &P->Z);
-        cfx_big_sub(&t1, &P->X);
+        cfx_big_sub_eq(&t1, &P->X);
         cfx_big_copy(&v, &ctx->n);
-        cfx_big_sub(&v, &t1);  /* v = n - (Z - X) = X - Z (mod n) */
+        cfx_big_sub_eq(&v, &t1);  /* v = n - (Z - X) = X - Z (mod n) */
     }
     cfx_big_mont_sqr(&v, &v, ctx);
 
@@ -96,12 +96,12 @@ static void ecm_point_double(cfx_ecm_point_t* R, const cfx_ecm_point_t* P,
     /* diff = u - v = (X+Z)^2 - (X-Z)^2 = 4XZ */
     if (cfx_big_cmp(&u, &v) >= 0) {
         cfx_big_copy(&diff, &u);
-        cfx_big_sub(&diff, &v);
+        cfx_big_sub_eq(&diff, &v);
     } else {
         cfx_big_copy(&diff, &v);
-        cfx_big_sub(&diff, &u);
+        cfx_big_sub_eq(&diff, &u);
         cfx_big_copy(&t1, &ctx->n);
-        cfx_big_sub(&t1, &diff);
+        cfx_big_sub_eq(&t1, &diff);
         cfx_big_copy(&diff, &t1);  /* diff = n - (v-u) */
     }
 
@@ -109,8 +109,8 @@ static void ecm_point_double(cfx_ecm_point_t* R, const cfx_ecm_point_t* P,
     cfx_big_mont_mul(&t1, a24, &diff, ctx);
 
     /* t1 = v + a24*diff */
-    cfx_big_add(&t1, &v);
-    if (cfx_big_cmp(&t1, &ctx->n) >= 0) cfx_big_sub(&t1, &ctx->n);
+    cfx_big_add_eq(&t1, &v);
+    if (cfx_big_cmp(&t1, &ctx->n) >= 0) cfx_big_sub_eq(&t1, &ctx->n);
 
     /* Z2 = diff * (v + a24*diff) */
     cfx_big_mont_mul(&R->Z, &diff, &t1, ctx);
@@ -156,36 +156,36 @@ static void ecm_point_add(cfx_ecm_point_t* R, const cfx_ecm_point_t* P, const cf
     /* t1 = X1 - Z1 */
     if (cfx_big_cmp(&P->X, &P->Z) >= 0) {
         cfx_big_copy(&t1, &P->X);
-        cfx_big_sub(&t1, &P->Z);
+        cfx_big_sub_eq(&t1, &P->Z);
     } else {
         cfx_big_copy(&t1, &ctx->n);
         cfx_big_copy(&t3, &P->Z);
-        cfx_big_sub(&t3, &P->X);
-        cfx_big_sub(&t1, &t3);
+        cfx_big_sub_eq(&t3, &P->X);
+        cfx_big_sub_eq(&t1, &t3);
     }
 
     /* t2 = X2 + Z2 */
     cfx_big_copy(&t2, &Q->X);
-    cfx_big_add(&t2, &Q->Z);
-    if (cfx_big_cmp(&t2, &ctx->n) >= 0) cfx_big_sub(&t2, &ctx->n);
+    cfx_big_add_eq(&t2, &Q->Z);
+    if (cfx_big_cmp(&t2, &ctx->n) >= 0) cfx_big_sub_eq(&t2, &ctx->n);
 
     /* u = (X1 - Z1)(X2 + Z2) */
     cfx_big_mont_mul(&u, &t1, &t2, ctx);
 
     /* t3 = X1 + Z1 */
     cfx_big_copy(&t3, &P->X);
-    cfx_big_add(&t3, &P->Z);
-    if (cfx_big_cmp(&t3, &ctx->n) >= 0) cfx_big_sub(&t3, &ctx->n);
+    cfx_big_add_eq(&t3, &P->Z);
+    if (cfx_big_cmp(&t3, &ctx->n) >= 0) cfx_big_sub_eq(&t3, &ctx->n);
 
     /* t4 = X2 - Z2 */
     if (cfx_big_cmp(&Q->X, &Q->Z) >= 0) {
         cfx_big_copy(&t4, &Q->X);
-        cfx_big_sub(&t4, &Q->Z);
+        cfx_big_sub_eq(&t4, &Q->Z);
     } else {
         cfx_big_copy(&t4, &ctx->n);
         cfx_big_copy(&t1, &Q->Z);
-        cfx_big_sub(&t1, &Q->X);
-        cfx_big_sub(&t4, &t1);
+        cfx_big_sub_eq(&t1, &Q->X);
+        cfx_big_sub_eq(&t4, &t1);
     }
 
     /* v = (X1 + Z1)(X2 - Z2) */
@@ -193,18 +193,18 @@ static void ecm_point_add(cfx_ecm_point_t* R, const cfx_ecm_point_t* P, const cf
 
     /* t1 = u + v */
     cfx_big_copy(&t1, &u);
-    cfx_big_add(&t1, &v);
-    if (cfx_big_cmp(&t1, &ctx->n) >= 0) cfx_big_sub(&t1, &ctx->n);
+    cfx_big_add_eq(&t1, &v);
+    if (cfx_big_cmp(&t1, &ctx->n) >= 0) cfx_big_sub_eq(&t1, &ctx->n);
 
     /* t2 = u - v */
     if (cfx_big_cmp(&u, &v) >= 0) {
         cfx_big_copy(&t2, &u);
-        cfx_big_sub(&t2, &v);
+        cfx_big_sub_eq(&t2, &v);
     } else {
         cfx_big_copy(&t2, &ctx->n);
         cfx_big_copy(&t3, &v);
-        cfx_big_sub(&t3, &u);
-        cfx_big_sub(&t2, &t3);
+        cfx_big_sub_eq(&t3, &u);
+        cfx_big_sub_eq(&t2, &t3);
     }
 
     /* t1 = (u + v)^2 */

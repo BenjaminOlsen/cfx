@@ -1,8 +1,9 @@
-/* cfx_utils.h - Run function declarations for cfx utilities */
+/* cfx_cmd.h - Run function declarations for cfx utilities */
 
 #ifndef CFX_UTILS_H
 #define CFX_UTILS_H
 
+int cfx_aead_run(int argc, char** argv);
 int cfx_choose_run(int argc, char** argv);
 int cfx_dc_run(int argc, char** argv);
 int cfx_div_run(int argc, char** argv);
@@ -21,6 +22,9 @@ int cfx_primes_run(int argc, char** argv);
 int cfx_primes_near_pow2_run(int argc, char** argv);
 int cfx_rand_run(int argc, char** argv);
 int cfx_ulam_spiral_run(int argc, char** argv);
+int cfx_pi_run(int argc, char** argv);
+int cfx_x25519_run(int argc, char** argv);
+int cfx_ed25519_run(int argc, char** argv);
 
 typedef struct {
     const char* name;

@@ -6,7 +6,7 @@
 
 #include "cfx/big.h"
 #include "cfx/compat.h"
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 #define MAX_DELTA 1000u
 static cfx_mutex_t g_print_mu = CFX_MUTEX_INITIALIZER;
@@ -20,10 +20,10 @@ static void big_set_pow2(cfx_big_t *x, size_t k) {
 static void big_sub_abs(const cfx_big_t *a, const cfx_big_t *b, cfx_big_t *dist_out) {
     if (cfx_big_cmp(a, b) >= 0) {
         cfx_big_copy(dist_out, a);
-        cfx_big_sub(dist_out, b);
+        cfx_big_sub_eq(dist_out, b);
     } else {
         cfx_big_copy(dist_out, b);
-        cfx_big_sub(dist_out, a);
+        cfx_big_sub_eq(dist_out, a);
     }
 }
 
@@ -57,7 +57,7 @@ static int nearest_prime_near(const cfx_big_t *target,
         /* below */
         if (cfx_big_cmp(&delta, target) < 0) {
             cfx_big_copy(&n, target);
-            cfx_big_sub(&n, &delta);   /* n = target - delta */
+            cfx_big_sub_eq(&n, &delta);   /* n = target - delta */
 
             if (cfx_big_cmp_sm(&n, 2) > 0) {
                 if (cfx_big_is_prime(&n)) {
@@ -72,7 +72,7 @@ static int nearest_prime_near(const cfx_big_t *target,
 
         /* above */
         cfx_big_copy(&n, target);
-        cfx_big_add(&n, &delta);       /* n = target + delta */
+        cfx_big_add_eq(&n, &delta);       /* n = target + delta */
 
         if (cfx_big_is_prime(&n)) {
             cfx_big_copy(prime_out, &n);
@@ -82,7 +82,7 @@ static int nearest_prime_near(const cfx_big_t *target,
             break;
         }
 
-        cfx_big_add_sm(&delta, 2);
+        cfx_big_add_sm_eq(&delta, 2);
     }
 
     cfx_big_free(&delta);
@@ -129,13 +129,13 @@ static void* worker_func(void *arg) {
         if (wa->print_immediately) {
             /* Build strings OUTSIDE the lock */
             char *p_str = NULL;
-            char *d_str = cfx_big_to_str(&dist, NULL);;
+            char *d_str = cfx_big_dec_alloc(&dist, NULL);;
 
             if (ok) {
                 if (wa->print_hex) {
-                    p_str = cfx_big_to_hex(&p, NULL);
+                    p_str = cfx_big_hex_alloc(&p, NULL);
                 } else {
-                    p_str = cfx_big_to_str(&p, NULL);
+                    p_str = cfx_big_dec_alloc(&p, NULL);
                 }
             }
 
@@ -163,12 +163,12 @@ static void* worker_func(void *arg) {
                 res->dir = dir;
                 char* p_str;
                 if (wa->print_hex) {
-                    p_str = cfx_big_to_hex(&p, NULL);
+                    p_str = cfx_big_hex_alloc(&p, NULL);
                 } else {
-                    p_str = cfx_big_to_str(&p, NULL);
+                    p_str = cfx_big_dec_alloc(&p, NULL);
                 }
                 res->prime_dec = p_str;
-                res->dist_dec = cfx_big_to_str(&dist, NULL);
+                res->dist_dec = cfx_big_dec_alloc(&dist, NULL);
             }
         }
     }

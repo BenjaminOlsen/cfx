@@ -71,14 +71,6 @@ void cfx_chacha20_block4(cfx_chacha20_ctx4_t* ctx, const uint32_t counter[4], ui
 void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
                                 uint8_t out[64]);
 
-void cfx_chacha20_block_rfc8439_2(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
-                                uint8_t out[64]);
-
-void cfx_chacha20_block_rfc8439_3(const uint8_t *CFX_RESTRICT key,
-                                  uint32_t counter,
-                                  const uint8_t *CFX_RESTRICT nonce,
-                                  uint8_t *CFX_RESTRICT out);
-
 void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
                           const uint8_t *pt, size_t pt_len, uint8_t *ct);
 

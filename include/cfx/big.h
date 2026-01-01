@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-#define CFX_BIG_PRINT(bg) printf("b.n %zu: b.cap: %zu, b %s\n", bg.n, bg.cap, cfx_big_to_str(&bg, NULL))
+#define CFX_BIG_PRINT(bg) printf("b.n %zu: b.cap: %zu, b %s\n", bg.n, bg.cap, cfx_big_dec_alloc(&bg, NULL))
 
 #define CFX_BIG_PRINT_LIMBS(bg) \
     do { \
@@ -41,7 +41,7 @@ typedef struct {
 void cfx_big_init(cfx_big_t* b);
 void cfx_big_clear(cfx_big_t* b);
 void cfx_big_free(cfx_big_t* b);
-int cfx_big_reserve(cfx_big_t* b, size_t need);
+void cfx_big_reserve(cfx_big_t* b, size_t need);
 void cfx_big_assign(cfx_big_t* dst, const cfx_big_t* src);
 void cfx_big_assign_sm(cfx_big_t* dst, const cfx_limb_t src);
 void cfx_big_assign_zero(cfx_big_t* b);
@@ -89,13 +89,12 @@ int cfx_big_from_u64(cfx_big_t* b, uint64_t v);
 int cfx_big_from_limb(cfx_big_t* b, cfx_limb_t v);
 int cfx_big_to_bytes_be(uint8_t *out, size_t *out_len, const cfx_big_t *b);
 int cfx_big_from_bytes_be(cfx_big_t* out, const uint8_t* be, size_t len);
-/* out = a * b (non-in-place) */
 void cfx_big_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b);
 
-/* In-place multiplication: b *= m */
 void cfx_big_mul_eq(cfx_big_t* b, const cfx_big_t* m);
-void cfx_big_mul_eq_fft(cfx_big_t* b, const cfx_big_t* m); /* todo */
+void cfx_big_mul_eq_fft(cfx_big_t* b, const cfx_big_t* m);
 void cfx_big_mul_eq_csa(cfx_big_t* b, const cfx_big_t* m);
+void cfx_big_mul_fft(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b);
 /* assumes scratch is allocated with the appropriate size b->n + m->n already. */
 void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t* scratch);
 /* if CFX_HAS_PTHREAD */
@@ -104,25 +103,30 @@ void cfx_big_mul_rows_pthreads(cfx_big_t* b, const cfx_big_t* m, int threads);
 /* chooses the fastest in-place multiplication for the size of the multiplicands */
 void cfx_big_mul_auto(cfx_big_t* b, const cfx_big_t* m);
 
-void cfx_big_sq(cfx_big_t* b);
-int cfx_big_div(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r); /* b /= d; r remainder. */
-void cfx_big_add(cfx_big_t* b, const cfx_big_t* a);
-void cfx_big_add_sm(cfx_big_t* b, cfx_limb_t n);
-void cfx_big_sub(cfx_big_t* a, const cfx_big_t* b);
-void cfx_big_sub_sm(cfx_big_t* b, cfx_limb_t n);
-void cfx_big_mul_sm(cfx_big_t* b, cfx_limb_t m);
+void cfx_big_sq_eq(cfx_big_t* b);
+
+/* Non-in-place arithmetic */
+void cfx_big_add(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b);
+void cfx_big_sub(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b); /* assumes a >= b */
+
+/* In-place arithmetic */
+void cfx_big_add_eq(cfx_big_t* b, const cfx_big_t* a);
+void cfx_big_add_sm_eq(cfx_big_t* b, cfx_limb_t n);
+void cfx_big_sub_eq(cfx_big_t* a, const cfx_big_t* b);
+void cfx_big_sub_sm_eq(cfx_big_t* b, cfx_limb_t n);
+void cfx_big_mul_sm_eq(cfx_big_t* b, cfx_limb_t m);
 
 /* Knuth's long division from TAOCP Vol. 2, 4.3.1 */
 int cfx_big_divrem(cfx_big_t* q, cfx_big_t* r, const cfx_big_t* u, const cfx_big_t* v);
 
-/* q = floor(n/d)*/
-int cfx_big_div_out(cfx_big_t* q, const cfx_big_t* n, const cfx_big_t* d);
+/* q = floor(a/b) */
+int cfx_big_div(cfx_big_t* q, const cfx_big_t* a, const cfx_big_t* b);
 
-/* In-place: b := floor(b/d); optional remainder r. Alias-safe for any combination. */
-int cfx_big_div_eq(cfx_big_t* b, const cfx_big_t* d, cfx_big_t* r /*nullable*/);
+/* In-place: a /= b; optional remainder r. */
+int cfx_big_divrem_eq(cfx_big_t* a, const cfx_big_t* b, cfx_big_t* r /*nullable*/);
 
-cfx_limb_t cfx_big_div_sm(cfx_big_t* b, cfx_limb_t d);
-uint32_t cfx_big_div_sm_u32(cfx_big_t* b, uint32_t d);
+cfx_limb_t cfx_big_div_sm_eq(cfx_big_t* b, cfx_limb_t d);
+uint32_t cfx_big_div_sm_u32_eq(cfx_big_t* b, uint32_t d);
 
 /* out = n % m */
 int cfx_big_mod(cfx_big_t* out, const cfx_big_t* n, const cfx_big_t* m);
@@ -187,12 +191,18 @@ void cfx_big_from_fac_faster(cfx_big_t* out, const cfx_fac_t* f);
  */
 int cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b, cfx_big_t* remainder);
 
-/* note these char* returning functions allocate internally, the returned pointer must be freed */
-char* cfx_big_to_str(const cfx_big_t* b, size_t *sz_out);
-char* cfx_big_to_hex(const cfx_big_t* src, size_t *sz_out);
-char* cfx_big_to_bin(const cfx_big_t* b, size_t *sz_out);
-char* cfx_big_to_b64(const cfx_big_t* b, size_t *sz_out);
+/* allocating string conversions - caller must free returned pointer */
+char* cfx_big_dec_alloc(const cfx_big_t* b, size_t *len_out);
+char* cfx_big_hex_alloc(const cfx_big_t* b, size_t *len_out);
+char* cfx_big_bin_alloc(const cfx_big_t* b, size_t *len_out);
+char* cfx_big_b64_alloc(const cfx_big_t* b, size_t *len_out);
 int cfx_big_to_sci(const cfx_big_t* x, unsigned base, int sig_digits, char* out, size_t outsz);
+
+/* snprintf-style: write to out[0..outlen-1], always NUL-terminate,
+   return number of chars that would be written (excluding NUL). if out==NULL, just return size. */
+size_t cfx_big_snprint_dec(const cfx_big_t* b, char* out, size_t outlen);
+size_t cfx_big_snprint_hex(const cfx_big_t* b, char* out, size_t outlen);
+size_t cfx_big_snprint_bin(const cfx_big_t* b, char* out, size_t outlen);
 
 int cfx_big_from_str(cfx_big_t* out, const char* s);
 
@@ -306,7 +316,7 @@ double cfx_big_log(const cfx_big_t* b, double base);
  * */
 #define CFX_BIG_PRINTF(b, ...) \
 do {\
-    char *_cfx_big_printf_var = cfx_big_to_str(b, NULL); \
+    char *_cfx_big_printf_var = cfx_big_dec_alloc(b, NULL); \
     CFX_PRINT_DBG("%s\n", __VA_ARGS__, _cfx_big_printf_var); \
     free(_cfx_big_printf_var); \
 } while (0)

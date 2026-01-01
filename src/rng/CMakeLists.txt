@@ -1,0 +1,4 @@
+set(CFX_RNG_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/rand.c
+    PARENT_SCOPE
+)

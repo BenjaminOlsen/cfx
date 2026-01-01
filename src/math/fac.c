@@ -49,28 +49,31 @@ static inline int _cfx_mul_zu_ok(size_t a, size_t b, size_t* out) {
     return 0;
 }
 
-int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
+void cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
     if (req_cap <= f->cap) {
-        return 0;
+        return;
     }
     size_t new_cap = f->cap ? 2 * f->cap : 16;
     if (new_cap < req_cap) {
         new_cap = req_cap;
     }
-    /* CFX_PRINT_DBG("cfx_fac_reserve %p requested cap: %zu, new cap: %zu\n", f, req_cap, new_cap); */
     size_t bytes;
     if (_cfx_mul_zu_ok(new_cap, sizeof(cfx_pf_t), &bytes) != 0) {
-        return -1;
+        fprintf(stderr, "cfx_fac_reserve: allocation size overflow\n");
+        abort();
     }
-    f->data = (cfx_pf_t*)realloc(f->data, bytes);
+    void* tmp = realloc(f->data, bytes);
+    if (!tmp) {
+        fprintf(stderr, "cfx_fac_reserve: out of memory (requested %zu bytes)\n", bytes);
+        abort();
+    }
+    f->data = (cfx_pf_t*)tmp;
     f->cap = new_cap;
-    return 0;
 }
 
 int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint32_t e) {
     if (e == 0) return -1;
-    int ret = cfx_fac_reserve(f, f->len + 1);
-    if (ret != 0) return -1;
+    cfx_fac_reserve(f, f->len + 1);
     ++f->len;
     cfx_pf_t* pf = &f->data[f->len - 1];
     pf->p = p;
@@ -91,7 +94,7 @@ void cfx_fac_copy(cfx_fac_t *dst, const cfx_fac_t *src) {
 }
 
 /* dst += src */
-void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src) {
+void cfx_fac_add(cfx_fac_t* dst, const cfx_fac_t* src) {
     cfx_fac_t out;
     cfx_fac_init(&out);
     cfx_fac_reserve(&out, src->len + dst->len);
@@ -116,6 +119,10 @@ void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src) {
             /* p is in src and dst */
             uint64_t p = pf1->p;
             uint32_t e = pf1->e + pf2->e;
+            if (e < pf1->e) {
+                fprintf(stderr, "cfx_fac_add: exponent overflow for prime %" PRIu64 "\n", p);
+                abort();
+            }
             if (e) cfx_fac_push(&out, p, e);
             ++i;
             ++j;
@@ -126,7 +133,7 @@ void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src) {
 }
 
 /* dst -= src */
-void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
+void cfx_fac_sub(cfx_fac_t* dst, const cfx_fac_t* src) {
     cfx_fac_t out;
 
     cfx_fac_init(&out);
@@ -144,9 +151,9 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
             cfx_fac_push(&out, pf1->p, pf1->e);
             ++i;
         } else if (i == dst->len || (j < src->len && pf1->p > pf2->p)) {
-            /* p is in src but not dst - dst does not divide src!!!! */
-            assert(0 && "cfx_fac_sub underflow");
-            j++;
+            /* p is in src but not dst - dst does not divide src */
+            fprintf(stderr, "cfx_fac_sub: underflow (prime %" PRIu64 " in src but not dst)\n", pf2->p);
+            abort();
         } else {
             /* p is in both src and dst: */
             uint64_t p = pf1->p;
@@ -154,8 +161,9 @@ void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src) {
             if (pf1->e > pf2->e) { /* dst divides src */
                 e = pf1->e - pf2->e;
                 cfx_fac_push(&out, p, e);
-            } else if (pf2->e > pf1->e) { /* dst does not divide src! */
-                assert(0 && "cfx_fac_sub underflow");
+            } else if (pf2->e > pf1->e) { /* dst does not divide src */
+                fprintf(stderr, "cfx_fac_sub: underflow (exponent for prime %" PRIu64 ")\n", p);
+                abort();
             }
             /* else, e == 0, p is cancelled out! */
             ++i;

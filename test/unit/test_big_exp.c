@@ -190,7 +190,7 @@ static void test_big_prime(void) {
         cfx_limb_t val = (cfx_limb_t)cfx_primes[i];
         cfx_big_assign_sm(&b1, val);
         cfx_big_copy(&b2, &b1);
-        cfx_big_add_sm(&b2, 1);
+        cfx_big_add_sm_eq(&b2, 1);
         CFX_ASSERT(cfx_big_is_prime(&b1) == 1);
         if(b2.limb[0] != 3) CFX_ASSERT(cfx_big_is_prime(&b2) == 0);
     }

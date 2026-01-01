@@ -4,7 +4,7 @@
 
 #include "cfx/algo.h"
 #include "cfx/compat.h"
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 static void usage(const char* prog) {
     fprintf(stderr,

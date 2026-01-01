@@ -29,6 +29,12 @@ set(CFX_UNIT_TESTS
     test_sha256
     test_vec
     test_compat
+    test_ntt
+    test_sbig
+    test_fe25519
+    test_x25519
+    test_ge25519
+    test_ed25519
 )
 
 foreach(test_name IN LISTS CFX_UNIT_TESTS)

@@ -26,7 +26,7 @@ static void test_binstring2(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_from_bin(&b,s);
-    char* hex = cfx_big_to_hex(&b, NULL);
+    char* hex = cfx_big_hex_alloc(&b, NULL);
     const char* expected = "35555555555555555555555555555555555555555552aaaaaa6755555"
         "55555555555555555aaaaaaaaaaaabd4a040282527955415fffffffffe";
     int cmp = strcmp(hex, expected);
@@ -51,7 +51,7 @@ static void test_binstring3(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_from_hex(&b,s);
-    char* bin = cfx_big_to_bin(&b, NULL);
+    char* bin = cfx_big_bin_alloc(&b, NULL);
 
     int cmp = strcmp(bin, expected);
     CFX_ASSERT(cmp == 0);

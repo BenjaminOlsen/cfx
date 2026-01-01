@@ -26,10 +26,10 @@ static void test_mul_adduiv(void) {
     cfx_big_init(&m);
     cfx_big_from_limb(&m, 1);
     cfx_limb_t K = 0x1B2CDE;
-    cfx_big_mul_sm(&m, K);
+    cfx_big_mul_sm_eq(&m, K);
 
     for (cfx_limb_t i = 0; i < K; ++i) {
-        cfx_big_add_sm(&a, 1);
+        cfx_big_add_sm_eq(&a, 1);
     }
     CFX_ASSERT(cfx_big_eq(&a, &m));
 
@@ -152,8 +152,8 @@ static void test_known_squares(void) {
     cfx_big_from_dec(&b,
         "12554203470773361528352143580257209"
         "759168353591939024551938");
-    cfx_big_sq(&b);
-    char* s = cfx_big_to_str(&b, NULL);
+    cfx_big_sq_eq(&b);
+    char* s = cfx_big_dec_alloc(&b, NULL);
     char* expect =
         "15760802478557791686620405668794173"
         "58808686358020659979337980952437065"
@@ -167,8 +167,8 @@ static void test_known_squares(void) {
         "27136112775646765168338161504493023"
         "20618275753867907499968765052767290"
         "9553511701551770336148695547906");
-    cfx_big_sq(&b);
-    s = cfx_big_to_str(&b, NULL);
+    cfx_big_sq_eq(&b);
+    s = cfx_big_dec_alloc(&b, NULL);
 
     expect =
         "211317812454266098563847037101386611"
@@ -186,8 +186,8 @@ static void test_known_squares(void) {
         "788040123927889584288300542721290477751811"
         "061317446299559616920266928982601233965513"
         "84510299169195903266945438318594");
-    cfx_big_sq(&b);
-    s = cfx_big_to_str(&b, NULL);
+    cfx_big_sq_eq(&b);
+    s = cfx_big_dec_alloc(&b, NULL);
 
     expect =
         "621007236920283574126921534924820203000914"
@@ -212,7 +212,7 @@ static void test_known_squares_2(void) {
         "3095350971345437292114654548843072761868784"
         "674125049315509629339381027496416991005114370");
     cfx_big_mul_eq_csa(&b, &b);
-    char* s = cfx_big_to_str(&b, NULL);
+    char* s = cfx_big_dec_alloc(&b, NULL);
 
     char* expect =
         "24468930997138827791465884302231872460739875"
@@ -227,7 +227,7 @@ static void test_known_squares_2(void) {
     free(s);
 
     cfx_big_mul_eq_csa(&b, &b);
-    s = cfx_big_to_str(&b, NULL);
+    s = cfx_big_dec_alloc(&b, NULL);
 
     expect =
         "598728584142741349308708530097477655730195121"
@@ -256,7 +256,7 @@ static void test_known_squares_2(void) {
 static void test_sq_zero(void) {
     cfx_big_t a;
     cfx_big_init(&a);
-    cfx_big_sq(&a);
+    cfx_big_sq_eq(&a);
     CFX_ASSERT(cfx_big_is_zero(&a));
     cfx_big_free(&a);
 }
@@ -265,7 +265,7 @@ static void test_sq_one(void) {
     cfx_big_t a;
     cfx_big_init(&a);
     cfx_big_from_limb(&a, 1);
-    cfx_big_sq(&a);
+    cfx_big_sq_eq(&a);
     CFX_ASSERT(cfx_big_eq_u64(&a, 1));
     cfx_big_free(&a);
 }
@@ -274,7 +274,7 @@ static void test_sq_small(void) {
     cfx_big_t a;
     cfx_big_init(&a);
     cfx_big_from_limb(&a, 12);
-    cfx_big_sq(&a);
+    cfx_big_sq_eq(&a);
     CFX_ASSERT(cfx_big_eq_u64(&a, 144));
     cfx_big_free(&a);
 }

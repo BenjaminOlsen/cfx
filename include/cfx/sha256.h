@@ -13,8 +13,8 @@ extern "C" {
 #define CFX_SHA256_CTX_SIZE 128u
 
 typedef union {
-    uint8_t opaque[CFX_SHA256_CTX_SIZE];
-    size_t  aligner;
+    uint8_t  opaque[CFX_SHA256_CTX_SIZE];
+    uint64_t aligner;
 } cfx_sha256_ctx;
 
 void cfx_sha256_init(cfx_sha256_ctx *ctx);

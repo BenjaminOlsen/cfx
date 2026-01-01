@@ -372,7 +372,10 @@ void cfx_mul_scratch_alloc(cfx_mul_scratch_t* s, size_t needed) {
     s->spill = (cfx_limb_t*)calloc(needed+1, sizeof(cfx_limb_t)); /* we write spill[k+1] when k==nout-1) */
     s->cap   = needed;
 
-    assert(s->acc && s->spill);
+    if (!s->acc || !s->spill) {
+        fprintf(stderr, "cfx_mul_scratch_alloc: out of memory\n");
+        abort();
+    }
 }
 
 void cfx_mul_scratch_free(cfx_mul_scratch_t* s) {

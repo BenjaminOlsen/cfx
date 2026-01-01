@@ -31,7 +31,7 @@ static void test_reserve(void) {
     cfx_fac_t f;
     cfx_fac_init(&f);
     const size_t cap1 = 123;
-    CFX_ASSERT(cfx_fac_reserve(&f, cap1) == 0);
+    cfx_fac_reserve(&f, cap1);
     CFX_ASSERT(f.len == 0);
     CFX_ASSERT(f.cap == cap1);
     CFX_ASSERT(f.data != NULL);
@@ -181,7 +181,7 @@ static void test_factorial_to_100(int quiet) {
         cfx_big_init(&b);
         cfx_big_from_fac(&b, &f);
         size_t sz = 0;
-        char* s = cfx_big_to_str(&b, &sz);
+        char* s = cfx_big_dec_alloc(&b, &sz);
         int ok = (strcmp(s, F[n]) == 0);
         if (!quiet) CFX_PRINT_DBG("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
         aok &= ok;
@@ -203,8 +203,8 @@ static void fac(cfx_big_t* out, const cfx_big_t* in) {
 
     while (!cfx_big_is_zero(&tmp)) {
         cfx_big_mul_eq(out, &tmp);
-        cfx_big_sub_sm(&tmp, 1);
-        char* s = cfx_big_to_str(&tmp, NULL);
+        cfx_big_sub_sm_eq(&tmp, 1);
+        char* s = cfx_big_dec_alloc(&tmp, NULL);
         /* printf("tmp: %s\n", s); */
         free(s);
     }
@@ -220,7 +220,7 @@ static void test_big_factorial_to_100(int quiet) {
         cfx_big_init(&f);
         cfx_big_from_limb(&b, n);
         fac(&f, &b);
-        char* s = cfx_big_to_str(&f, NULL);
+        char* s = cfx_big_dec_alloc(&f, NULL);
         int ok = (strcmp(s, F[n]) == 0);
         if (!quiet){
             CFX_PRINT_DBG("%zu! %s", n, ok ? "ok" : "NOT OK!");

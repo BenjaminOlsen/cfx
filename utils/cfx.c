@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 const cfx_cmd_t cfx_commands[] = {
     {"choose",          "Compute binomial coefficients C(n,k)",      cfx_choose_run},
@@ -23,6 +23,9 @@ const cfx_cmd_t cfx_commands[] = {
     {"primes_near_pow2","Find primes near powers of 2",              cfx_primes_near_pow2_run},
     {"rand",            "Generate random bytes",                     cfx_rand_run},
     {"ulam_spiral",     "Generate Ulam spiral image",                cfx_ulam_spiral_run},
+    {"pi",              "Compute digits of pi",                      cfx_pi_run},
+    {"x25519",          "X25519 key exchange (RFC 7748)",            cfx_x25519_run},
+    {"ed25519",         "Ed25519 digital signatures (RFC 8032)",     cfx_ed25519_run},
 };
 
 const int cfx_commands_count = sizeof(cfx_commands) / sizeof(cfx_commands[0]);

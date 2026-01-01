@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s <n> [-x]\n", prog);
@@ -49,9 +49,9 @@ int cfx_factorial_run(int argc, char* argv[]) {
     char* s;
 
     if (cfx_print_hex) {
-        s = cfx_big_to_hex(&b, &sz);
+        s = cfx_big_hex_alloc(&b, &sz);
     } else {
-        s = cfx_big_to_str(&b, &sz);
+        s = cfx_big_dec_alloc(&b, &sz);
     }
 
     printf("" CFX_PRIuLIMB "! = %s\ndigits: %zu\nlimbs: %zu\n", n, s, sz, b.n);

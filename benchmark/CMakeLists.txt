@@ -10,6 +10,7 @@ set(CFX_BENCHMARKS
     bench_big
     bench_mul_vs_csa
     bench_row_mul
+    bench_ntt
     bench_monty
     bench_isqrt
     bench_rand

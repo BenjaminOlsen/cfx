@@ -1,7 +1,7 @@
 #include "cfx/chacha20.h"
 #include "cfx/base64.h"
 #include "misc.h"
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -9,27 +9,34 @@
 #include <string.h>
 #include <errno.h>
 
-enum output_format {
-    FMT_HEX,
-    FMT_BASE64
-};
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
+
+
 
 static void usage(const char* name) {
     fprintf(stderr,
-        "Usage: %s [options] <text>\n"
-        "  Encrypt text with ChaCha20 (RFC8439 layout).\n\n"
+        "Usage: %s [options] [text]\n"
+        "  Encrypt text with ChaCha20 (RFC8439 layout).\n"
+        "  If text is omitted, reads from stdin.\n\n"
         "Options:\n"
-        "  -k <key>    Key as ASCII (padded/truncated to 32 bytes) OR 0x64_hex_chars\n"
+        "  -k <key>    Key (auto-detects hex vs ASCII, or '-' for stdin)\n"
+        "  -kx         Force key as hex\n"
+        "  -ka         Force key as ASCII\n"
+        "  -kb         Force key as base64\n"
         "  -c <ctr>    Initial 32-bit counter (default 0)\n"
         "  -n <nonce>  Nonce as 0x24_hex_chars (96-bit, default zeros)\n"
         "  -x          Output as hex (default)\n"
         "  -b64        Output as base64\n"
         "  -v          Verbose output\n"
         "  -h, --help  Show this help\n\n"
-        "Example:\n"
-        "  %s -k 0xe999fb0f95c3b2e2a703ea2d55565a8a2a8a725291c4ad4d614c20c31a14708e \\\n"
-        "     -n 0x0ccd47f7ddf772db86352163 -c 2 HELLOOOO\n",
-        name, name);
+        "Examples:\n"
+        "  %s -k mykey \"hello world\"\n"
+        "  %s -ka deadbeef \"msg\"       Use 'deadbeef' as ASCII\n"
+        "  cfx keygen 32 -q | %s -k - \"secret\"\n",
+        name, name, name, name);
 }
 
 int cfx_chacha20_run(int argc, char** argv) {
@@ -43,7 +50,8 @@ int cfx_chacha20_run(int argc, char** argv) {
     const char* pt       = NULL;
     uint32_t counter     = 0;
     int verbose = 0;
-    enum output_format fmt = FMT_HEX;
+    enum cfx_str_format fmt = CFX_STR_FMT_HEX;
+    enum cfx_str_format key_mode = CFX_STR_FMT_AUTO;
 
     #define CHECK_ARG(i) if (i >= argc) { usage(argv[0]); return EXIT_FAILURE; }
 
@@ -52,6 +60,21 @@ int cfx_chacha20_run(int argc, char** argv) {
             ++i;
             CHECK_ARG(i);
             key_in = argv[i];
+        } else if (strcmp(argv[i], "-kx") == 0) {
+            ++i;
+            CHECK_ARG(i);
+            key_in = argv[i];
+            key_mode = CFX_STR_FMT_HEX;
+        } else if (strcmp(argv[i], "-ka") == 0) {
+            ++i;
+            CHECK_ARG(i);
+            key_in = argv[i];
+            key_mode = CFX_STR_FMT_ASCII;
+        } else if (strcmp(argv[i], "-kb") == 0) {
+            ++i;
+            CHECK_ARG(i);
+            key_in = argv[i];
+            key_mode = CFX_STR_FMT_BASE64;
         } else if (strcmp(argv[i], "-c") == 0) {
             ++i;
             CHECK_ARG(i);
@@ -66,9 +89,9 @@ int cfx_chacha20_run(int argc, char** argv) {
         } else if (strcmp(argv[i], "-v") == 0) {
             verbose = 1;
         } else if (strcmp(argv[i], "-x") == 0) {
-            fmt = FMT_HEX;
+            fmt = CFX_STR_FMT_HEX;
         } else if (strcmp(argv[i], "-b64") == 0) {
-            fmt = FMT_BASE64;
+            fmt = CFX_STR_FMT_BASE64;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             usage(argv[0]);
             return 0;
@@ -81,29 +104,66 @@ int cfx_chacha20_run(int argc, char** argv) {
         }
     }
 
-    if (!pt) {
-        fprintf(stderr, "error: missing plaintext\n");
-        usage(argv[0]);
-        return EXIT_FAILURE;
-    }
-    const char default_key[] = "1234567890";
-    if (!key_in) {
-        if (verbose) fprintf(stderr, "using default key\n");
-        key_in = default_key;
-    }
+    uint8_t* pt_buf = NULL;
+    size_t len = 0;
 
-    uint8_t key[32] = {0};
-    if (strncmp(key_in, "0x", 2) == 0) {
-        if (cfx_parse_hex(key_in + 2, key, sizeof(key)) != 0) {
-            fprintf(stderr, "error: -k expects hex: with exactly 64 hex chars\n");
-            return EXIT_FAILURE;
+    if (!pt) {
+#ifdef _WIN32
+        _setmode(_fileno(stdin), _O_BINARY);
+#endif
+        size_t cap = 4096;
+        pt_buf = (uint8_t*)malloc(cap);
+        if (!pt_buf) { perror("malloc"); return EXIT_FAILURE; }
+
+        int c;
+        while ((c = getchar()) != EOF) {
+            if (len >= cap) {
+                cap *= 2;
+                uint8_t* newbuf = (uint8_t*)realloc(pt_buf, cap);
+                if (!newbuf) { free(pt_buf); perror("realloc"); return EXIT_FAILURE; }
+                pt_buf = newbuf;
+            }
+            pt_buf[len++] = (uint8_t)c;
         }
     } else {
-        size_t kl = strlen(key_in);
-        if (kl > sizeof(key)) kl = sizeof(key);
-        memcpy(key, key_in, kl);
-        if (strlen(key_in) > sizeof(key)) {
-            fprintf(stderr, "warn: ASCII key longer than 32 bytes; truncated\n");
+        len = strlen(pt);
+        pt_buf = (uint8_t*)malloc(len);
+        if (!pt_buf) { perror("malloc"); return EXIT_FAILURE; }
+        memcpy(pt_buf, pt, len);
+    }
+
+    int key_from_stdin = (key_in && strcmp(key_in, "-") == 0);
+
+    uint8_t key[32] = {0};
+
+    if (key_from_stdin) {
+        if (!pt) {
+            fprintf(stderr, "error: cannot read both key and plaintext from stdin\n");
+            free(pt_buf);
+            return EXIT_FAILURE;
+        }
+        char* key_str = cfx_read_line_stdin();
+        if (!key_str) {
+            fprintf(stderr, "error: failed to read key from stdin\n");
+            free(pt_buf);
+            return EXIT_FAILURE;
+        }
+        if (cfx_parse_str(key_str, key, sizeof(key), key_mode) < 0) {
+            fprintf(stderr, "error: invalid key from stdin\n");
+            free(key_str);
+            free(pt_buf);
+            return EXIT_FAILURE;
+        }
+        free(key_str);
+    } else if (!key_in) {
+        const char default_key[] = "1234567890";
+        if (verbose) fprintf(stderr, "using default key\n");
+        memcpy(key, default_key, strlen(default_key));
+    } else {
+        if (cfx_parse_str(key_in, key, sizeof(key), key_mode) < 0) {
+            fprintf(stderr, "error: invalid key\n");
+            free(pt_buf);
+            return EXIT_FAILURE;
         }
     }
 
@@ -123,15 +183,15 @@ int cfx_chacha20_run(int argc, char** argv) {
         }
     }
 
-    size_t len = strlen(pt);
     uint8_t* ct = (uint8_t*)malloc(len ? len : 1);
-    if (!ct) { perror("malloc"); return EXIT_FAILURE; }
+    if (!ct) { free(pt_buf); perror("malloc"); return EXIT_FAILURE; }
 
-    cfx_chacha20_encrypt(key, counter, nonce, (const uint8_t*)pt, len, ct);
+    cfx_chacha20_encrypt(key, counter, nonce, pt_buf, len, ct);
+    free(pt_buf);
 
     if (verbose) printf("ciphertext (%zu bytes):\n", len);
 
-    if (fmt == FMT_BASE64) {
+    if (fmt == CFX_STR_FMT_BASE64) {
         size_t b64_len = cfx_base64_enc_len(len);
         char* b64 = (char*)malloc(b64_len + 1);
         if (b64) {

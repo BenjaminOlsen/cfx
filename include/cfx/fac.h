@@ -38,17 +38,17 @@ void cfx_fac_print(cfx_fac_t* f);
 void cfx_fac_init(cfx_fac_t* f);
 void cfx_fac_clear(cfx_fac_t* f);
 void cfx_fac_free(cfx_fac_t* f) ;
-int cfx_fac_reserve(cfx_fac_t* f, size_t req_cap);
+void cfx_fac_reserve(cfx_fac_t* f, size_t req_cap);
 int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint32_t e);
 
 /* Deep copy: dst becomes a copy of src, using cfx_fac_push for each element. */
 void cfx_fac_copy(cfx_fac_t *dst, const cfx_fac_t *src);
 
 /* dst += src */
-void cfx_fac_add(cfx_fac_t* dst, cfx_fac_t* src);
+void cfx_fac_add(cfx_fac_t* dst, const cfx_fac_t* src);
 
 /* dst -= src */
-void cfx_fac_sub(cfx_fac_t* dst, cfx_fac_t* src);
+void cfx_fac_sub(cfx_fac_t* dst, const cfx_fac_t* src);
 
 /* calculate the factorization of n.
 we pass in a list of primes to not have to calculate it on every call of this function */

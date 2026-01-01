@@ -23,7 +23,7 @@
 
 #define ASSERT_BIG_HEX(b, hex) \
     do { \
-        char* s = cfx_big_to_hex(b, NULL); \
+        char* s = cfx_big_hex_alloc(b, NULL); \
         CFX_ASSERT(strcasecmp(s, hex) == 0); \
         free(s); \
     } while (0)
@@ -51,15 +51,15 @@ static inline void big_init_from_limbs_base_1e9(cfx_big_t* b, const cfx_limb_t *
     cfx_big_init(b);
     if (n == 0) return;
     for (size_t i = n; i--;) {
-        cfx_big_mul_sm(b, UINT64_C(1000000000));
-        cfx_big_add_sm(b, limbs[i]);
+        cfx_big_mul_sm_eq(b, UINT64_C(1000000000));
+        cfx_big_add_sm_eq(b, limbs[i]);
     }
 }
 
 /* ---- Comparison/assertion helpers --------------------------------------- */
 
 static inline void assert_hex_eq(const char* tag, const cfx_big_t* x, const char* hex_exp) {
-    char* got = cfx_big_to_hex(x, NULL);
+    char* got = cfx_big_hex_alloc(x, NULL);
     int ok = (strcmp(got, hex_exp) == 0);
     if (!ok) {
         fprintf(stderr, "[%s] expected 0x%s, got 0x%s\n", tag, hex_exp, got);
@@ -70,7 +70,7 @@ static inline void assert_hex_eq(const char* tag, const cfx_big_t* x, const char
 
 static inline void assert_big_eq_hex(const cfx_big_t* x, const char* expected_hex) {
     size_t sz = 0;
-    char* got = cfx_big_to_hex(x, &sz);
+    char* got = cfx_big_hex_alloc(x, &sz);
     CFX_ASSERT(got != NULL);
 
     /* Allow either "0" or "00...0" depending on hex formatting.
@@ -128,7 +128,7 @@ static inline void assert_n_eq_qd_plus_r(const cfx_big_t* n, const cfx_big_t* q,
 
     cfx_big_mul_eq(&check, d);
     cfx_big_copy(&tmp, r);
-    cfx_big_add(&check, &tmp);
+    cfx_big_add_eq(&check, &tmp);
 
     CFX_ASSERT(cfx_big_eq(&check, n));
     CFX_ASSERT(cfx_big_cmp(r, d) == -1);
@@ -143,7 +143,7 @@ static inline void check_str_conversion(const char *label, const cfx_limb_t *lim
     cfx_big_t b;
     big_init_from_limbs_base_1e9(&b, limbs, n);
     size_t len = 0;
-    char *s = cfx_big_to_str(&b, &len);
+    char *s = cfx_big_dec_alloc(&b, &len);
     CFX_ASSERT(strcmp(s, expect) == 0);
     CFX_ASSERT(len == strlen(expect));
     CFX_ASSERT(s[len] == '\0');

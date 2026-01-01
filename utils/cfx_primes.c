@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cfx_utils.h"
+#include "cfx_cmd.h"
 
 static int dec_digits(cfx_limb_t n) {
     if (n < 10ULL) return 1;

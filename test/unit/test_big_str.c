@@ -53,8 +53,8 @@ static void test_limb7(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_from_limb(&b, 1);
-    for (int i = 0; i < 10; ++i) cfx_big_mul_sm(&b, 1000000000u - 1u);
-    char *s = cfx_big_to_str(&b, NULL);
+    for (int i = 0; i < 10; ++i) cfx_big_mul_sm_eq(&b, 1000000000u - 1u);
+    char *s = cfx_big_dec_alloc(&b, NULL);
     CFX_ASSERT(s[0] == '9');
     CFX_ASSERT(strlen(s) >= 9);
     char* expect = "999999990000000044999999880000000209999999"
@@ -73,7 +73,7 @@ static void test_str1(void) {
                         "87123981723918273912891238719248719238719248169723"
                         "00091203901290909090911100091231283761000101023882";
     cfx_big_from_dec(&b, sin);
-    char *sout = cfx_big_to_str(&b, NULL);
+    char *sout = cfx_big_dec_alloc(&b, NULL);
     CFX_ASSERT(strcmp(sin, sout) == 0);
     free(sout);
     cfx_big_free(&b);
@@ -85,7 +85,7 @@ static void test_str2(void) {
     cfx_big_init(&b);
     const char *sin = "9218";
     cfx_big_from_dec(&b, sin);
-    char *sout = cfx_big_to_str(&b, NULL);
+    char *sout = cfx_big_dec_alloc(&b, NULL);
     CFX_ASSERT(strcmp(sin, sout) == 0);
     free(sout);
     cfx_big_free(&b);
@@ -514,6 +514,109 @@ static void test_scan_num_respects_in_len(void) {
     cfx_big_free(&ref);
 }
 
+static void test_to_str_buf_basic(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_from_str(&b, "12345678901234567890");
+
+    char buf[64];
+    size_t len = cfx_big_snprint_dec(&b, buf, sizeof(buf));
+    CFX_ASSERT(len == 20);
+    CFX_ASSERT(strcmp(buf, "12345678901234567890") == 0);
+
+    cfx_big_free(&b);
+}
+
+static void test_to_str_buf_zero(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+
+    char buf[16];
+    size_t len = cfx_big_snprint_dec(&b, buf, sizeof(buf));
+    CFX_ASSERT(len == 1);
+    CFX_ASSERT(strcmp(buf, "0") == 0);
+
+    cfx_big_free(&b);
+}
+
+static void test_to_str_buf_truncate(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_from_str(&b, "12345678901234567890");
+
+    char buf[10];
+    size_t len = cfx_big_snprint_dec(&b, buf, sizeof(buf));
+    CFX_ASSERT(len == 20);
+    CFX_ASSERT(strlen(buf) == 9);
+    CFX_ASSERT(strcmp(buf, "123456789") == 0);
+
+    cfx_big_free(&b);
+}
+
+static void test_to_str_buf_null(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_from_str(&b, "999");
+
+    size_t len = cfx_big_snprint_dec(&b, NULL, 0);
+    CFX_ASSERT(len == 3);
+
+    cfx_big_free(&b);
+}
+
+static void test_to_hex_buf_basic(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_from_hex(&b, "DEADBEEF");
+
+    char buf[32];
+    size_t len = cfx_big_snprint_hex(&b, buf, sizeof(buf));
+    CFX_ASSERT(len == 8);
+    CFX_ASSERT(strcmp(buf, "DEADBEEF") == 0 || strcmp(buf, "deadbeef") == 0);
+
+    cfx_big_free(&b);
+}
+
+static void test_to_hex_buf_truncate(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_from_hex(&b, "DEADBEEFCAFE");
+
+    char buf[5];
+    size_t len = cfx_big_snprint_hex(&b, buf, sizeof(buf));
+    CFX_ASSERT(len == 12);
+    CFX_ASSERT(strlen(buf) == 4);
+
+    cfx_big_free(&b);
+}
+
+static void test_to_bin_buf_basic(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_from_limb(&b, 13);
+
+    char buf[32];
+    size_t len = cfx_big_snprint_bin(&b, buf, sizeof(buf));
+    CFX_ASSERT(len == 4);
+    CFX_ASSERT(strcmp(buf, "1101") == 0);
+
+    cfx_big_free(&b);
+}
+
+static void test_to_bin_buf_truncate(void) {
+    cfx_big_t b;
+    cfx_big_init(&b);
+    cfx_big_from_limb(&b, 255);
+
+    char buf[5];
+    size_t len = cfx_big_snprint_bin(&b, buf, sizeof(buf));
+    CFX_ASSERT(len == 8);
+    CFX_ASSERT(strlen(buf) == 4);
+    CFX_ASSERT(strcmp(buf, "1111") == 0);
+
+    cfx_big_free(&b);
+}
+
 int main(void) {
     CFX_TEST(test_limb1);
     CFX_TEST(test_limb2);
@@ -551,6 +654,14 @@ int main(void) {
     CFX_TEST(test_scan_num_b64_stops_before_junk);
     CFX_TEST(test_from_str_b64_allows_trailing_spaces_only);
     CFX_TEST(test_from_str_b64_rejects_invalid);
+    CFX_TEST(test_to_str_buf_basic);
+    CFX_TEST(test_to_str_buf_zero);
+    CFX_TEST(test_to_str_buf_truncate);
+    CFX_TEST(test_to_str_buf_null);
+    CFX_TEST(test_to_hex_buf_basic);
+    CFX_TEST(test_to_hex_buf_truncate);
+    CFX_TEST(test_to_bin_buf_basic);
+    CFX_TEST(test_to_bin_buf_truncate);
     puts("OK");
     return 0;
 }
