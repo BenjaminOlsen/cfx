@@ -33,15 +33,19 @@ static void fill_val(cfx_big_t* b, size_t nlimbs, cfx_limb_t v) {
 
 static void fill_ones(cfx_big_t* b, size_t nlimbs) {
     ensure_cap(b, nlimbs);
-    for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = UINT64_MAX;
+    for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = CFX_LIMB_MAX;
     b->n = nlimbs;
 }
 
 static void fill_rand(cfx_big_t* b, size_t nlimbs, cfx_limb_t seed) {
     ensure_cap(b, nlimbs);
+#if CFX_LIMB_BITS == 64
     cfx_limb_t s = seed ? seed : 0x123456789abcdef0ULL;
+#else
+    cfx_limb_t s = seed ? seed : 0x9abcdef0UL;
+#endif
     for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = cfx_xorshift(&s);
-    if (nlimbs) b->limb[nlimbs-1] |= (1ULL << 63); /* avoid leading zeros */
+    if (nlimbs) b->limb[nlimbs-1] |= (cfx_limb_t)1 << (CFX_LIMB_BITS - 1);
     b->n = nlimbs;
 }
 
@@ -218,7 +222,11 @@ static void test_small_fuzz(void) {
     cfx_big_t b, m;
     cfx_big_init(&b);
     cfx_big_init(&m);
+#if CFX_LIMB_BITS == 64
     cfx_limb_t seed = 0xCAFEBABE12345678ULL;
+#else
+    cfx_limb_t seed = 0x12345678UL;
+#endif
 
     for (int t = 0; t < 20; ++t) {
         size_t nb = 1 + (cfx_xorshift(&seed) % 6);   /* 1..6 limbs */

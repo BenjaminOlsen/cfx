@@ -6,6 +6,7 @@
 
 #include "cfx/rand.h"
 #include "cfx/memory.h"
+#include "hash_rngs.h"
 
 /* TestU01 includes */
 #pragma GCC diagnostic push
@@ -58,6 +59,10 @@ static void usage(const char *prog) {
     for (size_t i = 0; i < g_rand_gen_cnt; ++i) {
         fprintf(stderr, "                   %s\n", g_rand_gens[i].name);
     }
+    fprintf(stderr, "                 Hash-based RNGs:\n");
+    for (size_t i = 0; i < g_hash_rng_cnt; ++i) {
+        fprintf(stderr, "                   %s\n", g_hash_rngs[i].name);
+    }
 #if CFX_HAVE_OPENSSL
     fprintf(stderr, "                   %s\n", g_openssl_desc.name);
 #endif
@@ -103,14 +108,22 @@ int main(int argc, char **argv) {
                     found = 1;
                     break;
                 }
-                #if CFX_HAVE_OPENSSL
-                else if (strcmp(name, g_openssl_desc.name) == 0) {
-                    selected_gen = &g_openssl_desc;
-                    found = 1;
-                    break;
-                }
-                #endif
             }
+            if (!found) {
+                for (size_t j = 0; j < g_hash_rng_cnt; ++j) {
+                    if (strcmp(name, g_hash_rngs[j].name) == 0) {
+                        selected_gen = &g_hash_rngs[j];
+                        found = 1;
+                        break;
+                    }
+                }
+            }
+            #if CFX_HAVE_OPENSSL
+            if (!found && strcmp(name, g_openssl_desc.name) == 0) {
+                selected_gen = &g_openssl_desc;
+                found = 1;
+            }
+            #endif
             if (!found) {
                 fprintf(stderr, "Unknown RNG: %s\n\n", name);
                 usage(prog);

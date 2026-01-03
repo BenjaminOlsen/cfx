@@ -151,9 +151,15 @@ static void test_zero(void) {
 
 static void test_one_by_small(void) {
     cfx_limb_t A[] = {1};
+#if CFX_LIMB_BITS == 64
     cfx_limb_t B[] = {0x0123456789abcdefULL, 0xfedcba9876543210ULL};
     size_t na = 1, nb = 2, nout = na + nb;
     cfx_limb_t R1[3], R2[3];
+#else
+    cfx_limb_t B[] = {0x89abcdef, 0x01234567, 0x76543210, 0xfedcba98};
+    size_t na = 1, nb = 4, nout = na + nb;
+    cfx_limb_t R1[5], R2[5];
+#endif
 
     cfx_mul_csa_portable(A, na, B, nb, R1);
     mul_ref(A, na, B, nb, R2);
@@ -162,8 +168,8 @@ static void test_one_by_small(void) {
 }
 
 static void test_single_limb_carry(void) {
-    cfx_limb_t A[] = {0xffffffffffffffffULL};
-    cfx_limb_t B[] = {0xffffffffffffffffULL};
+    cfx_limb_t A[] = {CFX_LIMB_MAX};
+    cfx_limb_t B[] = {CFX_LIMB_MAX};
     size_t na = 1, nb = 1, nout = na + nb;
     cfx_limb_t R1[2], R2[2];
 
@@ -174,10 +180,17 @@ static void test_single_limb_carry(void) {
 }
 
 static void test_mixed_lengths(void) {
+#if CFX_LIMB_BITS == 64
     cfx_limb_t A[] = {0x0000000000000001ULL, 0x0000000000000000ULL, 0x0000000000000001ULL}; /* 2^128 + 1 */
     cfx_limb_t B[] = {0x0000000000000000ULL, 0x0000000000000002ULL};                         /* 2^65 */
     size_t na = 3, nb = 2, nout = na + nb;
     cfx_limb_t R1[5], R2[5];
+#else
+    cfx_limb_t A[] = {1, 0, 0, 0, 1, 0}; /* 2^128 + 1 in 32-bit limbs */
+    cfx_limb_t B[] = {0, 0, 2, 0};       /* 2^65 in 32-bit limbs */
+    size_t na = 6, nb = 4, nout = na + nb;
+    cfx_limb_t R1[10], R2[10];
+#endif
 
     cfx_mul_csa_portable(A, na, B, nb, R1);
     mul_ref(A, na, B, nb, R2);
@@ -186,11 +199,18 @@ static void test_mixed_lengths(void) {
 }
 
 static void test_all_ones_multi(void) {
+#if CFX_LIMB_BITS == 64
     /* (2^192 - 1) * (2^128 - 1) */
-    cfx_limb_t A[] = {0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL};
-    cfx_limb_t B[] = {0xffffffffffffffffULL, 0xffffffffffffffffULL};
+    cfx_limb_t A[] = {CFX_LIMB_MAX, CFX_LIMB_MAX, CFX_LIMB_MAX};
+    cfx_limb_t B[] = {CFX_LIMB_MAX, CFX_LIMB_MAX};
     size_t na = 3, nb = 2, nout = na + nb;
     cfx_limb_t R1[5], R2[5];
+#else
+    cfx_limb_t A[] = {CFX_LIMB_MAX, CFX_LIMB_MAX, CFX_LIMB_MAX, CFX_LIMB_MAX, CFX_LIMB_MAX, CFX_LIMB_MAX};
+    cfx_limb_t B[] = {CFX_LIMB_MAX, CFX_LIMB_MAX, CFX_LIMB_MAX, CFX_LIMB_MAX};
+    size_t na = 6, nb = 4, nout = na + nb;
+    cfx_limb_t R1[10], R2[10];
+#endif
 
     cfx_mul_csa_portable(A, na, B, nb, R1);
     mul_ref(A, na, B, nb, R2);
@@ -212,21 +232,25 @@ static void test_power_of_two_alignment(void) {
 }
 
 /* a tiny deterministic fuzz */
-static cfx_limb_t xorshift64(cfx_limb_t* s) {
+static cfx_limb_t xorshift(cfx_limb_t* s) {
     cfx_limb_t x = *s;
+#if CFX_LIMB_BITS == 64
     x ^= x << 13; x ^= x >> 7; x ^= x << 17;
+#else
+    x ^= x << 13; x ^= x >> 17; x ^= x << 5;
+#endif
     *s = x;
     return x;
 }
 static void test_fuzz_small(void) {
-    cfx_limb_t seed = 0x123456789abcdef0ULL;
+    cfx_limb_t seed = (cfx_limb_t)0x12345678;
     for (int t = 0; t < 100; ++t) {
-        size_t na = 1 + (xorshift64(&seed) % 4);
-        size_t nb = 1 + (xorshift64(&seed) % 4);
+        size_t na = 1 + (xorshift(&seed) % 4);
+        size_t nb = 1 + (xorshift(&seed) % 4);
         cfx_limb_t A[4], B[4], R1[8], R2[8];
 
-        for (size_t i = 0; i < na; ++i) A[i] = xorshift64(&seed);
-        for (size_t j = 0; j < nb; ++j) B[j] = xorshift64(&seed);
+        for (size_t i = 0; i < na; ++i) A[i] = xorshift(&seed);
+        for (size_t j = 0; j < nb; ++j) B[j] = xorshift(&seed);
 
         cfx_mul_csa_portable(A, na, B, nb, R1);
         mul_ref(A, na, B, nb, R2);

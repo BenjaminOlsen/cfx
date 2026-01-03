@@ -181,6 +181,65 @@ void cfx_chacha20_encrypt_bytes(const uint8_t key[32], uint32_t counter, const u
 
 
 /* ---------------------------------------------------------------------------------------------- */
+/* HChaCha20 and XChaCha20 (draft-irtf-cfrg-xchacha) */
+
+/* HChaCha20: 20 rounds without final addition, outputs words 0-3 and 12-15 */
+void cfx_hchacha20(uint8_t out[32], const uint8_t key[32], const uint8_t nonce[16]) {
+    uint32_t w[16];
+
+    w[0]  = _EXPA;
+    w[1]  = _ND_3;
+    w[2]  = _2_BY;
+    w[3]  = _TE_K;
+    w[4]  = CFX_LOAD32_LE(key + 0);
+    w[5]  = CFX_LOAD32_LE(key + 4);
+    w[6]  = CFX_LOAD32_LE(key + 8);
+    w[7]  = CFX_LOAD32_LE(key + 12);
+    w[8]  = CFX_LOAD32_LE(key + 16);
+    w[9]  = CFX_LOAD32_LE(key + 20);
+    w[10] = CFX_LOAD32_LE(key + 24);
+    w[11] = CFX_LOAD32_LE(key + 28);
+    w[12] = CFX_LOAD32_LE(nonce + 0);
+    w[13] = CFX_LOAD32_LE(nonce + 4);
+    w[14] = CFX_LOAD32_LE(nonce + 8);
+    w[15] = CFX_LOAD32_LE(nonce + 12);
+
+    for (size_t i = 0; i < 10; ++i) {
+        QR(w[0], w[4], w[8],  w[12])
+        QR(w[1], w[5], w[9],  w[13])
+        QR(w[2], w[6], w[10], w[14])
+        QR(w[3], w[7], w[11], w[15])
+        QR(w[0], w[5], w[10], w[15])
+        QR(w[1], w[6], w[11], w[12])
+        QR(w[2], w[7], w[8],  w[13])
+        QR(w[3], w[4], w[9],  w[14])
+    }
+
+    CFX_STORE32_LE(out + 0,  w[0]);
+    CFX_STORE32_LE(out + 4,  w[1]);
+    CFX_STORE32_LE(out + 8,  w[2]);
+    CFX_STORE32_LE(out + 12, w[3]);
+    CFX_STORE32_LE(out + 16, w[12]);
+    CFX_STORE32_LE(out + 20, w[13]);
+    CFX_STORE32_LE(out + 24, w[14]);
+    CFX_STORE32_LE(out + 28, w[15]);
+}
+
+/* XChaCha20: subkey = HChaCha20(key, nonce[0:16]), then ChaCha20(subkey, 0||nonce[16:24]) */
+void cfx_xchacha20_encrypt(const uint8_t key[32], uint32_t counter,
+                           const uint8_t nonce[24],
+                           const uint8_t* pt, size_t pt_len, uint8_t* ct) {
+    uint8_t subkey[32];
+    uint8_t subnonce[12] = {0};
+
+    cfx_hchacha20(subkey, key, nonce);
+    memcpy(subnonce + 4, nonce + 16, 8);
+    cfx_chacha20_encrypt(subkey, counter, subnonce, pt, pt_len, ct);
+
+    CFX_MEMZERO_S(subkey, sizeof(subkey));
+}
+
+/* ---------------------------------------------------------------------------------------------- */
 /* Here be SIMD */
 
 /* ---------------------------------------------------------------------------------------------- */

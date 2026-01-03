@@ -26,7 +26,7 @@ static void usage(const char* prog) {
     fprintf(stderr, "  cfx primegen 64 | %s\n", prog);
 }
 
-int cfx_prime_test_run(int argc, char* argv[]) {
+int cfx_isprime_run(int argc, char* argv[]) {
     if (argc == 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
         usage(argv[0]);
         return 0;

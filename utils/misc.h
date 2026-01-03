@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <string.h>
+#include <stdio.h>
 
 enum cfx_str_format {
     CFX_STR_FMT_AUTO,
@@ -44,5 +44,14 @@ int cfx_read_file_bin(const char* path, uint8_t* out, size_t outlen);
 /* detect file format based on contents.
  * if out_len is not NULL, writes the decoded data size in bytes. */
 enum cfx_str_format cfx_detect_file_format(const char* path, size_t* out_len);
+
+/*
+ * read the entire contents of an open FILE* into a newly-allocated buffer.
+ * works for both seekable files and non-seekable streams (e.g. stdin/pipes)
+ *
+ * on success, *out points to the buffer (caller must free), and *out_len is its size.
+ * on failure, returns nonzero and ensures no sensitive partial data is left allocated.
+ */
+int cfx_read_all_file(FILE *f, uint8_t **out, size_t *out_len);
 
 #endif  /* CFX_MISC_H */

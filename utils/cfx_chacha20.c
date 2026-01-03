@@ -53,7 +53,7 @@ int cfx_chacha20_run(int argc, char** argv) {
     enum cfx_str_format fmt = CFX_STR_FMT_HEX;
     enum cfx_str_format key_mode = CFX_STR_FMT_AUTO;
 
-    #define CHECK_ARG(i) if (i >= argc) { usage(argv[0]); return EXIT_FAILURE; }
+    #define CHECK_ARG(i) do { if (i >= argc) { usage(argv[0]); return EXIT_FAILURE; } } while(0)
 
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-k") == 0) {

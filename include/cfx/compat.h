@@ -5,14 +5,6 @@
 
 /**
  * Platform compatibility layer for POSIX/Windows portability.
- * Provides unified APIs for:
- *   - Threading (create, join)
- *   - Mutexes
- *   - Atomic operations
- *   - CPU count detection
- *   - High-resolution time
- *   - String utilities (strndup)
- *   - Bit operations (clz)
  */
 
 #include <stdint.h>
@@ -40,13 +32,32 @@ extern "C" {
 #ifdef _WIN32
 
 typedef HANDLE cfx_thread_t;
-typedef DWORD (WINAPI *cfx_thread_func_t)(void*);
+
+typedef struct {
+    void* (*func)(void*);
+    void* arg;
+} cfx_thread_wrapper_t;
+
+static DWORD WINAPI cfx_thread_wrapper(void* param) {
+    cfx_thread_wrapper_t* w = (cfx_thread_wrapper_t*)param;
+    void* (*func)(void*) = w->func;
+    void* arg = w->arg;
+    free(w);
+    func(arg);
+    return 0;
+}
 
 static inline int cfx_thread_create(cfx_thread_t* thread, void* (*func)(void*), void* arg) {
-    /* Windows thread func returns DWORD, POSIX returns void*.
-     * We cast and ignore return value differences. */
-    *thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)func, arg, 0, NULL);
-    return (*thread != NULL) ? 0 : -1;
+    cfx_thread_wrapper_t* w = (cfx_thread_wrapper_t*)malloc(sizeof(*w));
+    if (!w) return -1;
+    w->func = func;
+    w->arg = arg;
+    *thread = CreateThread(NULL, 0, cfx_thread_wrapper, w, 0, NULL);
+    if (*thread == NULL) {
+        free(w);
+        return -1;
+    }
+    return 0;
 }
 
 static inline int cfx_thread_join(cfx_thread_t thread, void** retval) {

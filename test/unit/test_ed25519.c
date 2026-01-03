@@ -902,7 +902,113 @@ static void test_sha512_incremental(void) {
     CFX_ASSERT(memcmp(output1, output2, 64) == 0);
 }
 
+/*
+ * Test demonstrating the "mismatched pk" attack that the API prevents.
+ *
+ * The attack: If Ed25519 allowed signing with (sk, pk) as separate params,
+ * and a user accidentally signed the same message M with:
+ *   sig1 = sign(sk, pk1, M)
+ *   sig2 = sign(sk, pk2, M)   <- wrong pk!
+ *
+ * Then:
+ *   - R is identical (deterministic nonce from seed only)
+ *   - k1 = H(R || pk1 || M), k2 = H(R || pk2 || M)
+ *   - s1 = r + k1*a, s2 = r + k2*a
+ *   - Subtracting: s1 - s2 = (k1 - k2)*a
+ *   - Private scalar: a = (s1 - s2) / (k1 - k2)  <- LEAKED!
+ *
+ * The cfx API prevents this by bundling pk inside sk (sk = seed || pk).
+ * The sign function only takes sk, so you can't accidentally use wrong pk.
+ *
+ * This test demonstrates:
+ *   1. Tampering with sk to embed wrong pk produces same R (attack condition)
+ *   2. The tampered signature doesn't verify with original pk
+ *   3. Deliberate tampering would enable the attack (educational)
+ */
+static void test_api_prevents_mismatched_pk_attack(void) {
+    uint8_t seed[32] = {0x42};
+    uint8_t pk[32], sk[64], sig_normal[64];
+    uint8_t msg[] = "same message signed twice";
+
+    /* create normal keypair */
+    cfx_ed25519_create_keypair(pk, sk, seed);
+    cfx_ed25519_sign(sig_normal, msg, sizeof(msg) - 1, sk);
+
+    /* create a DIFFERENT keypair to get a different pk */
+    uint8_t other_seed[32] = {0x99};
+    uint8_t other_pk[32], other_sk[64];
+    cfx_ed25519_create_keypair(other_pk, other_sk, other_seed);
+
+    /* deliberately tamper: same seed but embed wrong pk */
+    uint8_t tampered_sk[64];
+    memcpy(tampered_sk, seed, 32);        /* same seed */
+    memcpy(tampered_sk + 32, other_pk, 32);  /* WRONG pk! */
+
+    uint8_t sig_tampered[64];
+    cfx_ed25519_sign(sig_tampered, msg, sizeof(msg) - 1, tampered_sk);
+
+    /* CRITICAL: R is the same in both signatures!
+     * This is because r = H(prefix || M) where prefix = H(seed)[32:64]
+     * The seed is the same, so r is the same, so R = [r]B is the same.
+     */
+    CFX_ASSERT(memcmp(sig_normal, sig_tampered, 32) == 0);  /* R matches - attack condition! */
+
+    /* But s values differ because k = H(R || A || M) uses different A */
+    CFX_ASSERT(memcmp(sig_normal + 32, sig_tampered + 32, 32) != 0);  /* s differs */
+
+    /* Neither signature verifies with the wrong pk:
+     * - sig_normal verifies with pk (correct)
+     * - sig_tampered does NOT verify with other_pk (wrong scalar/pk pair)
+     *
+     * This is because verification checks [s]B == R + [k]A, and the
+     * private scalar 'a' corresponds to pk, not other_pk.
+     */
+    CFX_ASSERT(cfx_ed25519_verify(sig_normal, msg, sizeof(msg) - 1, pk) == 0);
+    CFX_ASSERT(cfx_ed25519_verify(sig_tampered, msg, sizeof(msg) - 1, other_pk) != 0);
+    CFX_ASSERT(cfx_ed25519_verify(sig_tampered, msg, sizeof(msg) - 1, pk) != 0);
+
+    /*
+     * THE ATTACK: Having R identical in both signatures is the key weakness.
+     * An attacker with both signatures can compute:
+     *   k1 = H(R || pk || M), k2 = H(R || other_pk || M)
+     *   s1 = r + k1*a, s2 = r + k2*a
+     *   s1 - s2 = (k1 - k2) * a
+     *   a = (s1 - s2) * inverse(k1 - k2) mod L
+     *
+     * This recovers the private scalar 'a', completely compromising the key,
+     * even though the tampered signature doesn't verify!
+     *
+     * The cfx API prevents this by:
+     *   - Bundling pk inside sk (64 bytes = seed || pk)
+     *   - sign() only takes sk, not separate (sk, pk)
+     *   - User cannot accidentally pass mismatched pk
+     *   - Deliberate tampering (as above) is required to trigger the attack
+     */
+}
+
+/* test that the API makes misuse hard - sign doesn't take pk param */
+static void test_sign_api_no_separate_pk(void) {
+    uint8_t seed[32] = {0x42};
+    uint8_t pk[32], sk[64], sig[64];
+    uint8_t msg[] = "test";
+
+    cfx_ed25519_create_keypair(pk, sk, seed);
+
+    /* sign only takes sk - no way to pass wrong pk */
+    cfx_ed25519_sign(sig, msg, 4, sk);
+
+    /* pk is extracted from sk internally, always consistent */
+    uint8_t pk_from_sk[32];
+    cfx_ed25519_get_public_key(pk_from_sk, sk);
+    CFX_ASSERT(memcmp(pk, pk_from_sk, 32) == 0);
+
+    CFX_ASSERT(cfx_ed25519_verify(sig, msg, 4, pk) == 0);
+}
+
 int main(void) {
+    CFX_TEST(test_api_prevents_mismatched_pk_attack);
+    CFX_TEST(test_sign_api_no_separate_pk);
+
     CFX_TEST(test_sha512_basic);
     CFX_TEST(test_sha512_empty);
     CFX_TEST(test_sha512_long);

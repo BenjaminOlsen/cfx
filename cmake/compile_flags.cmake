@@ -24,7 +24,7 @@ else()
         -Wall
         -Wextra
         -Werror
-        -pedantic
+        # -pedantic  # disabled: __int128 is non-standard but widely supported
         -Wshadow
         -Wcast-qual
         -Wstrict-prototypes

@@ -13,7 +13,7 @@ set(UTIL_NAMES
     mac
     modexp
     pow
-    prime_test
+    isprime
     primes
     primes_near_pow2
     rand
@@ -21,6 +21,10 @@ set(UTIL_NAMES
     pi
     x25519
     ed25519
+    sign
+    verify
+    aead
+    pwhash
 )
 
 # Helper library with misc utilities (hex parsing, etc.)

@@ -1,7 +1,7 @@
 #include "misc.h"
 #include "cfx/base64.h"
 #include "cfx/memory.h"
-#include <stdio.h>
+
 #include <stdlib.h>
 #include <ctype.h>
 
@@ -81,12 +81,14 @@ int cfx_parse_hex_auto(const char* s, uint8_t* out, size_t outlen) {
     size_t slen = strlen(s);
     if (slen % 2 != 0) return -1;
     size_t nbytes = slen / 2;
-    if (nbytes > outlen) nbytes = outlen;
+    if (nbytes > outlen) return -1;
+    /* right-align: write to end of buffer (big-endian numeric interpretation) */
+    size_t offset = outlen - nbytes;
     for (size_t i = 0; i < nbytes; ++i) {
         int hi = hexval(s[2*i]);
         int lo = hexval(s[2*i+1]);
         if (hi < 0 || lo < 0) return -1;
-        out[i] = (uint8_t)((hi << 4) | lo);
+        out[offset + i] = (uint8_t)((hi << 4) | lo);
     }
     return (int)nbytes;
 }
@@ -264,3 +266,60 @@ enum cfx_str_format cfx_detect_file_format(const char* path, size_t* out_len) {
     cfx_memzero_s(buf, sizeof(buf));
     return CFX_STR_FMT_ASCII;
 }
+
+
+int cfx_read_all_file(FILE* f, uint8_t** out, size_t* out_len) {
+    uint8_t* buf;
+    size_t cap;
+    size_t len;
+
+    if (!f || !out || !out_len) return -1;
+
+    *out = NULL;
+    *out_len = 0;
+
+    buf = NULL;
+    cap = 0;
+    len = 0;
+
+    for (;;) {
+        size_t r;
+        size_t newcap;
+        uint8_t* tmp;
+
+        if (len == cap) {
+            newcap = cap ? (cap * 2) : 4096;
+
+            if (newcap > CFX_FILE_READ_MAX) newcap = CFX_FILE_READ_MAX;
+            if (newcap <= cap) {  /* cap reached but still more input -> fail */
+                if (buf) { cfx_memzero_s(buf, cap); free(buf); }
+                return -1;
+            }
+
+            tmp = (uint8_t*)realloc(buf, newcap);
+            if (!tmp) {
+                if (buf) { cfx_memzero_s(buf, cap); free(buf); }
+                return -1;
+            }
+            buf = tmp;
+            cap = newcap;
+        }
+
+        r = fread(buf + len, 1, cap - len, f);
+        len += r;
+
+        if (r == 0) {
+            if (ferror(f)) {
+                cfx_memzero_s(buf, cap);  /* or use len? */
+                free(buf);
+                return -1;
+            }
+            break; /* EOF */
+        }
+    }
+
+    *out = buf;
+    *out_len = len;
+    return 0;
+}
+

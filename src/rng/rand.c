@@ -289,7 +289,7 @@ void cfx_srand_os(void) {
     memcpy(G.nonce, tmp + 32,   12);
     memcpy(&G.counter, tmp + 44, sizeof G.counter);
     cfx_memzero_s(tmp, sizeof(tmp));
-    G.idx = CHACHA20_BLOCK_BYTES; /* force refill */
+    G.idx = CHACHA20_BUF_BYTES; /* force refill */
     G.seeded = 1;
 }
 

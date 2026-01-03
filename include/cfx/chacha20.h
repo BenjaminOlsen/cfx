@@ -33,7 +33,7 @@ extern "C" {
 
 typedef union {
     uint8_t opaque[64];
-    size_t aligner;
+    uint64_t aligner;
 } cfx_chacha20_ctx_t;
 
 
@@ -48,7 +48,7 @@ typedef struct {
 
 typedef union {
     uint8_t opaque[256];
-    size_t aligner;
+    uint64_t aligner;
 } cfx_chacha20_ctx4_t;
 
 
@@ -76,6 +76,14 @@ void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t
 
 void cfx_chacha20_encrypt_bytes(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
                           const uint8_t *pt, size_t pt_len, uint8_t *ct);
+
+/* HChaCha20 - derives 256-bit subkey for XChaCha20 */
+void cfx_hchacha20(uint8_t out[32], const uint8_t key[32], const uint8_t nonce[16]);
+
+/* XChaCha20 - ChaCha20 with extended 192 bit (24-byte) nonce */
+void cfx_xchacha20_encrypt(const uint8_t key[32], uint32_t counter,
+                           const uint8_t nonce[24],
+                           const uint8_t* pt, size_t pt_len, uint8_t* ct);
 
 void cfx_chacha20_block4_simd(const uint8_t key[32], const uint32_t counter[4],
                               const uint8_t nonce[4][12], uint8_t out[4][64]);

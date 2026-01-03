@@ -12,9 +12,9 @@ Simplest default example : `cmake -S . -B build`
 
 choose your compiler, enable testu01, build benchmarks, release build, with 4096 primes in the static list: `CC=/usr/local/bin/clang cmake -B build -S . -DCFX_ENABLE_TESTU01=ON -DTESTU01_ROOT=$HOME/libs/TestU01 -DCFX_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=4096`
 
-force 32 bit limbs: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCFX_BUILD_EXAMPLES=ON -DCFX_BUILD_TESTS=ON -DCFX_FORCE_LIMB_32=ON`
+force 32 bit limbs: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCFX_BUILD_UTILS=ON -DCFX_BUILD_TESTS=ON -DCFX_FORCE_LIMB_32=ON`
 
-build for armv7m: `cmake -B build-armv7m -S . -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_ARCH=armv7m -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=128 -DCFX_BUILD_EXAMPLES=OFF -DCFX_BUILD_TESTS=ON`
+build for armv7m: `cmake -B build-armv7m -S . -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_ARCH=armv7m -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=128 -DCFX_BUILD_UTILS=OFF -DCFX_BUILD_TESTS=ON`
 
 ## Compile
 
@@ -35,8 +35,6 @@ cmake --build build --config Release
 
 Or for Debug builds: `cmake --build build --config Debug`
 
-Note: Benchmarks require GCC/Clang intrinsics and are not available on MSVC. Some POSIX-only examples are also skipped on Windows.
-
 ## Tests
 
 The tests are divided into two categories, unit test and statistical tests:
@@ -49,15 +47,31 @@ or for verbose output: `ctest --test-dir build -V`. Individual tests can be run 
 
 ### Statistical tests with TestU01
 
-to run statistical tests on the zoo of RNGs in cfx using TestU01, you have to install it following their instructions: https://github.com/blep/TestU01, and then pass its install location to cmake configure:
+To run statistical tests on the RNGs and hash functions in cfx using TestU01, install it following the instructions at https://github.com/umontreal-simul/TestU01-2009, then configure with:
 
-`cmake -B build -S . -DCFX_ENABLE_TESTU01=ON -DTESTU01_ROOT=/path/to/TestU01`
+```bash
+cmake -B build -S . -DCFX_ENABLE_TESTU01=ON -DTESTU01_ROOT=/path/to/TestU01
+cmake --build build
+```
 
-You can see the options for running SmallCrush, Crush, and BigCrush: 
+Example commands:
 
-`./build/test/stats/test_testu01 --help`
+```bash
+# See available RNGs and options
+./build/test/stats/test_testu01 --help
 
-Note, some of the RNGs are toy examples (like using poly1305 as an RNG), but others pass BigCrush.
+# Run SmallCrush on ChaCha20 (fast, ~10 seconds)
+./build/test/stats/test_testu01 --rng=cfx_chacha20 --smallcrush
+
+# Run SmallCrush on SHA-256 in counter mode
+./build/test/stats/test_testu01 --rng=cfx_sha256_ctr --smallcrush
+
+# Run Crush on BLAKE2b (~30 minutes)
+./build/test/stats/test_testu01 --rng=cfx_blake2b_ctr --crush
+
+# Run BigCrush with custom seed (several hours)
+./build/test/stats/test_testu01 --rng=cfx_xoshiro256starstar --bigcrush --seed=0x12345
+```
 
 ### Code Coverage
 
@@ -81,13 +95,50 @@ gcovr --root . --exclude 'test/*' --exclude 'utils/*' --exclude 'build-cov/*' --
 
 Coverage is also run automatically on CI via GitHub Actions.
 
+## Benchmarks
+
+Enable benchmarks with `-DCFX_BUILD_BENCHMARKS=ON`. Requires [Google Benchmark](https://github.com/google/benchmark).
+
+```bash
+# Configure with benchmarks enabled
+cmake -S . -B build -DCFX_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release
+
+# Build
+cmake --build build --config Release
+
+# Run a specific benchmark
+./build/benchmark/Release/bench_ntt.exe      # Windows
+./build/benchmark/bench_ntt                   # Linux/Mac
+```
+
+### Filtering Benchmarks
+
+Use `--benchmark_filter` with a regex pattern to run specific benchmarks:
+
+```bash
+# Filter by argument size
+./build/benchmark/bench_ntt --benchmark_filter=".*/(4096|8192)"
+
+# Filter by name pattern
+./build/benchmark/bench_poly1305 --benchmark_filter="BM_Poly1305.*"
+```
+
+### Other Useful Flags
+
+```bash
+--benchmark_format=json          # JSON output
+--benchmark_out=results.json     # Save results to file
+--benchmark_repetitions=5        # Run multiple times for statistics
+--benchmark_list_tests           # List available benchmarks without running
+```
+
 ## Examples
 
-In examples, there are some interesting ways of using cfx, most have a `-h` or `--help` usage print.
+In utils, there are some interesting ways of using cfx, most have a `-h` or `--help` usage print.
 
 ### Installing as CLI Tools
 
-The examples can be installed as command-line utilities for everyday use:
+The utils can be installed as command-line utilities for everyday use:
 
 **Mac/Linux:**
 ```bash
@@ -138,7 +189,7 @@ cd rust/cfx
 cargo test
 ```
 
-The Rust bindings require the C library to be built first. The build script (`build.rs`) will compile the C library automatically using cmake.
+The build script (`build.rs`) compiles the C library automatically using the `cc` crate.
 
 ## License
 The cfx library is dual-licensed.

@@ -263,6 +263,213 @@ static void test_quarter_round_state(void) {
 }
 
 
+/* ---- HChaCha20 test vector from draft-irtf-cfrg-xchacha ---- */
+static void test_hchacha20(void) {
+    /* test vector from draft-irtf-cfrg-xchacha-03 section 2.2.1 */
+    static const uint8_t key[32] = {
+        0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+        0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,
+        0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,
+        0x18,0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f
+    };
+    static const uint8_t nonce[16] = {
+        0x00,0x00,0x00,0x09,0x00,0x00,0x00,0x4a,
+        0x00,0x00,0x00,0x00,0x31,0x41,0x59,0x27
+    };
+    static const uint8_t expected[32] = {
+        0x82,0x41,0x3b,0x42,0x27,0xb2,0x7b,0xfe,
+        0xd3,0x0e,0x42,0x50,0x8a,0x87,0x7d,0x73,
+        0xa0,0xf9,0xe4,0xd5,0x8a,0x74,0xa8,0x53,
+        0xc1,0x2e,0xc4,0x13,0x26,0xd3,0xec,0xdc
+    };
+
+    uint8_t out[32];
+    cfx_hchacha20(out, key, nonce);
+
+    int ok = expect_eq(__func__, out, expected, 32);
+    CFX_ASSERT(ok);
+}
+
+/* ---- XChaCha20 test vector from draft-irtf-cfrg-xchacha ---- */
+static void test_xchacha20_encrypt(void) {
+    /* test vector from draft-irtf-cfrg-xchacha-03 appendix A.3.1 */
+    static const uint8_t key[32] = {
+        0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,
+        0x88,0x89,0x8a,0x8b,0x8c,0x8d,0x8e,0x8f,
+        0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,
+        0x98,0x99,0x9a,0x9b,0x9c,0x9d,0x9e,0x9f
+    };
+    static const uint8_t nonce[24] = {
+        0x40,0x41,0x42,0x43,0x44,0x45,0x46,0x47,
+        0x48,0x49,0x4a,0x4b,0x4c,0x4d,0x4e,0x4f,
+        0x50,0x51,0x52,0x53,0x54,0x55,0x56,0x57
+    };
+    static const uint8_t pt[] = {
+        0x4c,0x61,0x64,0x69,0x65,0x73,0x20,0x61,0x6e,0x64,0x20,0x47,0x65,0x6e,0x74,0x6c,
+        0x65,0x6d,0x65,0x6e,0x20,0x6f,0x66,0x20,0x74,0x68,0x65,0x20,0x63,0x6c,0x61,0x73,
+        0x73,0x20,0x6f,0x66,0x20,0x27,0x39,0x39,0x3a,0x20,0x49,0x66,0x20,0x49,0x20,0x63,
+        0x6f,0x75,0x6c,0x64,0x20,0x6f,0x66,0x66,0x65,0x72,0x20,0x79,0x6f,0x75,0x20,0x6f,
+        0x6e,0x6c,0x79,0x20,0x6f,0x6e,0x65,0x20,0x74,0x69,0x70,0x20,0x66,0x6f,0x72,0x20,
+        0x74,0x68,0x65,0x20,0x66,0x75,0x74,0x75,0x72,0x65,0x2c,0x20,0x73,0x75,0x6e,0x73,
+        0x63,0x72,0x65,0x65,0x6e,0x20,0x77,0x6f,0x75,0x6c,0x64,0x20,0x62,0x65,0x20,0x69,
+        0x74,0x2e
+    };
+    static const uint8_t expected_ct[] = {
+        0xbd,0x6d,0x17,0x9d,0x3e,0x83,0xd4,0x3b,0x95,0x76,0x57,0x94,0x93,0xc0,0xe9,0x39,
+        0x57,0x2a,0x17,0x00,0x25,0x2b,0xfa,0xcc,0xbe,0xd2,0x90,0x2c,0x21,0x39,0x6c,0xbb,
+        0x73,0x1c,0x7f,0x1b,0x0b,0x4a,0xa6,0x44,0x0b,0xf3,0xa8,0x2f,0x4e,0xda,0x7e,0x39,
+        0xae,0x64,0xc6,0x70,0x8c,0x54,0xc2,0x16,0xcb,0x96,0xb7,0x2e,0x12,0x13,0xb4,0x52,
+        0x2f,0x8c,0x9b,0xa4,0x0d,0xb5,0xd9,0x45,0xb1,0x1b,0x69,0xb9,0x82,0xc1,0xbb,0x9e,
+        0x3f,0x3f,0xac,0x2b,0xc3,0x69,0x48,0x8f,0x76,0xb2,0x38,0x35,0x65,0xd3,0xff,0xf9,
+        0x21,0xf9,0x66,0x4c,0x97,0x63,0x7d,0xa9,0x76,0x88,0x12,0xf6,0x15,0xc6,0x8b,0x13,
+        0xb5,0x2e
+    };
+
+    uint8_t ct[sizeof(pt)];
+    /* counter=1 because the AEAD test vector uses counter=0 for poly1305 key */
+    cfx_xchacha20_encrypt(key, 1, nonce, pt, sizeof(pt), ct);
+
+    int ok = expect_eq(__func__, ct, expected_ct, sizeof(ct));
+    CFX_ASSERT(ok);
+
+    /* verify decryption */
+    uint8_t decrypted[sizeof(pt)];
+    cfx_xchacha20_encrypt(key, 1, nonce, ct, sizeof(ct), decrypted);
+    ok = expect_eq("xchacha20_decrypt", decrypted, pt, sizeof(pt));
+    CFX_ASSERT(ok);
+}
+
+/* different nonces in first 16 bytes -> different subkeys -> different output */
+static void test_xchacha20_different_nonce_prefix(void) {
+    static const uint8_t key[32] = {0};
+    static const uint8_t nonce1[24] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0};
+    static const uint8_t nonce2[24] = {2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0};
+    static const uint8_t pt[64] = {0};
+
+    uint8_t ct1[64], ct2[64];
+    cfx_xchacha20_encrypt(key, 0, nonce1, pt, 64, ct1);
+    cfx_xchacha20_encrypt(key, 0, nonce2, pt, 64, ct2);
+
+    CFX_ASSERT(memcmp(ct1, ct2, 64) != 0);
+}
+
+/* different nonces in last 8 bytes -> same subkey but different chacha20 nonce */
+static void test_xchacha20_different_nonce_suffix(void) {
+    static const uint8_t key[32] = {0};
+    static const uint8_t nonce1[24] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1,0,0,0,0,0,0,0};
+    static const uint8_t nonce2[24] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 2,0,0,0,0,0,0,0};
+    static const uint8_t pt[64] = {0};
+
+    uint8_t ct1[64], ct2[64];
+    cfx_xchacha20_encrypt(key, 0, nonce1, pt, 64, ct1);
+    cfx_xchacha20_encrypt(key, 0, nonce2, pt, 64, ct2);
+
+    CFX_ASSERT(memcmp(ct1, ct2, 64) != 0);
+}
+
+static void test_xchacha20_empty_message(void) {
+    static const uint8_t key[32] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
+                                    17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32};
+    static const uint8_t nonce[24] = {0};
+    uint8_t ct[1];
+
+    cfx_xchacha20_encrypt(key, 0, nonce, NULL, 0, ct);
+    /* no crash = success */
+}
+
+static void test_xchacha20_single_byte(void) {
+    static const uint8_t key[32] = {0};
+    static const uint8_t nonce[24] = {0};
+    uint8_t pt = 0x42;
+    uint8_t ct, decrypted;
+
+    cfx_xchacha20_encrypt(key, 0, nonce, &pt, 1, &ct);
+    cfx_xchacha20_encrypt(key, 0, nonce, &ct, 1, &decrypted);
+
+    CFX_ASSERT(decrypted == pt);
+    CFX_ASSERT(ct != pt);  /* encrypted should differ */
+}
+
+static void test_xchacha20_various_lengths(void) {
+    static const uint8_t key[32] = {0x55};
+    static const uint8_t nonce[24] = {0xaa};
+    size_t lengths[] = {1, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 128, 129, 256};
+    size_t num_lengths = sizeof(lengths) / sizeof(lengths[0]);
+
+    for (size_t i = 0; i < num_lengths; ++i) {
+        size_t len = lengths[i];
+        uint8_t* pt = calloc(len, 1);
+        uint8_t* ct = malloc(len);
+        uint8_t* dec = malloc(len);
+
+        for (size_t j = 0; j < len; ++j) pt[j] = (uint8_t)(j & 0xff);
+
+        cfx_xchacha20_encrypt(key, 0, nonce, pt, len, ct);
+        cfx_xchacha20_encrypt(key, 0, nonce, ct, len, dec);
+
+        CFX_ASSERT(memcmp(pt, dec, len) == 0);
+        if (len > 0) CFX_ASSERT(memcmp(pt, ct, len) != 0);
+
+        free(pt);
+        free(ct);
+        free(dec);
+    }
+}
+
+static void test_xchacha20_counter_increments(void) {
+    static const uint8_t key[32] = {0};
+    static const uint8_t nonce[24] = {0};
+    static const uint8_t pt[64] = {0};
+    uint8_t ct0[64], ct1[64], ct2[64];
+
+    cfx_xchacha20_encrypt(key, 0, nonce, pt, 64, ct0);
+    cfx_xchacha20_encrypt(key, 1, nonce, pt, 64, ct1);
+    cfx_xchacha20_encrypt(key, 2, nonce, pt, 64, ct2);
+
+    CFX_ASSERT(memcmp(ct0, ct1, 64) != 0);
+    CFX_ASSERT(memcmp(ct1, ct2, 64) != 0);
+    CFX_ASSERT(memcmp(ct0, ct2, 64) != 0);
+}
+
+static void test_hchacha20_different_keys(void) {
+    static const uint8_t key1[32] = {1};
+    static const uint8_t key2[32] = {2};
+    static const uint8_t nonce[16] = {0};
+    uint8_t out1[32], out2[32];
+
+    cfx_hchacha20(out1, key1, nonce);
+    cfx_hchacha20(out2, key2, nonce);
+
+    CFX_ASSERT(memcmp(out1, out2, 32) != 0);
+}
+
+static void test_hchacha20_different_nonces(void) {
+    static const uint8_t key[32] = {0};
+    static const uint8_t nonce1[16] = {1};
+    static const uint8_t nonce2[16] = {2};
+    uint8_t out1[32], out2[32];
+
+    cfx_hchacha20(out1, key, nonce1);
+    cfx_hchacha20(out2, key, nonce2);
+
+    CFX_ASSERT(memcmp(out1, out2, 32) != 0);
+}
+
+/* test multi-block encryption (> 64 bytes) */
+static void test_xchacha20_multiblock(void) {
+    static const uint8_t key[32] = {0x12, 0x34};
+    static const uint8_t nonce[24] = {0xab, 0xcd};
+    uint8_t pt[200], ct[200], dec[200];
+
+    for (size_t i = 0; i < 200; ++i) pt[i] = (uint8_t)i;
+
+    cfx_xchacha20_encrypt(key, 0, nonce, pt, 200, ct);
+    cfx_xchacha20_encrypt(key, 0, nonce, ct, 200, dec);
+
+    CFX_ASSERT(memcmp(pt, dec, 200) == 0);
+    CFX_ASSERT(memcmp(pt, ct, 200) != 0);
+}
+
 int main(void) {
     CFX_TEST(chacha20_block_kat);
     CFX_TEST(chacha20_block_kat_2);
@@ -275,6 +482,19 @@ int main(void) {
     CFX_TEST(test_quarter_round);
     CFX_TEST(test_quarter_round_state);
 
+    CFX_TEST(test_hchacha20);
+    CFX_TEST(test_hchacha20_different_keys);
+    CFX_TEST(test_hchacha20_different_nonces);
+    CFX_TEST(test_xchacha20_encrypt);
+    CFX_TEST(test_xchacha20_different_nonce_prefix);
+    CFX_TEST(test_xchacha20_different_nonce_suffix);
+    CFX_TEST(test_xchacha20_empty_message);
+    CFX_TEST(test_xchacha20_single_byte);
+    CFX_TEST(test_xchacha20_various_lengths);
+    CFX_TEST(test_xchacha20_counter_increments);
+    CFX_TEST(test_xchacha20_multiblock);
+
+    puts("OK");
     return 0;
 }
 

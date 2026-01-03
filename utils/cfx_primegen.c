@@ -35,7 +35,7 @@ static void usage(const char* prog) {
         "Examples:\n"
         "  %s 128\n"
         "  %s 64 -q | cfx factor\n"
-        "  %s 64 -q | cfx prime_test\n",
+        "  %s 64 -q | cfx isprime\n",
         prog, prog, prog, prog);
 }
 

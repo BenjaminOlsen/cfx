@@ -87,7 +87,7 @@ size_t cfx_big_popcount(const cfx_big_t* x);
 size_t cfx_big_bitlen(const cfx_big_t* b);      /* assumes b->limb[b->n - 1] != 0 */
 int cfx_big_from_u64(cfx_big_t* b, uint64_t v);
 int cfx_big_from_limb(cfx_big_t* b, cfx_limb_t v);
-int cfx_big_to_bytes_be(uint8_t *out, size_t *out_len, const cfx_big_t *b);
+int cfx_big_to_bytes_be(uint8_t* out, size_t* out_len, const cfx_big_t* b);
 int cfx_big_from_bytes_be(cfx_big_t* out, const uint8_t* be, size_t len);
 void cfx_big_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b);
 
@@ -192,10 +192,10 @@ void cfx_big_from_fac_faster(cfx_big_t* out, const cfx_fac_t* f);
 int cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b, cfx_big_t* remainder);
 
 /* allocating string conversions - caller must free returned pointer */
-char* cfx_big_dec_alloc(const cfx_big_t* b, size_t *len_out);
-char* cfx_big_hex_alloc(const cfx_big_t* b, size_t *len_out);
-char* cfx_big_bin_alloc(const cfx_big_t* b, size_t *len_out);
-char* cfx_big_b64_alloc(const cfx_big_t* b, size_t *len_out);
+char* cfx_big_dec_alloc(const cfx_big_t* b, size_t* len_out);
+char* cfx_big_hex_alloc(const cfx_big_t* b, size_t* len_out);
+char* cfx_big_bin_alloc(const cfx_big_t* b, size_t* len_out);
+char* cfx_big_b64_alloc(const cfx_big_t* b, size_t* len_out);
 int cfx_big_to_sci(const cfx_big_t* x, unsigned base, int sig_digits, char* out, size_t outsz);
 
 /* snprintf-style: write to out[0..outlen-1], always NUL-terminate,
@@ -216,7 +216,7 @@ int cfx_big_scan_num_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t*
 int cfx_big_scan_hex_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed);
 int cfx_big_scan_dec_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed);
 int cfx_big_scan_bin_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed);
-int cfx_big_scan_b64_n(cfx_big_t *out, const uint8_t *s, size_t len, size_t *consumed);
+int cfx_big_scan_b64_n(cfx_big_t* out, const uint8_t* s, size_t len, size_t* consumed);
 int cfx_big_from_oct_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t* consumed);
 
 
@@ -316,7 +316,7 @@ double cfx_big_log(const cfx_big_t* b, double base);
  * */
 #define CFX_BIG_PRINTF(b, ...) \
 do {\
-    char *_cfx_big_printf_var = cfx_big_dec_alloc(b, NULL); \
+    char* _cfx_big_printf_var = cfx_big_dec_alloc(b, NULL); \
     CFX_PRINT_DBG("%s\n", __VA_ARGS__, _cfx_big_printf_var); \
     free(_cfx_big_printf_var); \
 } while (0)

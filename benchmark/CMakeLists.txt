@@ -16,7 +16,9 @@ set(CFX_BENCHMARKS
     bench_rand
     bench_rand_fn_ptr
     bench_chacha20
-    bench_aead_chacha20_poly1305
+    bench_aead
+    bench_hash
+    bench_poly_mac
 )
 
 find_package(Threads REQUIRED)

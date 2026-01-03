@@ -26,7 +26,11 @@ set(CFX_UNIT_TESTS
     test_rand
     test_base64
     test_aead_chacha20_poly1305
+    test_aead_chacha20_poly1271
     test_sha256
+    test_sha3
+    test_blake2
+    test_siphash
     test_vec
     test_compat
     test_ntt
@@ -35,6 +39,8 @@ set(CFX_UNIT_TESTS
     test_x25519
     test_ge25519
     test_ed25519
+    test_argon2
+    test_poly1271
 )
 
 foreach(test_name IN LISTS CFX_UNIT_TESTS)

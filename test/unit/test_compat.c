@@ -3,8 +3,16 @@
 
 #include "cfx/compat.h"
 #include "cfx/macros.h"
+#include "cfx/sha256.h"
+#include "cfx/sha512.h"
+#include "cfx/siphash.h"
+#include "cfx/poly1305.h"
+#include "cfx/chacha20.h"
+#include "cfx/rand.h"
 
 #include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* ---- Pure function tests ---- */
@@ -202,6 +210,89 @@ static void test_mutex_contention(void) {
     cfx_mutex_destroy(&mtx);
 }
 
+/* ---- Opaque context alignment tests ---- */
+
+static void test_ctx_alignment_stack(void) {
+    /* stack-allocated contexts should be properly aligned for uint64_t */
+    cfx_sha256_ctx sha256_ctx;
+    cfx_sha512_ctx_t sha512_ctx;
+    cfx_siphash_ctx_t siphash_ctx;
+    cfx_poly1305_ctx_t poly1305_ctx;
+    cfx_chacha20_ctx_t chacha20_ctx;
+    cfx_rng_ctx_t rng_ctx;
+
+    CFX_ASSERT(((uintptr_t)&sha256_ctx % sizeof(uint64_t)) == 0);
+    CFX_ASSERT(((uintptr_t)&sha512_ctx % sizeof(uint64_t)) == 0);
+    CFX_ASSERT(((uintptr_t)&siphash_ctx % sizeof(uint64_t)) == 0);
+    CFX_ASSERT(((uintptr_t)&poly1305_ctx % sizeof(uint64_t)) == 0);
+    CFX_ASSERT(((uintptr_t)&chacha20_ctx % sizeof(uint64_t)) == 0);
+    CFX_ASSERT(((uintptr_t)&rng_ctx % sizeof(uint64_t)) == 0);
+}
+
+static void test_ctx_alignment_heap(void) {
+    /* heap-allocated contexts should also be properly aligned */
+    cfx_sha256_ctx* sha256_ctx = malloc(sizeof(cfx_sha256_ctx));
+    cfx_siphash_ctx_t* siphash_ctx = malloc(sizeof(cfx_siphash_ctx_t));
+    cfx_poly1305_ctx_t* poly1305_ctx = malloc(sizeof(cfx_poly1305_ctx_t));
+    cfx_chacha20_ctx_t* chacha20_ctx = malloc(sizeof(cfx_chacha20_ctx_t));
+
+    CFX_ASSERT(sha256_ctx != NULL);
+    CFX_ASSERT(siphash_ctx != NULL);
+    CFX_ASSERT(poly1305_ctx != NULL);
+    CFX_ASSERT(chacha20_ctx != NULL);
+
+    CFX_ASSERT(((uintptr_t)sha256_ctx % sizeof(uint64_t)) == 0);
+    CFX_ASSERT(((uintptr_t)siphash_ctx % sizeof(uint64_t)) == 0);
+    CFX_ASSERT(((uintptr_t)poly1305_ctx % sizeof(uint64_t)) == 0);
+    CFX_ASSERT(((uintptr_t)chacha20_ctx % sizeof(uint64_t)) == 0);
+
+    free(sha256_ctx);
+    free(siphash_ctx);
+    free(poly1305_ctx);
+    free(chacha20_ctx);
+}
+
+static void test_ctx_operations_work(void) {
+    /* actually use the contexts - if alignment is wrong, this may crash on strict platforms */
+    const uint8_t test_data[] = "test alignment";
+    uint8_t hash_out[64];
+
+    cfx_sha256_ctx sha256_ctx;
+    cfx_sha256_init(&sha256_ctx);
+    cfx_sha256_update(&sha256_ctx, test_data, sizeof(test_data) - 1);
+    cfx_sha256_final(&sha256_ctx, hash_out);
+
+    cfx_sha512_ctx_t sha512_ctx;
+    cfx_sha512_init(&sha512_ctx);
+    cfx_sha512_update(&sha512_ctx, test_data, sizeof(test_data) - 1);
+    cfx_sha512_final(&sha512_ctx, hash_out);
+
+    const uint8_t sip_key[16] = {0};
+    cfx_siphash_ctx_t siphash_ctx;
+    cfx_siphash_init(&siphash_ctx, sip_key);
+    cfx_siphash_update(&siphash_ctx, test_data, sizeof(test_data) - 1);
+    (void)cfx_siphash_final(&siphash_ctx);
+
+    const uint8_t poly_key[32] = {0};
+    uint8_t poly_tag[16];
+    cfx_poly1305_ctx_t poly1305_ctx;
+    cfx_poly1305_init(&poly1305_ctx, poly_key);
+    cfx_poly1305_update(&poly1305_ctx, test_data, sizeof(test_data) - 1);
+    cfx_poly1305_finish(&poly1305_ctx, poly_tag);
+
+    const uint8_t cc_key[32] = {0};
+    const uint8_t cc_nonce[12] = {0};
+    uint8_t cc_out[64];
+    cfx_chacha20_ctx_t chacha20_ctx;
+    cfx_chacha20_ctx_init(&chacha20_ctx, cc_key, cc_nonce);
+    cfx_chacha20_block(&chacha20_ctx, 0, cc_out);
+
+    cfx_rng_ctx_t rng_ctx;
+    cfx_chacha20_rng_init(&rng_ctx, 12345);
+    uint8_t rng_out[32];
+    cfx_chacha20_rng(&rng_ctx, rng_out, sizeof(rng_out));
+}
+
 /* ---- Atomic tests ---- */
 
 static void test_atomic_basic(void) {
@@ -281,6 +372,11 @@ int main(void) {
     /* atomics */
     CFX_TEST(test_atomic_basic);
     CFX_TEST(test_atomic_synchronization);
+
+    /* opaque context alignment */
+    CFX_TEST(test_ctx_alignment_stack);
+    CFX_TEST(test_ctx_alignment_heap);
+    CFX_TEST(test_ctx_operations_work);
 
     puts("OK");
     return 0;

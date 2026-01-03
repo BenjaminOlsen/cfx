@@ -7,16 +7,16 @@
 #include <cstring>
 
 // --- Helpers -----------------------------------------------------------------
-static inline cfx_limb_t splitmix64(cfx_limb_t& s) {
-    cfx_limb_t z = (s += 0x9e3779b97f4a7c15ULL);
+static inline cfx_limb_t splitmix64(uint64_t& s) {
+    uint64_t z = (s += 0x9e3779b97f4a7c15ULL);
     z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
     z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
-    return z ^ (z >> 31);
+    return static_cast<cfx_limb_t>(z ^ (z >> 31));
 }
 
-static void big_rand_limbs(cfx_big_t* x, size_t n, cfx_limb_t seed0) {
+static void big_rand_limbs(cfx_big_t* x, size_t n, uint64_t seed0) {
     cfx_big_reserve(x, n);
-    cfx_limb_t s = seed0;
+    uint64_t s = seed0;
     for (size_t i = 0; i < n; ++i) x->limb[i] = splitmix64(s);
     x->n = n;
     if (n && x->limb[n-1] == 0) x->limb[n-1] = 1;

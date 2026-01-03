@@ -2,6 +2,7 @@
 
 #include "cfx/aead_chacha20_poly1305.h"
 
+#include <string.h>
 #include "cfx/chacha20.h"
 #include "cfx/poly1305.h"
 
@@ -115,4 +116,48 @@ int cfx_chacha20_poly1305_decrypt(
     cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, ct, ct_len, pt);
     CFX_MEMZERO_S(&chacha_ctx, sizeof chacha_ctx);
     return 0;
+}
+
+int cfx_xchacha20_poly1305_encrypt(
+    uint8_t*        ct,
+    uint8_t         tag[16],
+    const uint8_t*  pt,
+    size_t          pt_len,
+    const uint8_t*  aad,
+    size_t          aad_len,
+    const uint8_t   key[32],
+    const uint8_t   nonce[24])
+{
+    uint8_t subkey[32];
+    uint8_t subnonce[12] = {0};
+
+    cfx_hchacha20(subkey, key, nonce);
+    memcpy(subnonce + 4, nonce + 16, 8);
+
+    int rc = cfx_chacha20_poly1305_encrypt(ct, tag, pt, pt_len, aad, aad_len, subkey, subnonce);
+
+    CFX_MEMZERO_S(subkey, sizeof subkey);
+    return rc;
+}
+
+int cfx_xchacha20_poly1305_decrypt(
+    uint8_t*        pt,
+    const uint8_t*  ct,
+    size_t          ct_len,
+    const uint8_t*  aad,
+    size_t          aad_len,
+    const uint8_t   key[32],
+    const uint8_t   nonce[24],
+    const uint8_t   tag[16])
+{
+    uint8_t subkey[32];
+    uint8_t subnonce[12] = {0};
+
+    cfx_hchacha20(subkey, key, nonce);
+    memcpy(subnonce + 4, nonce + 16, 8);
+
+    int rc = cfx_chacha20_poly1305_decrypt(pt, ct, ct_len, aad, aad_len, subkey, subnonce, tag);
+
+    CFX_MEMZERO_S(subkey, sizeof subkey);
+    return rc;
 }

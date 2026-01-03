@@ -34,12 +34,38 @@ static void usage(const char* prog) {
     fprintf(stderr, "Output options:\n");
     fprintf(stderr, "  -w <cols>         Wrap at <cols> columns (default: 80)\n");
     fprintf(stderr, "  -w 0              No wrapping\n");
+    fprintf(stderr, "  -v                Verbose printing\n");
     fprintf(stderr, "  --raw             No formatting, just digits\n\n");
     fprintf(stderr, "Examples:\n");
     fprintf(stderr, "  %s 100                       # first 100 decimal digits\n", prog);
     fprintf(stderr, "  %s 1000                      # ~0.01 sec\n", prog);
     fprintf(stderr, "  %s 10000                     # ~0.5 sec\n", prog);
     fprintf(stderr, "  %s --machin 1000             # educational algorithm\n", prog);
+}
+
+
+static void big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_limb_t p, int verbose) {
+    if (p == 0)              { cfx_big_from_limb(out, 1); return; }
+    if (cfx_big_is_zero(n))  { cfx_big_from_limb(out, 0); return; }
+    if (cfx_big_eq_u64(n, 1)) { cfx_big_from_limb(out, 1); return; }
+
+    cfx_big_t acc, np; /* accumulator, p copy, n^p*/
+    cfx_big_init(&acc);
+    cfx_big_init(&np);
+    cfx_big_from_limb(&np, 1);
+    cfx_big_copy(&acc, n);
+    cfx_limb_t p_orig = p;
+    while (p) {
+        if (p & 1) {
+            cfx_big_mul_auto(&np, &acc);
+        }
+        p >>= 1;
+        if (p) cfx_big_mul_auto(&acc, &acc);
+        if (verbose) { printf("pow " CFX_PRIuLIMB " / " CFX_PRIuLIMB "\n", p, p_orig); }
+    }
+    cfx_big_move(out, &np);
+    cfx_big_free(&np);
+    cfx_big_free(&acc);
 }
 
 /*
@@ -50,7 +76,7 @@ static void usage(const char* prog) {
  * We maintain a "current term" and divide by d² each iteration.
  * The series converges when term < 1 (in scaled integer arithmetic).
  */
-static void arctan_inv(cfx_big_t* result, long d, size_t precision) {
+static void arctan_inv(cfx_big_t* result, long d, size_t precision, int verbose) {
     cfx_big_t power;
     cfx_big_t term;
     cfx_big_t d_sq;
@@ -64,7 +90,7 @@ static void arctan_inv(cfx_big_t* result, long d, size_t precision) {
 
     /* Initialize: 10^precision / d */
     cfx_big_from_u64(&tmp, 10);
-    cfx_big_exp_u64(&power, &tmp, (cfx_limb_t)precision);
+    big_exp_u64(&power, &tmp, (cfx_limb_t)precision, verbose);
     cfx_big_from_u64(&d_sq, (uint64_t)d);
     cfx_big_divrem(&term, &rem, &power, &d_sq);
 
@@ -118,7 +144,7 @@ static void arctan_inv(cfx_big_t* result, long d, size_t precision) {
 /*
  * Machin's formula: π/4 = 4·arctan(1/5) - arctan(1/239)
  */
-static void compute_pi_machin(cfx_big_t* pi, size_t digits) {
+static void compute_pi_machin(cfx_big_t* pi, size_t digits, int verbose) {
     size_t precision = digits + 20;
 
     cfx_big_t atan5, atan239;
@@ -126,10 +152,10 @@ static void compute_pi_machin(cfx_big_t* pi, size_t digits) {
     cfx_big_init(&atan239);
 
     fprintf(stderr, "Computing arctan(1/5)...\n");
-    arctan_inv(&atan5, 5, precision);
+    arctan_inv(&atan5, 5, precision, verbose);
 
     fprintf(stderr, "Computing arctan(1/239)...\n");
-    arctan_inv(&atan239, 239, precision);
+    arctan_inv(&atan239, 239, precision, verbose);
 
     /* π/4 = 4·arctan(1/5) - arctan(1/239) */
     cfx_big_mul_sm_eq(&atan5, 4);
@@ -144,7 +170,7 @@ static void compute_pi_machin(cfx_big_t* pi, size_t digits) {
     cfx_big_init(&ten);
     cfx_big_init(&rem);
     cfx_big_from_u64(&ten, 10);
-    cfx_big_exp_u64(&scale, &ten, 20);
+    big_exp_u64(&scale, &ten, 20, verbose);
     cfx_big_divrem(pi, &rem, &atan5, &scale);
 
     cfx_big_free(&scale);
@@ -179,8 +205,9 @@ static void compute_pi_machin(cfx_big_t* pi, size_t digits) {
  * T is signed (alternates based on (-1)^k)
  */
 static void bs(size_t a, size_t b,
-               cfx_big_t* P, cfx_big_t* Q, cfx_sbig_t* T) {
+               cfx_big_t* P, cfx_big_t* Q, cfx_sbig_t* T, int verbose) {
 
+    printf("bs(%zu, %zu)\n", a, b);
     if (b - a == 1) {
         /* Base case: compute for single term k = a */
         cfx_big_t tmp1;
@@ -237,8 +264,8 @@ static void bs(size_t a, size_t b,
         cfx_big_init(&P2); cfx_big_init(&Q2);
         cfx_sbig_init(&T1); cfx_sbig_init(&T2);
 
-        bs(a, m, &P1, &Q1, &T1);
-        bs(m, b, &P2, &Q2, &T2);
+        bs(a, m, &P1, &Q1, &T1, verbose);
+        bs(m, b, &P2, &Q2, &T2, verbose);
 
         /* Combine:
          * P = P1 * P2
@@ -316,7 +343,8 @@ static void big_isqrt(cfx_big_t* result, const cfx_big_t* n) {
     cfx_big_free(&rem);
 }
 
-static void compute_pi_chudnovsky(cfx_big_t* pi, size_t digits) {
+
+static void compute_pi_chudnovsky(cfx_big_t* pi, size_t digits, int verbose) {
     size_t n_terms = digits / 14 + 2;
     size_t precision = digits + 50;
 
@@ -328,7 +356,7 @@ static void compute_pi_chudnovsky(cfx_big_t* pi, size_t digits) {
     cfx_big_init(&Q);
     cfx_sbig_init(&T);
 
-    bs(0, n_terms, &P, &Q, &T);
+    bs(0, n_terms, &P, &Q, &T, verbose);
 
     fprintf(stderr, "Computing sqrt(10005)...\n");
 
@@ -346,7 +374,7 @@ static void compute_pi_chudnovsky(cfx_big_t* pi, size_t digits) {
     cfx_big_t ten;
     cfx_big_init(&ten);
     cfx_big_from_u64(&ten, 10);
-    cfx_big_exp_u64(&scale, &ten, (cfx_limb_t)precision);
+    big_exp_u64(&scale, &ten, (cfx_limb_t)precision, verbose);
 
     cfx_big_from_u64(&k_scaled, 10005);
     cfx_big_t scale_sq;
@@ -366,7 +394,7 @@ static void compute_pi_chudnovsky(cfx_big_t* pi, size_t digits) {
     /* Truncate extra digits */
     cfx_big_t extra;
     cfx_big_init(&extra);
-    cfx_big_exp_u64(&extra, &ten, (cfx_limb_t)(precision - digits));
+    big_exp_u64(&extra, &ten, (cfx_limb_t)(precision - digits), verbose);
     cfx_big_divrem(pi, &rem, pi, &extra);
 
     cfx_big_free(&extra);
@@ -425,6 +453,7 @@ int cfx_pi_run(int argc, char* argv[]) {
     int use_chudnovsky = 1;
     int wrap_cols = 80;
     int raw = 0;
+    int verbose = 0;
     size_t digits = 0;
 
     for (int i = 1; i < argc; i++) {
@@ -434,6 +463,8 @@ int cfx_pi_run(int argc, char* argv[]) {
             use_chudnovsky = 0;
         } else if (strcmp(argv[i], "-w") == 0 && i + 1 < argc) {
             wrap_cols = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-v") == 0) {
+            verbose = 1;
         } else if (strcmp(argv[i], "--raw") == 0) {
             raw = 1;
         } else if (argv[i][0] != '-') {
@@ -460,10 +491,10 @@ int cfx_pi_run(int argc, char* argv[]) {
 
     if (use_chudnovsky) {
         fprintf(stderr, "Using Chudnovsky algorithm for %zu digits\n", digits);
-        compute_pi_chudnovsky(&pi, digits);
+        compute_pi_chudnovsky(&pi, digits, verbose);
     } else {
         fprintf(stderr, "Using Machin's formula for %zu digits\n", digits);
-        compute_pi_machin(&pi, digits);
+        compute_pi_machin(&pi, digits, verbose);
     }
 
     fprintf(stderr, "Converting to decimal...\n");

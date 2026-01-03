@@ -12,6 +12,14 @@
 extern "C" {
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+#define CFX_MAYBE_UNUSED __attribute__((unused))
+#elif defined(_MSC_VER)
+#define CFX_MAYBE_UNUSED
+#else
+#define CFX_MAYBE_UNUSED
+#endif
+
 /* removes folders from __FILE__ path */
 #define __FILENAME__ \
     (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)

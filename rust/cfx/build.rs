@@ -41,14 +41,32 @@ fn main() {
     build
         .include(&include_dir)
         .files(&[
-            src_dir.join("big.c"),
-            src_dir.join("algo.c"),
-            src_dir.join("fac.c"),
-            src_dir.join("vec.c"),
-            src_dir.join("rand.c"),
-            src_dir.join("chacha20.c"),
-            src_dir.join("poly1305.c"),
-            src_dir.join("aead_chacha20_poly1305.c"),
+            // big/
+            src_dir.join("big/big.c"),
+            src_dir.join("big/ntt.c"),
+            // math/
+            src_dir.join("math/algo.c"),
+            src_dir.join("math/fac.c"),
+            // core/
+            src_dir.join("core/vec.c"),
+            // rng/
+            src_dir.join("rng/rand.c"),
+            // crypto/
+            src_dir.join("crypto/chacha20.c"),
+            src_dir.join("crypto/poly1305.c"),
+            src_dir.join("crypto/aead_chacha20_poly1305.c"),
+            src_dir.join("crypto/sha256.c"),
+            src_dir.join("crypto/sha512.c"),
+            src_dir.join("crypto/sha3.c"),
+            src_dir.join("crypto/blake2.c"),
+            src_dir.join("crypto/siphash.c"),
+            src_dir.join("crypto/fe25519.c"),
+            src_dir.join("crypto/ge25519.c"),
+            src_dir.join("crypto/sc25519.c"),
+            src_dir.join("crypto/x25519.c"),
+            src_dir.join("crypto/ed25519.c"),
+            src_dir.join("crypto/base64.c"),
+            // generated
             primes_c,
         ])
         .flag_if_supported("-std=c99")

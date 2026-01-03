@@ -8,9 +8,13 @@
  *
  * Key sizes:
  *   - Seed: 32 bytes (random)
- *   - Secret key: 64 bytes (expanded from seed)
+ *   - Secret key: 64 bytes = seed || public_key (bundled to prevent misuse)
  *   - Public key: 32 bytes
  *   - Signature: 64 bytes
+ *
+ * The secret key bundles the seed with its public key to prevent a class of
+ * attacks where signing the same message with mismatched keys leaks the
+ * private scalar. The sign function extracts pk from sk internally.
  *
  * All operations are constant-time with respect to secret data.
  */

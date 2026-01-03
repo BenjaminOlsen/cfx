@@ -3,6 +3,7 @@
 #include "cfx/x25519.h"
 #include "cfx/rand.h"
 #include "cfx/base64.h"
+#include "cfx/memory.h"
 #include "misc.h"
 
 #include <stdio.h>
@@ -36,7 +37,7 @@ static void usage(const char* prog) {
 static int cmd_keygen(enum cfx_str_format fmt, int quiet) {
     uint8_t privkey[32], pubkey[32];
 
-    /* generate random private key */
+    /* generate random private key from OS entropy */
     cfx_srand_os();
     cfx_rand_bytes(privkey, 32);
 
@@ -56,6 +57,8 @@ static int cmd_keygen(enum cfx_str_format fmt, int quiet) {
         printf("\n");
     }
 
+    /* zero sensitive data */
+    cfx_memzero_s(privkey, sizeof(privkey));
     return 0;
 }
 
@@ -73,12 +76,15 @@ static int cmd_public(const char* privkey_hex, enum cfx_str_format fmt, int quie
     cfx_printf_output(pubkey, 32, fmt);
     printf("\n");
 
+    /* zero sensitive data */
+    cfx_memzero_s(privkey, sizeof(privkey));
     return 0;
 }
 
 static int cmd_shared(const char* privkey_hex, const char* pubkey_hex,
                       enum cfx_str_format fmt, int quiet) {
     uint8_t privkey[32], pubkey[32], shared[32];
+    int ret;
 
     if (cfx_parse_hex(privkey_hex, privkey, 32) != 0) {
         fprintf(stderr, "error: private key must be 64 hex characters\n");
@@ -86,12 +92,14 @@ static int cmd_shared(const char* privkey_hex, const char* pubkey_hex,
     }
 
     if (cfx_parse_hex(pubkey_hex, pubkey, 32) != 0) {
+        cfx_memzero_s(privkey, sizeof(privkey));
         fprintf(stderr, "error: public key must be 64 hex characters\n");
         return 1;
     }
 
-    int ret = cfx_x25519(shared, privkey, pubkey);
+    ret = cfx_x25519(shared, privkey, pubkey);
     if (ret != 0) {
+        cfx_memzero_s(privkey, sizeof(privkey));
         fprintf(stderr, "error: invalid public key (result is zero)\n");
         return 1;
     }
@@ -100,6 +108,9 @@ static int cmd_shared(const char* privkey_hex, const char* pubkey_hex,
     cfx_printf_output(shared, 32, fmt);
     printf("\n");
 
+    /* zero sensitive data */
+    cfx_memzero_s(privkey, sizeof(privkey));
+    cfx_memzero_s(shared, sizeof(shared));
     return 0;
 }
 

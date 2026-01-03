@@ -48,6 +48,7 @@ set(CFX_HEADERS
     include/cfx/aead_chacha20_poly1305.h
     include/cfx/algo.h
     include/cfx/arch.h
+    include/cfx/argon2.h
     include/cfx/arith.h
     include/cfx/base64.h
     include/cfx/big.h
@@ -239,3 +240,4 @@ if (CFX_BUILD_BENCHMARKS)
     message(STATUS "Building benchmarks...")
     add_subdirectory(benchmark)
 endif()
+

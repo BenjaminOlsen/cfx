@@ -162,7 +162,7 @@ int cfx_mac_run(int argc, char** argv) {
         }
     }
 
-    cfx_poly1305_mac(key, msg, len, tag);
+    cfx_poly1305(tag, msg, len, key);
     free(msg_buf);
 
     if (!quiet) {

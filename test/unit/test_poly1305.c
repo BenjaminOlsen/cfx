@@ -58,10 +58,8 @@ static void poly1305_rfc8439_2_5_2_kat(void) {
     };
 
     uint8_t tag[16];
-    cfx_poly1305_mac(K_2_5_2, M_2_5_2, sizeof(M_2_5_2), tag);
+    cfx_poly1305(tag, M_2_5_2, sizeof(M_2_5_2), K_2_5_2);
     expect_tag("RFC8439 2.5.2 KAT", tag, T_2_5_2);
-    cfx_poly1305_mac_2(K_2_5_2, M_2_5_2, sizeof(M_2_5_2), tag);
-    expect_tag("RFC8439 2.5.2 KAT - 2", tag, T_2_5_2);
 }
  
 
@@ -317,72 +315,39 @@ static const uint8_t T_A3_11[16] = {
 static void poly1305_rfc8439_appendix_a3_kats(void) {
     uint8_t tag[16];
 
-    cfx_poly1305_mac(K_A3_1, M_A3_1, sizeof M_A3_1, tag);
+    cfx_poly1305(tag, M_A3_1, sizeof M_A3_1, K_A3_1);
     expect_tag("RFC8439 A.3 Test Vector #1", T_A3_1, tag);
 
-    cfx_poly1305_mac(K_A3_2, M_A3_2, sizeof M_A3_2, tag);
+    cfx_poly1305(tag, M_A3_2, sizeof M_A3_2, K_A3_2);
     expect_tag("RFC8439 A.3 Test Vector #2", T_A3_2, tag);
 
-    cfx_poly1305_mac(K_A3_3, M_A3_3, sizeof M_A3_2, tag);
+    cfx_poly1305(tag, M_A3_3, sizeof M_A3_2, K_A3_3);
     expect_tag("RFC8439 A.3 Test Vector #3", T_A3_3, tag);
 
-    cfx_poly1305_mac(K_A3_4, M_A3_4, sizeof M_A3_4, tag);
+    cfx_poly1305(tag, M_A3_4, sizeof M_A3_4, K_A3_4);
     expect_tag("RFC8439 A.3 Test Vector #4", T_A3_4, tag);
 
-    cfx_poly1305_mac(K_A3_5, M_A3_5, sizeof M_A3_5, tag);
+    cfx_poly1305(tag, M_A3_5, sizeof M_A3_5, K_A3_5);
     expect_tag("RFC8439 A.3 Test Vector #5", T_A3_5, tag);
 
-    cfx_poly1305_mac(K_A3_6, M_A3_6, sizeof M_A3_6, tag);
+    cfx_poly1305(tag, M_A3_6, sizeof M_A3_6, K_A3_6);
     expect_tag("RFC8439 A.3 Test Vector #6", T_A3_6, tag);
 
-    cfx_poly1305_mac(K_A3_7, M_A3_7, sizeof M_A3_7, tag);
+    cfx_poly1305(tag, M_A3_7, sizeof M_A3_7, K_A3_7);
     expect_tag("RFC8439 A.3 Test Vector #7", T_A3_7, tag);
 
-    cfx_poly1305_mac(K_A3_8, M_A3_8, sizeof M_A3_8, tag);
+    cfx_poly1305(tag, M_A3_8, sizeof M_A3_8, K_A3_8);
     expect_tag("RFC8439 A.3 Test Vector #8", T_A3_8, tag);
 
-    cfx_poly1305_mac(K_A3_9, M_A3_9, sizeof M_A3_9, tag);
+    cfx_poly1305(tag, M_A3_9, sizeof M_A3_9, K_A3_9);
     expect_tag("RFC8439 A.3 Test Vector #9", T_A3_9, tag);
 
-    cfx_poly1305_mac(K_A3_10, M_A3_10, sizeof M_A3_10, tag);
+    cfx_poly1305(tag, M_A3_10, sizeof M_A3_10, K_A3_10);
     expect_tag("RFC8439 A.3 Test Vector #10", T_A3_10, tag);
 
-    cfx_poly1305_mac(K_A3_11, M_A3_11, sizeof M_A3_11, tag);
+    cfx_poly1305(tag, M_A3_11, sizeof M_A3_11, K_A3_11);
     expect_tag("RFC8439 A.3 Test Vector #11", T_A3_11, tag);
 
-    /*  ----  */
-    cfx_poly1305_mac_2(K_A3_1, M_A3_1, sizeof M_A3_1, tag);
-    expect_tag("RFC8439 A.3 Test Vector #1 - 2", T_A3_1, tag);
-
-    cfx_poly1305_mac_2(K_A3_2, M_A3_2, sizeof M_A3_2, tag);
-    expect_tag("RFC8439 A.3 Test Vector #2 - 2", T_A3_2, tag);
-
-    cfx_poly1305_mac_2(K_A3_3, M_A3_3, sizeof M_A3_2, tag);
-    expect_tag("RFC8439 A.3 Test Vector #3 - 2", T_A3_3, tag);
-
-    cfx_poly1305_mac_2(K_A3_4, M_A3_4, sizeof M_A3_4, tag);
-    expect_tag("RFC8439 A.3 Test Vector #4 - 2", T_A3_4, tag);
-
-    cfx_poly1305_mac_2(K_A3_5, M_A3_5, sizeof M_A3_5, tag);
-    expect_tag("RFC8439 A.3 Test Vector #5 - 2", T_A3_5, tag);
-
-    cfx_poly1305_mac_2(K_A3_6, M_A3_6, sizeof M_A3_6, tag);
-    expect_tag("RFC8439 A.3 Test Vector #6 - 2", T_A3_6, tag);
-
-    cfx_poly1305_mac_2(K_A3_7, M_A3_7, sizeof M_A3_7, tag);
-    expect_tag("RFC8439 A.3 Test Vector #7 - 2", T_A3_7, tag);
-
-    cfx_poly1305_mac_2(K_A3_8, M_A3_8, sizeof M_A3_8, tag);
-    expect_tag("RFC8439 A.3 Test Vector #8 - 2", T_A3_8, tag);
-
-    cfx_poly1305_mac_2(K_A3_9, M_A3_9, sizeof M_A3_9, tag);
-    expect_tag("RFC8439 A.3 Test Vector #9 - 2", T_A3_9, tag);
-
-    cfx_poly1305_mac_2(K_A3_10, M_A3_10, sizeof M_A3_10, tag);
-    expect_tag("RFC8439 A.3 Test Vector #10 - 2", T_A3_10, tag);
-
-    cfx_poly1305_mac_2(K_A3_11, M_A3_11, sizeof M_A3_11, tag);
-    expect_tag("RFC8439 A.3 Test Vector #11 - 2", T_A3_11, tag);
 }
 
 /* ----------------------------------------------------------- */

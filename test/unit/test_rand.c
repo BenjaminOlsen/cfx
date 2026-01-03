@@ -1,6 +1,7 @@
 /* test_rand.c */
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -197,12 +198,87 @@ static void test_chacha20_rng_ctx(void) {
     CFX_ASSERT(memcmp(buf1, buf2, sizeof buf1) != 0);
 }
 
+/* test cfx_srand_os produces non-zero output */
+static void test_srand_os_not_zero(void) {
+    uint8_t buf[64];
+    memset(buf, 0, sizeof buf);
+
+    cfx_srand_os();
+    cfx_rand_bytes(buf, sizeof buf);
+
+    uint32_t sum = 0;
+    for (size_t i = 0; i < sizeof buf; i++) sum += buf[i];
+    CFX_ASSERT(sum != 0);
+}
+
+/* test cfx_srand_os works without calling cfx_srand first */
+static void test_srand_os_standalone(void) {
+    /* this is a fresh test - don't assume any prior seeding */
+    uint8_t buf1[32], buf2[32];
+
+    cfx_srand_os();
+    cfx_rand_bytes(buf1, sizeof buf1);
+
+    cfx_srand_os();
+    cfx_rand_bytes(buf2, sizeof buf2);
+
+    /* both should be non-zero */
+    uint32_t sum1 = 0, sum2 = 0;
+    for (size_t i = 0; i < sizeof buf1; i++) {
+        sum1 += buf1[i];
+        sum2 += buf2[i];
+    }
+    CFX_ASSERT(sum1 != 0);
+    CFX_ASSERT(sum2 != 0);
+
+    /* should be different - (overwhelmingly likely with OS entropy) */
+    CFX_ASSERT(memcmp(buf1, buf2, sizeof buf1) != 0);
+}
+
+static void test_rand_bytes_os(void) {
+    uint8_t buf[32];
+    memset(buf, 0, sizeof buf);
+
+    cfx_rand_bytes_os(buf, sizeof buf);
+
+    uint32_t sum = 0;
+    for (size_t i = 0; i < sizeof buf; i++) sum += buf[i];
+    CFX_ASSERT(sum != 0);
+}
+
+/* test various buffer sizes with cfx_srand_os (catches SIMD alignment bugs) */
+static void test_srand_os_various_sizes(void) {
+    size_t sizes[] = {1, 7, 8, 15, 16, 31, 32, 63, 64, 65, 127, 128, 256, 512, 1024};
+    size_t num_sizes = sizeof(sizes) / sizeof(sizes[0]);
+
+    for (size_t i = 0; i < num_sizes; i++) {
+        size_t len = sizes[i];
+        uint8_t* buf = (uint8_t*)malloc(len);
+        CFX_ASSERT(buf != NULL);
+        memset(buf, 0, len);
+
+        cfx_srand_os();
+        cfx_rand_bytes(buf, len);
+
+        /* check not all zeros (for any reasonable size) */
+        uint32_t sum = 0;
+        for (size_t j = 0; j < len; j++) sum += buf[j];
+        CFX_ASSERT(sum != 0);
+
+        free(buf);
+    }
+}
+
 int main(void) {
     CFX_TEST(run_all_table_rng_tests);
     CFX_TEST(test_explicit_state_independence);
     CFX_TEST(test_rand_limb);
     CFX_TEST(test_cfx_rand_api);
     CFX_TEST(test_chacha20_rng_ctx);
+    CFX_TEST(test_srand_os_not_zero);
+    CFX_TEST(test_srand_os_standalone);
+    CFX_TEST(test_rand_bytes_os);
+    CFX_TEST(test_srand_os_various_sizes);
     puts("OK");
     return 0;
 }

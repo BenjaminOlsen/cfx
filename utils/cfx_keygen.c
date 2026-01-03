@@ -1,111 +1,102 @@
+/* cfx_keygen.c - cryptographic key generation utility */
+
 #include "cfx/rand.h"
 #include "cfx/base64.h"
+#include "cfx/memory.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
+
 #include "cfx_cmd.h"
 #include "misc.h"
 
-static void usage(const char *prog) {
-    fprintf(stderr,
-        "Usage: %s [options] <bytes>\n"
-        "  Generate random bytes for use as keys.\n\n"
-        "Options:\n"
-        "  -s <seed>   Seed for RNG (default: random)\n"
-        "  -x          Output as hex (default)\n"
-        "  -b64        Output as base64\n"
-        "  -q          Quiet mode (key only, no seed output)\n"
-        "  -h, --help  Show this help\n\n"
-        "Examples:\n"
-        "  %s 32                      Generate 32-byte key\n"
-        "  %s 32 -q | cfx mac -k -    Pipe key to mac\n",
-        prog, prog, prog);
+static void usage(const char* prog) {
+    printf("Usage: %s [options] <bytes>\n", prog);
+    printf("  Generate cryptographically secure random bytes.\n\n");
+    printf("Options:\n");
+    printf("  -x          Output as hex (default)\n");
+    printf("  -b64        Output as base64\n");
+    printf("  -r          Output raw bytes (binary)\n");
+    printf("  -h, --help  Show this help\n\n");
+    printf("Examples:\n");
+    printf("  %s 32           Generate 32-byte key (hex)\n", prog);
+    printf("  %s 16 -b64      Generate 16-byte key (base64)\n", prog);
+    printf("  %s 32 -r > key  Write raw key to file\n", prog);
 }
 
-int cfx_keygen_run(int argc, char **argv) {
-    const char* prog = argv[0];
-
+int cfx_keygen_run(int argc, char** argv) {
     if (argc < 2 || (argc == 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0))) {
-        usage(prog);
+        usage(argv[0]);
         return argc < 2 ? 1 : 0;
     }
 
     long nbytes = -1;
-    const char* seed_in = NULL;
     enum cfx_str_format fmt = CFX_STR_FMT_HEX;
-    int quiet = 0;
-
-    #define CHECK_ARG(i) if (i >= argc) { usage(argv[0]); return EXIT_FAILURE; }
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-s") == 0) {
-            ++i;
-            CHECK_ARG(i);
-            seed_in = argv[i];
-        } else if (strcmp(argv[i], "-x") == 0) {
+        if (strcmp(argv[i], "-x") == 0) {
             fmt = CFX_STR_FMT_HEX;
         } else if (strcmp(argv[i], "-b64") == 0) {
             fmt = CFX_STR_FMT_BASE64;
-        } else if (strcmp(argv[i], "-q") == 0) {
-            quiet = 1;
+        } else if (strcmp(argv[i], "-r") == 0) {
+            fmt = CFX_STR_FMT_BINARY;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-            usage(prog);
+            usage(argv[0]);
             return 0;
         } else if (argv[i][0] == '-') {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            usage(prog);
-            return EXIT_FAILURE;
+            usage(argv[0]);
+            return 1;
         } else {
-            char *end = NULL;
+            char* end = NULL;
             nbytes = strtol(argv[i], &end, 10);
-            if (*end != '\0' || nbytes <= 0) {
-                fprintf(stderr, "Invalid bytes: %s\n", argv[i]);
-                usage(prog);
-                return EXIT_FAILURE;
+            if (*end != '\0' || nbytes <= 0 || nbytes > 1024 * 1024) {
+                fprintf(stderr, "Invalid byte count: %s (must be 1-%d)\n", argv[i], 1024 * 1024);
+                return 1;
             }
         }
     }
 
     if (nbytes <= 0) {
-        fprintf(stderr, "error: <bytes> is required\n");
-        usage(prog);
-        return EXIT_FAILURE;
+        fprintf(stderr, "Error: <bytes> is required\n");
+        usage(argv[0]);
+        return 1;
     }
 
-    uint8_t *buf = malloc((size_t)nbytes);
+    uint8_t* buf = malloc((size_t)nbytes);
     if (!buf) {
         fprintf(stderr, "Allocation failed\n");
-        return 2;
-    }
-    unsigned seed = 0;
-
-    if (seed_in) {
-        seed = strtoull(seed_in, NULL, 0);
-    } else {
-        cfx_srand_os();
-        seed = cfx_rand_os();
+        return 1;
     }
 
-    if (!quiet) printf("using seed 0x%x\n", seed);
-    cfx_srand(seed);
+    /* seed ChaCha20 CSPRNG from OS entropy, then generate bytes */
+    cfx_srand_os();
     cfx_rand_bytes(buf, (size_t)nbytes);
 
-    if (fmt == CFX_STR_FMT_BASE64) {
+    if (fmt == CFX_STR_FMT_BINARY) {
+#ifdef _WIN32
+        _setmode(_fileno(stdout), _O_BINARY);
+#endif
+        fwrite(buf, 1, (size_t)nbytes, stdout);
+    } else if (fmt == CFX_STR_FMT_BASE64) {
         size_t b64_len = cfx_base64_enc_len((size_t)nbytes);
-        char* b64 = (char*)malloc(b64_len + 1);
-        if (b64) {
-            cfx_base64_encode(b64, &b64_len, buf, (size_t)nbytes);
-            b64[b64_len] = '\0';
-            printf("%s\n", b64);
-            free(b64);
-        } else {
+        char* b64 = malloc(b64_len + 1);
+        if (!b64) {
             fprintf(stderr, "Allocation failed\n");
             free(buf);
-            return 2;
+            return 1;
         }
+        cfx_base64_encode(b64, &b64_len, buf, (size_t)nbytes);
+        b64[b64_len] = '\0';
+        printf("%s\n", b64);
+        free(b64);
     } else {
         for (long i = 0; i < nbytes; i++) {
             printf("%02x", buf[i]);
@@ -113,6 +104,8 @@ int cfx_keygen_run(int argc, char **argv) {
         printf("\n");
     }
 
+    /* zero sensitive data */
+    memset(buf, 0, (size_t)nbytes);
     free(buf);
     return 0;
 }
