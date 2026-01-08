@@ -6,7 +6,6 @@
  * Extended coordinate formulas from Hisil-Wong-Carter-Dawson 2008.
  * Twisted Edwards curve: -x² + y² = 1 + d·x²·y² (mod p)
  *
- * Constant-time implementation: no branches on secret data.
  */
 
 #include "cfx/ge25519.h"

@@ -66,13 +66,6 @@ static inline uint64_t load64_le(const void* src) {
            ((uint64_t)p[6] << 48) | ((uint64_t)p[7] << 56);
 }
 
-static inline void store64_le(void* dst, uint64_t x) {
-    uint8_t* p = (uint8_t*)dst;
-    p[0] = (uint8_t)x; p[1] = (uint8_t)(x >> 8);
-    p[2] = (uint8_t)(x >> 16); p[3] = (uint8_t)(x >> 24);
-    p[4] = (uint8_t)(x >> 32); p[5] = (uint8_t)(x >> 40);
-    p[6] = (uint8_t)(x >> 48); p[7] = (uint8_t)(x >> 56);
-}
 
 /*
  * Keccak-f[1600] permutation - 24 rounds
