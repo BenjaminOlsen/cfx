@@ -6,6 +6,7 @@
 
 #include "cfx/sha3.h"
 #include "cfx/macros.h"
+#include "cfx/memory.h"
 #include <string.h>
 
 /* internal state */
@@ -199,7 +200,7 @@ void cfx_sha3_224_final(cfx_sha3_ctx_t* ctx, uint8_t out[28]) {
     sha3_state_t* S = (sha3_state_t*)ctx;
     sha3_finalize(S);
     sha3_squeeze(S, out, 28);
-    memset(S, 0, sizeof(*S));
+    CFX_MEMZERO_S(S, sizeof(*S));
 }
 
 void cfx_sha3_224(uint8_t out[28], const void* data, size_t len) {
@@ -228,7 +229,7 @@ void cfx_sha3_256_final(cfx_sha3_ctx_t* ctx, uint8_t out[32]) {
     sha3_state_t* S = (sha3_state_t*)ctx;
     sha3_finalize(S);
     sha3_squeeze(S, out, 32);
-    memset(S, 0, sizeof(*S));
+    CFX_MEMZERO_S(S, sizeof(*S));
 }
 
 void cfx_sha3_256(uint8_t out[32], const void* data, size_t len) {
@@ -257,7 +258,7 @@ void cfx_sha3_384_final(cfx_sha3_ctx_t* ctx, uint8_t out[48]) {
     sha3_state_t* S = (sha3_state_t*)ctx;
     sha3_finalize(S);
     sha3_squeeze(S, out, 48);
-    memset(S, 0, sizeof(*S));
+    CFX_MEMZERO_S(S, sizeof(*S));
 }
 
 void cfx_sha3_384(uint8_t out[48], const void* data, size_t len) {
@@ -286,7 +287,7 @@ void cfx_sha3_512_final(cfx_sha3_ctx_t* ctx, uint8_t out[64]) {
     sha3_state_t* S = (sha3_state_t*)ctx;
     sha3_finalize(S);
     sha3_squeeze(S, out, 64);
-    memset(S, 0, sizeof(*S));
+    CFX_MEMZERO_S(S, sizeof(*S));
 }
 
 void cfx_sha3_512(uint8_t out[64], const void* data, size_t len) {
