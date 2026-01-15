@@ -17,6 +17,7 @@ static int dec_digits(cfx_limb_t n) {
     if (n < 10000000ULL) return 7;
     if (n < 100000000ULL) return 8;
     if (n < 1000000000ULL) return 9;
+    #if CFX_LIMB_BITS == 64
     if (n < 10000000000ULL) return 10;
     if (n < 100000000000ULL) return 11;
     if (n < 1000000000000ULL) return 12;
@@ -26,6 +27,7 @@ static int dec_digits(cfx_limb_t n) {
     if (n < 10000000000000000ULL) return 16;
     if (n < 100000000000000000ULL) return 17;
     if (n < 1000000000000000000ULL) return 18;
+    #endif
     return 19;
 }
 

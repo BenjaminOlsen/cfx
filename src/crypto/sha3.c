@@ -66,7 +66,6 @@ static inline uint64_t load64_le(const void* src) {
            ((uint64_t)p[6] << 48) | ((uint64_t)p[7] << 56);
 }
 
-
 /*
  * Keccak-f[1600] permutation - 24 rounds
  */
