@@ -488,12 +488,12 @@ void cfx_big_cswap(cfx_big_t* a, cfx_big_t* b, int condition) {
 }
 
 size_t cfx_big_bitlen(const cfx_big_t* b) {
-    /* assumes b->limb[b->n - 1] != 0 */
-    size_t n = b->n;
+    /* Returns 0 for zero; otherwise assumes no leading zero limbs */
+    if (b->n == 0) return 0;
     const size_t limb_bits = 8u * sizeof(cfx_limb_t);
-    cfx_limb_t v = b->limb[n - 1];
+    cfx_limb_t v = b->limb[b->n - 1];
     size_t lz = cfx_clz(v);
-    return n * limb_bits - lz;
+    return b->n * limb_bits - lz;
 }
 
 void cfx_big_reserve(cfx_big_t* b, size_t need) {
@@ -1576,15 +1576,24 @@ void cfx_big_sub_eq(cfx_big_t* a, const cfx_big_t* b) {
 
 void cfx_big_sub_sm_eq(cfx_big_t* b, cfx_limb_t n) {
     if (n == 0 || b->n == 0) return;
-    if (b->limb[0] < n) {
-        if (b->n == 1) {
-            /* underflow */
-            return;
-        } else {
-            b->limb[1] -= 1;
-        }
-    }
+
+    /* Subtract n from limb[0], propagate borrow if needed */
+    cfx_limb_t borrow = (b->limb[0] < n) ? 1 : 0;
     b->limb[0] -= n;
+
+    /* Propagate borrow through remaining limbs */
+    size_t i = 1;
+    while (borrow && i < b->n) {
+        cfx_limb_t old = b->limb[i];
+        b->limb[i] -= 1;
+        borrow = (old == 0);
+        ++i;
+    }
+
+    /* If borrow remains, we had underflow (b < n). This is a caller bug.
+     * The result is now garbage (wrapped), but we don't crash. */
+    assert(!borrow && "cfx_big_sub_sm_eq: underflow (b < n)");
+
     cfx_big_trim(b);
 }
 
@@ -2022,51 +2031,11 @@ cfx_limb_t cfx_big_mod_sm(const cfx_big_t* b, cfx_limb_t m) {
 int cfx_fac_from_big(cfx_fac_t* fac, const cfx_big_t* in) {
     (void)fac;
     (void)in;
-#if 0
-    cfx_big_t N = *in; /* make a working copy */
-    cfx_fac_init(fac);
-
-    /* 1) strip small primes up to B (say, 10k–100k) */
-    cfx_big_strip_small(&N, fac, /*B=*/100000);
-
-    /* stack of pending cofactors to split (skip 1) */
-    cfx_big_t stk[MAX_STACK]; size_t top=0;
-    if (!cfx_big_is_one(&N)) stk[top++] = N;
-
-    while (top) {
-        cfx_big_t m = stk[--top];
-        if (cfx_big_is_one(&m)) continue;
-
-        cfx_limb_t u64;
-        if (cfx_big_fits_u64(&m, &u64)) {
-            cfx_fac_from_u64(fac, u64);
-            continue;
-        }
-
-        if (cfx_big_is_probable_prime(&m)) { /* big-PRP (MR or BPSW) */
-            /* emit m as a prime factor (store big primes in fac as u64? or separate big-prime path) */
-            /* If you require u64 primes only, keep splitting until fit; otherwise extend fac to hold big p. */
-            cfx_fac_push_big(fac, &m, 1);
-            continue;
-        }
-
-        cfx_big_t d; cfx_big_init(&d);
-        if (!cfx_big_rho_brent_split(&m, &d)) {
-            /* optional: try p-1; else increase small-prime bound and repeat */
-            /* as a fallback, treat as prime (to avoid infinite loops) */
-            cfx_fac_push_big(fac, &m, 1);
-            continue;
-        }
-
-        cfx_big_t q;
-        cfx_big_div_big(&q, &m, &d); /* q = m / d (exact) */
-        stk[top++] = d;
-        stk[top++] = q;
-    }
-
-    cfx_fac_coalesce_sort(fac);
-#endif
-    return 0;
+    /* TODO: implement big integer factorization into cfx_fac_t
+     * See cfx_big_to_fac() for a working implementation that uses
+     * trial division + Pollard-Rho. This function would need helper
+     * functions like cfx_big_strip_small, cfx_big_fits_u64, etc. */
+    return -1;
 }
 
 static inline size_t hex_digits_limb(cfx_limb_t v) {
@@ -2513,7 +2482,8 @@ int cfx_big_from_oct_n(cfx_big_t* out, const uint8_t* in, size_t in_len, size_t*
     (void)in;
     (void)in_len;
     (void)consumed;
-    return 0;
+    /* TODO: implement octal parsing */
+    return -1;
 }
 
 int cfx_big_from_bin(cfx_big_t* b, const char* s) {
@@ -3766,7 +3736,6 @@ int cfx_big_mul_mod(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, cons
            && cfx_big_mont_to(&bR, b, &C)
            && cfx_big_mont_mul(&r, &aR, &bR, &C)
            && cfx_big_mont_from(out, &r, &C);
-    printf("cfx_big_mul_mod OK!\n");
     cfx_big_free(&aR);
     cfx_big_free(&bR);
     cfx_big_free(&r);
