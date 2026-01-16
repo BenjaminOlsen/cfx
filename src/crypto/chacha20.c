@@ -223,6 +223,8 @@ void cfx_hchacha20(uint8_t out[32], const uint8_t key[32], const uint8_t nonce[1
     CFX_STORE32_LE(out + 20, w[13]);
     CFX_STORE32_LE(out + 24, w[14]);
     CFX_STORE32_LE(out + 28, w[15]);
+
+    CFX_MEMZERO_S(w, sizeof(w));
 }
 
 /* XChaCha20: subkey = HChaCha20(key, nonce[0:16]), then ChaCha20(subkey, 0||nonce[16:24]) */
@@ -600,6 +602,10 @@ void cfx_chacha20_block8_avx2(const uint8_t key[32], uint32_t counter, const uin
 
     uint32_t (*out_words)[16] = (uint32_t (*)[16])out;
     transpose_16x8_to_blocks(x, out_words);
+
+    CFX_MEMZERO_S(k, sizeof(k));
+    CFX_MEMZERO_S(x, sizeof(x));
+    CFX_MEMZERO_S(o, sizeof(o));
 }
 
 #undef MM256_QR

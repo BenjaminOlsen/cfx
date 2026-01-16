@@ -71,6 +71,7 @@ void cfx_chacha20_block4(cfx_chacha20_ctx4_t* ctx, const uint32_t counter[4], ui
 void cfx_chacha20_block_rfc8439(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
                                 uint8_t out[64]);
 
+/* Encrypt pt_len bytes. Max 256 GB per (key, nonce) due to 32-bit counter. */
 void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
                           const uint8_t *pt, size_t pt_len, uint8_t *ct);
 

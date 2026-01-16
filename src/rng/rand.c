@@ -4,6 +4,7 @@
 #include "cfx/macros.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -81,6 +82,18 @@ typedef struct {
 CFX_STATIC_ASSERT(sizeof(cfx_chacha20_rng_t) <= CFX_CHACHA_RNG_CTX_SIZE,
                   chacha_rng_ctx_too_small);
 
+/* increment counter, bump nonce on wrap. Gives 2^128 blocks before reuse. */
+static inline void chacha20_advance_counter(cfx_chacha20_rng_t *st, uint32_t blocks) {
+    uint32_t old = st->counter;
+    st->counter += blocks;
+    if (st->counter < old) {
+        /* counter wrapped - increment 96-bit nonce (little-endian) */
+        for (int i = 0; i < 12; i++) {
+            if (++st->nonce[i] != 0) break;
+        }
+    }
+}
+
 
 static cfx_chacha20_rng_t G = {0};
 
@@ -91,24 +104,24 @@ CFX_INLINE void cfx_chacha20_refill(cfx_chacha20_rng_t *st) {
 #if CFX_HAVE_AVX2
     uint8_t (*out8)[64] = (uint8_t (*)[64]) st->buf;
     cfx_chacha20_block8_avx2(st->key, st->counter, st->nonce, out8);
-    st->counter += 8;
+    chacha20_advance_counter(st, 8);
 
 #elif CFX_SIMD
     uint32_t ctr[CHACHA20_LANE_CNT];
     uint8_t nonce4[CHACHA20_LANE_CNT][12];
 
     for (size_t i = 0; i < CHACHA20_LANE_CNT; i++) {
-        ctr[i] = st->counter + i;
+        ctr[i] = st->counter + (uint32_t)i;
         memcpy(nonce4[i], st->nonce, 12);
     }
 
     uint8_t (*out4)[64] = (uint8_t (*)[64]) st->buf;
     cfx_chacha20_block4_simd(st->key, ctr, (const uint8_t (*)[12])nonce4, out4);
-    st->counter += CHACHA20_LANE_CNT;
+    chacha20_advance_counter(st, CHACHA20_LANE_CNT);
 
 #else
     cfx_chacha20_block_rfc8439(st->key, st->counter, st->nonce, st->buf);
-    st->counter += 1;
+    chacha20_advance_counter(st, 1);
 
 #endif
 
@@ -134,7 +147,7 @@ CFX_INLINE void cfx_chacha20_generate(cfx_chacha20_rng_t* st, uint8_t* out, size
     while (len >= CHACHA20_BUF_BYTES) {
         uint8_t (*out8)[64] = (uint8_t (*)[64]) out;
         cfx_chacha20_block8_avx2(st->key, st->counter, st->nonce, out8);
-        st->counter += 8;
+        chacha20_advance_counter(st, 8);
         out += CHACHA20_BUF_BYTES;
         len -= CHACHA20_BUF_BYTES;
     }
@@ -144,12 +157,12 @@ CFX_INLINE void cfx_chacha20_generate(cfx_chacha20_rng_t* st, uint8_t* out, size
         uint32_t ctr[CHACHA20_LANE_CNT];
         uint8_t nonce4[CHACHA20_LANE_CNT][12];
         for (size_t i = 0; i < CHACHA20_LANE_CNT; i++) {
-            ctr[i] = st->counter + i;
+            ctr[i] = st->counter + (uint32_t)i;
             memcpy(nonce4[i], st->nonce, 12);
         }
         uint8_t (*out4)[64] = (uint8_t (*)[64]) out;
         cfx_chacha20_block4_simd(st->key, ctr, (const uint8_t (*)[12])nonce4, out4);
-        st->counter += CHACHA20_LANE_CNT;
+        chacha20_advance_counter(st, CHACHA20_LANE_CNT);
         out += CHACHA20_BUF_BYTES;
         len -= CHACHA20_BUF_BYTES;
     }
@@ -157,7 +170,7 @@ CFX_INLINE void cfx_chacha20_generate(cfx_chacha20_rng_t* st, uint8_t* out, size
 #else
     while (len >= 64) {
         cfx_chacha20_block_rfc8439(st->key, st->counter, st->nonce, out);
-        st->counter++;
+        chacha20_advance_counter(st, 1);
         out += 64;
         len -= 64;
     }
