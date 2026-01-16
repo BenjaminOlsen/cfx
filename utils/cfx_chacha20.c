@@ -28,15 +28,19 @@ static void usage(const char* name) {
         "  -kb         Force key as base64\n"
         "  -c <ctr>    Initial 32-bit counter (default 0)\n"
         "  -n <nonce>  Nonce as 0x24_hex_chars (96-bit, default zeros)\n"
+        "  -ix         Input as hex (with or without 0x prefix)\n"
+        "  -ib64       Input as base64\n"
         "  -x          Output as hex (default)\n"
         "  -b64        Output as base64\n"
+        "  -a          Output as raw ASCII/bytes\n"
         "  -v          Verbose output\n"
         "  -h, --help  Show this help\n\n"
         "Examples:\n"
         "  %s -k mykey \"hello world\"\n"
         "  %s -ka deadbeef \"msg\"       Use 'deadbeef' as ASCII\n"
+        "  %s -ix -k mykey 68656c6c6f  Decrypt hex input\n"
         "  cfx keygen 32 -q | %s -k - \"secret\"\n",
-        name, name, name, name);
+        name, name, name, name, name);
 }
 
 int cfx_chacha20_run(int argc, char** argv) {
@@ -52,6 +56,7 @@ int cfx_chacha20_run(int argc, char** argv) {
     int verbose = 0;
     enum cfx_str_format fmt = CFX_STR_FMT_HEX;
     enum cfx_str_format key_mode = CFX_STR_FMT_AUTO;
+    enum cfx_str_format input_mode = CFX_STR_FMT_ASCII;
 
     #define CHECK_ARG(i) do { if (i >= argc) { usage(argv[0]); return EXIT_FAILURE; } } while(0)
 
@@ -88,10 +93,16 @@ int cfx_chacha20_run(int argc, char** argv) {
             nonce_in = argv[i];
         } else if (strcmp(argv[i], "-v") == 0) {
             verbose = 1;
+        } else if (strcmp(argv[i], "-ix") == 0) {
+            input_mode = CFX_STR_FMT_HEX;
+        } else if (strcmp(argv[i], "-ib64") == 0) {
+            input_mode = CFX_STR_FMT_BASE64;
         } else if (strcmp(argv[i], "-x") == 0) {
             fmt = CFX_STR_FMT_HEX;
         } else if (strcmp(argv[i], "-b64") == 0) {
             fmt = CFX_STR_FMT_BASE64;
+        } else if (strcmp(argv[i], "-a") == 0) {
+            fmt = CFX_STR_FMT_ASCII;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             usage(argv[0]);
             return 0;
@@ -130,6 +141,60 @@ int cfx_chacha20_run(int argc, char** argv) {
         pt_buf = (uint8_t*)malloc(len);
         if (!pt_buf) { perror("malloc"); return EXIT_FAILURE; }
         memcpy(pt_buf, pt, len);
+    }
+
+    /* decode input if hex or base64 */
+    if (input_mode == CFX_STR_FMT_HEX) {
+        const char* hex = (const char*)pt_buf;
+        size_t hex_len = len;
+
+        /* skip 0x prefix if present */
+        if (hex_len >= 2 && hex[0] == '0' && (hex[1] == 'x' || hex[1] == 'X')) {
+            hex += 2;
+            hex_len -= 2;
+        }
+
+        if (hex_len % 2 != 0) {
+            fprintf(stderr, "error: hex input must have even length\n");
+            free(pt_buf);
+            return EXIT_FAILURE;
+        }
+
+        size_t dec_len = hex_len / 2;
+        uint8_t* dec_buf = (uint8_t*)malloc(dec_len ? dec_len : 1);
+        if (!dec_buf) { free(pt_buf); perror("malloc"); return EXIT_FAILURE; }
+
+        for (size_t i = 0; i < dec_len; ++i) {
+            int hi = hexval(hex[2*i]);
+            int lo = hexval(hex[2*i + 1]);
+            if (hi < 0 || lo < 0) {
+                fprintf(stderr, "error: invalid hex character\n");
+                free(dec_buf);
+                free(pt_buf);
+                return EXIT_FAILURE;
+            }
+            dec_buf[i] = (uint8_t)((hi << 4) | lo);
+        }
+
+        free(pt_buf);
+        pt_buf = dec_buf;
+        len = dec_len;
+    } else if (input_mode == CFX_STR_FMT_BASE64) {
+        size_t dec_len = cfx_base64_dec_max_len(len);
+        uint8_t* dec_buf = (uint8_t*)malloc(dec_len ? dec_len : 1);
+        if (!dec_buf) { free(pt_buf); perror("malloc"); return EXIT_FAILURE; }
+
+        int rc = cfx_base64_decode(dec_buf, &dec_len, (const char*)pt_buf, len);
+        if (rc != 0) {
+            fprintf(stderr, "error: invalid base64 input\n");
+            free(dec_buf);
+            free(pt_buf);
+            return EXIT_FAILURE;
+        }
+
+        free(pt_buf);
+        pt_buf = dec_buf;
+        len = dec_len;
     }
 
     int key_from_stdin = (key_in && strcmp(key_in, "-") == 0);
@@ -200,6 +265,11 @@ int cfx_chacha20_run(int argc, char** argv) {
             printf("%s\n", b64);
             free(b64);
         }
+    } else if (fmt == CFX_STR_FMT_ASCII) {
+#ifdef _WIN32
+        _setmode(_fileno(stdout), _O_BINARY);
+#endif
+        fwrite(ct, 1, len, stdout);
     } else {
         for (size_t i = 0; i < len; ++i) {
             printf("%02x", ct[i]);

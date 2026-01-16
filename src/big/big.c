@@ -10,6 +10,9 @@
 #include "cfx/ntt.h"
 #include "cfx/compat.h"
 
+#include "big_backend.h"
+#include "mem_backend.h"
+
 #include <math.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -40,19 +43,11 @@ static inline void cfx_big_trim(cfx_big_t* b) {
 }
 
 
-void cfx_big_init(cfx_big_t* b) {
-    memset(b, 0, sizeof(*b));
-}
+/* cfx_big_init and cfx_big_free are provided by the memory backend */
+/* See: src/big/mem/dynamic/ or src/big/mem/static/ */
 
 void cfx_big_clear(cfx_big_t* b) {
     b->n = 0;
-}
-
-void cfx_big_free(cfx_big_t* b) {
-    b->n = 0;
-    b->cap = 0;
-    if (b->limb) free(b->limb);
-    b->limb = NULL;
 }
 
 int cfx_big_copy(cfx_big_t* dst, const cfx_big_t* src) {
@@ -496,43 +491,7 @@ size_t cfx_big_bitlen(const cfx_big_t* b) {
     return b->n * limb_bits - lz;
 }
 
-void cfx_big_reserve(cfx_big_t* b, size_t need) {
-    if (need <= b->cap) return;
-
-    size_t old_cap = b->cap;
-    size_t new_cap = old_cap ? old_cap : 32;
-
-    while (new_cap < need) {
-        if (new_cap > SIZE_MAX / 2) {  /* doubling would overflow */
-            new_cap = need;            /* fall back to exactly need */
-            break;
-        }
-        new_cap *= 2;
-    }
-
-    if (new_cap > SIZE_MAX / sizeof(cfx_limb_t)) {
-        fprintf(stderr, "cfx_big_reserve: allocation size overflow\n");
-        abort();
-    }
-
-    size_t new_bytes = new_cap * sizeof(cfx_limb_t);
-
-    void* tmp = realloc(b->limb, new_bytes);
-    if (!tmp) {
-        fprintf(stderr, "cfx_big_reserve: out of memory (requested %zu bytes)\n", new_bytes);
-        abort();
-    }
-
-    b->limb = (cfx_limb_t*)tmp;
-
-    /* Zero the newly added region only (realloc doesn't do this for you) */
-    if (new_cap > old_cap) {
-        size_t add = new_cap - old_cap;
-        memset(b->limb + old_cap, 0, add * sizeof(cfx_limb_t));
-    }
-
-    b->cap = new_cap;
-}
+/* cfx_big_reserve is provided by the memory backend */
 
 
 int cfx_big_from_u64(cfx_big_t* b, uint64_t v) {
@@ -1134,8 +1093,11 @@ void cfx_big_pollard_rho(cfx_big_t* factor, const cfx_big_t* n) {
         cfx_big_from_limb(&g, 1);
 
         size_t nbits = n->n * CFX_LIMB_BITS;
-        size_t max_iters = 1ULL << (nbits / 4 + 4);  // e.g., 128-bit -> 2^36
-        if (max_iters > (1ULL << 32)) max_iters = 1ULL << 32;  // cap at 4B
+        size_t max_iters = (size_t)1 << (nbits / 4 + 4);  /* e.g., 128-bit -> 2^36 */
+#if SIZE_MAX > 0xFFFFFFFFUL
+        /* 64-bit: cap at 4 billion iterations */
+        if (max_iters > 0x100000000ULL) max_iters = 0x100000000ULL;
+#endif
 
         size_t r = 1;
         const size_t batch = 128;
@@ -1383,89 +1345,26 @@ void cfx_big_mul_csa_scratch(cfx_big_t* b, const cfx_big_t* m, cfx_mul_scratch_t
 
 /*  out = a * b */
 void cfx_big_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) {
+    /* Edge case: zero inputs */
     if (cfx_big_is_zero(a) || cfx_big_is_zero(b)) {
         cfx_big_from_limb(out, 0);
         return;
     }
 
-    size_t na = a->n;
-    size_t nb = b->n;
-
-    cfx_big_reserve(out, na + nb);
-    out->n = na + nb;
-    memset(out->limb, 0, out->n * sizeof(cfx_limb_t));
-
-    for (size_t i = 0; i < nb; ++i) {
-        cfx_acc_t carry = 0;
-        cfx_acc_t bi = (cfx_acc_t)b->limb[i];
-
-        size_t k = i;
-        for (size_t j = 0; j < na; ++j, ++k) {
-            cfx_acc_t s = (cfx_acc_t)out->limb[k]
-                        + bi * (cfx_acc_t)a->limb[j]
-                        + carry;
-            out->limb[k] = (cfx_limb_t)s;
-            carry = s >> CFX_LIMB_BITS;
-        }
-
-        while (carry) {
-            cfx_acc_t s = (cfx_acc_t)out->limb[k] + carry;
-            out->limb[k] = (cfx_limb_t)s;
-            carry = s >> CFX_LIMB_BITS;
-            ++k;
-        }
-    }
-
-    cfx_big_trim(out);
+    /* Delegate to backend implementation */
+    cfx_big_mul_impl(out, a, b);
 }
 
 /* In-place multiplication: b *= m */
 void cfx_big_mul_eq(cfx_big_t* b, const cfx_big_t* m) {
-
+    /* Edge case: zero inputs */
     if (cfx_big_is_zero(b) || cfx_big_is_zero(m)) {
         cfx_big_from_limb(b, 0);
         return;
     }
-    /* not sure this is worth it:*/
-    /* if (cfx_big_eq(b, m)) {
-        cfx_big_sq_eq(b);
-        return;
-    }
-    */
 
-    size_t nb = b->n;
-    size_t nm = m->n;
-
-    cfx_big_t tmp;
-    cfx_big_init(&tmp);
-    cfx_big_reserve(&tmp, nb + nm);
-    tmp.n = nb + nm;
-
-    for (size_t i = 0; i < nm; ++i) {
-        cfx_acc_t carry = 0;
-        cfx_acc_t mi = (cfx_acc_t)m->limb[i];
-
-        size_t k = i; /* index into tmp */
-        for (size_t j = 0; j < nb; ++j, ++k) {
-            cfx_acc_t s = (cfx_acc_t)tmp.limb[k]
-                        + mi * (cfx_acc_t)b->limb[j]
-                        + carry;
-            tmp.limb[k] = (cfx_limb_t)s;
-            carry = s >> CFX_LIMB_BITS;
-        }
-
-        /* propagate any remaining carry */
-        while (carry) {
-            cfx_acc_t s = (cfx_acc_t)tmp.limb[k] + carry;
-            tmp.limb[k] = (cfx_limb_t)s;
-            carry = s >> CFX_LIMB_BITS;
-            ++k; /* safe: nb+nm is enough for two nb/nm-digit numbers */
-        }
-    }
-
-    cfx_big_trim(&tmp);
-    cfx_big_swap(&tmp, b);
-    cfx_big_free(&tmp);
+    /* Delegate to backend (handles aliasing internally) */
+    cfx_big_mul_impl(b, b, m);
 }
 
 /* out = a + b */
@@ -2365,7 +2264,7 @@ int cfx_big_from_str(cfx_big_t* out, const char* s) {
     size_t len = strlen(s);
     if (len == 0) return -1;
 
-    while (len > 0 && isspace(s[0])) {
+    while (len > 0 && isspace((unsigned char)s[0])) {
         ++s;
         --len;
     }
@@ -3580,63 +3479,32 @@ void cfx_big_mont_ctx_free(cfx_big_mont_ctx_t* ctx) {
 int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, const cfx_big_mont_ctx_t* ctx) {
     if (!out || !a || !b || !ctx) return 0;
 
-    const cfx_big_t* n   = &ctx->n;
-    const size_t     k   = ctx->k;       /* number of limbs in n */
-    const cfx_limb_t   n0i = ctx->n0inv;   /* n0i = -n[0]^{-1} mod 2^64 */
+    const cfx_big_t* n = &ctx->n;
+    const size_t k = ctx->k;
 
+    /* Allocate accumulator T with k+2 limbs (zeroed) */
     cfx_big_t T;
     cfx_big_init(&T);
-    cfx_big_reserve(&T, k + 2);          /* we use indices [0..k+1] */
+    cfx_big_reserve(&T, k + 2);
     memset(T.limb, 0, (k + 2) * sizeof(cfx_limb_t));
     T.n = k + 2;
 
-    const cfx_limb_t* an = a->limb;
-    const cfx_limb_t* bn = b->limb;
-    const cfx_limb_t* nn = n->limb;
+    /* Delegate core CIOS loop to backend implementation */
+    cfx_big_mont_mul_impl(T.limb,
+                          a->limb, a->n,
+                          b->limb, b->n,
+                          n->limb,
+                          ctx->n0inv,
+                          k);
 
-    for (size_t i = 0; i < k; ++i) {
-        const cfx_limb_t bi = (i < b->n) ? bn[i] : 0;
-
-        /* T += a * bi */
-        cfx_acc_t carry = 0;
-        for (size_t j = 0; j < k; ++j) {
-            const cfx_limb_t aj = (j < a->n) ? an[j] : 0;
-            cfx_acc_t sum = (cfx_acc_t)T.limb[j] + (cfx_acc_t)aj * bi + carry;
-            T.limb[j] = (cfx_limb_t)sum;
-            carry     = sum >> CFX_LIMB_BITS;
-        }
-        cfx_acc_t top = (cfx_acc_t)T.limb[k] + carry;
-        T.limb[k]     = (cfx_limb_t)top;
-        T.limb[k + 1] += (cfx_limb_t)(top >> CFX_LIMB_BITS);
-
-        /* m = (T[0] * n0i) mod 2^64  (n0i == -n[0]^{-1} mod 2^64) */
-        const cfx_limb_t m = T.limb[0] * n0i;
-
-        /* T += m * n */
-        cfx_acc_t carry2 = 0;
-        for (size_t j = 0; j < k; ++j) {
-            cfx_acc_t sum = (cfx_acc_t)T.limb[j] + (cfx_acc_t)m * nn[j] + carry2;
-            T.limb[j] = (cfx_limb_t)sum;
-            carry2    = sum >> CFX_LIMB_BITS;
-        }
-        cfx_acc_t top2 = (cfx_acc_t)T.limb[k] + carry2;
-        T.limb[k]     = (cfx_limb_t)top2;
-        T.limb[k + 1] += (cfx_limb_t)(top2 >> CFX_LIMB_BITS);
-
-        /* T = (T + m*n) / R: drop limb 0 -> shift 1..k+1 to 0..k */
-        memmove(&T.limb[0], &T.limb[1], (k + 1) * sizeof(cfx_limb_t));  /* <<< FIXED */
-        T.limb[k + 1] = 0;  /* scratch for next iter */
-    }
-
-    /* Final normalization */
-    T.n = k + 1;                 /* keep possible top carry for trim/compare */
+    /* Final normalization: result is in T[0..k], may be >= n */
+    T.n = k + 1;
     cfx_big_trim(&T);
     if (cfx_big_cmp(&T, n) >= 0) {
         cfx_big_sub_eq(&T, n);
     }
 
     cfx_big_move(out, &T);
-    /* cfx_big_free(&T); */
     return 1;
 }
 

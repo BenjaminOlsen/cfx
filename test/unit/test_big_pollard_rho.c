@@ -109,6 +109,11 @@ static void test_big_pollard_rho_large_semiprime(void) {
 }
 
 int main(void) {
+#ifdef CFX_MEMORY_STATIC
+    /* Skip: Pollard rho tests exhaust static buffer pool */
+    printf("SKIP: test_big_pollard_rho requires dynamic memory mode\n");
+    return 0;
+#endif
     CFX_TEST(test_big_pollard_rho_small_composite);
     CFX_TEST(test_big_pollard_rho_semiprime);
     CFX_TEST(test_big_pollard_rho_prime);

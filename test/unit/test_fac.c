@@ -510,6 +510,11 @@ static void test_fac_binom(void) {
 }
 
 int main(void) {
+#ifdef CFX_MEMORY_STATIC
+    /* Skip: factorization tests exhaust static buffer pool */
+    printf("SKIP: test_fac requires dynamic memory mode\n");
+    return 0;
+#endif
     int quiet = 1;
 
     CFX_TEST(test_init);

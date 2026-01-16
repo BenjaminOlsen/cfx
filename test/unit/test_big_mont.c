@@ -465,6 +465,11 @@ static void test_modexp_binary_exponent_reduction(void) {
 
 /*..........................................................*/
 int main(void) {
+#ifdef CFX_MEMORY_STATIC
+    /* Skip: Montgomery tests exhaust static buffer pool */
+    printf("SKIP: test_big_mont requires dynamic memory mode\n");
+    return 0;
+#endif
     CFX_TEST(test_mont_ctx_rejects_even_n);
 
 #if CFX_LIMB_BITS == 64

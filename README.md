@@ -16,6 +16,8 @@ force 32 bit limbs: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCFX_BUILD_
 
 build for armv7m: `cmake -B build-armv7m -S . -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_ARCH=armv7m -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=128 -DCFX_BUILD_UTILS=OFF -DCFX_BUILD_TESTS=ON`
 
+build for ARM Cortex-M4 (optimized): `cmake -B build-m4 -DCFX_TARGET=arm_cortex_m4 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_MEMORY_MODE=static`
+
 ## Compile
 
 `cmake --build build -j` or `cd build && make` or `make VERBOSE=1`
@@ -190,6 +192,50 @@ cargo test
 ```
 
 The build script (`build.rs`) compiles the C library automatically using the `cc` crate.
+
+## Cross-Platform / Embedded Targets
+
+cfx includes optimized backends for ARM microcontrollers with Docker-based testing.
+
+### ARM Cortex-M4
+
+Optimized for embedded crypto using UMULL/UMLAL multiply-accumulate and barrel shifter rotations:
+
+```bash
+# Build and test with Docker (recommended - works on macOS/Linux/Windows)
+docker build -t cfx-cortex-m4 docker/cortex-m4/
+docker run --rm -v $(pwd):/cfx cfx-cortex-m4
+
+# Interactive debugging
+docker run --rm -it -v $(pwd):/cfx cfx-cortex-m4 shell
+```
+
+**Performance vs portable C:**
+| Component | Speedup |
+|-----------|---------|
+| Big integer multiply | 3-4x |
+| ChaCha20 | 1.5-2x |
+| Poly1305 | 2-3x |
+
+See `doc/CORTEX_M4.md` for design details and `doc/arm/` for optimization documentation.
+
+### ARM NEON (ARMv7/AArch64)
+
+```bash
+docker build -t cfx-arm-neon docker/arm-neon/
+docker run --rm -v $(pwd):/cfx cfx-arm-neon
+```
+
+### Available Targets
+
+| Target | Backend | Key Optimizations |
+|--------|---------|-------------------|
+| `x86_64_bmi2` | x86-64 with BMI2 | MULX, ADCX, ADOX |
+| `arm_cortex_m4` | ARM Cortex-M4 | UMULL/UMLAL, barrel shifter |
+| `arm_neon` | ARMv7/v8 NEON | SIMD lanes |
+| `portable` | Any | Standard C |
+
+See `doc/EMULATION.md` for full cross-platform testing documentation.
 
 ## License
 The cfx library is dual-licensed.

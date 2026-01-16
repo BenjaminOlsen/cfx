@@ -52,7 +52,10 @@ set(CFX_ARCH_DEFINES "")
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 
     if(CFX_ARCH STREQUAL "native")
-        list(APPEND CFX_ARCH_FLAGS -march=native)
+        # Skip -march=native when cross-compiling (cfx_target.cmake sets CPU flags)
+        if(NOT CMAKE_CROSSCOMPILING)
+            list(APPEND CFX_ARCH_FLAGS -march=native)
+        endif()
 
     elseif(CFX_ARCH STREQUAL "x86_64")
         list(APPEND CFX_ARCH_FLAGS -march=x86-64-v2)

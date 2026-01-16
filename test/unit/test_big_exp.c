@@ -357,6 +357,11 @@ static void test_mod_exp_rsa_style(void) {
 }
 
 int main(void) {
+#ifdef CFX_MEMORY_STATIC
+    /* Skip: requires very large exponentiation results (364+ limbs) */
+    printf("SKIP: test_big_exp requires dynamic memory mode\n");
+    return 0;
+#endif
     CFX_TEST(test_exp_edge_cases);
     CFX_TEST(test_exp_small_values);
     CFX_TEST(test_exp_powers_of_two_boundaries);

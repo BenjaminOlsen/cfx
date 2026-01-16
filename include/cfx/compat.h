@@ -15,6 +15,10 @@
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
 #  include <intrin.h>
+#elif defined(__arm__) && !defined(__linux__) && !defined(__APPLE__)
+/* Bare-metal ARM (Cortex-M, etc.) - no OS, no pthread */
+#  define CFX_NO_THREADS 1
+#  define CFX_NO_CLOCK 1
 #else
 #  include <pthread.h>
 #  include <unistd.h>
@@ -67,6 +71,21 @@ static inline int cfx_thread_join(cfx_thread_t thread, void** retval) {
     return (result == WAIT_OBJECT_0) ? 0 : -1;
 }
 
+#elif defined(CFX_NO_THREADS)
+
+/* Bare-metal / freestanding - no threading support */
+typedef int cfx_thread_t;
+
+static inline int cfx_thread_create(cfx_thread_t* thread, void* (*func)(void*), void* arg) {
+    (void)thread; (void)func; (void)arg;
+    return -1; /* Threading not supported */
+}
+
+static inline int cfx_thread_join(cfx_thread_t thread, void** retval) {
+    (void)thread; (void)retval;
+    return -1;
+}
+
 #else /* POSIX */
 
 typedef pthread_t cfx_thread_t;
@@ -105,6 +124,17 @@ static inline void cfx_mutex_unlock(cfx_mutex_t* mtx) {
 static inline void cfx_mutex_destroy(cfx_mutex_t* mtx) {
     (void)mtx; /* SRWLOCK doesn't need destruction */
 }
+
+#elif defined(CFX_NO_THREADS)
+
+/* Bare-metal / freestanding - no mutex support (single-threaded) */
+typedef int cfx_mutex_t;
+#define CFX_MUTEX_INITIALIZER 0
+
+static inline void cfx_mutex_init(cfx_mutex_t* mtx) { (void)mtx; }
+static inline void cfx_mutex_lock(cfx_mutex_t* mtx) { (void)mtx; }
+static inline void cfx_mutex_unlock(cfx_mutex_t* mtx) { (void)mtx; }
+static inline void cfx_mutex_destroy(cfx_mutex_t* mtx) { (void)mtx; }
 
 #else /* POSIX */
 
@@ -171,6 +201,8 @@ static inline int cfx_cpu_count(void) {
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
     return (int)sysinfo.dwNumberOfProcessors;
+#elif defined(CFX_NO_THREADS)
+    return 1; /* Single-core embedded */
 #else
     long n = sysconf(_SC_NPROCESSORS_ONLN);
     return (n > 0) ? (int)n : 1;
@@ -188,6 +220,9 @@ static inline uint64_t cfx_time_ns(void) {
     QueryPerformanceCounter(&count);
     /* Convert to nanoseconds: count * 1e9 / freq */
     return (uint64_t)((count.QuadPart * 1000000000ULL) / freq.QuadPart);
+#elif defined(CFX_NO_CLOCK)
+    /* Bare-metal: no clock support - return 0 or use SysTick if available */
+    return 0;
 #else
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);

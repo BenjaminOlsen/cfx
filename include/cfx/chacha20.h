@@ -89,13 +89,11 @@ void cfx_xchacha20_encrypt(const uint8_t key[32], uint32_t counter,
 void cfx_chacha20_block4_simd(const uint8_t key[32], const uint32_t counter[4],
                               const uint8_t nonce[4][12], uint8_t out[4][64]);
 
-#if CFX_HAVE_AVX2
-
+/* Generate 8 blocks - uses target-specific backend (AVX2, ARM, or scalar) */
 void cfx_chacha20_block8_avx2(const uint8_t key[32],
                               uint32_t counter,
                               const uint8_t nonce[12],
                               uint8_t out[8][64]);
-#endif
 
 #ifdef __cplusplus
 }

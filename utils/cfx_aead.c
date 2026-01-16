@@ -9,6 +9,7 @@
 #endif
 
 #include "cfx/aead_chacha20_poly1305.h"
+#include "cfx/aead_chacha20_poly1271.h"
 #include "cfx/memory.h"
 #include "cfx/rand.h"
 #include "cfx_cmd.h"
@@ -23,7 +24,10 @@ static void usage(const char* prog) {
         printf("  -e, --encrypt     Encrypt (default)\n");
         printf("  -d, --decrypt     Decrypt and verify tag\n\n");
         printf("Algorithm:\n");
-        printf("  -X, --xchacha     Use XChaCha20-Poly1305 (24-byte nonce)\n\n");
+        printf("  -C, --chacha      Use ChaCha20-Poly1305 (12-byte nonce)\n");
+        printf("  -X, --xchacha     Use XChaCha20-Poly1305 (24-byte nonce)\n");
+        printf("  -P, --p1271       Use ChaCha20-Poly1271 (12-byte nonce)\n");
+        printf("  -XP, --xp1271     Use XChaCha20-Poly1271 (24-byte nonce)\n\n");
         printf("Key (required):\n");
         printf("  -k <hex>          Key as 32 byte (ascii or hex or base64) string\n");
         printf("  -K <file>         Read key from file\n\n");
@@ -46,6 +50,13 @@ static void usage(const char* prog) {
         printf("  %s -d -k $KEY --nonce-prefix encrypted.bin\n", prog);
         printf("  %s -X --random-nonce -k $KEY secret.txt  (XChaCha20)\n", prog);
     }
+
+typedef enum {
+    CHACHA20_POLY1305,
+    XCHACHA20_POLY1305,
+    CHACHA20_POLY1271,
+    XCHACHA20_POLY1271
+} algo_type_t;
 
 static int try_reading_file_into(const char* fname, uint8_t* out, size_t outlen, enum cfx_str_format fmt) {
     if (fmt == CFX_STR_FMT_BINARY) {
@@ -86,6 +97,7 @@ int cfx_aead_run(int argc, char** argv) {
     size_t aad_len = 0;
     uint8_t* pt_in = NULL;  /* owns the pt */
     size_t pt_in_len = 0;
+    algo_type_t algo_type = CHACHA20_POLY1305;
 
     #define CHECK_NEXT_ARG() do { if (argi + 1 >= argc) { usage(argv[0]); return EXIT_FAILURE; } } while(0)
 
@@ -100,8 +112,14 @@ int cfx_aead_run(int argc, char** argv) {
             encrypt = 1;
         } else if (strcmp(arg, "-d") == 0) {
             encrypt = 0;
+        } else if (strcmp(arg, "-C") == 0 || strcmp(arg, "--chacha") == 0) {
+            algo_type = CHACHA20_POLY1305;
         } else if (strcmp(arg, "-X") == 0 || strcmp(arg, "--xchacha") == 0) {
-            use_xchacha = 1;
+            algo_type = XCHACHA20_POLY1305;
+        } else if (strcmp(arg, "-P") == 0 || strcmp(arg, "--p1271") == 0) {
+            algo_type = CHACHA20_POLY1271;
+        } else if (strcmp(arg, "-PX") == 0 || strcmp(arg, "--xp1271") == 0) {
+            algo_type = XCHACHA20_POLY1271;
         } else if (strcmp(arg, "-k") == 0) {
             CHECK_NEXT_ARG();
             int bytes_read = cfx_parse_str(argv[argi+1], key, sizeof(key), CFX_STR_FMT_AUTO);
@@ -211,7 +229,8 @@ int cfx_aead_run(int argc, char** argv) {
     }
     uint8_t* pt = pt_in;
     size_t pt_len = pt_in_len;
-    size_t nonce_len = use_xchacha ? 24 : 12;
+    size_t nonce_len =
+        (algo_type == XCHACHA20_POLY1305 || algo_type == XCHACHA20_POLY1271) ? 24 : 12;
 
     /* parse nonce if provided */
     if (noncestr) {

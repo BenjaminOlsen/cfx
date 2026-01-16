@@ -29,6 +29,11 @@ if(OpenSSL_FOUND)
 endif()
 
 include(cmake/compile_flags.cmake)
+include(cmake/cfx_target.cmake)
+include(cmake/cfxQemuTest.cmake)
+
+# Set up QEMU emulation for cross-compiled tests
+cfx_setup_qemu_emulation()
 
 # ---------------- static prime list
 # specify with cmake -S . -B build -DCFX_PRIMES_COUNT=XXXX
@@ -72,6 +77,7 @@ set(CFX_HEADERS
     include/cfx/vec.h
     include/cfx/version.h
     include/cfx/sbig.h
+    include/cfx/target.h
     include/cfx/x25519.h
 )
 
@@ -95,6 +101,8 @@ add_library(cfx ${CFX_SOURCES})
 add_library(cfx::cfx ALIAS cfx)
 
 cfx_apply_compile_flags(cfx)
+cfx_apply_target(cfx)
+cfx_apply_memory_mode(cfx)
 
 set_property(TARGET cfx PROPERTY C_STANDARD 99)
 set_property(TARGET cfx PROPERTY C_STANDARD_REQUIRED ON)
@@ -168,10 +176,15 @@ endif()
 # ---------------- Limb bit selection
 # use with -DCFX_LIMB_BITS=auto, 32 or 64
 # "auto" = 32 on MSVC (no __uint128_t), 64 on GCC/Clang (has __uint128_t)
+# Note: Some targets (arm_cortex_m4) force 32-bit limbs via cfx_apply_target()
 set(CFX_LIMB_BITS "auto" CACHE STRING "Limb size for cfx: auto, 32 or 64")
 set_property(CACHE CFX_LIMB_BITS PROPERTY STRINGS auto 32 64)
 
-if (CFX_LIMB_BITS STREQUAL "auto")
+# Check if target already forces limb size (e.g., arm_cortex_m4 -> 32-bit)
+if(CFX_TARGET STREQUAL "arm_cortex_m4")
+    # Already set by cfx_apply_target() - don't override
+    message(STATUS "cfx: using 32-bit limbs (forced by target ${CFX_TARGET})")
+elseif (CFX_LIMB_BITS STREQUAL "auto")
     if (MSVC)
         # MSVC has no __uint128_t, so force 32-bit limbs for 64-bit accumulator
         target_compile_definitions(cfx PUBLIC CFX_FORCE_LIMB_32)

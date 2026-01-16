@@ -81,6 +81,8 @@ void cfx_ed25519_create_keypair(uint8_t pk[32], uint8_t sk[64], const uint8_t se
     /* secret key = seed || public_key */
     memcpy(sk, seed, 32);
     memcpy(sk + 32, pk, 32);
+
+    CFX_MEMZERO_S(hash, sizeof(hash));
 }
 
 void cfx_ed25519_get_public_key(uint8_t pk[32], const uint8_t sk[64]) {
@@ -138,7 +140,7 @@ void cfx_ed25519_sign(uint8_t sig[64], const uint8_t* msg, size_t msg_len, const
 
 int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t* msg, size_t msg_len, const uint8_t pk[32]) {
     ge25519_t A, R, sB, kA, check;
-    ge25519_cached_t R_cached, kA_cached;
+    ge25519_cached_t kA_cached;
     uint8_t k_scalar[64];
     uint8_t k[32];
     uint8_t check_bytes[32];
@@ -175,7 +177,6 @@ int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t* msg, size_t msg_len
     cfx_ge25519_scalarmult(&kA, k, &A);
 
     /* compute R + [k]A */
-    cfx_ge25519_to_cached(&R_cached, &R);
     cfx_ge25519_to_cached(&kA_cached, &kA);
     cfx_ge25519_add_cached(&check, &R, &kA_cached);
 

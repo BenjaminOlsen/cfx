@@ -3,6 +3,7 @@
 #include "cfx/poly1271.h"
 #include "cfx/macros.h"
 #include "cfx/rand.h"
+#include "cfx/arch.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -243,6 +244,30 @@ static int check_vector(const char* name, const char* key_hex,
     return 1;
 }
 
+static void test_verify(void) {
+    uint8_t key[32];
+    for (int i = 0; i < 32; i++) key[i] = (uint8_t)(i * 3);
+
+    uint8_t msg[] = "Test message for verification";
+    uint8_t tag[16];
+
+    cfx_poly1271(tag, msg, sizeof(msg) - 1, key);
+
+    /* valid tag should verify */
+    CFX_ASSERT(cfx_poly1271_verify(tag, msg, sizeof(msg) - 1, key) == 0);
+
+    /* modified tag should fail */
+    tag[5] ^= 0x01;
+    CFX_ASSERT(cfx_poly1271_verify(tag, msg, sizeof(msg) - 1, key) != 0);
+
+    /* restore tag, modify message */
+    tag[5] ^= 0x01;
+    msg[0] ^= 0x01;
+    CFX_ASSERT(cfx_poly1271_verify(tag, msg, sizeof(msg) - 1, key) != 0);
+
+    printf("verify test passed\n");
+}
+
 static void test_reference_vectors(void) {
     /* vectors from Python reference implementation (poly1271_verify.py) */
     int passed = 1;
@@ -352,6 +377,136 @@ static void test_reference_vectors(void) {
     CFX_ASSERT(passed);
 }
 
+/* ========================================================================
+ * AVX2 tests
+ * ======================================================================== */
+
+#if CFX_HAVE_AVX2
+
+static void test_avx2_vs_scalar(void) {
+    uint8_t key[32];
+    for (int i = 0; i < 32; i++) key[i] = (uint8_t)(i * 3 + 7);
+
+    /* test various lengths */
+    size_t lens[] = {0, 1, 14, 15, 16, 29, 30, 31, 45, 59, 60, 61, 100, 256, 1000};
+
+    for (size_t i = 0; i < sizeof(lens)/sizeof(lens[0]); i++) {
+        size_t len = lens[i];
+        uint8_t* msg = len > 0 ? (uint8_t*)malloc(len) : NULL;
+        if (len > 0) {
+            CFX_ASSERT(msg != NULL);
+            for (size_t j = 0; j < len; j++) msg[j] = (uint8_t)((j * 7 + 13) & 0xff);
+        }
+
+        uint8_t tag_scalar[16], tag_avx2[16];
+        cfx_poly1271(tag_scalar, msg, len, key);
+        cfx_poly1271_avx2(tag_avx2, msg, len, key);
+
+        if (memcmp(tag_scalar, tag_avx2, 16) != 0) {
+            printf("FAIL avx2 vs scalar len_%zu\n", len);
+            print_hex("  scalar", tag_scalar, 16);
+            print_hex("  avx2  ", tag_avx2, 16);
+            CFX_ASSERT(0);
+        }
+
+        if (len > 0) free(msg);
+    }
+    printf("avx2 vs scalar: all lengths match\n");
+}
+
+static void test_avx2_streaming(void) {
+    uint8_t key[32];
+    for (int i = 0; i < 32; i++) key[i] = (uint8_t)i;
+
+    uint8_t msg[200];
+    for (int i = 0; i < 200; i++) msg[i] = (uint8_t)i;
+
+    uint8_t tag_oneshot[16];
+    cfx_poly1271_avx2(tag_oneshot, msg, 200, key);
+
+    /* test various chunk sizes */
+    size_t chunks[] = {1, 7, 15, 16, 30, 60, 61};
+    for (size_t c = 0; c < sizeof(chunks)/sizeof(chunks[0]); c++) {
+        size_t chunk = chunks[c];
+        cfx_poly1271_avx2_ctx_t ctx;
+        cfx_poly1271_avx2_init(&ctx, key);
+
+        size_t pos = 0;
+        while (pos < 200) {
+            size_t n = (pos + chunk > 200) ? (200 - pos) : chunk;
+            cfx_poly1271_avx2_update(&ctx, msg + pos, n);
+            pos += n;
+        }
+
+        uint8_t tag[16];
+        cfx_poly1271_avx2_finish(&ctx, tag);
+
+        CFX_ASSERT(memcmp(tag_oneshot, tag, 16) == 0);
+    }
+    printf("avx2 streaming: all chunk sizes match\n");
+}
+
+static void test_avx2_reference_vectors(void) {
+    int passed = 1;
+
+    /* reuse same vectors as scalar */
+    {
+        uint8_t key[32], expected[16], tag[16];
+        hex_to_bytes("b5739948a249856c49e54909ebb2f31d497377aea932d57ae80e81139e4bb6dd", key, 32);
+        hex_to_bytes("497377aea932d57ae80e81139e4bb6dd", expected, 16);
+        cfx_poly1271_avx2(tag, NULL, 0, key);
+        if (memcmp(tag, expected, 16) != 0) {
+            printf("FAIL avx2 len_0\n");
+            passed = 0;
+        }
+    }
+
+    {
+        uint8_t key[32], expected[16], tag[16], msg[] = {0x0d};
+        hex_to_bytes("f298f36369b075bf9168ceda5e9500704ac3c1475720556168946cb49dfcf6d3", key, 32);
+        hex_to_bytes("9479b96ea37dff9fc873500f55ee93d4", expected, 16);
+        cfx_poly1271_avx2(tag, msg, 1, key);
+        if (memcmp(tag, expected, 16) != 0) {
+            printf("FAIL avx2 len_1\n");
+            passed = 0;
+        }
+    }
+
+    {
+        uint8_t key[32], expected[16], tag[16], msg[256];
+        for (int i = 0; i < 256; i++) msg[i] = (uint8_t)((i * 7 + 13) & 0xff);
+        hex_to_bytes("595f063a7941f6cb8b74934e31a7c0f477b7240be9f726a321ee09b53eadf174", key, 32);
+        hex_to_bytes("1fff8a650754ea5eb55963a614335ab0", expected, 16);
+        cfx_poly1271_avx2(tag, msg, 256, key);
+        if (memcmp(tag, expected, 16) != 0) {
+            printf("FAIL avx2 len_256\n");
+            passed = 0;
+        }
+    }
+
+    CFX_ASSERT(passed);
+    printf("avx2 reference vectors: ok\n");
+}
+
+static void test_avx2_verify(void) {
+    uint8_t key[32];
+    for (int i = 0; i < 32; i++) key[i] = (uint8_t)(i * 3);
+
+    uint8_t msg[] = "Test message for AVX2 verification";
+    uint8_t tag[16];
+
+    cfx_poly1271_avx2(tag, msg, sizeof(msg) - 1, key);
+
+    CFX_ASSERT(cfx_poly1271_avx2_verify(tag, msg, sizeof(msg) - 1, key) == 0);
+
+    tag[5] ^= 0x01;
+    CFX_ASSERT(cfx_poly1271_avx2_verify(tag, msg, sizeof(msg) - 1, key) != 0);
+
+    printf("avx2 verify: ok\n");
+}
+
+#endif /* CFX_HAVE_AVX2 */
+
 int main(void) {
     CFX_TEST(test_empty_message);
     CFX_TEST(test_single_block);
@@ -362,8 +517,21 @@ int main(void) {
     CFX_TEST(test_all_lengths);
     CFX_TEST(test_zeros);
     CFX_TEST(test_ones);
+    CFX_TEST(test_verify);
     CFX_TEST(test_reference_vectors);
     CFX_TEST(test_fuzz);
+
+#if CFX_HAVE_AVX2
+    printf("\nAVX2 Tests\n");
+    printf("----------\n");
+    CFX_TEST(test_avx2_vs_scalar);
+    CFX_TEST(test_avx2_streaming);
+    CFX_TEST(test_avx2_reference_vectors);
+    CFX_TEST(test_avx2_verify);
+#else
+    printf("\nAVX2 not available, skipping AVX2 tests\n");
+#endif
+
     puts("ok");
     return 0;
 }

@@ -50,6 +50,9 @@ void cfx_poly1271_finish(cfx_poly1271_ctx_t* ctx, uint8_t tag[16]);
 /* one-shot MAC */
 void cfx_poly1271(uint8_t tag[16], const uint8_t* msg, size_t len, const uint8_t key[32]);
 
+/* constant-time verify, returns 0 on match, -1 on mismatch */
+int cfx_poly1271_verify(const uint8_t tag[16], const uint8_t* msg, size_t len, const uint8_t key[32]);
+
 /* AVX2 implementation - radix-2^26, 4-way parallel */
 #include "cfx/arch.h"
 

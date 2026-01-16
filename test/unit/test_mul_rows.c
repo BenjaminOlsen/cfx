@@ -250,6 +250,11 @@ static void test_thread_counts_agree(void) {
         "test_random_compare_ref(" STR(na) ", " STR(nb) ", " STR(threads) ", " STR(seed_init) ") - OK")
 
 int main(void) {
+#ifdef CFX_MEMORY_STATIC
+    /* Skip: this test requires very large big integers (up to 14000+ limbs) */
+    printf("SKIP: test_mul_rows requires dynamic memory mode\n");
+    return 0;
+#endif
     CFX_TEST(test_mul_zero_zero);
     CFX_TEST(test_mul_zero_x);
     CFX_TEST(test_mul_x_zero);

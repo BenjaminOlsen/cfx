@@ -6,9 +6,17 @@
 static void test_cfx_big_init(void) {
     cfx_big_t b;
     cfx_big_init(&b);
+#ifndef CFX_MEMORY_STATIC
+    /* Dynamic mode: init gives empty struct with no buffer */
     CFX_ASSERT(b.limb == NULL);
-    CFX_ASSERT(b.n == 0);
     CFX_ASSERT(b.cap == 0);
+#else
+    /* Static mode: init allocates from pool immediately */
+    CFX_ASSERT(b.limb != NULL);
+    CFX_ASSERT(b.cap > 0);
+#endif
+    CFX_ASSERT(b.n == 0);
+    cfx_big_free(&b);
     PRINT_TEST(1);
 }
 
@@ -162,7 +170,11 @@ static void test_copy_fast_path(void) {
     cfx_big_t a, b;
     cfx_big_init(&a);
     cfx_big_init(&b);
+#ifdef CFX_MEMORY_STATIC
+    cfx_big_reserve(&a, 32);  /* Static mode: use smaller reserve */
+#else
     cfx_big_reserve(&a, 100);
+#endif
     cfx_big_from_limb(&b, 42);
     int rc = cfx_big_copy(&a, &b);
     CFX_ASSERT(rc == 0);
