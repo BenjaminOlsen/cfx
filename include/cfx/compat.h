@@ -11,6 +11,23 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Include inttypes.h for PRIu64/PRIu32 format specifiers */
+#include <inttypes.h>
+
+/* Fallback definitions for bare-metal toolchains that don't define these */
+#ifndef PRIu64
+#  define PRIu64 "llu"
+#endif
+#ifndef PRIu32
+#  define PRIu32 "u"
+#endif
+#ifndef PRId64
+#  define PRId64 "lld"
+#endif
+#ifndef PRIx64
+#  define PRIx64 "llx"
+#endif
+
 #ifdef _WIN32
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>

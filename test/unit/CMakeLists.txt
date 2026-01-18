@@ -26,7 +26,6 @@ set(CFX_UNIT_TESTS
     test_rand
     test_base64
     test_aead_chacha20_poly1305
-    test_aead_chacha20_poly1271
     test_sha256
     test_sha3
     test_blake2
@@ -35,13 +34,20 @@ set(CFX_UNIT_TESTS
     test_compat
     test_ntt
     test_sbig
-    test_fe25519
-    test_x25519
-    test_ge25519
-    test_ed25519
-    test_argon2
-    test_poly1271
 )
+
+# Tests that require 128-bit types (64-bit platforms only)
+if(NOT CFX_TARGET STREQUAL "arm_cortex_m4" AND NOT CFX_LIMB_BITS STREQUAL "32")
+    list(APPEND CFX_UNIT_TESTS
+        test_fe25519
+        test_x25519
+        test_ge25519
+        test_ed25519
+        test_argon2
+        test_poly1271
+        test_aead_chacha20_poly1271
+    )
+endif()
 
 foreach(test_name IN LISTS CFX_UNIT_TESTS)
     add_executable(${test_name} ${test_name}.c)

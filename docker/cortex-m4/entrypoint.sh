@@ -29,13 +29,15 @@ do_build() {
     cd "${BUILD_DIR}"
 
     # Configure
+    # Note: Tests disabled for bare-metal (qemu-arm user mode can't run arm-none-eabi binaries)
+    # Use docker/arm-neon for testing ARM-optimized code paths
     log_info "Configuring with CMake..."
     cmake -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCFX_TARGET=arm_cortex_m4 \
         -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" \
         -DCFX_MEMORY_MODE=static \
-        -DCFX_BUILD_TESTS=ON \
+        -DCFX_BUILD_TESTS=OFF \
         -DCFX_BUILD_UTILS=OFF \
         ..
 
@@ -52,57 +54,19 @@ do_build() {
 }
 
 do_test() {
+    log_warn "Tests not available for bare-metal Cortex-M4 target."
+    log_info "The arm-none-eabi toolchain produces bare-metal binaries that"
+    log_info "cannot run under qemu-arm user-mode emulation (which expects Linux binaries)."
+    log_info ""
+    log_info "To test ARM-optimized code paths, use the ARM NEON docker instead:"
+    log_info "  docker build -t cfx-arm-neon docker/arm-neon/"
+    log_info "  docker run --rm -v \$(pwd):/cfx cfx-arm-neon"
+    log_info ""
+    log_info "The Cortex-M4 docker validates that the library compiles correctly"
+    log_info "for bare-metal embedded targets."
+
     do_build
-
-    log_info "Running tests with QEMU..."
-
-    cd "${BUILD_DIR}"
-
-    # Find all test executables
-    TEST_COUNT=0
-    PASS_COUNT=0
-    FAIL_COUNT=0
-    SKIP_COUNT=0
-
-    for test_bin in test/unit/test_*; do
-        if [ -x "$test_bin" ]; then
-            test_name=$(basename "$test_bin")
-            TEST_COUNT=$((TEST_COUNT + 1))
-
-            log_info "Running: $test_name"
-
-            # Run with QEMU semihosting
-            # Note: Bare-metal tests need semihosting support
-            if qemu-arm -semihosting -cpu cortex-m4 "./$test_bin" 2>/dev/null; then
-                PASS_COUNT=$((PASS_COUNT + 1))
-                echo -e "  ${GREEN}PASS${NC}"
-            else
-                exit_code=$?
-                if [ $exit_code -eq 1 ]; then
-                    FAIL_COUNT=$((FAIL_COUNT + 1))
-                    echo -e "  ${RED}FAIL${NC} (exit code: $exit_code)"
-                else
-                    # QEMU errors (missing semihosting, etc.) - skip
-                    SKIP_COUNT=$((SKIP_COUNT + 1))
-                    echo -e "  ${YELLOW}SKIP${NC} (QEMU error: $exit_code)"
-                fi
-            fi
-        fi
-    done
-
-    echo ""
-    log_info "Test Summary:"
-    echo "  Total:   $TEST_COUNT"
-    echo -e "  Passed:  ${GREEN}$PASS_COUNT${NC}"
-    echo -e "  Failed:  ${RED}$FAIL_COUNT${NC}"
-    echo -e "  Skipped: ${YELLOW}$SKIP_COUNT${NC}"
-
-    if [ $FAIL_COUNT -gt 0 ]; then
-        log_error "Some tests failed!"
-        exit 1
-    fi
-
-    log_info "All tests passed!"
+    log_info "Library built successfully for Cortex-M4!"
 }
 
 do_shell() {

@@ -3,6 +3,7 @@
 #include "cfx/big.h"
 #include "cfx/macros.h"
 #include "cfx/rand.h"
+#include "cfx/compat.h"
 
 /* (a*b) % n with 128-bit scalar for ground truth */
 static cfx_limb_t mulmod_u64(cfx_limb_t a, cfx_limb_t b, cfx_limb_t n) {

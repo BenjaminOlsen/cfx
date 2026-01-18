@@ -4,10 +4,9 @@
 #include "cfx/arith.h"
 #include "cfx/macros.h"
 #include "cfx/rand.h"
+#include "cfx/compat.h"
 
 #include <assert.h>
-#include <stdint.h>
-#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 

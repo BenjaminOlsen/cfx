@@ -6,11 +6,11 @@
 #include "cfx/macros.h"
 #include "cfx/primes.h"
 #include "cfx/rand.h"
+#include "cfx/compat.h"
 
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
-#include <inttypes.h>
 
 void cfx_fac_print(cfx_fac_t* f) {
     if (f->len == 0) {

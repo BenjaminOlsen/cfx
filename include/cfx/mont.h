@@ -21,7 +21,89 @@ typedef struct {
     uint64_t n_inv;  /* -n^(-1) mod 2^64 */
     uint64_t r2;     /* R^2 mod n, where R = 2^64 */
     uint64_t r;      /* R mod n (for fallback path) */
+    uint64_t r_inv;  /* R^(-1) mod n (for fallback path) */
 } cfx_mont64_t;
+
+/* Compute modular inverse: a^(-1) mod m using extended Euclidean algorithm
+ * Uses careful unsigned arithmetic to handle full 64-bit range.
+ * Returns 0 if inverse doesn't exist (gcd(a, m) != 1) */
+CFX_INLINE uint64_t cfx_modinv64(uint64_t a, uint64_t m) {
+    if (m == 1 || a == 0) return 0;
+    a = a % m;
+    if (a == 0) return 0;
+    if (a == 1) return 1;
+
+    /* Extended Euclidean algorithm with unsigned arithmetic.
+     * We track coefficients as (value, negative_flag) pairs to avoid signed overflow.
+     * x1 = a^(-1) mod m when the algorithm terminates with gcd = 1.
+     */
+    uint64_t u = a, v = m;
+    uint64_t x1 = 1, x2 = 0;
+    int x1_neg = 0, x2_neg = 0;
+
+    while (u != 1 && v != 1) {
+        while ((u & 1) == 0) {
+            u >>= 1;
+            if ((x1 & 1) == 0) {
+                x1 >>= 1;
+            } else {
+                /* x1 = (x1 + m) / 2, but we need to handle potential overflow */
+                uint64_t sum = x1 + m;
+                int overflow = (sum < x1);  /* Detect wrap-around */
+                x1 = sum >> 1;
+                if (overflow) x1 |= (1ULL << 63);  /* Carry the overflow bit */
+            }
+        }
+        while ((v & 1) == 0) {
+            v >>= 1;
+            if ((x2 & 1) == 0) {
+                x2 >>= 1;
+            } else {
+                uint64_t sum = x2 + m;
+                int overflow = (sum < x2);
+                x2 = sum >> 1;
+                if (overflow) x2 |= (1ULL << 63);
+            }
+        }
+        if (u >= v) {
+            u -= v;
+            /* x1 = x1 - x2 (mod m), handling sign */
+            if (x1_neg == x2_neg) {
+                if (x1 >= x2) {
+                    x1 = x1 - x2;
+                } else {
+                    x1 = x2 - x1;
+                    x1_neg = !x1_neg;
+                }
+            } else {
+                x1 = x1 + x2;
+                if (x1 >= m) x1 -= m;
+            }
+        } else {
+            v -= u;
+            /* x2 = x2 - x1 (mod m), handling sign */
+            if (x2_neg == x1_neg) {
+                if (x2 >= x1) {
+                    x2 = x2 - x1;
+                } else {
+                    x2 = x1 - x2;
+                    x2_neg = !x2_neg;
+                }
+            } else {
+                x2 = x2 + x1;
+                if (x2 >= m) x2 -= m;
+            }
+        }
+    }
+
+    uint64_t result = (u == 1) ? x1 : x2;
+    int result_neg = (u == 1) ? x1_neg : x2_neg;
+
+    if (result_neg) {
+        result = m - result;
+    }
+    return result % m;
+}
 
 /* Compute -n^(-1) mod 2^64 using Newton's method */
 CFX_INLINE uint64_t cfx_mont64_inv(uint64_t n) {
@@ -45,6 +127,8 @@ CFX_INLINE void cfx_mont64_init(cfx_mont64_t* ctx, uint64_t n) {
     ctx->r = (uint64_t)(-((int64_t)n)) % n;
     /* Compute R^2 mod n = (R mod n)^2 mod n */
     ctx->r2 = cfx_mulmod64(ctx->r, ctx->r, n);
+    /* Compute R^(-1) mod n for fallback path (n is odd so gcd(R,n)=1) */
+    ctx->r_inv = cfx_modinv64(ctx->r, n);
 }
 
 /* Convert a to Montgomery form: aR mod n */
@@ -107,8 +191,8 @@ CFX_INLINE uint64_t cfx_mont64_from(const cfx_mont64_t* ctx, uint64_t aR) {
     int overflow = (t_hi < mn_hi);
     return (overflow || t_hi >= ctx->n) ? (t_hi - ctx->n) : t_hi;
 #else
-    /* Fallback: just use regular mulmod */
-    return cfx_mulmod64(aR, 1, ctx->n);
+    /* Fallback: multiply by R^(-1) to convert back from Montgomery form */
+    return cfx_mulmod64(aR, ctx->r_inv, ctx->n);
 #endif
 }
 

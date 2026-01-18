@@ -9,14 +9,13 @@ set(CRYPTO_COMMON_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/chacha20/chacha20.c
     ${CMAKE_CURRENT_SOURCE_DIR}/poly1305.c
     ${CMAKE_CURRENT_SOURCE_DIR}/aead_chacha20_poly1305.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/aead_chacha20_poly1271.c
     ${CMAKE_CURRENT_SOURCE_DIR}/siphash.c
     ${CMAKE_CURRENT_SOURCE_DIR}/base64.c
 )
 
-# Curve25519/Ed25519 requires 128-bit arithmetic (64-bit platforms only)
-# For 32-bit embedded targets, this would need a 32-bit radix implementation
-if(NOT CFX_TARGET STREQUAL "arm_cortex_m4")
+# Curve25519/Ed25519/Poly1271 require 128-bit arithmetic (64-bit platforms only)
+# For 32-bit targets (arm_cortex_m4, or builds with 32-bit limbs), exclude these
+if(NOT CFX_TARGET STREQUAL "arm_cortex_m4" AND NOT CFX_LIMB_BITS STREQUAL "32")
     list(APPEND CRYPTO_COMMON_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/fe25519.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ge25519.c
@@ -26,9 +25,10 @@ if(NOT CFX_TARGET STREQUAL "arm_cortex_m4")
         ${CMAKE_CURRENT_SOURCE_DIR}/argon2.c
         ${CMAKE_CURRENT_SOURCE_DIR}/poly1271/poly1271.c
         ${CMAKE_CURRENT_SOURCE_DIR}/poly1271/poly1271_avx2.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/aead_chacha20_poly1271.c
     )
 else()
-    message(STATUS "cfx/crypto: Excluding curve25519/ed25519 (requires 64-bit)")
+    message(STATUS "cfx/crypto: Excluding curve25519/ed25519/poly1271 (requires 64-bit)")
 endif()
 
 # Select backend sources for algorithms with target-specific implementations

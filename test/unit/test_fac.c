@@ -5,12 +5,12 @@
 #include "cfx/algo.h"
 #include "cfx/vec.h"
 #include "cfx/macros.h"
+#include "cfx/compat.h"
 
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <inttypes.h>
 
 static void test_init(void) {
     cfx_fac_t f;

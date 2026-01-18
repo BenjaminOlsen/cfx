@@ -3,6 +3,7 @@
 #include "cfx/algo.h"
 #include "cfx/primes.h"
 #include "cfx/macros.h"
+#include "cfx/mont.h"
 
 #include <stdio.h>
 
@@ -77,6 +78,79 @@ static void test_powmod_edges(void) {
     uint64_t a = UINT64_C(18446744073709551615) - 424242;
     uint64_t e = UINT64_C(1234567890123456789);
     CFX_ASSERT(cfx_powmod_u64(a,e,p) == UINT64_C(14322199550612880112));
+}
+
+/* Tests for Montgomery 64-bit operations - covers fallback path on 32-bit platforms */
+static void test_modinv64(void) {
+    /* Small cases */
+    CFX_ASSERT(cfx_modinv64(3, 7) == 5);     /* 3*5 = 15 ≡ 1 (mod 7) */
+    CFX_ASSERT(cfx_modinv64(2, 5) == 3);     /* 2*3 = 6 ≡ 1 (mod 5) */
+    CFX_ASSERT(cfx_modinv64(1, 7) == 1);     /* 1*1 = 1 */
+
+    /* Edge case: no inverse exists */
+    CFX_ASSERT(cfx_modinv64(2, 4) == 0);     /* gcd(2,4) = 2 != 1 */
+    CFX_ASSERT(cfx_modinv64(0, 7) == 0);     /* 0 has no inverse */
+
+    /* Verify via multiplication for a range of small primes */
+    const uint64_t primes[] = {7, 11, 13, 17, 19, 23, 97, 101, 350381};
+    for (size_t i = 0; i < sizeof(primes)/sizeof(primes[0]); i++) {
+        uint64_t p = primes[i];
+        for (uint64_t a = 1; a < 10 && a < p; a++) {
+            uint64_t inv = cfx_modinv64(a, p);
+            CFX_ASSERT(cfx_mulmod64(a, inv, p) == 1);
+        }
+    }
+
+    /* Large prime near 2^64: p = 2^64 - 59, so r = 2^64 mod p = 59.
+     * This is the critical case for Montgomery R^(-1) computation. */
+    const uint64_t big_p = UINT64_C(18446744073709551557);
+    uint64_t inv = cfx_modinv64(59, big_p);
+    CFX_ASSERT(cfx_mulmod64(59, inv, big_p) == 1);
+
+    /* Odd values and powers of 2 work correctly with the binary GCD */
+    uint64_t test_vals[] = {2, 3, 4, 5, 7, 8, 9, 11, 13, 15, 16, 21, 25, 27, 32};
+    for (size_t i = 0; i < sizeof(test_vals)/sizeof(test_vals[0]); i++) {
+        inv = cfx_modinv64(test_vals[i], big_p);
+        CFX_ASSERT(cfx_mulmod64(test_vals[i], inv, big_p) == 1);
+    }
+}
+
+static void test_mont64_roundtrip(void) {
+    /* Test Montgomery to/from conversion for various moduli */
+    const uint64_t moduli[] = {
+        7, 11, 17, 101, 350381,  /* small primes */
+        UINT64_C(18446744073709551557)  /* largest 64-bit prime */
+    };
+
+    for (size_t i = 0; i < sizeof(moduli)/sizeof(moduli[0]); i++) {
+        uint64_t n = moduli[i];
+        cfx_mont64_t mont;
+        cfx_mont64_init(&mont, n);
+
+        /* Verify r * r_inv ≡ 1 (mod n) */
+        CFX_ASSERT(cfx_mulmod64(mont.r, mont.r_inv, n) == 1);
+
+        /* Test round-trip for several values */
+        for (uint64_t a = 1; a < 10 && a < n; a++) {
+            uint64_t aR = cfx_mont64_to(&mont, a);
+            uint64_t back = cfx_mont64_from(&mont, aR);
+            CFX_ASSERT(back == a);
+        }
+    }
+
+    /* Edge case: values near n-1 for the large prime */
+    const uint64_t big_p = UINT64_C(18446744073709551557);
+    cfx_mont64_t mont;
+    cfx_mont64_init(&mont, big_p);
+
+    uint64_t test_vals[] = {1, 2, big_p - 1, big_p - 2, UINT64_C(12345678901234567)};
+    for (size_t i = 0; i < sizeof(test_vals)/sizeof(test_vals[0]); i++) {
+        uint64_t a = test_vals[i] % big_p;
+        if (a == 0) continue;
+        uint64_t aR = cfx_mont64_to(&mont, a);
+        uint64_t back = cfx_mont64_from(&mont, aR);
+        CFX_ASSERT(back == a);
+    }
 }
 
 static void test_fermat_primes(void) {
@@ -423,6 +497,8 @@ int main(void) {
     CFX_TEST(test_primality_test);
     CFX_TEST(test_mulmod_basic);
     CFX_TEST(test_powmod_edges);
+    CFX_TEST(test_modinv64);
+    CFX_TEST(test_mont64_roundtrip);
     CFX_TEST(test_fermat_primes);
     CFX_TEST(test_zero);
     CFX_TEST(test_one_by_small);

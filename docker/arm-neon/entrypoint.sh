@@ -24,7 +24,8 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_section() { echo -e "\n${BLUE}=== $1 ===${NC}\n"; }
 
-# Build for ARMv7 with NEON
+# Build for ARMv7 with NEON (32-bit)
+# Note: 32-bit ARM cannot use 128-bit types, so curve25519/ed25519 are excluded
 build_armv7() {
     log_section "Building for ARMv7 (32-bit, NEON)"
 
@@ -39,6 +40,7 @@ build_armv7() {
         -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++ \
         -DCMAKE_SYSTEM_NAME=Linux \
         -DCMAKE_SYSTEM_PROCESSOR=arm \
+        -DCFX_LIMB_BITS=32 \
         -DCFX_BUILD_TESTS=ON \
         -DCFX_BUILD_UTILS=OFF \
         ..
@@ -49,7 +51,8 @@ build_armv7() {
     file "${BUILD_DIR}/libcfx.a"
 }
 
-# Build for AArch64 with NEON
+# Build for AArch64 with NEON (64-bit)
+# NEON is always available on AArch64, no -mfpu flag needed
 build_aarch64() {
     log_section "Building for AArch64 (64-bit, NEON)"
 
@@ -59,7 +62,7 @@ build_aarch64() {
 
     cmake -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
-        -DCFX_TARGET=arm_neon \
+        -DCFX_TARGET=aarch64_neon \
         -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
         -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
         -DCMAKE_SYSTEM_NAME=Linux \
