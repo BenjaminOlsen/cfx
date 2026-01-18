@@ -41,8 +41,12 @@ fn main() {
     build
         .include(&include_dir)
         .files(&[
-            // big/
+            // big/ - facade and backends (self-guarding)
             src_dir.join("big/big.c"),
+            src_dir.join("big/big_portable.c"),
+            src_dir.join("big/big_x86_64_bmi2.c"),
+            src_dir.join("big/big_mem_dynamic.c"),
+            src_dir.join("big/big_mem_static.c"),
             src_dir.join("big/ntt.c"),
             // math/
             src_dir.join("math/algo.c"),
@@ -51,9 +55,14 @@ fn main() {
             src_dir.join("core/vec.c"),
             // rng/
             src_dir.join("rng/rand.c"),
-            // crypto/
-            src_dir.join("crypto/chacha20.c"),
+            // crypto/ - chacha20 facade and backends (self-guarding)
+            src_dir.join("crypto/chacha20/chacha20.c"),
+            src_dir.join("crypto/chacha20/chacha20_portable.c"),
+            src_dir.join("crypto/chacha20/chacha20_x86_64_avx2.c"),
+            // crypto/ - poly1305 facade and backends (self-guarding)
             src_dir.join("crypto/poly1305.c"),
+            src_dir.join("crypto/poly1305/poly1305_portable.c"),
+            // crypto/ - other primitives
             src_dir.join("crypto/aead_chacha20_poly1305.c"),
             src_dir.join("crypto/sha256.c"),
             src_dir.join("crypto/sha512.c"),

@@ -11,9 +11,13 @@
  * ~5 cycles vs ~20+ cycles for portable emulated 64-bit arithmetic.
  *
  * Requires: -mcpu=cortex-m4 -mthumb
+ *
+ * Self-guarding: only compiles when CFX_TARGET_ARM_CORTEX_M4 is defined.
  */
 
-#include "../poly1305_backend.h"
+#ifdef CFX_TARGET_ARM_CORTEX_M4
+
+#include "poly1305_backend.h"
 
 /*
  * Poly1305 field multiply: h = (h + t) * r mod (2^130 - 5)
@@ -38,12 +42,6 @@ void cfx_poly1305_block_impl(
 
     /*
      * Compute d[i] = 5-term multiply-accumulate using UMULL/UMLAL chains.
-     *
-     * d0 = H0*r0 + H1*s4 + H2*s3 + H3*s2 + H4*s1
-     * d1 = H0*r1 + H1*r0 + H2*s4 + H3*s3 + H4*s2
-     * d2 = H0*r2 + H1*r1 + H2*r0 + H3*s4 + H4*s3
-     * d3 = H0*r3 + H1*r2 + H2*r1 + H3*r0 + H4*s4
-     * d4 = H0*r4 + H1*r3 + H2*r2 + H3*r1 + H4*r0
      */
 
     uint32_t d0_lo, d0_hi;
@@ -129,9 +127,6 @@ void cfx_poly1305_block_impl(
 
     /*
      * Carry chain: reduce to 26-bit limbs.
-     *
-     * Each d[i] is a 64-bit value. We extract the low 26 bits and
-     * propagate the high bits as carry to the next accumulator.
      */
 
     /* c = d0 >> 26; H0 = d0 & 0x3ffffff; d1 += c */
@@ -199,3 +194,5 @@ void cfx_poly1305_block_impl(
     *h3 = H3;
     *h4 = H4;
 }
+
+#endif /* CFX_TARGET_ARM_CORTEX_M4 */

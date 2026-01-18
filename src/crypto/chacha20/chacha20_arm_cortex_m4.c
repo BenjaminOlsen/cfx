@@ -8,28 +8,17 @@
  * operations (XOR + rotate is one instruction cycle).
  *
  * Requires: -mcpu=cortex-m4 -mthumb
+ *
+ * Self-guarding: only compiles when CFX_TARGET_ARM_CORTEX_M4 is defined.
  */
 
-#include "../chacha20_backend.h"
+#ifdef CFX_TARGET_ARM_CORTEX_M4
+
+#include "chacha20_backend.h"
 #include "cfx/chacha20.h"
 #include "cfx/arch.h"
 
 #include <string.h>
-
-/*
- * ChaCha20 quarter-round optimized for ARM Cortex-M4.
- *
- * The quarter-round operations are:
- *   a += b; d ^= a; d = ROTL(d, 16)
- *   c += d; b ^= c; b = ROTL(b, 12)
- *   a += b; d ^= a; d = ROTL(d, 8)
- *   c += d; b ^= c; b = ROTL(b, 7)
- *
- * ARM's barrel shifter allows XOR+rotate in a single instruction:
- *   EOR Rd, Ra, Rb, ROR #n
- *
- * Note: ROTL(x, n) = ROR(x, 32-n) on 32-bit values
- */
 
 /* Inline rotation macros using barrel shifter */
 #define ROTL16(x) ({ \
@@ -58,8 +47,6 @@
 
 /*
  * Optimized quarter-round macro.
- *
- * Fuses XOR and rotation where possible using ARM's flexible second operand.
  */
 #define QR_M4(a, b, c, d) do { \
     (a) += (b); \
@@ -117,12 +104,6 @@ static void chacha20_block_m4(const uint32_t s[16], uint32_t counter, uint32_t w
  *
  * For Cortex-M4 without SIMD, we generate blocks sequentially.
  * The optimization comes from the efficient quarter-round implementation.
- *
- * Parameters:
- *   key     - 32-byte key
- *   counter - starting block counter
- *   nonce   - 12-byte nonce
- *   out     - output buffer for 8 blocks (512 bytes total)
  */
 void cfx_chacha20_block8_impl(const uint8_t key[32],
                               uint32_t counter,
@@ -168,3 +149,5 @@ void cfx_chacha20_block8_impl(const uint8_t key[32],
         }
     }
 }
+
+#endif /* CFX_TARGET_ARM_CORTEX_M4 */

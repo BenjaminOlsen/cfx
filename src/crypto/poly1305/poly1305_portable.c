@@ -6,9 +6,13 @@
  * This is the reference implementation using standard C arithmetic.
  * The 26-bit radix representation allows using 32-bit multiplies
  * that fit in 64-bit accumulators without overflow.
+ *
+ * Self-guarding: compiles when no optimized backend is selected.
  */
 
-#include "../poly1305_backend.h"
+#ifndef CFX_TARGET_ARM_CORTEX_M4
+
+#include "poly1305_backend.h"
 
 /*
  * Poly1305 field multiply: h = (h + t) * r mod (2^130 - 5)
@@ -82,3 +86,5 @@ void cfx_poly1305_block_impl(
     *h3 = H3;
     *h4 = H4;
 }
+
+#endif /* !CFX_TARGET_ARM_CORTEX_M4 */

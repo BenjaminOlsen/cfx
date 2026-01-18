@@ -1,16 +1,39 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later
 
+#
+# Cryptographic Primitives Module
+#
+# Uses flat file structure with self-guarding backends (like src/big/).
+# Each backend file wraps itself in #ifdef guards, so we simply compile
+# all .c files and let the preprocessor select the active implementation.
+#
+# See doc/TARGET_ARCHITECTURE.md Appendix B for design rationale.
+#
+
 # Common crypto sources (always included)
 set(CRYPTO_COMMON_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/sha256.c
     ${CMAKE_CURRENT_SOURCE_DIR}/sha512.c
     ${CMAKE_CURRENT_SOURCE_DIR}/sha3.c
     ${CMAKE_CURRENT_SOURCE_DIR}/blake2.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/chacha20/chacha20.c
     ${CMAKE_CURRENT_SOURCE_DIR}/poly1305.c
     ${CMAKE_CURRENT_SOURCE_DIR}/aead_chacha20_poly1305.c
     ${CMAKE_CURRENT_SOURCE_DIR}/siphash.c
     ${CMAKE_CURRENT_SOURCE_DIR}/base64.c
+)
+
+# ChaCha20 facade and backends (self-guarding)
+set(CHACHA20_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/chacha20/chacha20.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/chacha20/chacha20_portable.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/chacha20/chacha20_x86_64_avx2.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/chacha20/chacha20_arm_cortex_m4.c
+)
+
+# Poly1305 backends (self-guarding)
+set(POLY1305_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/poly1305/poly1305_portable.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/poly1305/poly1305_arm_cortex_m4.c
 )
 
 # Curve25519/Ed25519/Poly1271 require 128-bit arithmetic (64-bit platforms only)
@@ -31,19 +54,9 @@ else()
     message(STATUS "cfx/crypto: Excluding curve25519/ed25519/poly1271 (requires 64-bit)")
 endif()
 
-# Select backend sources for algorithms with target-specific implementations
-message(STATUS "cfx/crypto: Selecting backend sources for target '${CFX_TARGET}'...")
-
-cfx_find_backend_source("crypto/chacha20" "block8" CHACHA20_BLOCK8_SOURCE)
-cfx_find_backend_source("crypto/poly1305" "blocks" POLY1305_BLOCKS_SOURCE)
-
-set(CRYPTO_BACKEND_SOURCES
-    ${CHACHA20_BLOCK8_SOURCE}
-    ${POLY1305_BLOCKS_SOURCE}
-)
-
 set(CFX_CRYPTO_SOURCES
     ${CRYPTO_COMMON_SOURCES}
-    ${CRYPTO_BACKEND_SOURCES}
+    ${CHACHA20_SOURCES}
+    ${POLY1305_SOURCES}
     PARENT_SCOPE
 )

@@ -1,15 +1,19 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
 
 /*
- * AVX2-optimized ChaCha20 block8 implementation
+ * AVX2-optimized ChaCha20 block8 implementation.
  *
  * Generates 8 ChaCha20 blocks in parallel using 256-bit AVX2 vectors.
  * Each __m256i holds one word from all 8 blocks (SoA layout).
  *
  * Requires: -mavx2 compiler flag
+ *
+ * Self-guarding: only compiles when CFX_TARGET_X86_64_AVX2 or AVX512 is defined.
  */
 
-#include "../chacha20_backend.h"
+#if defined(CFX_TARGET_X86_64_AVX2) || defined(CFX_TARGET_X86_64_AVX512)
+
+#include "chacha20_backend.h"
 #include "cfx/chacha20.h"
 
 #include <immintrin.h>
@@ -42,9 +46,6 @@ static inline __m256i cfx_mm256_rotl32(__m256i x, int n) {
 
 /*
  * Transpose from SoA (x[w] = word w for all 8 blocks) to AoS (out[b] = block b).
- *
- * x[w] = [ in[0][w], in[1][w], ..., in[7][w] ]
- * out[b][w] = original in[b][w]
  */
 #define LANE32(v, idx) (uint32_t)_mm_extract_epi32(v, idx)
 
@@ -156,3 +157,5 @@ void cfx_chacha20_block8_impl(const uint8_t key[32],
 }
 
 #undef MM256_QR
+
+#endif /* CFX_TARGET_X86_64_AVX2 || CFX_TARGET_X86_64_AVX512 */
