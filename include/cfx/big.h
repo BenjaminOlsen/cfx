@@ -32,11 +32,12 @@ extern "C" {
  *
  * >>>>> Always call cfx_big_init after declaring a cfx_big_t !
  **/
-typedef struct {
+struct cfx_big {
     cfx_limb_t* limb; /* the 'digits' of the number with base BIG_BASE */
     size_t n;
     size_t cap;
-} cfx_big_t;
+};
+typedef struct cfx_big cfx_big_t;
 
 void cfx_big_init(cfx_big_t* b);
 void cfx_big_clear(cfx_big_t* b);
@@ -190,12 +191,13 @@ void cfx_big_from_fac_fast(cfx_big_t* out, const cfx_fac_t* f);
 void cfx_big_from_fac_faster(cfx_big_t* out, const cfx_fac_t* f);
 /*
  * Factorize b into prime factors, storing results in f.
+ * Small primes (≤64 bits) go in f->data, large primes (>64 bits) go in f->big_primes.
  * If remainder is non-NULL and factorization is incomplete, the unfactored
  * composite is written there.
  *
  * Returns:
  *   0  - complete factorization
- *   1  - incomplete (remainder holds unfactored composite > 64 bits)
+ *   1  - incomplete (remainder holds unfactored composite)
  *  -1  - error
  */
 int cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b, cfx_big_t* remainder);

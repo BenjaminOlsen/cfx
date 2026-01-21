@@ -7,28 +7,45 @@
 #include "cfx/primes.h"
 #include "cfx/rand.h"
 #include "cfx/compat.h"
+#include "cfx/big.h"
 
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
 
 void cfx_fac_print(cfx_fac_t* f) {
-    if (f->len == 0) {
+    if (f->len == 0 && f->big_len == 0) {
         printf("(empty)\n");
         return;
     }
-    for (size_t k = 0; k < f->len-1; ++k) {
+    /* Print small primes */
+    for (size_t k = 0; k < f->len; ++k) {
         cfx_pf_t* pf = &f->data[k];
-        printf("%" PRIu64 "^%" PRIu32 " * ", pf->p, pf->e);
+        printf("%" PRIu64 "^%" PRIu32, pf->p, pf->e);
+        if (k + 1 < f->len || f->big_len > 0) {
+            printf(" * ");
+        }
     }
-    cfx_pf_t* pf = &f->data[f->len-1];
-    printf("%" PRIu64 "^%" PRIu32 "\n", pf->p, pf->e);
+    /* Print big primes */
+    for (size_t k = 0; k < f->big_len; ++k) {
+        cfx_big_pf_t* pf = &f->big_primes[k];
+        char* p_str = cfx_big_dec_alloc(pf->p, NULL);
+        printf("%s^%" PRIu32, p_str, pf->e);
+        free(p_str);
+        if (k + 1 < f->big_len) {
+            printf(" * ");
+        }
+    }
+    printf("\n");
 }
 
 void cfx_fac_init(cfx_fac_t* f) {
     f->data = NULL;
     f->len = 0;
     f->cap = 0;
+    f->big_primes = NULL;
+    f->big_len = 0;
+    f->big_cap = 0;
 }
 
 void cfx_fac_clear(cfx_fac_t* f) {
@@ -40,6 +57,15 @@ void cfx_fac_free(cfx_fac_t* f) {
     f->data = NULL;
     f->len = 0;
     f->cap = 0;
+    /* Free big primes */
+    for (size_t i = 0; i < f->big_len; ++i) {
+        cfx_big_free(f->big_primes[i].p);
+        free(f->big_primes[i].p);
+    }
+    free(f->big_primes);
+    f->big_primes = NULL;
+    f->big_len = 0;
+    f->big_cap = 0;
 }
 
 static inline int _cfx_mul_zu_ok(size_t a, size_t b, size_t* out) {
@@ -78,6 +104,27 @@ int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint32_t e) {
     cfx_pf_t* pf = &f->data[f->len - 1];
     pf->p = p;
     pf->e = e;
+    return 0;
+}
+
+int cfx_fac_push_big(cfx_fac_t* f, const struct cfx_big* p, uint32_t e) {
+    if (e == 0) return -1;
+    /* Reserve space for big primes */
+    if (f->big_len >= f->big_cap) {
+        size_t new_cap = f->big_cap ? 2 * f->big_cap : 4;
+        void* tmp = realloc(f->big_primes, new_cap * sizeof(cfx_big_pf_t));
+        if (!tmp) return -1;
+        f->big_primes = (cfx_big_pf_t*)tmp;
+        f->big_cap = new_cap;
+    }
+    /* Allocate and copy the big prime */
+    cfx_big_t* pcopy = (cfx_big_t*)malloc(sizeof(cfx_big_t));
+    if (!pcopy) return -1;
+    cfx_big_init(pcopy);
+    cfx_big_copy(pcopy, (const cfx_big_t*)p);
+    f->big_primes[f->big_len].p = pcopy;
+    f->big_primes[f->big_len].e = e;
+    ++f->big_len;
     return 0;
 }
 

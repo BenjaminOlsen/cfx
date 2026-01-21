@@ -171,17 +171,21 @@ void cfx_big_mont_mul_impl(cfx_limb_t* T,
             unsigned long long hi;
             unsigned long long lo = _mulx_u64(aj, bi, &hi);
 
-            /* Accumulate: T[j] += lo + carry */
-            unsigned char c = 0;
-            c = _addcarry_u64(c, lo, T[j], &T[j]);
-            c = _addcarry_u64(c, hi, carry, &carry);
-            carry += c;
+            /*
+             * Accumulate: T[j] += lo + carry_low, carry = hi + overflow
+             *
+             * We need to add lo AND the low part of carry to T[j].
+             * Since carry can be > 2^64 (up to ~2^64 + k), we use 128-bit arithmetic.
+             */
+            cfx_acc_t sum = (cfx_acc_t)T[j] + lo + carry;
+            T[j] = (cfx_limb_t)sum;
+            carry = hi + (sum >> CFX_LIMB_BITS);
         }
         /* Propagate carry to T[k] and T[k+1] */
         {
-            unsigned char c = 0;
-            c = _addcarry_u64(c, T[k], carry, &T[k]);
-            (void)_addcarry_u64(c, T[k + 1], 0, &T[k + 1]);
+            cfx_acc_t sum = (cfx_acc_t)T[k] + carry;
+            T[k] = (cfx_limb_t)sum;
+            T[k + 1] += (cfx_limb_t)(sum >> CFX_LIMB_BITS);
         }
 
         /* === m = (T[0] * n0inv) mod 2^64 === */
@@ -193,16 +197,15 @@ void cfx_big_mont_mul_impl(cfx_limb_t* T,
             unsigned long long hi;
             unsigned long long lo = _mulx_u64(m, n[j], &hi);
 
-            unsigned char c = 0;
-            c = _addcarry_u64(c, lo, T[j], &T[j]);
-            c = _addcarry_u64(c, hi, carry, &carry);
-            carry += c;
+            cfx_acc_t sum = (cfx_acc_t)T[j] + lo + carry;
+            T[j] = (cfx_limb_t)sum;
+            carry = hi + (sum >> CFX_LIMB_BITS);
         }
         /* Propagate carry to T[k] and T[k+1] */
         {
-            unsigned char c = 0;
-            c = _addcarry_u64(c, T[k], carry, &T[k]);
-            (void)_addcarry_u64(c, T[k + 1], 0, &T[k + 1]);
+            cfx_acc_t sum = (cfx_acc_t)T[k] + carry;
+            T[k] = (cfx_limb_t)sum;
+            T[k + 1] += (cfx_limb_t)(sum >> CFX_LIMB_BITS);
         }
 
         /* === T >>= 64: shift down by one limb (drop T[0]) === */

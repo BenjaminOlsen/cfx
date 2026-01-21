@@ -19,6 +19,15 @@ typedef struct {
     uint32_t e;    /* exponent */
 } cfx_pf_t;
 
+/* Forward declaration for big primes */
+struct cfx_big;
+
+/* A big prime factor (> 64 bits) */
+typedef struct {
+    struct cfx_big* p;  /* prime (heap-allocated cfx_big_t) */
+    uint32_t e;         /* exponent */
+} cfx_big_pf_t;
+
 /**
  * cfx_fac_t: a struct to hold a prime factorization of a number
  *
@@ -26,11 +35,16 @@ typedef struct {
  *
  * - Contains only pairs (p, e) with p prime, p >= 2, e >= 1
  * - Sorted strictly by p, coalesced (no duplicates), no zero exponents
+ * - big_primes contains primes > 64 bits (may be empty)
  */
 typedef struct {
     cfx_pf_t* data;
     size_t len;
     size_t cap;
+    /* Big primes (> 64 bits) */
+    cfx_big_pf_t* big_primes;
+    size_t big_len;
+    size_t big_cap;
 } cfx_fac_t;
 
 
@@ -40,6 +54,7 @@ void cfx_fac_clear(cfx_fac_t* f);
 void cfx_fac_free(cfx_fac_t* f) ;
 void cfx_fac_reserve(cfx_fac_t* f, size_t req_cap);
 int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint32_t e);
+int cfx_fac_push_big(cfx_fac_t* f, const struct cfx_big* p, uint32_t e);
 
 /* Deep copy: dst becomes a copy of src, using cfx_fac_push for each element. */
 void cfx_fac_copy(cfx_fac_t *dst, const cfx_fac_t *src);

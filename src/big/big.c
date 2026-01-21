@@ -1146,7 +1146,7 @@ void cfx_big_pollard_rho(cfx_big_t* factor, const cfx_big_t* n) {
         return;
     }
 
-    cfx_big_t y, c, x, ys, q, g, one, diff, temp;
+    cfx_big_t y, c, x, ys, q, g, one, diff, temp, scratch;
     cfx_big_init(&y);
     cfx_big_init(&c);
     cfx_big_init(&x);
@@ -1156,6 +1156,10 @@ void cfx_big_pollard_rho(cfx_big_t* factor, const cfx_big_t* n) {
     cfx_big_init(&one);
     cfx_big_init(&diff);
     cfx_big_init(&temp);
+    cfx_big_init(&scratch);
+
+    /* Pre-allocate scratch buffer for squaring operations to avoid repeated mallocs */
+    cfx_big_reserve(&scratch, ctx.k + 2);
 
     /* init one in Montgomery form */
     cfx_big_from_limb(&one, 1);
@@ -1191,23 +1195,26 @@ void cfx_big_pollard_rho(cfx_big_t* factor, const cfx_big_t* n) {
         while (cfx_big_is_one(&g)) {
             cfx_big_copy(&x, &y);
 
-            /* advance y by r steps: y = y^2 + c mod n */
+            /* Phase 2 of Brent: advance y by r steps WITHOUT accumulation */
             for (size_t i = 0; i < r; ++i) {
-                cfx_big_mont_sqr(&y, &y, &ctx);
+                cfx_big_mont_mul(&scratch, &y, &y, &ctx);
+                cfx_big_swap(&y, &scratch);
                 cfx_big_add_eq(&y, &c);
                 if (cfx_big_cmp(&y, n) >= 0) {
                     cfx_big_sub_eq(&y, n);
                 }
             }
+            iters += r;
 
-            /* GCD computation batch*/
+            /* Phase 3 of Brent: advance y by r more steps WITH accumulation */
             for (size_t k = 0; k < r && cfx_big_is_one(&g); k += batch) {
                 cfx_big_copy(&ys, &y);
                 size_t lim = (batch < r - k) ? batch : (r - k);
 
                 for (size_t i = 0; i < lim; ++i) {
-                    /* y = y^2 + c mod n */
-                    cfx_big_mont_sqr(&y, &y, &ctx);
+                    /* y = y^2 + c mod n (use scratch to avoid allocation) */
+                    cfx_big_mont_mul(&scratch, &y, &y, &ctx);
+                    cfx_big_swap(&y, &scratch);
                     cfx_big_add_eq(&y, &c);
                     if (cfx_big_cmp(&y, n) >= 0) {
                         cfx_big_sub_eq(&y, n);
@@ -1227,6 +1234,7 @@ void cfx_big_pollard_rho(cfx_big_t* factor, const cfx_big_t* n) {
                         cfx_big_mont_mul(&q, &q, &diff, &ctx);
                     }
                 }
+                iters += lim;
 
                 /* g = gcd(q, n) */
                 cfx_big_mont_from(&temp, &q, &ctx);
@@ -1234,7 +1242,6 @@ void cfx_big_pollard_rho(cfx_big_t* factor, const cfx_big_t* n) {
             }
 
             r <<= 1;
-            iters += r;
             if (iters > max_iters) {
                 /* Try next c value */
                 break;
@@ -1247,8 +1254,9 @@ void cfx_big_pollard_rho(cfx_big_t* factor, const cfx_big_t* n) {
             cfx_big_mont_from(&x, &x, &ctx);  /* Convert x back from Montgomery */
 
             for (size_t i = 0; i < batch && cfx_big_is_one(&g); ++i) {
-                /* ys = ys^2 + c mod n */
-                cfx_big_mont_sqr(&ys, &ys, &ctx);
+                /* ys = ys^2 + c mod n (use scratch to avoid allocation) */
+                cfx_big_mont_mul(&scratch, &ys, &ys, &ctx);
+                cfx_big_swap(&ys, &scratch);
                 cfx_big_add_eq(&ys, &c);
                 if (cfx_big_cmp(&ys, n) >= 0) {
                     cfx_big_sub_eq(&ys, n);
@@ -1290,6 +1298,7 @@ cleanup:
     cfx_big_free(&one);
     cfx_big_free(&diff);
     cfx_big_free(&temp);
+    cfx_big_free(&scratch);
     cfx_big_mont_ctx_free(&ctx);
 }
 
@@ -1873,12 +1882,8 @@ int cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b, cfx_big_t* remainder) {
 
         /* Check if it's prime */
         if (cfx_big_is_prime(cur)) {
-            /* Prime > 64 bits - can't store in fac_t */
-            if (remainder) {
-                /* Multiply remainder by this prime (remainder *= cur) */
-                cfx_big_mul_eq(remainder, cur);
-            }
-            result = 1;  /* incomplete */
+            /* Prime > 64 bits - store in fac_t's big_primes array */
+            cfx_fac_push_big(f, cur, 1);
             cfx_big_free(cur);
             continue;
         }
@@ -1960,6 +1965,15 @@ int cfx_big_to_fac(cfx_fac_t* f, const cfx_big_t* b, cfx_big_t* remainder) {
             }
         }
         cfx_fac_push(&coalesced, cur_p, cur_e);
+
+        /* Transfer big_primes from f to coalesced before freeing */
+        coalesced.big_primes = f->big_primes;
+        coalesced.big_len = f->big_len;
+        coalesced.big_cap = f->big_cap;
+        /* Clear f's big_primes pointers so cfx_fac_free doesn't free them */
+        f->big_primes = NULL;
+        f->big_len = 0;
+        f->big_cap = 0;
 
         /* Swap */
         cfx_fac_free(f);
@@ -3567,15 +3581,28 @@ int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, con
     const cfx_big_t* n = &ctx->n;
     const size_t k = ctx->k;
 
-    /* Allocate accumulator T with k+2 limbs (zeroed) */
-    cfx_big_t T;
-    cfx_big_init(&T);
-    cfx_big_reserve(&T, k + 2);
-    memset(T.limb, 0, (k + 2) * sizeof(cfx_limb_t));
-    T.n = k + 2;
+    /* Handle aliasing: if out aliases a or b, we need a temporary.
+     * Otherwise, we can work directly in out's buffer. */
+    int need_temp = (out == a || out == b || out->limb == a->limb || out->limb == b->limb);
+
+    cfx_big_t T_storage;
+    cfx_big_t* T;
+
+    if (need_temp) {
+        cfx_big_init(&T_storage);
+        cfx_big_reserve(&T_storage, k + 2);
+        T = &T_storage;
+    } else {
+        /* Reuse out's buffer if possible */
+        cfx_big_reserve(out, k + 2);
+        T = out;
+    }
+
+    memset(T->limb, 0, (k + 2) * sizeof(cfx_limb_t));
+    T->n = k + 2;
 
     /* Delegate core CIOS loop to backend implementation */
-    cfx_big_mont_mul_impl(T.limb,
+    cfx_big_mont_mul_impl(T->limb,
                           a->limb, a->n,
                           b->limb, b->n,
                           n->limb,
@@ -3583,13 +3610,15 @@ int cfx_big_mont_mul(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b, con
                           k);
 
     /* Final normalization: result is in T[0..k], may be >= n */
-    T.n = k + 1;
-    cfx_big_trim(&T);
-    if (cfx_big_cmp(&T, n) >= 0) {
-        cfx_big_sub_eq(&T, n);
+    T->n = k + 1;
+    cfx_big_trim(T);
+    if (cfx_big_cmp(T, n) >= 0) {
+        cfx_big_sub_eq(T, n);
     }
 
-    cfx_big_move(out, &T);
+    if (need_temp) {
+        cfx_big_move(out, &T_storage);
+    }
     return 1;
 }
 
