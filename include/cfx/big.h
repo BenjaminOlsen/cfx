@@ -171,6 +171,15 @@ int cfx_big_is_prime(const cfx_big_t* b);
 /* Binary GCD algorithm for big integers */
 void cfx_big_gcd(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b);
 
+/* Extended GCD for big integers.
+ * Computes g = gcd(a, b) and signed coefficients x, y such that ax + by = g.
+ * x and y are cfx_sbig_t* (signed big integers) since they can be negative.
+ * Any of g, x, y can be NULL if that output is not needed.
+ * Forward declaration - cfx_sbig_t is defined in cfx/sbig.h */
+typedef struct cfx_sbig cfx_sbig_t;
+void cfx_big_xgcd(cfx_big_t* g, cfx_sbig_t* x, cfx_sbig_t* y,
+                  const cfx_big_t* a, const cfx_big_t* b);
+
 /* Pollard-Rho factorization using Montgomery multiplication.
  * Returns a non-trivial factor, or a copy of n if n is prime/unfactorable. */
 void cfx_big_pollard_rho(cfx_big_t* factor, const cfx_big_t* n);

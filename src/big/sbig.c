@@ -309,3 +309,44 @@ int cfx_sbig_from_hex(cfx_sbig_t* out, const char* str) {
     }
     return 0;
 }
+
+void cfx_sbig_xgcd(cfx_sbig_t* g, cfx_sbig_t* x, cfx_sbig_t* y,
+                   const cfx_sbig_t* a, const cfx_sbig_t* b) {
+    /* gcd(a, b) = gcd(|a|, |b|)
+     * If |a|*x' + |b|*y' = g, then a*x + b*y = g where:
+     *   x = x' * sign(a)  (or x' if a >= 0)
+     *   y = y' * sign(b)  (or y' if b >= 0)
+     */
+    cfx_sbig_t x_tmp, y_tmp;
+    cfx_sbig_init(&x_tmp);
+    cfx_sbig_init(&y_tmp);
+
+    cfx_big_t g_tmp;
+    cfx_big_init(&g_tmp);
+
+    /* Call the unsigned version with magnitudes */
+    cfx_big_xgcd(&g_tmp, &x_tmp, &y_tmp, &a->mag, &b->mag);
+
+    /* Adjust signs of coefficients based on input signs */
+    if (a->sign < 0) {
+        cfx_sbig_neg_eq(&x_tmp);
+    }
+    if (b->sign < 0) {
+        cfx_sbig_neg_eq(&y_tmp);
+    }
+
+    /* Output results */
+    if (g) {
+        cfx_sbig_assign_big(g, &g_tmp, 1);
+    }
+    if (x) {
+        cfx_sbig_swap(x, &x_tmp);
+    }
+    if (y) {
+        cfx_sbig_swap(y, &y_tmp);
+    }
+
+    cfx_big_free(&g_tmp);
+    cfx_sbig_free(&x_tmp);
+    cfx_sbig_free(&y_tmp);
+}

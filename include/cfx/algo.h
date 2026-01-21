@@ -41,6 +41,10 @@ uint64_t cfx_powmod_u64(uint64_t a, uint64_t e, uint64_t m);
 
 uint64_t cfx_gcd_u64(uint64_t a, uint64_t b);
 
+/* extended GCD: computes g = gcd(a, b) and coefficients x, y such that ax + by = g.
+ * Returns g. Coefficients are signed (can be negative). */
+uint64_t cfx_xgcd_u64(uint64_t a, uint64_t b, int64_t* x, int64_t* y);
+
 /* returns a non-trivial factor of n (probabilistic) */
 uint64_t cfx_pollard_rho_brent(uint64_t n);
 

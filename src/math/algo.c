@@ -164,6 +164,32 @@ uint64_t cfx_gcd_u64(uint64_t a, uint64_t b) {
     return a;
 }
 
+uint64_t cfx_xgcd_u64(uint64_t a, uint64_t b, int64_t* x, int64_t* y) {
+    int64_t x0 = 1, x1 = 0;
+    int64_t y0 = 0, y1 = 1;
+    uint64_t a0 = a, b0 = b;
+
+    while (b0 != 0) {
+        uint64_t q = a0 / b0;
+        uint64_t r = a0 % b0;
+
+        a0 = b0;
+        b0 = r;
+
+        int64_t tmp = x1;
+        x1 = x0 - (int64_t)q * x1;
+        x0 = tmp;
+
+        tmp = y1;
+        y1 = y0 - (int64_t)q * y1;
+        y0 = tmp;
+    }
+
+    if (x) *x = x0;
+    if (y) *y = y0;
+    return a0;
+}
+
 /* Helper: get a 64-bit random value */
 static inline uint64_t _rand_u64(void) {
 #if CFX_LIMB_BITS == 64

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
 
 #include "cfx/big.h"
+#include "cfx/sbig.h"
 #include "cfx/fac.h"
 #include "cfx/algo.h"
 #include "cfx/arith.h"
@@ -1036,6 +1037,90 @@ void cfx_big_gcd(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) {
     cfx_big_swap(out, &u);
     cfx_big_free(&u);
     cfx_big_free(&v);
+}
+
+/* Extended GCD: computes g = gcd(a, b) and Bézout coefficients x, y
+ * such that a*x + b*y = g.
+ * Uses the iterative extended Euclidean algorithm. */
+void cfx_big_xgcd(cfx_big_t* g, cfx_sbig_t* x, cfx_sbig_t* y,
+                  const cfx_big_t* a, const cfx_big_t* b) {
+    /* Handle zero cases */
+    if (cfx_big_is_zero(a)) {
+        if (g) cfx_big_copy(g, b);
+        if (x) cfx_sbig_from_i64(x, 0);
+        if (y) cfx_sbig_from_i64(y, cfx_big_is_zero(b) ? 0 : 1);
+        return;
+    }
+    if (cfx_big_is_zero(b)) {
+        if (g) cfx_big_copy(g, a);
+        if (x) cfx_sbig_from_i64(x, 1);
+        if (y) cfx_sbig_from_i64(y, 0);
+        return;
+    }
+
+    /* Working copies for the Euclidean algorithm */
+    cfx_big_t r0, r1, q, r;
+    cfx_big_init(&r0);
+    cfx_big_init(&r1);
+    cfx_big_init(&q);
+    cfx_big_init(&r);
+    cfx_big_copy(&r0, a);
+    cfx_big_copy(&r1, b);
+
+    /* Bézout coefficients: x0, x1, y0, y1 (signed) */
+    cfx_sbig_t x0, x1, y0, y1;
+    cfx_sbig_init(&x0);
+    cfx_sbig_init(&x1);
+    cfx_sbig_init(&y0);
+    cfx_sbig_init(&y1);
+    cfx_sbig_from_i64(&x0, 1);  /* x0 = 1 */
+    cfx_sbig_from_i64(&x1, 0);  /* x1 = 0 */
+    cfx_sbig_from_i64(&y0, 0);  /* y0 = 0 */
+    cfx_sbig_from_i64(&y1, 1);  /* y1 = 1 */
+
+    cfx_sbig_t q_sbig, tmp;
+    cfx_sbig_init(&q_sbig);
+    cfx_sbig_init(&tmp);
+
+    while (!cfx_big_is_zero(&r1)) {
+        /* q = r0 / r1, r = r0 % r1 */
+        cfx_big_divrem(&q, &r, &r0, &r1);
+
+        /* r0 = r1, r1 = r */
+        cfx_big_swap(&r0, &r1);
+        cfx_big_swap(&r1, &r);
+
+        /* Convert q to signed for coefficient updates */
+        cfx_sbig_assign_big(&q_sbig, &q, 1);
+
+        /* x0, x1 = x1, x0 - q*x1 */
+        cfx_sbig_mul(&tmp, &q_sbig, &x1);
+        cfx_sbig_sub(&tmp, &x0, &tmp);
+        cfx_sbig_swap(&x0, &x1);
+        cfx_sbig_swap(&x1, &tmp);
+
+        /* y0, y1 = y1, y0 - q*y1 */
+        cfx_sbig_mul(&tmp, &q_sbig, &y1);
+        cfx_sbig_sub(&tmp, &y0, &tmp);
+        cfx_sbig_swap(&y0, &y1);
+        cfx_sbig_swap(&y1, &tmp);
+    }
+
+    /* r0 = gcd, x0 and y0 are the coefficients */
+    if (g) cfx_big_swap(g, &r0);
+    if (x) cfx_sbig_swap(x, &x0);
+    if (y) cfx_sbig_swap(y, &y0);
+
+    cfx_big_free(&r0);
+    cfx_big_free(&r1);
+    cfx_big_free(&q);
+    cfx_big_free(&r);
+    cfx_sbig_free(&x0);
+    cfx_sbig_free(&x1);
+    cfx_sbig_free(&y0);
+    cfx_sbig_free(&y1);
+    cfx_sbig_free(&q_sbig);
+    cfx_sbig_free(&tmp);
 }
 
 /* Pollard-Rho factorization using Montgomery multiplication (Brent's improvement).

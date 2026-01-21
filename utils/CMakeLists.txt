@@ -25,6 +25,7 @@ set(UTIL_NAMES
     verify
     aead
     pwhash
+    xgcd
 )
 
 # Helper library with misc utilities (hex parsing, etc.)

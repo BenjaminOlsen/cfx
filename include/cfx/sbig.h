@@ -23,11 +23,12 @@ extern "C" {
 
 /*
  * Signed big integer type.
+ * Note: typedef'd as cfx_sbig_t in cfx/big.h for forward declaration.
  */
-typedef struct {
+struct cfx_sbig {
     cfx_big_t mag;   /* magnitude (absolute value) */
     int8_t sign;     /* -1 = negative, 0 = zero, +1 = positive */
-} cfx_sbig_t;
+};
 
 /*
  * Lightweight signed reference to an existing unsigned bigint.
@@ -81,6 +82,12 @@ int cfx_sbig_from_hex(cfx_sbig_t* out, const char* str);
 
 void cfx_sbig_normalize(cfx_sbig_t* s);
 void cfx_sbig_swap(cfx_sbig_t* a, cfx_sbig_t* b);
+
+/* Extended GCD for signed big integers.
+ * Computes g = gcd(|a|, |b|) and coefficients x, y such that a*x + b*y = g.
+ * g is always non-negative. Any of g, x, y can be NULL if not needed. */
+void cfx_sbig_xgcd(cfx_sbig_t* g, cfx_sbig_t* x, cfx_sbig_t* y,
+                   const cfx_sbig_t* a, const cfx_sbig_t* b);
 
 #ifdef __cplusplus
 }
