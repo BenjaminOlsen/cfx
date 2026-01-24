@@ -20,21 +20,20 @@
 static void usage(const char* prog) {
     fprintf(stderr,
         "Usage: %s [options] <file>\n"
-        "  Sign a file with Ed25519.\n\n"
+        "  Sign a file with Ed25519ph (RFC 8032 pre-hashed mode).\n\n"
         "Options:\n"
-        "  -k <keyfile>   Read 32-byte seed from file (or use - for stdin)\n"
-        "  -K <hex>       Provide seed directly as hex string\n"
-        "  -o <sigfile>   Write signature to file (default: stdout)\n"
-        "  -x             Output as hex (default)\n"
-        "  -b64           Output as base64\n"
-        "  -h, --help     Show this help\n\n"
-        "The signature is 64 bytes. The seed (private key) is 32 bytes.\n\n"
+        "  -k, --seed-file <file>   Read 32-byte seed from file (- for stdin)\n"
+        "  -K, --seed <hex>         Provide seed directly as 64 hex chars\n"
+        "  -o <sigfile>             Write signature to file (default: stdout)\n"
+        "  -x                       Output as hex (default)\n"
+        "  -b64                     Output as base64\n"
+        "  -h, --help               Show this help\n\n"
+        "The seed is your 32-byte private key. The signature is 64 bytes.\n\n"
         "Examples:\n"
-        "  %s -k secret.key document.pdf          Sign with key from file\n"
-        "  %s -K <64-hex-chars> document.pdf      Sign with hex seed\n"
-        "  %s -k secret.key -o doc.sig doc.pdf    Write signature to file\n"
-        "  echo -n <seed> | %s -k - file.txt      Read seed from stdin\n",
-        prog, prog, prog, prog, prog);
+        "  %s --seed-file secret.key document.pdf    Sign with key from file\n"
+        "  %s --seed <64-hex-chars> document.pdf     Sign with hex seed\n"
+        "  %s -k secret.key -o doc.sig doc.pdf       Write signature to file\n",
+        prog, prog, prog, prog);
 }
 
 static int read_file_bytes(const char* path, uint8_t* buf, size_t len) {
@@ -109,15 +108,15 @@ int cfx_sign_run(int argc, char** argv) {
             fmt = CFX_STR_FMT_HEX;
         } else if (strcmp(argv[i], "-b64") == 0) {
             fmt = CFX_STR_FMT_BASE64;
-        } else if (strcmp(argv[i], "-k") == 0) {
+        } else if (strcmp(argv[i], "-k") == 0 || strcmp(argv[i], "--seed-file") == 0) {
             if (++i >= argc) {
-                fprintf(stderr, "error: -k requires argument\n");
+                fprintf(stderr, "error: %s requires argument\n", argv[i-1]);
                 return 1;
             }
             keyfile = argv[i];
-        } else if (strcmp(argv[i], "-K") == 0) {
+        } else if (strcmp(argv[i], "-K") == 0 || strcmp(argv[i], "--seed") == 0) {
             if (++i >= argc) {
-                fprintf(stderr, "error: -K requires argument\n");
+                fprintf(stderr, "error: %s requires argument\n", argv[i-1]);
                 return 1;
             }
             keyhex = argv[i];
@@ -167,14 +166,15 @@ int cfx_sign_run(int argc, char** argv) {
     uint8_t pk[32], sk[64];
     cfx_ed25519_create_keypair(pk, sk, seed);
 
-    /* hash the file (we sign the hash, not the raw file) */
-    uint8_t hash[64];
-    if (hash_file(infile, hash) != 0) {
+    /* hash the file (Ed25519ph pre-hash) */
+    uint8_t prehash[64];
+    if (hash_file(infile, prehash) != 0) {
         return 1;
     }
 
+    /* sign using Ed25519ph (RFC 8032 pre-hashed mode) */
     uint8_t sig[64];
-    cfx_ed25519_sign(sig, hash, 64, sk);
+    cfx_ed25519ph_sign(sig, prehash, sk);
 
     FILE* out = stdout;
     if (outfile) {

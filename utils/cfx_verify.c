@@ -20,18 +20,18 @@
 static void usage(const char* prog) {
     fprintf(stderr,
         "Usage: %s [options] <file>\n"
-        "  Verify an Ed25519 signature on a file.\n\n"
+        "  Verify an Ed25519ph signature on a file (RFC 8032 pre-hashed mode).\n\n"
         "Options:\n"
-        "  -k <keyfile>   Read 32-byte public key from file\n"
-        "  -K <hex>       Provide public key directly as hex string\n"
-        "  -s <sigfile>   Read signature from file\n"
-        "  -S <hex>       Provide signature directly as hex string\n"
-        "  -q             Quiet mode (exit code only, no output)\n"
-        "  -h, --help     Show this help\n\n"
+        "  -k, --pubkey-file <file>   Read 32-byte public key from file\n"
+        "  -K, --pubkey <hex>         Provide public key as 64 hex chars\n"
+        "  -s, --sig-file <file>      Read signature from file\n"
+        "  -S, --sig <hex>            Provide signature as 128 hex chars\n"
+        "  -q                         Quiet mode (exit code only, no output)\n"
+        "  -h, --help                 Show this help\n\n"
         "Exit codes: 0 = valid, 1 = invalid or error\n\n"
         "Examples:\n"
-        "  %s -k pub.key -s doc.sig document.pdf    Verify with key/sig files\n"
-        "  %s -K <64-hex> -S <128-hex> file.txt     Verify with hex values\n",
+        "  %s --pubkey-file pub.key --sig-file doc.sig document.pdf\n"
+        "  %s --pubkey <64-hex> --sig <128-hex> file.txt\n",
         prog, prog, prog);
 }
 
@@ -148,27 +148,27 @@ int cfx_verify_run(int argc, char** argv) {
             return 0;
         } else if (strcmp(argv[i], "-q") == 0) {
             quiet = 1;
-        } else if (strcmp(argv[i], "-k") == 0) {
+        } else if (strcmp(argv[i], "-k") == 0 || strcmp(argv[i], "--pubkey-file") == 0) {
             if (++i >= argc) {
-                fprintf(stderr, "error: -k requires argument\n");
+                fprintf(stderr, "error: %s requires argument\n", argv[i-1]);
                 return 1;
             }
             keyfile = argv[i];
-        } else if (strcmp(argv[i], "-K") == 0) {
+        } else if (strcmp(argv[i], "-K") == 0 || strcmp(argv[i], "--pubkey") == 0) {
             if (++i >= argc) {
-                fprintf(stderr, "error: -K requires argument\n");
+                fprintf(stderr, "error: %s requires argument\n", argv[i-1]);
                 return 1;
             }
             keyhex = argv[i];
-        } else if (strcmp(argv[i], "-s") == 0) {
+        } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--sig-file") == 0) {
             if (++i >= argc) {
-                fprintf(stderr, "error: -s requires argument\n");
+                fprintf(stderr, "error: %s requires argument\n", argv[i-1]);
                 return 1;
             }
             sigfile = argv[i];
-        } else if (strcmp(argv[i], "-S") == 0) {
+        } else if (strcmp(argv[i], "-S") == 0 || strcmp(argv[i], "--sig") == 0) {
             if (++i >= argc) {
-                fprintf(stderr, "error: -S requires argument\n");
+                fprintf(stderr, "error: %s requires argument\n", argv[i-1]);
                 return 1;
             }
             sighex = argv[i];
@@ -227,14 +227,14 @@ int cfx_verify_run(int argc, char** argv) {
         }
     }
 
-    /* hash the file */
-    uint8_t hash[64];
-    if (hash_file(infile, hash) != 0) {
+    /* hash the file (Ed25519ph pre-hash) */
+    uint8_t prehash[64];
+    if (hash_file(infile, prehash) != 0) {
         return 1;
     }
 
-    /* verify */
-    int ret = cfx_ed25519_verify(sig, hash, 64, pk);
+    /* verify using Ed25519ph (RFC 8032 pre-hashed mode) */
+    int ret = cfx_ed25519ph_verify(sig, prehash, pk);
 
     if (ret == 0) {
         if (!quiet) printf("OK: signature valid\n");
