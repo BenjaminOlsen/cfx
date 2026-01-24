@@ -41,11 +41,34 @@ static void ge25519_mul_cofactor(ge25519_t *r, const ge25519_t *p) {
 /*
  * Check if scalar s is in canonical form (s < L).
  * L = 2^252 + 27742317777372353535851937790883648493
+ *   = 0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed
  * Returns 1 if s < L (valid), 0 otherwise.
- * Constant-time implementation.
+ * Constant-time: computes s - L and checks for borrow.
  */
+
+/*************************************
+simple example in base 10:
+........................................
+ex 1:
+ s = 100 L = 99
+-> s = {0, 0, 1}, L = {9, 9, 0}
+
+i = 0:
+diff = 0 - 9 - 0 = -9 -> borrow = 1
+i = 1
+diff = 0 -9 -1 = -10 -> borrow = 1;
+i = 2
+diff = 1 - 0 - 1 = 0 -> borrow = 0; -> L < s
+
+........................................
+ex 2:
+s = 99, L = 100:
+i = 0
+diff = 9 - 0 - 0 -> borrow = 0;
+diff = 9 - 0 - 0 -> borrow = 0;
+diff = 1 - 0 - 0 -> borrow = 1; -> s < L
+*/
 static int sc25519_is_canonical(const uint8_t s[32]) {
-    /* L in little-endian bytes */
     static const uint8_t L[32] = {
         0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
         0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
@@ -53,27 +76,12 @@ static int sc25519_is_canonical(const uint8_t s[32]) {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10
     };
 
-    /* Constant-time comparison: check if s < L
-     * We compute two flags:
-     *   lt: set if we've found s[i] < L[i] (and no prior s[j] > L[j])
-     *   gt: set if we've found s[i] > L[i] (and no prior s[j] < L[j])
-     * Compare from most significant byte down.
-     * After the loop: lt=1 means s<L, gt=1 means s>L, both 0 means s==L.
-     */
-    unsigned int lt = 0, gt = 0;
-    for (int i = 31; i >= 0; i--) {
-        unsigned int si = s[i];
-        unsigned int li = L[i];
-        /* Update flags only if neither is set yet: (gt | lt) == 0 means mask is 0xFFFFFFFF */
-        unsigned int mask = (unsigned int)(((int)(gt | lt)) - 1);  /* 0 if decided, ~0 if undecided */
-        /* lt |= (si < li) if undecided */
-        lt |= mask & (((si - li) >> 8) & 1);
-        /* gt |= (si > li) if undecided */
-        gt |= mask & (((li - si) >> 8) & 1);
+    int borrow = 0;
+    for (int i = 0; i < 32; i++) {
+        int diff = (int)s[i] - (int)L[i] - borrow;
+        borrow = (diff >> 8) & 1;
     }
-
-    /* s is canonical iff s < L, i.e., lt==1 and gt==0 */
-    return (int)(lt & (gt ^ 1));
+    return borrow;  /* 1 if s < L, 0 otherwise */
 }
 
 void cfx_ed25519_create_keypair(uint8_t pk[32], uint8_t sk[64], const uint8_t seed[32]) {
@@ -141,7 +149,6 @@ void cfx_ed25519_sign(uint8_t sig[64], const uint8_t* msg, size_t msg_len, const
     /* s = (r + k*a) mod L */
     cfx_sc25519_muladd(sig + 32, k, a, r);  /* second 32 bytes of sig = s */
 
-    /* Clear sensitive intermediates */
     CFX_MEMZERO_S(hash, sizeof(hash));
     CFX_MEMZERO_S(r_scalar, sizeof(r_scalar));
     CFX_MEMZERO_S(k_scalar, sizeof(k_scalar));
@@ -156,6 +163,7 @@ int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t* msg, size_t msg_len
     uint8_t k_scalar[64];
     uint8_t k[32];
     uint8_t check_bytes[32];
+    uint8_t expected_bytes[32];
     cfx_sha512_ctx_t ctx;
 
     /* unpack public key */
@@ -215,10 +223,8 @@ int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t* msg, size_t msg_len
 
     /* compare [s]B with R + [k]A (or their cofactor multiples) */
     cfx_ge25519_pack(check_bytes, &sB);
-    uint8_t expected_bytes[32];
     cfx_ge25519_pack(expected_bytes, &check);
 
-    /* constant-time comparison */
     uint8_t diff = 0;
     for (int i = 0; i < 32; i++) {
         diff |= check_bytes[i] ^ expected_bytes[i];
@@ -301,6 +307,7 @@ int cfx_ed25519ph_verify(const uint8_t sig[64], const uint8_t prehash[64], const
     uint8_t k_scalar[64];
     uint8_t k[32];
     uint8_t check_bytes[32];
+    uint8_t expected_bytes[32];
     cfx_sha512_ctx_t ctx;
 
     /* unpack public key */
@@ -313,7 +320,7 @@ int cfx_ed25519ph_verify(const uint8_t sig[64], const uint8_t prehash[64], const
         return -1;
     }
 
-    /* check s < L (group order) */
+    /* check s < L (group order) - reject non-canonical signatures */
     if (!sc25519_is_canonical(sig + 32)) {
         return -1;
     }
@@ -352,7 +359,6 @@ int cfx_ed25519ph_verify(const uint8_t sig[64], const uint8_t prehash[64], const
 
     /* compare [s]B with R + [k]A (or their cofactor multiples) */
     cfx_ge25519_pack(check_bytes, &sB);
-    uint8_t expected_bytes[32];
     cfx_ge25519_pack(expected_bytes, &check);
 
     uint8_t diff = 0;

@@ -7,6 +7,11 @@
 #include <string.h>
 #include <errno.h>
 
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
+
 #include "cfx_cmd.h"
 #include "misc.h"
 
@@ -20,6 +25,7 @@ static void usage(const char* prog) {
         "  --rng=name     Select RNG (default: %s)\n"
         "  -x             Output as hex (default)\n"
         "  -b64           Output as base64\n"
+        "  -bin           Output as raw binary\n"
         "  -v, --verbose  Verbose output\n"
         "  -h, --help     Show this help\n\n"
         "Available RNGs:\n",
@@ -32,7 +38,12 @@ static void usage(const char* prog) {
 }
 
 static void print_bytes(const uint8_t* bytes, size_t n, enum cfx_str_format fmt) {
-    if (fmt == CFX_STR_FMT_BASE64) {
+    if (fmt == CFX_STR_FMT_BINARY) {
+#ifdef _WIN32
+        _setmode(_fileno(stdout), _O_BINARY);
+#endif
+        fwrite(bytes, 1, n, stdout);
+    } else if (fmt == CFX_STR_FMT_BASE64) {
         size_t b64_len = cfx_base64_enc_len(n);
         char* b64 = (char*)malloc(b64_len + 1);
         if (b64) {
@@ -94,6 +105,8 @@ int cfx_rand_run(int argc, char** argv) {
             fmt = CFX_STR_FMT_HEX;
         } else if (strcmp(arg, "-b64") == 0) {
             fmt = CFX_STR_FMT_BASE64;
+        } else if (strcmp(arg, "-bin") == 0) {
+            fmt = CFX_STR_FMT_BINARY;
         } else {
             n = strtoull(arg, NULL, 0);
             if (errno) {

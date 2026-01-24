@@ -35,21 +35,40 @@ static void usage(const char* prog) {
         prog, prog, prog);
 }
 
-static int read_file_bytes(const char* path, uint8_t* buf, size_t len) {
+/* Read a 32-byte key from file, auto-detecting format (raw binary or hex) */
+static int read_key_auto(const char* path, uint8_t* out) {
     FILE* f = fopen(path, "rb");
     if (!f) {
         perror(path);
         return -1;
     }
 
-    size_t n = fread(buf, 1, len, f);
+    char buf[128];
+    size_t n = fread(buf, 1, sizeof(buf), f);
     fclose(f);
 
-    if (n != len) {
-        fprintf(stderr, "error: expected %zu bytes, got %zu\n", len, n);
-        return -1;
+    /* Raw binary: exactly 32 bytes */
+    if (n == 32) {
+        memcpy(out, buf, 32);
+        return 0;
     }
-    return 0;
+
+    /* Hex: 64 chars, optionally with trailing newline */
+    if (n >= 64 && n <= 66) {
+        /* Strip trailing whitespace */
+        while (n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r' || buf[n-1] == ' ')) {
+            n--;
+        }
+        if (n == 64) {
+            buf[64] = '\0';
+            if (cfx_parse_hex(buf, out, 32) == 0) {
+                return 0;
+            }
+        }
+    }
+
+    fprintf(stderr, "error: key file must be 32 raw bytes or 64 hex chars\n");
+    return -1;
 }
 
 /* read signature from file - handles hex or base64 text, or raw binary */
@@ -112,7 +131,7 @@ static int hash_file(const char* path, uint8_t* hash) {
     cfx_sha512_ctx_t ctx;
     cfx_sha512_init(&ctx);
 
-    uint8_t buf[8192];
+    uint8_t buf[262144];  /* 256KB for better throughput on large files */
     size_t n;
     while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
         cfx_sha512_update(&ctx, buf, n);
@@ -209,7 +228,7 @@ int cfx_verify_run(int argc, char** argv) {
             return 1;
         }
     } else {
-        if (read_file_bytes(keyfile, pk, 32) != 0) {
+        if (read_key_auto(keyfile, pk) != 0) {
             return 1;
         }
     }
@@ -227,13 +246,12 @@ int cfx_verify_run(int argc, char** argv) {
         }
     }
 
-    /* hash the file (Ed25519ph pre-hash) */
+    /* pre-hash */
     uint8_t prehash[64];
     if (hash_file(infile, prehash) != 0) {
         return 1;
     }
 
-    /* verify using Ed25519ph (RFC 8032 pre-hashed mode) */
     int ret = cfx_ed25519ph_verify(sig, prehash, pk);
 
     if (ret == 0) {

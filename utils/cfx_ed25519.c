@@ -88,23 +88,63 @@ static void usage(const char* prog) {
         "Options:\n"
         "  -k <file>   Read seed/key from file (32 bytes raw)\n"
         "  -m <file>   Read message from file (instead of hex string)\n"
+        "  -o <file>   Write private key (seed) to file (keygen only)\n"
+        "  -p <file>   Write public key to file (keygen only)\n"
         "  -x          Output as hex (default)\n"
         "  -b64        Output as base64\n"
+        "  -bin        Output as raw binary (for -o/-p files)\n"
         "  -q          Quiet mode (output only, no labels)\n"
         "  -h, --help  Show this help\n\n"
         "Examples:\n"
         "  %s keygen                                Generate new keypair\n"
-        "  %s keygen -q > mykey.txt                 Save keypair to file\n"
+        "  %s keygen -o secret.key -p public.key    Save keys to files (hex)\n"
+        "  %s keygen -o sec.bin -p pub.bin -bin     Save keys as raw binary\n"
         "  %s public <64-char-hex-seed>             Derive public key from hex\n"
         "  %s public -k seed.bin                    Derive public key from file\n"
         "  %s sign <seed-hex> <msg-hex>             Sign hex message with hex seed\n"
         "  %s sign -k seed.bin -m message.txt       Sign file with key file\n"
         "  %s verify <pk> <sig> <hex-msg>           Verify signature\n"
         "  %s verify -k pub.bin <sig> -m msg.txt    Verify with key/msg files\n",
-        prog, prog, prog, prog, prog, prog, prog, prog, prog);
+        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
 }
 
-static int cmd_keygen(enum cfx_str_format fmt, int quiet) {
+static int write_key_file(const char* path, const uint8_t* data, size_t len, enum cfx_str_format fmt) {
+    FILE* f = fopen(path, "wb");
+    if (!f) {
+        perror(path);
+        return -1;
+    }
+
+    if (fmt == CFX_STR_FMT_BINARY) {
+        if (fwrite(data, 1, len, f) != len) {
+            fprintf(stderr, "error: failed to write %s\n", path);
+            fclose(f);
+            return -1;
+        }
+    } else if (fmt == CFX_STR_FMT_BASE64) {
+        size_t b64_len = cfx_base64_enc_len(len);
+        char* b64 = (char*)malloc(b64_len + 1);
+        if (!b64) {
+            fclose(f);
+            return -1;
+        }
+        cfx_base64_encode(b64, &b64_len, data, len);
+        b64[b64_len] = '\0';
+        fprintf(f, "%s\n", b64);
+        free(b64);
+    } else {
+        for (size_t i = 0; i < len; i++) {
+            fprintf(f, "%02x", data[i]);
+        }
+        fprintf(f, "\n");
+    }
+
+    fclose(f);
+    return 0;
+}
+
+static int cmd_keygen(enum cfx_str_format fmt, int quiet,
+                      const char* seed_file, const char* pub_file) {
     uint8_t seed[32], pk[32], sk[64];
 
     cfx_srand_os();
@@ -112,19 +152,52 @@ static int cmd_keygen(enum cfx_str_format fmt, int quiet) {
 
     cfx_ed25519_create_keypair(pk, sk, seed);
 
-    if (quiet) {
-        cfx_printf_output(seed, 32, fmt);
-        printf("\n");
-        cfx_printf_output(pk, 32, fmt);
-        printf("\n");
-    } else {
-        printf("seed:   ");
-        cfx_printf_output(seed, 32, fmt);
-        printf("\npublic: ");
-        cfx_printf_output(pk, 32, fmt);
-        printf("\n");
+    /* Write to files if specified */
+    if (seed_file) {
+        if (write_key_file(seed_file, seed, 32, fmt) != 0) {
+            cfx_memzero_s(seed, sizeof(seed));
+            cfx_memzero_s(sk, sizeof(sk));
+            return 1;
+        }
+        if (!quiet) printf("wrote seed to %s\n", seed_file);
     }
 
+    if (pub_file) {
+        if (write_key_file(pub_file, pk, 32, fmt) != 0) {
+            cfx_memzero_s(seed, sizeof(seed));
+            cfx_memzero_s(sk, sizeof(sk));
+            return 1;
+        }
+        if (!quiet) printf("wrote public key to %s\n", pub_file);
+    }
+
+    /* Print to stdout if no files specified, or if neither file covers both */
+    if (!seed_file || !pub_file) {
+        if (quiet) {
+            if (!seed_file) {
+                cfx_printf_output(seed, 32, fmt);
+                printf("\n");
+            }
+            if (!pub_file) {
+                cfx_printf_output(pk, 32, fmt);
+                printf("\n");
+            }
+        } else {
+            if (!seed_file) {
+                printf("seed:   ");
+                cfx_printf_output(seed, 32, fmt);
+                printf("\n");
+            }
+            if (!pub_file) {
+                printf("public: ");
+                cfx_printf_output(pk, 32, fmt);
+                printf("\n");
+            }
+        }
+    }
+
+    cfx_memzero_s(seed, sizeof(seed));
+    cfx_memzero_s(sk, sizeof(sk));
     return 0;
 }
 
@@ -221,6 +294,8 @@ int cfx_ed25519_run(int argc, char** argv) {
     const char* subcmd = NULL;
     const char* key_file = NULL;   /* -k option */
     const char* msg_file = NULL;   /* -m option */
+    const char* out_seed = NULL;   /* -o option (keygen) */
+    const char* out_pub = NULL;    /* -p option (keygen) */
     const char* arg1 = NULL;       /* positional args */
     const char* arg2 = NULL;
     const char* arg3 = NULL;
@@ -230,6 +305,8 @@ int cfx_ed25519_run(int argc, char** argv) {
             fmt = CFX_STR_FMT_HEX;
         } else if (strcmp(argv[i], "-b64") == 0) {
             fmt = CFX_STR_FMT_BASE64;
+        } else if (strcmp(argv[i], "-bin") == 0) {
+            fmt = CFX_STR_FMT_BINARY;
         } else if (strcmp(argv[i], "-q") == 0) {
             quiet = 1;
         } else if (strcmp(argv[i], "-k") == 0) {
@@ -244,6 +321,18 @@ int cfx_ed25519_run(int argc, char** argv) {
                 return 1;
             }
             msg_file = argv[i];
+        } else if (strcmp(argv[i], "-o") == 0) {
+            if (++i >= argc) {
+                fprintf(stderr, "error: -o requires argument\n");
+                return 1;
+            }
+            out_seed = argv[i];
+        } else if (strcmp(argv[i], "-p") == 0) {
+            if (++i >= argc) {
+                fprintf(stderr, "error: -p requires argument\n");
+                return 1;
+            }
+            out_pub = argv[i];
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             usage(prog);
             return 0;
@@ -272,7 +361,7 @@ int cfx_ed25519_run(int argc, char** argv) {
     }
 
     if (strcmp(subcmd, "keygen") == 0) {
-        return cmd_keygen(fmt, quiet);
+        return cmd_keygen(fmt, quiet, out_seed, out_pub);
     } else if (strcmp(subcmd, "public") == 0) {
         if (arg1 == NULL && key_file == NULL) {
             fprintf(stderr, "error: 'public' requires seed (hex arg or -k file)\n");

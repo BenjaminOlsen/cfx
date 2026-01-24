@@ -18,6 +18,19 @@ build for armv7m: `cmake -B build-armv7m -S . -DCMAKE_TOOLCHAIN_FILE=cmake/toolc
 
 build for ARM Cortex-M4 (optimized): `cmake -B build-m4 -DCFX_TARGET=arm_cortex_m4 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_MEMORY_MODE=static`
 
+### Security Options
+
+**Paranoid Ed25519 verification:**
+
+```bash
+cmake -S . -B build -DCFX_ED25519_PARANOID=ON
+```
+
+This enables extra checks beyond RFC 8032 requirements: Small subgroup rejection; cofactored verification
+
+If you accept Ed25519 public keys from untrusted sources. Without these checks, an attacker can provide a malicious "public key" (one of 8 special torsion points) and forge signatures for arbitrary messages.
+
+**Cost:** ~6 extra point doublings per verification (~1% overhead; standard verification already does ~510 doublings).
 ## Compile
 
 `cmake --build build -j` or `cd build && make` or `make VERBOSE=1`

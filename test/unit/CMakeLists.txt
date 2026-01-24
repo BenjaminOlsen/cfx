@@ -27,6 +27,7 @@ set(CFX_UNIT_TESTS
     test_base64
     test_aead_chacha20_poly1305
     test_sha256
+    test_sha512
     test_sha3
     test_blake2
     test_siphash
