@@ -18,20 +18,6 @@ build for armv7m: `cmake -B build-armv7m -S . -DCMAKE_TOOLCHAIN_FILE=cmake/toolc
 
 build for ARM Cortex-M4 (optimized): `cmake -B build-m4 -DCFX_TARGET=arm_cortex_m4 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_MEMORY_MODE=static`
 
-### Security Options
-
-**Paranoid Ed25519 verification:**
-
-```bash
-cmake -S . -B build -DCFX_ED25519_PARANOID=ON
-```
-
-This enables extra checks beyond RFC 8032 requirements: Small subgroup rejection; cofactored verification
-
-If you accept Ed25519 public keys from untrusted sources. Without these checks, an attacker can provide a malicious "public key" (one of 8 special torsion points) and forge signatures for arbitrary messages.
-
-**Cost:** ~6 extra point doublings per verification (~1% overhead; standard verification already does ~510 doublings).
-
 ## Compile
 
 `cmake --build build -j` or `cd build && make` or `make VERBOSE=1`
@@ -244,12 +230,32 @@ docker run --rm -v $(pwd):/cfx cfx-arm-neon
 
 | Target | Backend | Key Optimizations |
 |--------|---------|-------------------|
+| `x86_64_avx2` | x86-64 with AVX2 | 8-lane SIMD for ChaCha20, BMI2 for bignum |
 | `x86_64_bmi2` | x86-64 with BMI2 | MULX, ADCX, ADOX |
 | `arm_cortex_m4` | ARM Cortex-M4 | UMULL/UMLAL, barrel shifter |
 | `arm_neon` | ARMv7/v8 NEON | SIMD lanes |
 | `portable` | Any | Standard C |
 
 See `doc/EMULATION.md` for full cross-platform testing documentation.
+
+### ChaCha20 Target-Specific Optimization
+
+The ChaCha20 context size and implementation vary by target to eliminate per-call overhead:
+
+| Target | ctx size | block8 implementation |
+|--------|----------|----------------------|
+| `x86_64_avx2` | 512 bytes | AVX2 8-lane SIMD, pre-broadcast state |
+| others | 64 bytes | Scalar (portable) or target-optimized |
+
+On AVX2, the context stores state in Structure-of-Arrays (SoA) layout with all values pre-broadcast to 8 lanes at init time. This eliminates ~20-25% overhead that would otherwise be spent broadcasting on every `block8` call.
+
+```c
+cfx_chacha20_ctx_t ctx;  // 512 bytes on AVX2, 64 bytes otherwise
+cfx_chacha20_ctx_init(&ctx, key, nonce);
+cfx_chacha20_block8(&ctx, counter, out);  // no broadcast overhead
+```
+
+The backend selection uses inheritance: if `x86_64_avx2/block4.c` doesn't exist, it falls back to `x86_64_bmi2`, then `x86_64`, then `portable`.
 
 ## License
 The cfx library is dual-licensed.

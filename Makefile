@@ -4,7 +4,7 @@ BUILD_DIR = build
 BUILD_DIR_COV = build-cov
 RUST_DIR = rust/cfx
 
-.PHONY: all release debug test install utils coverage clean help
+.PHONY: all release debug test install utils coverage benchmark clean help
 .PHONY: rust rust-release rust-test rust-clean all-test all-clean
 
 all: release
@@ -39,6 +39,16 @@ coverage:
 	mkdir -p coverage
 	gcovr --root . --filter src/ --html --html-details -o coverage/index.html
 	gcovr --root . --filter src/ --print-summary
+
+benchmark:
+	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DCFX_BUILD_BENCHMARKS=ON
+	cmake --build $(BUILD_DIR) -j --config Release
+	@echo ""
+	@echo "Benchmarks built. Run with:"
+	@echo "  ./$(BUILD_DIR)/benchmark/bench_chacha20"
+	@echo "  ./$(BUILD_DIR)/benchmark/bench_poly1305"
+	@echo "  ./$(BUILD_DIR)/benchmark/bench_ntt"
+	@echo "  etc."
 
 clean:
 	rm -rf $(BUILD_DIR) $(BUILD_DIR_COV)
@@ -79,6 +89,7 @@ help:
 	@echo "  install      Install to CMAKE_INSTALL_PREFIX"
 	@echo "  utils        Build and install utilities only"
 	@echo "  coverage     Build with coverage and generate report"
+	@echo "  benchmark    Build benchmarks (requires Google Benchmark)"
 	@echo "  clean        Remove build directories"
 	@echo ""
 	@echo "Rust Bindings (Cargo):"

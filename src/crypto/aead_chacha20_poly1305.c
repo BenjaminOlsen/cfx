@@ -5,6 +5,8 @@
 #include <string.h>
 #include "cfx/chacha20.h"
 #include "cfx/poly1305.h"
+#include "cfx/memory.h"
+#include "cfx/arch.h"
 
 static inline size_t ct_pad16(size_t len) {
     size_t rem = len & 0xF;            /* 0..15 */

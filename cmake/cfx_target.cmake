@@ -178,7 +178,8 @@ function(cfx_apply_target target_name)
 
     if(CFX_TARGET MATCHES "x86_64_avx2|x86_64_avx512")
         set(CFX_CAP_AVX2 ON CACHE INTERNAL "" FORCE)
-        target_compile_definitions(${target_name} PRIVATE CFX_CAP_AVX2=1)
+        # PUBLIC so dependents (tests, users) see the same ctx sizes in headers
+        target_compile_definitions(${target_name} PUBLIC CFX_CAP_AVX2=1)
         if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
             target_compile_options(${target_name} PRIVATE -mavx2)
         elseif(MSVC)

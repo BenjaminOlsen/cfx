@@ -17,7 +17,7 @@ typedef void        (*cfx_prng_seed_fn)(uint32_t);
 typedef void        (*cfx_prng_bytes_fn)(void *buf, size_t len);
 
 #if CFX_HAVE_AVX2
-#define CFX_CHACHA_RNG_CTX_SIZE 736
+#define CFX_CHACHA_RNG_CTX_SIZE 1152  /* buf(512) + ctx(512) + fields */
 #elif CFX_SIMD
 #define CFX_CHACHA_RNG_CTX_SIZE 480
 #else
