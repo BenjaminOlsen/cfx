@@ -41,15 +41,13 @@ fn main() {
     build
         .include(&include_dir)
         .files(&[
-            // big/
+            // big/ - facade and backends (self-guarding)
             src_dir.join("big/big.c"),
+            src_dir.join("big/big_portable.c"),
+            src_dir.join("big/big_x86_64_bmi2.c"),
+            src_dir.join("big/big_mem_dynamic.c"),
+            src_dir.join("big/big_mem_static.c"),
             src_dir.join("big/ntt.c"),
-            src_dir.join("big/mem/dynamic/init.c"),
-            src_dir.join("big/mem/dynamic/free.c"),
-            src_dir.join("big/mem/dynamic/reserve.c"),
-            src_dir.join("big/portable/mul.c"),
-            src_dir.join("big/portable/add.c"),
-            src_dir.join("big/portable/mont.c"),
             // math/
             src_dir.join("math/algo.c"),
             src_dir.join("math/fac.c"),
