@@ -14,8 +14,7 @@
 #if !defined(CFX_TARGET_X86_64_BMI2) && \
     !defined(CFX_TARGET_X86_64_AVX2) && \
     !defined(CFX_TARGET_X86_64_AVX512) && \
-    !defined(CFX_TARGET_ARM_CORTEX_M4) && \
-    !defined(CFX_TARGET_AARCH64_NEON)
+    !defined(CFX_TARGET_ARM_CORTEX_M4)
 
 #include "big_backend.h"
 
@@ -204,4 +203,4 @@ void cfx_big_mont_mul_impl(cfx_limb_t *T,
     }
 }
 
-#endif /* !CFX_TARGET_* */
+#endif /* portable backend */
