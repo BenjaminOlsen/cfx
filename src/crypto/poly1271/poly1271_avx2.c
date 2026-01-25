@@ -48,7 +48,7 @@
  * The 0x01 delimiter is placed at bit 120 (byte 14, then shifted).
  * This ensures non-zero blocks and encodes length.
  */
-static inline void decode_block_to_limbs(uint64_t limbs[5], const uint8_t* block) {
+static inline void decode_block_to_limbs(uint64_t limbs[5], const uint8_t *block) {
     /* Load as two 64-bit values (little-endian) */
     uint64_t lo = (uint64_t)block[0] | ((uint64_t)block[1] << 8) |
                   ((uint64_t)block[2] << 16) | ((uint64_t)block[3] << 24) |
@@ -73,7 +73,7 @@ static inline void decode_block_to_limbs(uint64_t limbs[5], const uint8_t* block
  * Each output vector contains one limb from each of the 4 blocks:
  *   out[0] = [block0.limb0, block1.limb0, block2.limb0, block3.limb0]
  */
-static inline void decode_4blocks_to_vec(__m256i out[5], const uint8_t* msg) {
+static inline void decode_4blocks_to_vec(__m256i out[5], const uint8_t *msg) {
     /*
      * Block layout: blocks are at offsets 0, 15, 30, 45 bytes.
      * We gather the low 8 bytes and high 7 bytes of each block.
@@ -82,8 +82,8 @@ static inline void decode_4blocks_to_vec(__m256i out[5], const uint8_t* msg) {
     const __m256i hi_idx = _mm256_set_epi64x(53, 38, 23, 8);   /* offsets for hi[8..14] */
 
     /* Gather 8 bytes from each of 4 positions */
-    __m256i lo = _mm256_i64gather_epi64((const long long*)msg, lo_idx, 1);
-    __m256i hi = _mm256_i64gather_epi64((const long long*)msg, hi_idx, 1);
+    __m256i lo = _mm256_i64gather_epi64((const long long *)msg, lo_idx, 1);
+    __m256i hi = _mm256_i64gather_epi64((const long long *)msg, hi_idx, 1);
 
     /* Mask hi to 56 bits (7 bytes) and add delimiter at bit 56 */
     const __m256i mask56 = _mm256_set1_epi64x(0x00FFFFFFFFFFFFFFULL);
@@ -105,7 +105,7 @@ static inline void decode_4blocks_to_vec(__m256i out[5], const uint8_t* msg) {
 /*
  * Decode a partial block (< 15 bytes) into limbs.
  */
-static inline void decode_partial_to_limbs(uint64_t limbs[5], const uint8_t* block, size_t len) {
+static inline void decode_partial_to_limbs(uint64_t limbs[5], const uint8_t *block, size_t len) {
     uint8_t pad[16] = {0};
     memcpy(pad, block, len);
     pad[len] = 0x01;  /* delimiter immediately after message */
@@ -244,13 +244,13 @@ static void square_limbs_scalar(uint64_t out[5], const uint64_t a[5]) {
  * UTILITY FUNCTIONS
  *============================================================================*/
 
-static inline uint64_t load64_le(const uint8_t* p) {
+static inline uint64_t load64_le(const uint8_t *p) {
     return (uint64_t)p[0] | ((uint64_t)p[1] << 8) | ((uint64_t)p[2] << 16) |
            ((uint64_t)p[3] << 24) | ((uint64_t)p[4] << 32) | ((uint64_t)p[5] << 40) |
            ((uint64_t)p[6] << 48) | ((uint64_t)p[7] << 56);
 }
 
-static inline void store64_le(uint8_t* p, uint64_t v) {
+static inline void store64_le(uint8_t *p, uint64_t v) {
     for (int i = 0; i < 8; i++) p[i] = (uint8_t)(v >> (i * 8));
 }
 
@@ -281,16 +281,16 @@ static inline void mul_r4_avx2(__m256i acc[5], const __m256i r4v[5]) {
     __m256i d0 = _mm256_mul_epu32(a0, r0);
     __m256i d1 = _mm256_add_epi64(_mm256_mul_epu32(a0, r1), _mm256_mul_epu32(a1, r0));
     __m256i d2 = _mm256_add_epi64(_mm256_add_epi64(_mm256_mul_epu32(a0, r2), _mm256_mul_epu32(a1, r1)),
-                                  _mm256_mul_epu32(a2, r0));
+        _mm256_mul_epu32(a2, r0));
     __m256i d3 = _mm256_add_epi64(_mm256_add_epi64(_mm256_mul_epu32(a0, r3), _mm256_mul_epu32(a1, r2)),
-                                  _mm256_add_epi64(_mm256_mul_epu32(a2, r1), _mm256_mul_epu32(a3, r0)));
+        _mm256_add_epi64(_mm256_mul_epu32(a2, r1), _mm256_mul_epu32(a3, r0)));
     __m256i d4 = _mm256_add_epi64(_mm256_add_epi64(_mm256_mul_epu32(a0, r4), _mm256_mul_epu32(a1, r3)),
-                                  _mm256_add_epi64(_mm256_add_epi64(_mm256_mul_epu32(a2, r2), _mm256_mul_epu32(a3, r1)),
-                                                   _mm256_mul_epu32(a4, r0)));
+        _mm256_add_epi64(_mm256_add_epi64(_mm256_mul_epu32(a2, r2), _mm256_mul_epu32(a3, r1)),
+            _mm256_mul_epu32(a4, r0)));
     __m256i d5 = _mm256_add_epi64(_mm256_add_epi64(_mm256_mul_epu32(a1, r4), _mm256_mul_epu32(a2, r3)),
-                                  _mm256_add_epi64(_mm256_mul_epu32(a3, r2), _mm256_mul_epu32(a4, r1)));
+        _mm256_add_epi64(_mm256_mul_epu32(a3, r2), _mm256_mul_epu32(a4, r1)));
     __m256i d6 = _mm256_add_epi64(_mm256_add_epi64(_mm256_mul_epu32(a2, r4), _mm256_mul_epu32(a3, r3)),
-                                  _mm256_mul_epu32(a4, r2));
+        _mm256_mul_epu32(a4, r2));
     __m256i d7 = _mm256_add_epi64(_mm256_mul_epu32(a3, r4), _mm256_mul_epu32(a4, r3));
     __m256i d8 = _mm256_mul_epu32(a4, r4);
 
@@ -417,8 +417,8 @@ static void combine_4lanes_avx2(uint64_t out[5], const __m256i acc[5], const __m
 /*
  * Process n rounds of 4 blocks each using SIMD.
  */
-static void process_nblocks_avx2(uint64_t acc[5], const uint8_t* msg, int nrounds,
-                                  const __m256i r4v[5], const __m256i rv[5]) {
+static void process_nblocks_avx2(uint64_t acc[5], const uint8_t *msg, int nrounds,
+    const __m256i r4v[5], const __m256i rv[5]) {
     __m256i pacc[5];
     for (int i = 0; i < 5; i++)
         pacc[i] = _mm256_set_epi64x(0, 0, 0, (int64_t)acc[i]);
@@ -436,25 +436,25 @@ static void process_nblocks_avx2(uint64_t acc[5], const uint8_t* msg, int nround
 }
 
 /* Convenience wrappers for different batch sizes */
-static inline void process_4blocks_avx2(uint64_t acc[5], const uint8_t* msg,
-                                         const __m256i r4v[5], const __m256i rv[5]) {
+static inline void process_4blocks_avx2(uint64_t acc[5], const uint8_t *msg,
+    const __m256i r4v[5], const __m256i rv[5]) {
     process_nblocks_avx2(acc, msg, 1, r4v, rv);
 }
 
-static inline void process_16blocks_avx2(uint64_t acc[5], const uint8_t* msg,
-                                          const __m256i r4v[5], const __m256i rv[5]) {
+static inline void process_16blocks_avx2(uint64_t acc[5], const uint8_t *msg,
+    const __m256i r4v[5], const __m256i rv[5]) {
     process_nblocks_avx2(acc, msg, 4, r4v, rv);
 }
 
-static inline void process_64blocks_avx2(uint64_t acc[5], const uint8_t* msg,
-                                          const __m256i r4v[5], const __m256i rv[5]) {
+static inline void process_64blocks_avx2(uint64_t acc[5], const uint8_t *msg,
+    const __m256i r4v[5], const __m256i rv[5]) {
     process_nblocks_avx2(acc, msg, 16, r4v, rv);
 }
 
 /*
  * Process a single block using scalar arithmetic.
  */
-static void process_1block_scalar(uint64_t acc[5], const uint8_t* m, const uint64_t r[5]) {
+static void process_1block_scalar(uint64_t acc[5], const uint8_t *m, const uint64_t r[5]) {
     uint64_t b[5];
     decode_block_to_limbs(b, m);
     for (int i = 0; i < 5; i++) acc[i] += b[i];
@@ -502,7 +502,7 @@ static void finalize_avx2(uint64_t acc[5], const uint64_t s[2], uint8_t tag[16])
  * PUBLIC API
  *============================================================================*/
 
-void cfx_poly1271_avx2_init(cfx_poly1271_avx2_ctx_t* ctx, const uint8_t key[32]) {
+void cfx_poly1271_avx2_init(cfx_poly1271_avx2_ctx_t *ctx, const uint8_t key[32]) {
     uint8_t rc[16];
     memcpy(rc, key, 16);
     clamp_r(rc);
@@ -522,7 +522,7 @@ void cfx_poly1271_avx2_init(cfx_poly1271_avx2_ctx_t* ctx, const uint8_t key[32])
      */
     for (int i = 0; i < 5; i++) {
         ctx->rv[i] = _mm256_set_epi64x((int64_t)ctx->r[i], (int64_t)ctx->r2[i],
-                                        (int64_t)ctx->r3[i], (int64_t)ctx->r4[i]);
+            (int64_t)ctx->r3[i], (int64_t)ctx->r4[i]);
         ctx->r4v[i] = _mm256_set1_epi64x((int64_t)ctx->r4[i]);
     }
 
@@ -535,7 +535,7 @@ void cfx_poly1271_avx2_init(cfx_poly1271_avx2_ctx_t* ctx, const uint8_t key[32])
     CFX_MEMZERO_S(rc, 16);
 }
 
-void cfx_poly1271_avx2_update(cfx_poly1271_avx2_ctx_t* ctx, const uint8_t* msg, size_t len) {
+void cfx_poly1271_avx2_update(cfx_poly1271_avx2_ctx_t *ctx, const uint8_t *msg, size_t len) {
     /* Handle buffered partial block */
     if (ctx->buflen) {
         size_t need = 15 - ctx->buflen;
@@ -579,7 +579,7 @@ void cfx_poly1271_avx2_update(cfx_poly1271_avx2_ctx_t* ctx, const uint8_t* msg, 
     }
 }
 
-void cfx_poly1271_avx2_finish(cfx_poly1271_avx2_ctx_t* ctx, uint8_t tag[16]) {
+void cfx_poly1271_avx2_finish(cfx_poly1271_avx2_ctx_t *ctx, uint8_t tag[16]) {
     if (ctx->buflen) {
         uint64_t b[5];
         decode_partial_to_limbs(b, ctx->buf, ctx->buflen);
@@ -591,14 +591,14 @@ void cfx_poly1271_avx2_finish(cfx_poly1271_avx2_ctx_t* ctx, uint8_t tag[16]) {
     CFX_MEMZERO_S(ctx, sizeof(*ctx));
 }
 
-void cfx_poly1271_avx2(uint8_t tag[16], const uint8_t* msg, size_t len, const uint8_t key[32]) {
+void cfx_poly1271_avx2(uint8_t tag[16], const uint8_t *msg, size_t len, const uint8_t key[32]) {
     cfx_poly1271_avx2_ctx_t ctx;
     cfx_poly1271_avx2_init(&ctx, key);
     cfx_poly1271_avx2_update(&ctx, msg, len);
     cfx_poly1271_avx2_finish(&ctx, tag);
 }
 
-int cfx_poly1271_avx2_verify(const uint8_t tag[16], const uint8_t* msg, size_t len, const uint8_t key[32]) {
+int cfx_poly1271_avx2_verify(const uint8_t tag[16], const uint8_t *msg, size_t len, const uint8_t key[32]) {
     uint8_t computed[16];
     cfx_poly1271_avx2(computed, msg, len, key);
     uint8_t diff = 0;

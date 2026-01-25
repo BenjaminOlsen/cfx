@@ -47,7 +47,7 @@ uint64_t cfx_ntt_mod_mul(uint64_t a, uint64_t b, uint64_t p) {
 #else
 
 /* portable 64x64 -> 128-bit product, then division */
-static void mul128(uint64_t a, uint64_t b, uint64_t* hi, uint64_t* lo) {
+static void mul128(uint64_t a, uint64_t b, uint64_t *hi, uint64_t *lo) {
     uint64_t a_lo = (uint32_t)a;
     uint64_t a_hi = a >> 32;
     uint64_t b_lo = (uint32_t)b;
@@ -145,14 +145,14 @@ uint64_t cfx_ntt_root_of_unity(uint64_t g, uint64_t p, size_t n) {
  * Twiddle Factor Precomputation
  */
 
-int cfx_ntt_twiddles_init(cfx_ntt_twiddles_t* tw, size_t n, uint64_t p, uint64_t g) {
+int cfx_ntt_twiddles_init(cfx_ntt_twiddles_t *tw, size_t n, uint64_t p, uint64_t g) {
     /* n must be power of 2 */
     if (n == 0 || (n & (n - 1)) != 0) {
         return -1;
     }
 
-    tw->forward = (uint64_t*)malloc(n * sizeof(uint64_t));
-    tw->inverse = (uint64_t*)malloc(n * sizeof(uint64_t));
+    tw->forward = (uint64_t *)malloc(n * sizeof(uint64_t));
+    tw->inverse = (uint64_t *)malloc(n * sizeof(uint64_t));
     if (!tw->forward || !tw->inverse) {
         free(tw->forward);
         free(tw->inverse);
@@ -179,7 +179,7 @@ int cfx_ntt_twiddles_init(cfx_ntt_twiddles_t* tw, size_t n, uint64_t p, uint64_t
     return 0;
 }
 
-void cfx_ntt_twiddles_free(cfx_ntt_twiddles_t* tw) {
+void cfx_ntt_twiddles_free(cfx_ntt_twiddles_t *tw) {
     free(tw->forward);
     free(tw->inverse);
     tw->forward = NULL;
@@ -200,7 +200,7 @@ static size_t reverse_bits(size_t x, int bits) {
     return result;
 }
 
-void cfx_ntt_bit_reverse(uint64_t* a, size_t n) {
+void cfx_ntt_bit_reverse(uint64_t *a, size_t n) {
     if (n <= 1) return;
 
     int bits = 0;
@@ -227,7 +227,7 @@ void cfx_ntt_bit_reverse(uint64_t* a, size_t n) {
  * Twiddles array contains omega^k for k = 0..n-1.
  */
 
-void cfx_ntt_forward(uint64_t* a, size_t n, uint64_t p, const uint64_t* twiddles) {
+void cfx_ntt_forward(uint64_t *a, size_t n, uint64_t p, const uint64_t *twiddles) {
     if (n <= 1) return;
 
     /* iterative Cooley-Tukey */
@@ -248,8 +248,8 @@ void cfx_ntt_forward(uint64_t* a, size_t n, uint64_t p, const uint64_t* twiddles
     }
 }
 
-void cfx_ntt_inverse(uint64_t* a, size_t n, uint64_t p,
-                     const uint64_t* twiddles, uint64_t n_inv) {
+void cfx_ntt_inverse(uint64_t *a, size_t n, uint64_t p,
+    const uint64_t *twiddles, uint64_t n_inv) {
     if (n <= 1) return;
 
     /* same as forward but with inverse twiddles */
@@ -279,9 +279,9 @@ void cfx_ntt_inverse(uint64_t* a, size_t n, uint64_t p,
  *
  * c = a * b (polynomial multiplication) using NTT
  */
-int cfx_ntt_convolve(uint64_t* c, const uint64_t* a, size_t len_a,
-                     const uint64_t* b, size_t len_b,
-                     size_t n, uint64_t p, uint64_t g) {
+int cfx_ntt_convolve(uint64_t *c, const uint64_t *a, size_t len_a,
+    const uint64_t *b, size_t len_b,
+    size_t n, uint64_t p, uint64_t g) {
     if (n == 0 || (n & (n - 1)) != 0) {
         return -1;
     }
@@ -295,8 +295,8 @@ int cfx_ntt_convolve(uint64_t* c, const uint64_t* a, size_t len_a,
         return -1;
     }
 
-    uint64_t* a_ntt = (uint64_t*)malloc(n * sizeof(uint64_t));
-    uint64_t* b_ntt = (uint64_t*)malloc(n * sizeof(uint64_t));
+    uint64_t *a_ntt = (uint64_t *)malloc(n * sizeof(uint64_t));
+    uint64_t *b_ntt = (uint64_t *)malloc(n * sizeof(uint64_t));
     if (!a_ntt || !b_ntt) {
         free(a_ntt);
         free(b_ntt);
@@ -353,8 +353,8 @@ int cfx_ntt_convolve(uint64_t* c, const uint64_t* a, size_t len_a,
 #error "Unsupported CFX_LIMB_BITS"
 #endif
 
-size_t cfx_ntt_limbs_to_chunks(uint64_t* chunks, size_t max_chunks,
-                                const cfx_limb_t* limbs, size_t n_limbs) {
+size_t cfx_ntt_limbs_to_chunks(uint64_t *chunks, size_t max_chunks,
+    const cfx_limb_t *limbs, size_t n_limbs) {
     size_t n_chunks = n_limbs * CHUNKS_PER_LIMB;
     if (n_chunks > max_chunks) {
         n_chunks = max_chunks;
@@ -371,8 +371,8 @@ size_t cfx_ntt_limbs_to_chunks(uint64_t* chunks, size_t max_chunks,
     return idx;
 }
 
-size_t cfx_ntt_chunks_to_limbs(cfx_limb_t* limbs, size_t max_limbs,
-                                const uint64_t* chunks, size_t n_chunks) {
+size_t cfx_ntt_chunks_to_limbs(cfx_limb_t *limbs, size_t max_limbs,
+    const uint64_t *chunks, size_t n_chunks) {
     size_t n_limbs = (n_chunks + CHUNKS_PER_LIMB - 1) / CHUNKS_PER_LIMB;
     if (n_limbs > max_limbs) n_limbs = max_limbs;
 
@@ -438,9 +438,9 @@ static size_t next_pow2(size_t n) {
     return n + 1;
 }
 
-size_t cfx_ntt_mul_limbs(cfx_limb_t* out, size_t out_cap,
-                          const cfx_limb_t* a, size_t n_a,
-                          const cfx_limb_t* b, size_t n_b) {
+size_t cfx_ntt_mul_limbs(cfx_limb_t *out, size_t out_cap,
+    const cfx_limb_t *a, size_t n_a,
+    const cfx_limb_t *b, size_t n_b) {
     if (n_a == 0 || n_b == 0) {
         return 0;
     }
@@ -450,9 +450,9 @@ size_t cfx_ntt_mul_limbs(cfx_limb_t* out, size_t out_cap,
     size_t chunks_result = chunks_a + chunks_b - 1;
     size_t ntt_size = next_pow2(chunks_result);
 
-    uint64_t* ca = (uint64_t*)malloc(ntt_size * sizeof(uint64_t));
-    uint64_t* cb = (uint64_t*)malloc(ntt_size * sizeof(uint64_t));
-    uint64_t* cc = (uint64_t*)malloc(ntt_size * sizeof(uint64_t));
+    uint64_t *ca = (uint64_t *)malloc(ntt_size * sizeof(uint64_t));
+    uint64_t *cb = (uint64_t *)malloc(ntt_size * sizeof(uint64_t));
+    uint64_t *cc = (uint64_t *)malloc(ntt_size * sizeof(uint64_t));
     if (!ca || !cb || !cc) {
         free(ca);
         free(cb);
@@ -467,7 +467,7 @@ size_t cfx_ntt_mul_limbs(cfx_limb_t* out, size_t out_cap,
     for (size_t i = chunks_b; i < ntt_size; ++i) cb[i] = 0;
 
     int rc = cfx_ntt_convolve(cc, ca, chunks_a, cb, chunks_b,
-                               ntt_size, CFX_NTT_P1, CFX_NTT_G1);
+        ntt_size, CFX_NTT_P1, CFX_NTT_G1);
     free(ca);
     free(cb);
 

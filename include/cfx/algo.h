@@ -20,9 +20,9 @@ typedef struct {
 } csa128_t;
 
 typedef struct {
-    csa128_t* acc;     /* nout entries */
-    cfx_limb_t* spill;   /* nout entries (small counters) */
-    size_t    cap;
+    csa128_t *acc;     /* nout entries */
+    cfx_limb_t *spill;   /* nout entries (small counters) */
+    size_t cap;
 } cfx_mul_scratch_t;
 
 /* find all primes up to n using sieve of eratosthenes */
@@ -43,56 +43,58 @@ uint64_t cfx_gcd_u64(uint64_t a, uint64_t b);
 
 /* extended GCD: computes g = gcd(a, b) and coefficients x, y such that ax + by = g.
  * Returns g. Coefficients are signed (can be negative). */
-uint64_t cfx_xgcd_u64(uint64_t a, uint64_t b, int64_t* x, int64_t* y);
+uint64_t cfx_xgcd_u64(uint64_t a, uint64_t b, int64_t *x, int64_t *y);
 
 /* returns a non-trivial factor of n (probabilistic) */
 uint64_t cfx_pollard_rho_brent(uint64_t n);
 
-int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n);
+int cfx_factor_u64(cfx_vec_t *primes, cfx_vec_t *exps, uint64_t n);
 
 /* A * B -> R  (schoolbook) with carry-save accumulation.
    - A has na limbs, B has nb limbs
    - R must have space for na+nb limbs
-*/
-void cfx_mul_csa_portable(const cfx_limb_t* A, size_t na,
-                          const cfx_limb_t* B, size_t nb,
-                          cfx_limb_t* R);
+ */
+void cfx_mul_csa_portable(const cfx_limb_t *A, size_t na,
+    const cfx_limb_t *B, size_t nb,
+    cfx_limb_t *R);
 
-void cfx_mul_csa_portable_fast(const cfx_limb_t* A, size_t na,
-                               const cfx_limb_t* B, size_t nb,
-                               cfx_limb_t* R,
-                               cfx_mul_scratch_t* scratch);
+void cfx_mul_csa_portable_fast(const cfx_limb_t *A, size_t na,
+    const cfx_limb_t *B, size_t nb,
+    cfx_limb_t *R,
+    cfx_mul_scratch_t *scratch);
 
-void cfx_mul_scratch_alloc(cfx_mul_scratch_t* s, size_t needed);
-void cfx_mul_scratch_free(cfx_mul_scratch_t* s);
+void cfx_mul_scratch_alloc(cfx_mul_scratch_t *s, size_t needed);
+void cfx_mul_scratch_free(cfx_mul_scratch_t *s);
 
 /* Zero only the first `nout` entries that the multiplication will touch */
-void cfx_mul_scratch_zero(cfx_mul_scratch_t* s, size_t nout);
+void cfx_mul_scratch_zero(cfx_mul_scratch_t *s, size_t nout);
 
 /* portable CSA inner: accumulate rows i in [ia, ia+na_rows) into acc/spill */
-void cfx_mul_csa_portable_fast_rows(const cfx_limb_t* A, size_t ia, size_t na_rows,
-                                    const cfx_limb_t* B, size_t nb,
-                                    csa128_t* acc, cfx_limb_t* spill);
+void cfx_mul_csa_portable_fast_rows(const cfx_limb_t *A, size_t ia, size_t na_rows,
+    const cfx_limb_t *B, size_t nb,
+    csa128_t *acc, cfx_limb_t *spill);
 
 /* fold spills once and normalize: writes R[0..nout-1] */
-void cfx_mul_csa_fold_and_normalize(csa128_t* acc, cfx_limb_t* spill,
-                                    size_t nout, cfx_limb_t* R);
+void cfx_mul_csa_fold_and_normalize(csa128_t *acc, cfx_limb_t *spill,
+    size_t nout, cfx_limb_t *R);
 
 
 CFX_INLINE
 unsigned cfx_clz(cfx_limb_t x) {
 #if defined(__GNUC__) || defined(__clang__)
     #if CFX_LIMB_BITS == 64
-        return x ? (unsigned)__builtin_clzll((unsigned long long)x) : 64;
+    return x ? (unsigned)__builtin_clzll((unsigned long long)x) : 64;
     #elif CFX_LIMB_BITS == 32
-        return x ? (unsigned)__builtin_clz((unsigned)x) : 32;
+    return x ? (unsigned)__builtin_clz((unsigned)x) : 32;
     #endif
 #else
     if (!x) return (unsigned)(8*sizeof(x));
     unsigned c = 0;
     unsigned B = (unsigned)(8u * sizeof(cfx_limb_t));
     cfx_limb_t m = (cfx_limb_t)1 << (B - 1);
-    while (m && (x & m) == 0) { c++; m >>= 1; }
+    while (m && (x & m) == 0) {
+        c++; m >>= 1;
+    }
     return c;
 #endif
 }

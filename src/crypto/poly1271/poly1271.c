@@ -27,13 +27,13 @@
  * BYTE I/O (Little-Endian)
  *============================================================================*/
 
-static inline uint64_t load64_le(const uint8_t* p) {
+static inline uint64_t load64_le(const uint8_t *p) {
     return (uint64_t)p[0] | ((uint64_t)p[1] << 8) | ((uint64_t)p[2] << 16) |
            ((uint64_t)p[3] << 24) | ((uint64_t)p[4] << 32) | ((uint64_t)p[5] << 40) |
            ((uint64_t)p[6] << 48) | ((uint64_t)p[7] << 56);
 }
 
-static inline void store64_le(uint8_t* p, uint64_t v) {
+static inline void store64_le(uint8_t *p, uint64_t v) {
     for (int i = 0; i < 8; i++) p[i] = (uint8_t)(v >> (i * 8));
 }
 
@@ -43,18 +43,18 @@ static inline void store64_le(uint8_t* p, uint64_t v) {
 
 #if defined(__SIZEOF_INT128__)
 typedef unsigned __int128 uint128_t;
-static inline void mul64(uint64_t a, uint64_t b, uint64_t* lo, uint64_t* hi) {
+static inline void mul64(uint64_t a, uint64_t b, uint64_t *lo, uint64_t *hi) {
     uint128_t r = (uint128_t)a * b;
     *lo = (uint64_t)r;
     *hi = (uint64_t)(r >> 64);
 }
 #elif defined(_MSC_VER) && defined(_M_X64)
 #include <intrin.h>
-static inline void mul64(uint64_t a, uint64_t b, uint64_t* lo, uint64_t* hi) {
+static inline void mul64(uint64_t a, uint64_t b, uint64_t *lo, uint64_t *hi) {
     *lo = _umul128(a, b, hi);
 }
 #else
-static inline void mul64(uint64_t a, uint64_t b, uint64_t* lo, uint64_t* hi) {
+static inline void mul64(uint64_t a, uint64_t b, uint64_t *lo, uint64_t *hi) {
     uint32_t a0 = (uint32_t)a, a1 = (uint32_t)(a >> 32);
     uint32_t b0 = (uint32_t)b, b1 = (uint32_t)(b >> 32);
     uint64_t p00 = (uint64_t)a0 * b0;
@@ -71,7 +71,7 @@ static inline void mul64(uint64_t a, uint64_t b, uint64_t* lo, uint64_t* hi) {
  * CONSTANT-TIME ADDITION WITH CARRY
  *============================================================================*/
 
-static inline uint64_t adc(uint64_t* a, uint64_t b) {
+static inline uint64_t adc(uint64_t *a, uint64_t b) {
     uint64_t old = *a;
     *a += b;
     return (*a < old);
@@ -215,7 +215,7 @@ static void square_mod(uint64_t out[2], const uint64_t r[2]) {
  * BLOCK PROCESSING
  *============================================================================*/
 
-static inline void load_block(uint64_t b[2], const uint8_t* m) {
+static inline void load_block(uint64_t b[2], const uint8_t *m) {
     b[0] = load64_le(m);
     b[1] = (load64_le(m + 7) >> 8) | (0x01ULL << 56);
 }
@@ -226,7 +226,7 @@ static inline void add_to_acc(uint64_t acc[3], const uint64_t b[2]) {
     acc[2] += c;
 }
 
-static void add_block_partial(uint64_t acc[3], const uint8_t* m, size_t len) {
+static void add_block_partial(uint64_t acc[3], const uint8_t *m, size_t len) {
     uint8_t pad[16] = {0};
     memcpy(pad, m, len);
     pad[len] = 0x01;
@@ -252,8 +252,8 @@ static void clamp_r(uint8_t r[16]) {
  * MULTI-BLOCK PROCESSING
  *============================================================================*/
 
-static void process_2blocks(uint64_t acc[3], const uint8_t* m1, const uint8_t* m2,
-                            const uint64_t r[2], const uint64_t r2[2]) {
+static void process_2blocks(uint64_t acc[3], const uint8_t *m1, const uint8_t *m2,
+    const uint64_t r[2], const uint64_t r2[2]) {
     uint64_t b1[2], b2[2];
     load_block(b1, m1);
     load_block(b2, m2);
@@ -268,10 +268,10 @@ static void process_2blocks(uint64_t acc[3], const uint8_t* m1, const uint8_t* m
     acc[2] += p2[2] + c;
 }
 
-static void process_4blocks(uint64_t acc[3], const uint8_t* m1, const uint8_t* m2,
-                            const uint8_t* m3, const uint8_t* m4,
-                            const uint64_t r[2], const uint64_t r2[2],
-                            const uint64_t r3[2], const uint64_t r4[2]) {
+static void process_4blocks(uint64_t acc[3], const uint8_t *m1, const uint8_t *m2,
+    const uint8_t *m3, const uint8_t *m4,
+    const uint64_t r[2], const uint64_t r2[2],
+    const uint64_t r3[2], const uint64_t r4[2]) {
     uint64_t b1[2], b2[2], b3[2], b4[2];
     load_block(b1, m1);
     load_block(b2, m2);
@@ -338,7 +338,7 @@ static void finalize(uint64_t acc[3], const uint64_t s[2], uint8_t tag[16]) {
  * PUBLIC API
  *============================================================================*/
 
-void cfx_poly1271_init(cfx_poly1271_ctx_t* ctx, const uint8_t key[32]) {
+void cfx_poly1271_init(cfx_poly1271_ctx_t *ctx, const uint8_t key[32]) {
     uint8_t rc[16];
     memcpy(rc, key, 16);
     clamp_r(rc);
@@ -359,7 +359,7 @@ void cfx_poly1271_init(cfx_poly1271_ctx_t* ctx, const uint8_t key[32]) {
     CFX_MEMZERO_S(rc, 16);
 }
 
-void cfx_poly1271_update(cfx_poly1271_ctx_t* ctx, const uint8_t* msg, size_t len) {
+void cfx_poly1271_update(cfx_poly1271_ctx_t *ctx, const uint8_t *msg, size_t len) {
     if (ctx->buflen) {
         size_t need = CFX_POLY1271_BLOCK_SIZE - ctx->buflen;
         if (len < need) {
@@ -386,10 +386,10 @@ void cfx_poly1271_update(cfx_poly1271_ctx_t* ctx, const uint8_t* msg, size_t len
 
     while (len >= 4 * CFX_POLY1271_BLOCK_SIZE) {
         process_4blocks(ctx->acc, msg,
-                        msg + CFX_POLY1271_BLOCK_SIZE,
-                        msg + 2 * CFX_POLY1271_BLOCK_SIZE,
-                        msg + 3 * CFX_POLY1271_BLOCK_SIZE,
-                        ctx->r, ctx->r2, ctx->r3, ctx->r4);
+            msg + CFX_POLY1271_BLOCK_SIZE,
+            msg + 2 * CFX_POLY1271_BLOCK_SIZE,
+            msg + 3 * CFX_POLY1271_BLOCK_SIZE,
+            ctx->r, ctx->r2, ctx->r3, ctx->r4);
         ctx->blkcnt += 4;
         if (ctx->blkcnt >= LAZY_INTERVAL) {
             reduce_full(ctx->acc);
@@ -429,7 +429,7 @@ void cfx_poly1271_update(cfx_poly1271_ctx_t* ctx, const uint8_t* msg, size_t len
     }
 }
 
-void cfx_poly1271_finish(cfx_poly1271_ctx_t* ctx, uint8_t tag[16]) {
+void cfx_poly1271_finish(cfx_poly1271_ctx_t *ctx, uint8_t tag[16]) {
     if (ctx->buflen) {
         add_block_partial(ctx->acc, ctx->buf, ctx->buflen);
         mul_reduce(ctx->acc, ctx->acc, ctx->r);
@@ -439,14 +439,14 @@ void cfx_poly1271_finish(cfx_poly1271_ctx_t* ctx, uint8_t tag[16]) {
     CFX_MEMZERO_S(ctx, sizeof(*ctx));
 }
 
-void cfx_poly1271(uint8_t tag[16], const uint8_t* msg, size_t len, const uint8_t key[32]) {
+void cfx_poly1271(uint8_t tag[16], const uint8_t *msg, size_t len, const uint8_t key[32]) {
     cfx_poly1271_ctx_t ctx;
     cfx_poly1271_init(&ctx, key);
     cfx_poly1271_update(&ctx, msg, len);
     cfx_poly1271_finish(&ctx, tag);
 }
 
-int cfx_poly1271_verify(const uint8_t tag[16], const uint8_t* msg, size_t len, const uint8_t key[32]) {
+int cfx_poly1271_verify(const uint8_t tag[16], const uint8_t *msg, size_t len, const uint8_t key[32]) {
     uint8_t computed[16];
     cfx_poly1271(computed, msg, len, key);
 

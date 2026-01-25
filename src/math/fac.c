@@ -13,14 +13,14 @@
 #include <assert.h>
 #include <stdio.h>
 
-void cfx_fac_print(cfx_fac_t* f) {
+void cfx_fac_print(cfx_fac_t *f) {
     if (f->len == 0 && f->big_len == 0) {
         printf("(empty)\n");
         return;
     }
     /* Print small primes */
     for (size_t k = 0; k < f->len; ++k) {
-        cfx_pf_t* pf = &f->data[k];
+        cfx_pf_t *pf = &f->data[k];
         printf("%" PRIu64 "^%" PRIu32, pf->p, pf->e);
         if (k + 1 < f->len || f->big_len > 0) {
             printf(" * ");
@@ -28,8 +28,8 @@ void cfx_fac_print(cfx_fac_t* f) {
     }
     /* Print big primes */
     for (size_t k = 0; k < f->big_len; ++k) {
-        cfx_big_pf_t* pf = &f->big_primes[k];
-        char* p_str = cfx_big_dec_alloc(pf->p, NULL);
+        cfx_big_pf_t *pf = &f->big_primes[k];
+        char *p_str = cfx_big_dec_alloc(pf->p, NULL);
         printf("%s^%" PRIu32, p_str, pf->e);
         free(p_str);
         if (k + 1 < f->big_len) {
@@ -39,7 +39,7 @@ void cfx_fac_print(cfx_fac_t* f) {
     printf("\n");
 }
 
-void cfx_fac_init(cfx_fac_t* f) {
+void cfx_fac_init(cfx_fac_t *f) {
     f->data = NULL;
     f->len = 0;
     f->cap = 0;
@@ -48,11 +48,11 @@ void cfx_fac_init(cfx_fac_t* f) {
     f->big_cap = 0;
 }
 
-void cfx_fac_clear(cfx_fac_t* f) {
+void cfx_fac_clear(cfx_fac_t *f) {
     f->len = 0;
 }
 
-void cfx_fac_free(cfx_fac_t* f) {
+void cfx_fac_free(cfx_fac_t *f) {
     free(f->data);
     f->data = NULL;
     f->len = 0;
@@ -68,14 +68,16 @@ void cfx_fac_free(cfx_fac_t* f) {
     f->big_cap = 0;
 }
 
-static inline int _cfx_mul_zu_ok(size_t a, size_t b, size_t* out) {
-    if (a == 0 || b == 0) { *out = 0; return -1; }
+static inline int _cfx_mul_zu_ok(size_t a, size_t b, size_t *out) {
+    if (a == 0 || b == 0) {
+        *out = 0; return -1;
+    }
     if (a > SIZE_MAX / b) return -1;
     *out = a * b;
     return 0;
 }
 
-void cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
+void cfx_fac_reserve(cfx_fac_t *f, size_t req_cap) {
     if (req_cap <= f->cap) {
         return;
     }
@@ -88,40 +90,40 @@ void cfx_fac_reserve(cfx_fac_t* f, size_t req_cap) {
         fprintf(stderr, "cfx_fac_reserve: allocation size overflow\n");
         abort();
     }
-    void* tmp = realloc(f->data, bytes);
+    void *tmp = realloc(f->data, bytes);
     if (!tmp) {
         fprintf(stderr, "cfx_fac_reserve: out of memory (requested %zu bytes)\n", bytes);
         abort();
     }
-    f->data = (cfx_pf_t*)tmp;
+    f->data = (cfx_pf_t *)tmp;
     f->cap = new_cap;
 }
 
-int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint32_t e) {
+int cfx_fac_push(cfx_fac_t *f, uint64_t p, uint32_t e) {
     if (e == 0) return -1;
     cfx_fac_reserve(f, f->len + 1);
     ++f->len;
-    cfx_pf_t* pf = &f->data[f->len - 1];
+    cfx_pf_t *pf = &f->data[f->len - 1];
     pf->p = p;
     pf->e = e;
     return 0;
 }
 
-int cfx_fac_push_big(cfx_fac_t* f, const struct cfx_big* p, uint32_t e) {
+int cfx_fac_push_big(cfx_fac_t *f, const struct cfx_big *p, uint32_t e) {
     if (e == 0) return -1;
     /* Reserve space for big primes */
     if (f->big_len >= f->big_cap) {
         size_t new_cap = f->big_cap ? 2 * f->big_cap : 4;
-        void* tmp = realloc(f->big_primes, new_cap * sizeof(cfx_big_pf_t));
+        void *tmp = realloc(f->big_primes, new_cap * sizeof(cfx_big_pf_t));
         if (!tmp) return -1;
-        f->big_primes = (cfx_big_pf_t*)tmp;
+        f->big_primes = (cfx_big_pf_t *)tmp;
         f->big_cap = new_cap;
     }
     /* Allocate and copy the big prime */
-    cfx_big_t* pcopy = (cfx_big_t*)malloc(sizeof(cfx_big_t));
+    cfx_big_t *pcopy = (cfx_big_t *)malloc(sizeof(cfx_big_t));
     if (!pcopy) return -1;
     cfx_big_init(pcopy);
-    cfx_big_copy(pcopy, (const cfx_big_t*)p);
+    cfx_big_copy(pcopy, (const cfx_big_t *)p);
     f->big_primes[f->big_len].p = pcopy;
     f->big_primes[f->big_len].e = e;
     ++f->big_len;
@@ -141,7 +143,7 @@ void cfx_fac_copy(cfx_fac_t *dst, const cfx_fac_t *src) {
 }
 
 /* dst += src */
-void cfx_fac_add(cfx_fac_t* dst, const cfx_fac_t* src) {
+void cfx_fac_add(cfx_fac_t *dst, const cfx_fac_t *src) {
     cfx_fac_t out;
     cfx_fac_init(&out);
     cfx_fac_reserve(&out, src->len + dst->len);
@@ -151,8 +153,8 @@ void cfx_fac_add(cfx_fac_t* dst, const cfx_fac_t* src) {
     size_t j = 0;
 
     while (i < dst->len || j < src->len) {
-        cfx_pf_t* pf1 = &dst->data[i];
-        cfx_pf_t* pf2 = &src->data[j];
+        cfx_pf_t *pf1 = &dst->data[i];
+        cfx_pf_t *pf2 = &src->data[j];
 
         if (j == src->len || (i < dst->len && pf1->p < pf2->p)) {
             /* p is in dst, but not in src */
@@ -180,7 +182,7 @@ void cfx_fac_add(cfx_fac_t* dst, const cfx_fac_t* src) {
 }
 
 /* dst -= src */
-void cfx_fac_sub(cfx_fac_t* dst, const cfx_fac_t* src) {
+void cfx_fac_sub(cfx_fac_t *dst, const cfx_fac_t *src) {
     cfx_fac_t out;
 
     cfx_fac_init(&out);
@@ -190,8 +192,8 @@ void cfx_fac_sub(cfx_fac_t* dst, const cfx_fac_t* src) {
     size_t j = 0;
 
     while (i < dst->len || j < src->len) {
-        cfx_pf_t* pf1 = &dst->data[i];
-        cfx_pf_t* pf2 = &src->data[j];
+        cfx_pf_t *pf1 = &dst->data[i];
+        cfx_pf_t *pf2 = &src->data[j];
 
         if (j == src->len || (i < dst->len && pf1->p < pf2->p)) {
             /* p is in dst but not src - no change */
@@ -222,9 +224,9 @@ void cfx_fac_sub(cfx_fac_t* dst, const cfx_fac_t* src) {
 }
 
 /** calculate the factorial of n.
-* we pass in a list of primes to not have to calculate it on every call of this function -
-* precondition: primes is sorted strictly increasing!
-*/
+ * we pass in a list of primes to not have to calculate it on every call of this function -
+ * precondition: primes is sorted strictly increasing!
+ */
 int cfx_fac_factorial(cfx_fac_t *f, cfx_limb_t n, const cfx_vec_t *primes) {
     int ret = 0;
     if (n == 0) {
@@ -269,15 +271,15 @@ cfx_fac_t cfx_fac_binom(cfx_limb_t n, cfx_limb_t k){
 }
 
 /* Compare function for qsort */
-static int cmp_u64_fac(const void* a, const void* b) {
-    uint64_t x = *(const uint64_t*)a;
-    uint64_t y = *(const uint64_t*)b;
+static int cmp_u64_fac(const void *a, const void *b) {
+    uint64_t x = *(const uint64_t *)a;
+    uint64_t y = *(const uint64_t *)b;
     return (x > y) - (x < y);
 }
 
 /* Public entry: factor n (uint64_t) into fac (coalesced).
  * Returns 0 on success, -1 on error (n==0). */
-int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n) {
+int cfx_fac_from_u64(cfx_fac_t *fac, uint64_t n) {
     cfx_fac_init(fac);
     if (n == 0) return -1;
     if (n == 1) return 0;
@@ -335,7 +337,9 @@ int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n) {
             /* Last resort: bounded trial division */
             uint64_t found = 0;
             for (uint64_t p = 3; p*p <= m; p += 2) {
-                if (m % p == 0) { found = p; break; }
+                if (m % p == 0) {
+                    found = p; break;
+                }
             }
             if (!found) {
                 if (pcount < 256) plist[pcount++] = m;
@@ -347,7 +351,9 @@ int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n) {
         /* Push the two factors back for further processing */
         uint64_t a = d;
         uint64_t b = m / d;
-        if (a < b) { uint64_t t=a; a=b; b=t; }
+        if (a < b) {
+            uint64_t t=a; a=b; b=t;
+        }
         st[top++] = a;
         st[top++] = b;
     }
@@ -359,7 +365,9 @@ int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n) {
         uint64_t p = plist[i];
         uint32_t e = 1;
         size_t j = i + 1;
-        while (j < pcount && plist[j] == p) { ++e; ++j; }
+        while (j < pcount && plist[j] == p) {
+            ++e; ++j;
+        }
         cfx_fac_push(fac, p, e);
         i = j;
     }

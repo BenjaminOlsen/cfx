@@ -22,48 +22,50 @@ extern "C" {
 
 /* removes folders from __FILE__ path */
 #define __FILENAME__ \
-    (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+        (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-static inline void ignore_args(const void *x, ...) { (void)x; }
+static inline void ignore_args(const void *x, ...) {
+    (void)x;
+}
 
 #ifdef CFX_DEBUG
 #define CFX_PRINT_DBG( ...) \
-    do {                                                                     \
-        fprintf(stderr, "[%s:%d:%s()]: ", __FILENAME__, __LINE__, __func__); \
-        fprintf(stderr, __VA_ARGS__);                                        \
-    } while (0)
+        do {                                                                     \
+            fprintf(stderr, "[%s:%d:%s()]: ", __FILENAME__, __LINE__, __func__); \
+            fprintf(stderr, __VA_ARGS__);                                        \
+        } while (0)
 #else
 #define CFX_PRINT_DBG(...) do { ignore_args(__VA_ARGS__); } while(0)
 #endif
 
 #define CFX_PRINT_ERR(...) do {                                                \
-    char _cfx_print_err_buf[128];                                                   \
-    snprintf(_cfx_print_err_buf, sizeof(_cfx_print_err_buf), __VA_ARGS__);   \
-    fprintf(stderr, "[%s] - %s\n", __func__, _cfx_print_err_buf);                   \
+            char _cfx_print_err_buf[128];                                                   \
+            snprintf(_cfx_print_err_buf, sizeof(_cfx_print_err_buf), __VA_ARGS__);   \
+            fprintf(stderr, "[%s] - %s\n", __func__, _cfx_print_err_buf);                   \
 } while (0)
 
 
 #define PRINT_TEST(ok) \
-    do { \
-        printf("[%s] ---- %s\n", __func__, ok ? "ok" : "NOT OK"); \
-    } while (0)
+        do { \
+            printf("[%s] ---- %s\n", __func__, ok ? "ok" : "NOT OK"); \
+        } while (0)
 
 #define PRINT_ARR(A, na) do { \
-    printf("["); \
-    for (size_t i = na; i--;) { \
-        printf("" CFX_PRIuLIMB "", A[i]); \
-        if (i == 0) printf("]\n"); \
-        else printf(", "); \
-    } \
+            printf("["); \
+            for (size_t i = na; i--;) { \
+                printf("" CFX_PRIuLIMB "", A[i]); \
+                if (i == 0) printf("]\n"); \
+                else printf(", "); \
+            } \
 } while (0)
 
 #define PRINT_BIG(s, b) \
-do { \
-    printf(".................\n"); \
-    printf("%s, cap: %zu, n: %zu, limb %p\n", s, (b)->cap, (b)->n, (void*)(b)->limb); \
-    for(size_t i=(b)->n; i--;) {printf("    limb[%zu]=0x" CFX_PRI0xLIMB "\n", i, (b)->limb[i]);} \
-    if((b)->n) printf("\n"); \
-} while(0)
+        do { \
+            printf(".................\n"); \
+            printf("%s, cap: %zu, n: %zu, limb %p\n", s, (b)->cap, (b)->n, (void *)(b)->limb); \
+            for(size_t i=(b)->n; i--;) {printf("    limb[%zu]=0x" CFX_PRI0xLIMB "\n", i, (b)->limb[i]);} \
+            if((b)->n) printf("\n"); \
+        } while(0)
 
 #define STR(x) #x
 #define CFX_TEST(f) f(); printf(STR(f) "() - OK\n")
@@ -72,17 +74,17 @@ do { \
 
 #ifdef CFX_DEBUG
 #define CFX_ASSERT_PRINT(x)                                         \
-    do {                                                            \
-        int assert_expr_ok_ = (x); /* <<< evaluate ONCE */          \
-        if (!(assert_expr_ok_)) {                                   \
-            fprintf(stderr, "[%s] cond: '%s' - >>>> NOT OK <<<<\n", \
-                    __func__, #x);                                  \
-            assert(assert_expr_ok_);                                \
-        } else {                                                    \
-            fprintf(stdout, "[%s] cond: '%s' - OK\n",               \
-                    __func__, #x);                                  \
-        }                                                           \
-    } while (0)
+        do {                                                            \
+            int assert_expr_ok_ = (x); /* <<< evaluate ONCE */          \
+            if (!(assert_expr_ok_)) {                                   \
+                fprintf(stderr, "[%s] cond: '%s' - >>>> NOT OK <<<<\n", \
+    __func__, #x);                                  \
+                assert(assert_expr_ok_);                                \
+            } else {                                                    \
+                fprintf(stdout, "[%s] cond: '%s' - OK\n",               \
+    __func__, #x);                                  \
+            }                                                           \
+        } while (0)
 #else
 #define CFX_ASSERT_PRINT(cond) CFX_PRINT_TEST_COND(cond)
 #endif
@@ -94,14 +96,14 @@ do { \
 #endif
 
 #define CFX_STATIC_ASSERT(cond, msg) \
-    typedef char static_assert_##msg[(cond) ? 1 : -1]
+        typedef char static_assert_ ## msg[(cond) ? 1 : -1]
 
 #define CFX_ASSERT(expr) do {           \
-    if (!(expr))  {                     \
-        fprintf(stderr, "CFX_ASSERT failed: (%s) at %s:%d\n", #expr, __FILENAME__, __LINE__); \
-        fflush(stderr);                 \
-        abort();                        \
-    }                                   \
+            if (!(expr))  {                     \
+                fprintf(stderr, "CFX_ASSERT failed: (%s) at %s:%d\n", #expr, __FILENAME__, __LINE__); \
+                fflush(stderr);                 \
+                abort();                        \
+            }                                   \
 } while (0)
 
 #define CFX_FAIL() CFX_ASSERT(0)

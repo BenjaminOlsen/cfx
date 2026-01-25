@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
- /* a single prime factor: */
+/* a single prime factor: */
 typedef struct {
     uint64_t p;    /* prime (up to 64-bit) */
     uint32_t e;    /* exponent */
@@ -24,7 +24,7 @@ struct cfx_big;
 
 /* A big prime factor (> 64 bits) */
 typedef struct {
-    struct cfx_big* p;  /* prime (heap-allocated cfx_big_t) */
+    struct cfx_big *p;  /* prime (heap-allocated cfx_big_t) */
     uint32_t e;         /* exponent */
 } cfx_big_pf_t;
 
@@ -38,43 +38,43 @@ typedef struct {
  * - big_primes contains primes > 64 bits (may be empty)
  */
 typedef struct {
-    cfx_pf_t* data;
+    cfx_pf_t *data;
     size_t len;
     size_t cap;
     /* Big primes (> 64 bits) */
-    cfx_big_pf_t* big_primes;
+    cfx_big_pf_t *big_primes;
     size_t big_len;
     size_t big_cap;
 } cfx_fac_t;
 
 
-void cfx_fac_print(cfx_fac_t* f);
-void cfx_fac_init(cfx_fac_t* f);
-void cfx_fac_clear(cfx_fac_t* f);
-void cfx_fac_free(cfx_fac_t* f) ;
-void cfx_fac_reserve(cfx_fac_t* f, size_t req_cap);
-int cfx_fac_push(cfx_fac_t* f, uint64_t p, uint32_t e);
-int cfx_fac_push_big(cfx_fac_t* f, const struct cfx_big* p, uint32_t e);
+void cfx_fac_print(cfx_fac_t *f);
+void cfx_fac_init(cfx_fac_t *f);
+void cfx_fac_clear(cfx_fac_t *f);
+void cfx_fac_free(cfx_fac_t *f);
+void cfx_fac_reserve(cfx_fac_t *f, size_t req_cap);
+int cfx_fac_push(cfx_fac_t *f, uint64_t p, uint32_t e);
+int cfx_fac_push_big(cfx_fac_t *f, const struct cfx_big *p, uint32_t e);
 
 /* Deep copy: dst becomes a copy of src, using cfx_fac_push for each element. */
 void cfx_fac_copy(cfx_fac_t *dst, const cfx_fac_t *src);
 
 /* dst += src */
-void cfx_fac_add(cfx_fac_t* dst, const cfx_fac_t* src);
+void cfx_fac_add(cfx_fac_t *dst, const cfx_fac_t *src);
 
 /* dst -= src */
-void cfx_fac_sub(cfx_fac_t* dst, const cfx_fac_t* src);
+void cfx_fac_sub(cfx_fac_t *dst, const cfx_fac_t *src);
 
 /* calculate the factorization of n.
-we pass in a list of primes to not have to calculate it on every call of this function */
-int cfx_fac_factorial(cfx_fac_t* f, cfx_limb_t n, const cfx_vec_t *primes);
+   we pass in a list of primes to not have to calculate it on every call of this function */
+int cfx_fac_factorial(cfx_fac_t *f, cfx_limb_t n, const cfx_vec_t *primes);
 
 /* Factorization of C(n,k) = n! / (k! (n-k)!) */
 cfx_fac_t cfx_fac_binom(cfx_limb_t n, cfx_limb_t k);
 
 /* Factorize n directly into fac, bypassing cfx_vec_t.
  * Returns 0 on success, -1 on error (n==0). */
-int cfx_fac_from_u64(cfx_fac_t* fac, uint64_t n);
+int cfx_fac_from_u64(cfx_fac_t *fac, uint64_t n);
 
 #ifdef __cplusplus
 }

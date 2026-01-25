@@ -20,7 +20,7 @@
 #  include <errno.h>
 #endif
 
-#define RNG_ENTRY(ID) { "cfx_" #ID, cfx_##ID##_gen32, cfx_##ID##_seed, cfx_##ID##_bytes }
+#define RNG_ENTRY(ID) { "cfx_" #ID, cfx_ ## ID ## _gen32, cfx_ ## ID ## _seed, cfx_ ## ID ## _bytes }
 
 /* ---------------------------------------------------------------------------------------------- */
 /* for testing's sake: c std library rand */
@@ -70,15 +70,15 @@ const size_t g_rand_gen_cnt = sizeof(g_rand_gens) / sizeof(g_rand_gens[0]);
 #define CHACHA20_BUF_BYTES (CHACHA20_BLOCK_BYTES * CHACHA20_LANE_CNT)
 
 typedef struct {
-    uint8_t  buf[CHACHA20_BUF_BYTES];
+    uint8_t buf[CHACHA20_BUF_BYTES];
     cfx_chacha20_ctx_t ctx;
     uint32_t counter;
-    size_t   idx;
-    int      seeded;
+    size_t idx;
+    int seeded;
 } cfx_chacha20_rng_t;
 
 CFX_STATIC_ASSERT(sizeof(cfx_chacha20_rng_t) <= CFX_CHACHA_RNG_CTX_SIZE,
-                  chacha_rng_ctx_too_small);
+    chacha_rng_ctx_too_small);
 
 static inline void chacha20_advance_counter(cfx_chacha20_rng_t *st, uint32_t blocks) {
     st->counter += blocks;
@@ -91,10 +91,10 @@ CFX_INLINE void cfx_chacha20_refill(cfx_chacha20_rng_t *st) {
     if (!st->seeded) return;
 
 #if CFX_HAVE_AVX2
-    cfx_chacha20_block8(&st->ctx, st->counter, (uint8_t (*)[64])st->buf);
+    cfx_chacha20_block8(&st->ctx, st->counter, (uint8_t (*)[64]) st->buf);
     chacha20_advance_counter(st, 8);
 #elif CFX_SIMD
-    cfx_chacha20_block4(&st->ctx, st->counter, (uint8_t (*)[64])st->buf);
+    cfx_chacha20_block4(&st->ctx, st->counter, (uint8_t (*)[64]) st->buf);
     chacha20_advance_counter(st, 4);
 #else
     cfx_chacha20_block(&st->ctx, st->counter, st->buf);
@@ -104,7 +104,7 @@ CFX_INLINE void cfx_chacha20_refill(cfx_chacha20_rng_t *st) {
 }
 
 
-CFX_INLINE void cfx_chacha20_generate(cfx_chacha20_rng_t* st, uint8_t* out, size_t len) {
+CFX_INLINE void cfx_chacha20_generate(cfx_chacha20_rng_t *st, uint8_t *out, size_t len) {
     assert(st->seeded);
     if (!st->seeded) return;
 
@@ -119,14 +119,14 @@ CFX_INLINE void cfx_chacha20_generate(cfx_chacha20_rng_t* st, uint8_t* out, size
 
 #if CFX_HAVE_AVX2
     while (len >= CHACHA20_BUF_BYTES) {
-        cfx_chacha20_block8(&st->ctx, st->counter, (uint8_t (*)[64])out);
+        cfx_chacha20_block8(&st->ctx, st->counter, (uint8_t (*)[64]) out);
         chacha20_advance_counter(st, 8);
         out += CHACHA20_BUF_BYTES;
         len -= CHACHA20_BUF_BYTES;
     }
 #elif CFX_SIMD
     while (len >= CHACHA20_BUF_BYTES) {
-        cfx_chacha20_block4(&st->ctx, st->counter, (uint8_t (*)[64])out);
+        cfx_chacha20_block4(&st->ctx, st->counter, (uint8_t (*)[64]) out);
         chacha20_advance_counter(st, 4);
         out += CHACHA20_BUF_BYTES;
         len -= CHACHA20_BUF_BYTES;
@@ -147,7 +147,7 @@ CFX_INLINE void cfx_chacha20_generate(cfx_chacha20_rng_t* st, uint8_t* out, size
     }
 }
 
-static void splitmix64_bytes(uint64_t seed, uint8_t* out, size_t len) {
+static void splitmix64_bytes(uint64_t seed, uint8_t *out, size_t len) {
     uint64_t s = seed ? seed : 1;
     while (len >= 8) {
         uint64_t x = cfx_splitmix64(&s);
@@ -161,8 +161,8 @@ static void splitmix64_bytes(uint64_t seed, uint8_t* out, size_t len) {
     }
 }
 
-void cfx_chacha20_rng_init(cfx_rng_ctx_t* st, uint32_t seed) {
-    cfx_chacha20_rng_t* s = (cfx_chacha20_rng_t*)st;
+void cfx_chacha20_rng_init(cfx_rng_ctx_t *st, uint32_t seed) {
+    cfx_chacha20_rng_t *s = (cfx_chacha20_rng_t *)st;
     uint8_t key[32], nonce[12];
     uint64_t sm_seed = seed ? (uint64_t)seed : 1;
     splitmix64_bytes(sm_seed, key, 32);
@@ -176,10 +176,10 @@ void cfx_chacha20_rng_init(cfx_rng_ctx_t* st, uint32_t seed) {
     CFX_MEMZERO_S(nonce, 12);
 }
 
-int cfx_chacha20_rng(void* ctx, uint8_t* out, size_t len) {
-    cfx_chacha20_rng_t* s = (cfx_chacha20_rng_t*)ctx;
+int cfx_chacha20_rng(void *ctx, uint8_t *out, size_t len) {
+    cfx_chacha20_rng_t *s = (cfx_chacha20_rng_t *)ctx;
     if (!s->seeded) return 1;
-    cfx_chacha20_generate(s, (uint8_t*)out, len);
+    cfx_chacha20_generate(s, (uint8_t *)out, len);
     return 0;
 }
 
@@ -197,7 +197,7 @@ void cfx_chacha20_seed(uint32_t seed) {
     CFX_MEMZERO_S(nonce, 12);
 }
 
-void cfx_chacha20_bytes(void* buf, size_t len) {
+void cfx_chacha20_bytes(void *buf, size_t len) {
     cfx_chacha20_generate(&G, buf, len);
 }
 
@@ -205,9 +205,9 @@ uint32_t cfx_chacha20_gen32(void) {
     uint8_t b[4];
     cfx_chacha20_generate(&G, b, 4);
     return (uint32_t)b[0]
-         | ((uint32_t)b[1] << 8)
-         | ((uint32_t)b[2] << 16)
-         | ((uint32_t)b[3] << 24);
+           | ((uint32_t)b[1] << 8)
+           | ((uint32_t)b[2] << 16)
+           | ((uint32_t)b[3] << 24);
 }
 
 
@@ -226,10 +226,10 @@ int cfx_rand(void) {
 }
 
 void cfx_rand_bytes(void *buf, size_t len) {
-   cfx_chacha20_bytes(buf, len);
+    cfx_chacha20_bytes(buf, len);
 }
 
-int cfx_rng(void* ctx, uint8_t* out, size_t len) {
+int cfx_rng(void *ctx, uint8_t *out, size_t len) {
     return cfx_chacha20_rng(ctx, out, len);
 }
 
@@ -237,25 +237,27 @@ int cfx_rng(void* ctx, uint8_t* out, size_t len) {
 /* OS-specific cryptographic RNG */
 #if defined(_WIN32) || defined(_WIN64)
 /* Windows: BCryptGenRandom */
-static int os_getrandom(void* out, size_t len) {
+static int os_getrandom(void *out, size_t len) {
     NTSTATUS status = BCryptGenRandom(NULL, (PUCHAR)out, (ULONG)len,
-                                       BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+        BCRYPT_USE_SYSTEM_PREFERRED_RNG);
     return BCRYPT_SUCCESS(status) ? 0 : -1;
 }
 #else
 /* POSIX: /dev/urandom */
-static int os_getrandom(void* out, size_t len) {
+static int os_getrandom(void *out, size_t len) {
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd < 0) return -1;
     size_t got = 0;
     while (got < len) {
-        ssize_t r = read(fd, (unsigned char*)out + got, len - got);
+        ssize_t r = read(fd, (unsigned char *)out + got, len - got);
         if (r < 0) {
             if (errno == EINTR) continue;
             close(fd);
             return -1;
         }
-        if (r == 0) { close(fd); return -1; }
+        if (r == 0) {
+            close(fd); return -1;
+        }
         got += (size_t)r;
     }
     close(fd);
@@ -281,7 +283,7 @@ uint32_t cfx_rand_os(void) {
     return x;
 }
 
-void cfx_rand_bytes_os(void* buf, size_t len) {
+void cfx_rand_bytes_os(void *buf, size_t len) {
     if (os_getrandom(buf, len) != 0) {
         abort();
     }
@@ -308,16 +310,16 @@ uint32_t cfx_lcg_gen32(void) {
     return cfx_lcg(&g_lcg_seed);
 }
 
-uint32_t cfx_lcg(uint32_t* s) {
+uint32_t cfx_lcg(uint32_t *s) {
     *s *= 1664525u;
     *s += 1013904223u;
     return *s;
 }
 
-void cfx_lcg_bytes(uint32_t seed, uint8_t* data, size_t len) {
+void cfx_lcg_bytes(uint32_t seed, uint8_t *data, size_t len) {
     /*
-    ref: LCG - https://en.wikipedia.org/wiki/Linear_congruential_generator
-    */
+       ref: LCG - https://en.wikipedia.org/wiki/Linear_congruential_generator
+     */
     uint32_t x = seed;
     uint32_t i;
 
@@ -340,7 +342,7 @@ uint32_t cfx_xorshift32_gen32(void) {
     return cfx_xorshift32(&g_xorshift32_seed);
 }
 
-uint32_t cfx_xorshift32(uint32_t* s) {
+uint32_t cfx_xorshift32(uint32_t *s) {
     uint32_t x = *s;
     x ^= x << 13;
     x ^= x >> 17;
@@ -360,7 +362,7 @@ uint32_t cfx_xorshift32star_gen32(void) {
     return cfx_xorshift32star(&g_xorshift32star_seed);
 }
 
-uint32_t cfx_xorshift32star(uint32_t* s) {
+uint32_t cfx_xorshift32star(uint32_t *s) {
     uint32_t x = *s;
     /* xorshift32 (13,17,5) */
     x ^= x << 13;
@@ -381,7 +383,7 @@ uint32_t cfx_xorshift64_gen32(void) {
     return cfx_xorshift64(&g_xorshift64_seed);
 }
 
-uint64_t cfx_xorshift64(uint64_t* s) {
+uint64_t cfx_xorshift64(uint64_t *s) {
     uint64_t x = *s;
     x ^= x << 13;
     x ^= x >> 7;
@@ -400,7 +402,7 @@ uint32_t cfx_xorshift64star_gen32(void) {
     return (uint32_t)cfx_xorshift64star(&g_xorshift_star_seed);
 }
 
-uint64_t cfx_xorshift64star(uint64_t* s) {
+uint64_t cfx_xorshift64star(uint64_t *s) {
     uint64_t x = *s;
     x ^= x >> 12;
     x ^= x << 25;
@@ -420,7 +422,7 @@ uint32_t cfx_xorshift_gen32(void) {
     return cfx_xorshift(&g_xorshift_state);
 }
 
-cfx_limb_t cfx_xorshift(cfx_limb_t* s) {
+cfx_limb_t cfx_xorshift(cfx_limb_t *s) {
     cfx_limb_t x = *s;
     #if (CFX_LIMB_BITS == 64)
     x ^= x << 13;
@@ -450,7 +452,7 @@ uint32_t cfx_drand48_gen32(void) {
     return cfx_drand48(&g_drand_state);
 }
 
-uint32_t cfx_drand48(uint64_t* s) {
+uint32_t cfx_drand48(uint64_t *s) {
     *s = ((*s * UINT64_C(25214903917)) + 11) & UINT64_C(0xFFFFFFFFFFFF);
     return (uint32_t)(*s >> 16);
 }
@@ -466,7 +468,7 @@ uint32_t cfx_minstd_gen32(void) {
     return cfx_minstd(&g_minstd_state);
 }
 
-uint32_t cfx_minstd(uint64_t* s) {
+uint32_t cfx_minstd(uint64_t *s) {
     *s *= UINT64_C(16807);
     *s %= UINT64_C(2147483647);
     return (uint32_t)*s;
@@ -530,7 +532,7 @@ uint32_t cfx_pcg32_gen32(void) {
     return cfx_pcg32(&g_pcg_state);
 }
 
-uint32_t cfx_pcg32(uint64_t* s) {
+uint32_t cfx_pcg32(uint64_t *s) {
     const uint64_t pcg_inc = UINT64_C(0xda3e39cb94b95bdb);
     uint64_t oldstate = *s;
     *s = oldstate * UINT64_C(6364136223846793005) + (pcg_inc | 1);
@@ -592,7 +594,7 @@ uint32_t cfx_xoroshiro64star_gen32(void) {
 
 uint32_t cfx_xoroshiro64star(uint32_t s[2]) {
     const uint32_t s0 = s[0];
-    uint32_t       s1 = s[1];
+    uint32_t s1 = s[1];
 
     const uint32_t result = s0 * 0x9E3779BBu;  /* * */
 
@@ -615,7 +617,7 @@ uint32_t cfx_xoroshiro64starstar_gen32(void) {
 }
 uint32_t cfx_xoroshiro64starstar(uint32_t s[2]) {
     const uint32_t s0 = s[0];
-    uint32_t       s1 = s[1];
+    uint32_t s1 = s[1];
 
     /* output function: ** */
     const uint32_t result = rotl32(s0 * 0x9E3779BBu, 5) * 5u;
@@ -740,37 +742,37 @@ uint64_t cfx_xoshiro256starstar(uint64_t s[4]) {
     ---> generates void NAME##_bytes(void *buf, size_t len);
  */
 #define DEFINE_BYTES32_FN(NAME, GEN32)                                      \
-void NAME##_bytes(void *buf, size_t len)                                    \
-{                                                                           \
-    uint8_t *out = (uint8_t *)buf;                                          \
-    const size_t word_size = sizeof(uint32_t);                              \
-    const size_t word_align = CFX_ALIGNOF(uint32_t);                        \
+        void NAME ## _bytes(void *buf, size_t len)                                    \
+        {                                                                           \
+            uint8_t *out = (uint8_t *)buf;                                          \
+            const size_t word_size = sizeof(uint32_t);                              \
+            const size_t word_align = CFX_ALIGNOF(uint32_t);                        \
                                                                             \
-    /* align to uint32_t alignment, buffering one word */                   \
-    if (len > 0 && ((uintptr_t)out % word_align) != 0) {                    \
-        uint32_t w = (GEN32);                                               \
-        while (len > 0 && ((uintptr_t)out % word_align) != 0) {             \
-            *out++ = (uint8_t)w;                                            \
-            w >>= 8;                                                        \
-            len--;                                                          \
-        }                                                                   \
-    }                                                                       \
+            /* align to uint32_t alignment, buffering one word */                   \
+            if (len > 0 && ((uintptr_t)out % word_align) != 0) {                    \
+                uint32_t w = (GEN32);                                               \
+                while (len > 0 && ((uintptr_t)out % word_align) != 0) {             \
+                    *out++ = (uint8_t)w;                                            \
+                    w >>= 8;                                                        \
+                    len--;                                                          \
+                }                                                                   \
+            }                                                                       \
                                                                             \
-    /* multiples of word_size bytes */                                      \
-    while (len >= word_size) {                                              \
-        *(uint32_t *)out = (GEN32);                                         \
-        out += word_size;                                                   \
-        len -= word_size;                                                   \
-    }                                                                       \
+            /* multiples of word_size bytes */                                      \
+            while (len >= word_size) {                                              \
+                *(uint32_t *)out = (GEN32);                                         \
+                out += word_size;                                                   \
+                len -= word_size;                                                   \
+            }                                                                       \
                                                                             \
-    /* remaining 1-3 bytes */                                               \
-    if (len > 0) {                                                          \
-        uint32_t w = (GEN32);                                               \
-        for (size_t i = 0; i < len; ++i) {                                  \
-            out[i] = (uint8_t)(w >> (8 * i));                               \
-        }                                                                   \
-    }                                                                       \
-}
+            /* remaining 1-3 bytes */                                               \
+            if (len > 0) {                                                          \
+                uint32_t w = (GEN32);                                               \
+                for (size_t i = 0; i < len; ++i) {                                  \
+                    out[i] = (uint8_t)(w >> (8 * i));                               \
+                }                                                                   \
+            }                                                                       \
+        }
 
 /* DEFINE_BYTES32_FN(cfx_chacha20,               cfx_chacha20_gen32()) -- better version above*/
 DEFINE_BYTES32_FN(cfx_xorshift32,             cfx_xorshift32_gen32())

@@ -38,38 +38,38 @@ extern "C" {
 #define CFX_ARGON2_ERR_OUTPUT  -5
 
 /* recommended: m=65536 (64MB), t=3, p=4 */
-int cfx_argon2id(uint8_t* out, size_t outlen,
-                 const uint8_t* pwd, size_t pwdlen,
-                 const uint8_t* salt, size_t saltlen,
-                 uint32_t m_cost, uint32_t t_cost, uint32_t p);
+int cfx_argon2id(uint8_t *out, size_t outlen,
+    const uint8_t *pwd, size_t pwdlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p);
 
-int cfx_argon2d(uint8_t* out, size_t outlen,
-                const uint8_t* pwd, size_t pwdlen,
-                const uint8_t* salt, size_t saltlen,
-                uint32_t m_cost, uint32_t t_cost, uint32_t p);
+int cfx_argon2d(uint8_t *out, size_t outlen,
+    const uint8_t *pwd, size_t pwdlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p);
 
-int cfx_argon2i(uint8_t* out, size_t outlen,
-                const uint8_t* pwd, size_t pwdlen,
-                const uint8_t* salt, size_t saltlen,
-                uint32_t m_cost, uint32_t t_cost, uint32_t p);
+int cfx_argon2i(uint8_t *out, size_t outlen,
+    const uint8_t *pwd, size_t pwdlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p);
 
-int cfx_argon2(uint8_t* out, size_t outlen,
-               const uint8_t* pwd, size_t pwdlen,
-               const uint8_t* salt, size_t saltlen,
-               uint32_t m_cost, uint32_t t_cost, uint32_t p,
-               int type);
+int cfx_argon2(uint8_t *out, size_t outlen,
+    const uint8_t *pwd, size_t pwdlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p,
+    int type);
 
 /* PHC string format: $argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash> */
-int cfx_argon2_encode(char* out, size_t outlen,
-                      const uint8_t* hash, size_t hashlen,
-                      const uint8_t* salt, size_t saltlen,
-                      uint32_t m_cost, uint32_t t_cost, uint32_t p,
-                      int type);
+int cfx_argon2_encode(char *out, size_t outlen,
+    const uint8_t *hash, size_t hashlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p,
+    int type);
 
 /* returns 0 if password matches, 1 if not, <0 on error */
-int cfx_argon2_verify(const char* encoded, const uint8_t* pwd, size_t pwdlen);
+int cfx_argon2_verify(const char *encoded, const uint8_t *pwd, size_t pwdlen);
 
-const char* cfx_argon2_strerror(int err);
+const char * cfx_argon2_strerror(int err);
 
 #ifdef __cplusplus
 }

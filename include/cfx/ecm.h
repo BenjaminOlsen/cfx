@@ -36,13 +36,13 @@ typedef struct {
 } cfx_ecm_point_t;
 
 /* Initialize a point (must call before use) */
-void cfx_ecm_point_init(cfx_ecm_point_t* P);
+void cfx_ecm_point_init(cfx_ecm_point_t *P);
 
 /* Free a point's resources */
-void cfx_ecm_point_free(cfx_ecm_point_t* P);
+void cfx_ecm_point_free(cfx_ecm_point_t *P);
 
 /* Copy point: dst = src */
-void cfx_ecm_point_copy(cfx_ecm_point_t* dst, const cfx_ecm_point_t* src);
+void cfx_ecm_point_copy(cfx_ecm_point_t *dst, const cfx_ecm_point_t *src);
 
 /*
  * Try to find a factor of n using ECM.
@@ -58,8 +58,8 @@ void cfx_ecm_point_copy(cfx_ecm_point_t* dst, const cfx_ecm_point_t* src);
  *   1 if a non-trivial factor was found (stored in 'factor')
  *   0 if no factor found after trying all curves
  */
-int cfx_ecm_factor(cfx_big_t* factor, const cfx_big_t* n,
-                   uint64_t B1, unsigned curves);
+int cfx_ecm_factor(cfx_big_t *factor, const cfx_big_t *n,
+    uint64_t B1, unsigned curves);
 
 /*
  * Auto-tuned ECM: picks B1 and curve count based on n's size.
@@ -69,7 +69,7 @@ int cfx_ecm_factor(cfx_big_t* factor, const cfx_big_t* n,
  *   1 if a non-trivial factor was found
  *   0 if no factor found
  */
-int cfx_ecm_factor_auto(cfx_big_t* factor, const cfx_big_t* n);
+int cfx_ecm_factor_auto(cfx_big_t *factor, const cfx_big_t *n);
 
 #ifdef __cplusplus
 }

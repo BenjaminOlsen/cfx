@@ -11,8 +11,8 @@
 #define _2_BY 0x79622d32u
 #define _TE_K 0x6b206574u
 
-void cfx_chacha20_ctx_init(cfx_chacha20_ctx_t* ctx, const uint8_t key[32], const uint8_t nonce[12]) {
-    cfx_chacha20_state_t* st = (cfx_chacha20_state_t*)ctx->opaque;
+void cfx_chacha20_ctx_init(cfx_chacha20_ctx_t *ctx, const uint8_t key[32], const uint8_t nonce[12]) {
+    cfx_chacha20_state_t *st = (cfx_chacha20_state_t *)ctx->opaque;
 #if defined(CFX_CAP_AVX2)
     /* SoA layout: broadcast each word to all 8 lanes */
     for (int j = 0; j < 8; ++j) {
@@ -53,19 +53,19 @@ void cfx_chacha20_ctx_init(cfx_chacha20_ctx_t* ctx, const uint8_t key[32], const
 #endif
 }
 
-void cfx_chacha20_block(cfx_chacha20_ctx_t* ctx, uint32_t counter, uint8_t out[64]) {
-    cfx_chacha20_block_impl((cfx_chacha20_state_t*)ctx->opaque, counter, out);
+void cfx_chacha20_block(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[64]) {
+    cfx_chacha20_block_impl((cfx_chacha20_state_t *)ctx->opaque, counter, out);
 }
 
-void cfx_chacha20_block4(cfx_chacha20_ctx_t* ctx, uint32_t counter, uint8_t out[4][64]) {
-    cfx_chacha20_block4_impl((cfx_chacha20_state_t*)ctx->opaque, counter, out);
+void cfx_chacha20_block4(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[4][64]) {
+    cfx_chacha20_block4_impl((cfx_chacha20_state_t *)ctx->opaque, counter, out);
 }
 
-void cfx_chacha20_block8(cfx_chacha20_ctx_t* ctx, uint32_t counter, uint8_t out[8][64]) {
-    cfx_chacha20_block8_impl((cfx_chacha20_state_t*)ctx->opaque, counter, out);
+void cfx_chacha20_block8(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[8][64]) {
+    cfx_chacha20_block8_impl((cfx_chacha20_state_t *)ctx->opaque, counter, out);
 }
 
-void cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t* ctx, uint32_t* counter, const uint8_t* pt, size_t pt_len, uint8_t* ct) {
+void cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const uint8_t *pt, size_t pt_len, uint8_t *ct) {
     uint8_t ks[64];
     while (pt_len) {
         cfx_chacha20_block(ctx, *counter, ks);
@@ -80,7 +80,7 @@ void cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t* ctx, uint32_t* counter, const 
 }
 
 void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
-                          const uint8_t* pt, size_t pt_len, uint8_t* ct) {
+    const uint8_t *pt, size_t pt_len, uint8_t *ct) {
     cfx_chacha20_ctx_t ctx;
     cfx_chacha20_ctx_init(&ctx, key, nonce);
     cfx_chacha20_encrypt_ctx(&ctx, &counter, pt, pt_len, ct);
@@ -89,10 +89,10 @@ void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t
 
 #define ROTL32(x, n) ((uint32_t)(((x) << (n)) | ((x) >> (32 - (n)))))
 #define QR(a, b, c, d) \
-    a += b; d ^= a; d = ROTL32(d, 16); \
-    c += d; b ^= c; b = ROTL32(b, 12); \
-    a += b; d ^= a; d = ROTL32(d,  8); \
-    c += d; b ^= c; b = ROTL32(b,  7);
+        a += b; d ^= a; d = ROTL32(d, 16); \
+        c += d; b ^= c; b = ROTL32(b, 12); \
+        a += b; d ^= a; d = ROTL32(d,  8); \
+        c += d; b ^= c; b = ROTL32(b,  7);
 
 void cfx_hchacha20(uint8_t out[32], const uint8_t key[32], const uint8_t nonce[16]) {
     uint32_t w[16];
@@ -138,7 +138,7 @@ void cfx_hchacha20(uint8_t out[32], const uint8_t key[32], const uint8_t nonce[1
 #undef QR
 #undef ROTL32
 
-void cfx_xchacha20_ctx_init(cfx_chacha20_ctx_t* ctx, const uint8_t key[32], const uint8_t nonce[24]) {
+void cfx_xchacha20_ctx_init(cfx_chacha20_ctx_t *ctx, const uint8_t key[32], const uint8_t nonce[24]) {
     uint8_t subkey[32];
     uint8_t subnonce[12] = {0};
     cfx_hchacha20(subkey, key, nonce);
@@ -147,12 +147,12 @@ void cfx_xchacha20_ctx_init(cfx_chacha20_ctx_t* ctx, const uint8_t key[32], cons
     CFX_MEMZERO_S(subkey, sizeof(subkey));
 }
 
-void cfx_xchacha20_encrypt_ctx(cfx_chacha20_ctx_t* ctx, uint32_t* counter, const uint8_t* pt, size_t pt_len, uint8_t* ct) {
+void cfx_xchacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const uint8_t *pt, size_t pt_len, uint8_t *ct) {
     cfx_chacha20_encrypt_ctx(ctx, counter, pt, pt_len, ct);
 }
 
 void cfx_xchacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t nonce[24],
-                           const uint8_t* pt, size_t pt_len, uint8_t* ct) {
+    const uint8_t *pt, size_t pt_len, uint8_t *ct) {
     uint8_t subkey[32];
     uint8_t subnonce[12] = {0};
     cfx_hchacha20(subkey, key, nonce);

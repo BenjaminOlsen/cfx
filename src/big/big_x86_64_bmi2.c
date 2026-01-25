@@ -31,10 +31,9 @@
  *
  * Uses _mulx_u64 for the widening multiply.
  */
-void cfx_big_mul_limbs_impl(cfx_limb_t* out,
-                            const cfx_limb_t* a, size_t na,
-                            const cfx_limb_t* b, size_t nb)
-{
+void cfx_big_mul_limbs_impl(cfx_limb_t *out,
+    const cfx_limb_t *a, size_t na,
+    const cfx_limb_t *b, size_t nb){
     /* Zero the output buffer */
     memset(out, 0, (na + nb) * sizeof(cfx_limb_t));
 
@@ -76,14 +75,13 @@ void cfx_big_mul_limbs_impl(cfx_limb_t* out,
  *
  * Handles memory allocation and trimming around the limb-level operation.
  */
-void cfx_big_mul_impl(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
-{
+void cfx_big_mul_impl(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *b){
     size_t na = a->n;
     size_t nb = b->n;
 
     /* Handle aliasing: if out overlaps with a or b, use temporary */
     cfx_big_t tmp;
-    cfx_big_t* result = out;
+    cfx_big_t *result = out;
 
     if (out == a || out == b) {
         cfx_big_init(&tmp);
@@ -113,10 +111,9 @@ void cfx_big_mul_impl(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
  * The portable cfx_acc_t approach is already efficient for add/sub.
  * ============================================================================ */
 
-cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t* dst,
-                                  const cfx_limb_t* src,
-                                  size_t n)
-{
+cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t *dst,
+    const cfx_limb_t *src,
+    size_t n){
     cfx_limb_t carry = 0;
 
     for (size_t i = 0; i < n; ++i) {
@@ -128,10 +125,9 @@ cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t* dst,
     return carry;
 }
 
-cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t* dst,
-                                  const cfx_limb_t* src,
-                                  size_t n)
-{
+cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t *dst,
+    const cfx_limb_t *src,
+    size_t n){
     cfx_limb_t borrow = 0;
 
     for (size_t i = 0; i < n; ++i) {
@@ -153,13 +149,12 @@ cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t* dst,
  *
  * CIOS algorithm with BMI2 intrinsics for the multiply chains.
  */
-void cfx_big_mont_mul_impl(cfx_limb_t* T,
-                           const cfx_limb_t* a, size_t a_n,
-                           const cfx_limb_t* b, size_t b_n,
-                           const cfx_limb_t* n,
-                           cfx_limb_t n0inv,
-                           size_t k)
-{
+void cfx_big_mont_mul_impl(cfx_limb_t *T,
+    const cfx_limb_t *a, size_t a_n,
+    const cfx_limb_t *b, size_t b_n,
+    const cfx_limb_t *n,
+    cfx_limb_t n0inv,
+    size_t k){
     for (size_t i = 0; i < k; ++i) {
         /* Get b[i], zero-pad if beyond actual length */
         const unsigned long long bi = (i < b_n) ? b[i] : 0;

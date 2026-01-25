@@ -14,14 +14,14 @@ static inline size_t ct_pad16(size_t len) {
 }
 
 int cfx_chacha20_poly1305_encrypt(
-    uint8_t*        ct,             /* cyphertext - out, length = pt_len */
-    uint8_t         tag[16],        /* out */
-    const uint8_t*  pt,             /* plaintext  - in,  length = pt_len */
-    size_t          pt_len,
-    const uint8_t*  aad,            /* in, may be NULL (iff aad_len == 0) */
-    size_t          aad_len,
-    const uint8_t   key[32],
-    const uint8_t   nonce[12]) {
+    uint8_t *ct,                    /* cyphertext - out, length = pt_len */
+    uint8_t tag[16],                /* out */
+    const uint8_t *pt,              /* plaintext  - in,  length = pt_len */
+    size_t pt_len,
+    const uint8_t *aad,             /* in, may be NULL (iff aad_len == 0) */
+    size_t aad_len,
+    const uint8_t key[32],
+    const uint8_t nonce[12]) {
 
     /* poly_key = ChaCha20(key, nonce, counter=0)[0..31] */
     uint8_t poly_key[64] = {0};  /* chacha20 writes 64 bytes, poly1305 uses least significant 32 */
@@ -59,9 +59,9 @@ int cfx_chacha20_poly1305_encrypt(
 }
 
 /* returns 0 if the data pointed to by a equals that pointed to by b*/
-static int cfx_memeq_ct(const void* a, const void* b, size_t n) {
-    const volatile uint8_t* pa = a;
-    const volatile uint8_t* pb = b;
+static int cfx_memeq_ct(const void *a, const void *b, size_t n) {
+    const volatile uint8_t *pa = a;
+    const volatile uint8_t *pb = b;
     uint8_t r = 0;
     size_t i;
     for (i = 0; i < n; i++) {
@@ -71,19 +71,18 @@ static int cfx_memeq_ct(const void* a, const void* b, size_t n) {
 }
 
 int cfx_chacha20_poly1305_decrypt(
-    uint8_t*        pt,             /* plaintext  - out, length = ct_len */
-    const uint8_t*  ct,             /* ciphertext - in,  length = ct_len */
-    size_t          ct_len,
-    const uint8_t*  aad,            /* in, may be NULL (iff aad_len == 0) */
-    size_t          aad_len,
-    const uint8_t   key[32],
-    const uint8_t   nonce[12],
-    const uint8_t   tag[16])
-{
-    uint8_t  poly_key[64] = {0};
-    uint8_t  len_block[8] = {0};
+    uint8_t *pt,                    /* plaintext  - out, length = ct_len */
+    const uint8_t *ct,              /* ciphertext - in,  length = ct_len */
+    size_t ct_len,
+    const uint8_t *aad,             /* in, may be NULL (iff aad_len == 0) */
+    size_t aad_len,
+    const uint8_t key[32],
+    const uint8_t nonce[12],
+    const uint8_t tag[16]){
+    uint8_t poly_key[64] = {0};
+    uint8_t len_block[8] = {0};
     const uint8_t zeros[16] = {0};
-    uint8_t computed_tag[16] = {0}; 
+    uint8_t computed_tag[16] = {0};
     uint32_t counter = 0;
     size_t pad = 0;
 
@@ -121,15 +120,14 @@ int cfx_chacha20_poly1305_decrypt(
 }
 
 int cfx_xchacha20_poly1305_encrypt(
-    uint8_t*        ct,
-    uint8_t         tag[16],
-    const uint8_t*  pt,
-    size_t          pt_len,
-    const uint8_t*  aad,
-    size_t          aad_len,
-    const uint8_t   key[32],
-    const uint8_t   nonce[24])
-{
+    uint8_t *ct,
+    uint8_t tag[16],
+    const uint8_t *pt,
+    size_t pt_len,
+    const uint8_t *aad,
+    size_t aad_len,
+    const uint8_t key[32],
+    const uint8_t nonce[24]){
     uint8_t subkey[32];
     uint8_t subnonce[12] = {0};
 
@@ -143,15 +141,14 @@ int cfx_xchacha20_poly1305_encrypt(
 }
 
 int cfx_xchacha20_poly1305_decrypt(
-    uint8_t*        pt,
-    const uint8_t*  ct,
-    size_t          ct_len,
-    const uint8_t*  aad,
-    size_t          aad_len,
-    const uint8_t   key[32],
-    const uint8_t   nonce[24],
-    const uint8_t   tag[16])
-{
+    uint8_t *pt,
+    const uint8_t *ct,
+    size_t ct_len,
+    const uint8_t *aad,
+    size_t aad_len,
+    const uint8_t key[32],
+    const uint8_t nonce[24],
+    const uint8_t tag[16]){
     uint8_t subkey[32];
     uint8_t subnonce[12] = {0};
 

@@ -23,12 +23,12 @@ typedef union {
 } cfx_poly1305_ctx_t;
 
 
-void cfx_poly1305_init(cfx_poly1305_ctx_t* ctx, const uint8_t key[32]);
-void cfx_poly1305_update(cfx_poly1305_ctx_t* ctx, const uint8_t* msg, size_t mlen);
-void cfx_poly1305_finish(cfx_poly1305_ctx_t* ctx, uint8_t tag[16]);
+void cfx_poly1305_init(cfx_poly1305_ctx_t *ctx, const uint8_t key[32]);
+void cfx_poly1305_update(cfx_poly1305_ctx_t *ctx, const uint8_t *msg, size_t mlen);
+void cfx_poly1305_finish(cfx_poly1305_ctx_t *ctx, uint8_t tag[16]);
 
 /* one shot */
-void cfx_poly1305(uint8_t tag[16], const uint8_t* msg, size_t mlen, const uint8_t key[32]);
+void cfx_poly1305(uint8_t tag[16], const uint8_t *msg, size_t mlen, const uint8_t key[32]);
 
 
 #ifdef __cplusplus

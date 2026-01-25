@@ -21,9 +21,9 @@ typedef struct {
 CFX_STATIC_ASSERT(
     sizeof(sha512_state_t) <= CFX_SHA512_CTX_SIZE,
     CFX_SHA512_CTX_SIZE_too_small_for_sha512_state
-);
+    );
 
-#define CTX(p) ((sha512_state_t*)(p)->opaque)
+#define CTX(p) ((sha512_state_t *)(p)->opaque)
 
 static const uint64_t K[80] = {
     0x428a2f98d728ae22ULL, 0x7137449123ef65cdULL, 0xb5c0fbcfec4d3b2fULL, 0xe9b5dba58189dbbcULL,
@@ -57,7 +57,7 @@ static const uint64_t K[80] = {
 #define SIG0(x)      (ROTR64(x, 1) ^ ROTR64(x, 8) ^ ((x) >> 7))
 #define SIG1(x)      (ROTR64(x, 19) ^ ROTR64(x, 61) ^ ((x) >> 6))
 
-static void sha512_transform(sha512_state_t* st, const uint8_t* block) {
+static void sha512_transform(sha512_state_t *st, const uint8_t *block) {
     uint64_t a, b, c, d, e, f, g, h, t1, t2, W[80];
     int i;
 
@@ -107,8 +107,8 @@ static void sha512_transform(sha512_state_t* st, const uint8_t* block) {
     st->state[7] += h;
 }
 
-void cfx_sha512_init(cfx_sha512_ctx_t* ctx) {
-    sha512_state_t* st = CTX(ctx);
+void cfx_sha512_init(cfx_sha512_ctx_t *ctx) {
+    sha512_state_t *st = CTX(ctx);
     st->state[0] = 0x6a09e667f3bcc908ULL;
     st->state[1] = 0xbb67ae8584caa73bULL;
     st->state[2] = 0x3c6ef372fe94f82bULL;
@@ -121,8 +121,8 @@ void cfx_sha512_init(cfx_sha512_ctx_t* ctx) {
     st->count[1] = 0;
 }
 
-void cfx_sha512_update(cfx_sha512_ctx_t* ctx, const uint8_t* data, size_t len) {
-    sha512_state_t* st = CTX(ctx);
+void cfx_sha512_update(cfx_sha512_ctx_t *ctx, const uint8_t *data, size_t len) {
+    sha512_state_t *st = CTX(ctx);
     size_t i, index, partLen;
 
     index = (size_t)((st->count[0] >> 3) & 0x7f);
@@ -148,8 +148,8 @@ void cfx_sha512_update(cfx_sha512_ctx_t* ctx, const uint8_t* data, size_t len) {
     memcpy(&st->buffer[index], &data[i], len - i);
 }
 
-void cfx_sha512_final(cfx_sha512_ctx_t* ctx, uint8_t out[64]) {
-    sha512_state_t* st = CTX(ctx);
+void cfx_sha512_final(cfx_sha512_ctx_t *ctx, uint8_t out[64]) {
+    sha512_state_t *st = CTX(ctx);
     uint8_t bits[16];
     size_t index, padLen;
     static const uint8_t padding[128] = { 0x80 };
@@ -177,7 +177,7 @@ void cfx_sha512_final(cfx_sha512_ctx_t* ctx, uint8_t out[64]) {
     }
 }
 
-void cfx_sha512(uint8_t out[64], const uint8_t* data, size_t len) {
+void cfx_sha512(uint8_t out[64], const uint8_t *data, size_t len) {
     cfx_sha512_ctx_t ctx;
     cfx_sha512_init(&ctx);
     cfx_sha512_update(&ctx, data, len);

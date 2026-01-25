@@ -119,7 +119,7 @@ CFX_INLINE uint64_t cfx_mont64_inv(uint64_t n) {
 }
 
 /* Initialize Montgomery context for modulus n (must be odd) */
-CFX_INLINE void cfx_mont64_init(cfx_mont64_t* ctx, uint64_t n) {
+CFX_INLINE void cfx_mont64_init(cfx_mont64_t *ctx, uint64_t n) {
     ctx->n = n;
     ctx->n_inv = cfx_mont64_inv(n);
     /* Compute R mod n where R = 2^64 */
@@ -133,7 +133,7 @@ CFX_INLINE void cfx_mont64_init(cfx_mont64_t* ctx, uint64_t n) {
 
 /* Convert a to Montgomery form: aR mod n */
 /* Uses MonPro(a, R²) = a * R² * R⁻¹ mod n = a*R mod n */
-CFX_INLINE uint64_t cfx_mont64_to(const cfx_mont64_t* ctx, uint64_t a) {
+CFX_INLINE uint64_t cfx_mont64_to(const cfx_mont64_t *ctx, uint64_t a) {
     a = a % ctx->n;
 #if defined(CFX_128BIT_NATIVE)
     __uint128_t t = (__uint128_t)a * ctx->r2;
@@ -167,7 +167,7 @@ CFX_INLINE uint64_t cfx_mont64_to(const cfx_mont64_t* ctx, uint64_t a) {
 }
 
 /* Convert from Montgomery form: a/R mod n */
-CFX_INLINE uint64_t cfx_mont64_from(const cfx_mont64_t* ctx, uint64_t aR) {
+CFX_INLINE uint64_t cfx_mont64_from(const cfx_mont64_t *ctx, uint64_t aR) {
     /* MonPro(aR, 1) = a*R*1/R mod n = a mod n */
 #if defined(CFX_128BIT_NATIVE)
     __uint128_t t = aR;
@@ -197,7 +197,7 @@ CFX_INLINE uint64_t cfx_mont64_from(const cfx_mont64_t* ctx, uint64_t aR) {
 }
 
 /* Montgomery multiplication: MonPro(aR, bR) = (a*b*R) mod n */
-CFX_INLINE uint64_t cfx_mont64_mul(const cfx_mont64_t* ctx, uint64_t aR, uint64_t bR) {
+CFX_INLINE uint64_t cfx_mont64_mul(const cfx_mont64_t *ctx, uint64_t aR, uint64_t bR) {
 #if defined(CFX_128BIT_NATIVE)
     __uint128_t t = (__uint128_t)aR * bR;
     uint64_t m = (uint64_t)t * ctx->n_inv;
@@ -229,12 +229,12 @@ CFX_INLINE uint64_t cfx_mont64_mul(const cfx_mont64_t* ctx, uint64_t aR, uint64_
 }
 
 /* Montgomery squaring (slightly optimized) */
-CFX_INLINE uint64_t cfx_mont64_sqr(const cfx_mont64_t* ctx, uint64_t aR) {
+CFX_INLINE uint64_t cfx_mont64_sqr(const cfx_mont64_t *ctx, uint64_t aR) {
     return cfx_mont64_mul(ctx, aR, aR);
 }
 
 /* Montgomery add: (aR + bR) mod n (no division needed) */
-CFX_INLINE uint64_t cfx_mont64_add(const cfx_mont64_t* ctx, uint64_t aR, uint64_t bR) {
+CFX_INLINE uint64_t cfx_mont64_add(const cfx_mont64_t *ctx, uint64_t aR, uint64_t bR) {
     uint64_t sum = aR + bR;
     /* Handle overflow and reduction */
     if (sum < aR || sum >= ctx->n) {
@@ -244,12 +244,12 @@ CFX_INLINE uint64_t cfx_mont64_add(const cfx_mont64_t* ctx, uint64_t aR, uint64_
 }
 
 /* Montgomery subtract: (aR - bR) mod n */
-CFX_INLINE uint64_t cfx_mont64_sub(const cfx_mont64_t* ctx, uint64_t aR, uint64_t bR) {
+CFX_INLINE uint64_t cfx_mont64_sub(const cfx_mont64_t *ctx, uint64_t aR, uint64_t bR) {
     return (aR >= bR) ? (aR - bR) : (ctx->n - (bR - aR));
 }
 
 /* Montgomery modular exponentiation */
-CFX_INLINE uint64_t cfx_mont64_pow(const cfx_mont64_t* ctx, uint64_t aR, uint64_t exp) {
+CFX_INLINE uint64_t cfx_mont64_pow(const cfx_mont64_t *ctx, uint64_t aR, uint64_t exp) {
     uint64_t result = cfx_mont64_to(ctx, 1);  /* 1 in Montgomery form = R mod n */
     while (exp > 0) {
         if (exp & 1) result = cfx_mont64_mul(ctx, result, aR);

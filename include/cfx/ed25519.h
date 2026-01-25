@@ -37,8 +37,8 @@ extern "C" {
 
 /* Ed25519 - sign/verify full message (RFC 8032 pure mode) */
 void cfx_ed25519_create_keypair(uint8_t pk[32], uint8_t sk[64], const uint8_t seed[32]);  /* derive keypair from seed */
-void cfx_ed25519_sign(uint8_t sig[64], const uint8_t* msg, size_t msg_len, const uint8_t sk[64]);
-int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t* msg, size_t msg_len, const uint8_t pk[32]);  /* 0 = valid */
+void cfx_ed25519_sign(uint8_t sig[64], const uint8_t *msg, size_t msg_len, const uint8_t sk[64]);
+int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t *msg, size_t msg_len, const uint8_t pk[32]);  /* 0 = valid */
 void cfx_ed25519_get_public_key(uint8_t pk[32], const uint8_t sk[64]);  /* extract pk from sk */
 
 /*

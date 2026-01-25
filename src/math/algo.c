@@ -42,7 +42,7 @@ cfx_vec_t cfx_sieve_primes(cfx_limb_t n) {
     /* Map odds only: index k (0..m-1) corresponds to value p = 2*k + 3 */
     cfx_limb_t m = (n >= 3) ? ((n - 3) >> 1) + 1 : 0;      /* #odd candidates in [3..n] */
     size_t bytes = (size_t)((m + 7) >> 3);
-    uint8_t* mark = (uint8_t*)calloc(bytes ? bytes : 1, 1);
+    uint8_t *mark = (uint8_t *)calloc(bytes ? bytes : 1, 1);
     if (!mark) return primes;
 
     cfx_limb_t r = isqrt_u64(n);
@@ -70,8 +70,10 @@ cfx_vec_t cfx_sieve_primes(cfx_limb_t n) {
     count += 1; /* prime 2 */
     for (cfx_limb_t k = 0; k < m; ++k) if (!BIT_GET(mark, k)) ++count;
 
-    primes.data = (cfx_limb_t*)malloc(count * sizeof(cfx_limb_t));
-    if (!primes.data) { free(mark); return (cfx_vec_t){0}; }
+    primes.data = (cfx_limb_t *)malloc(count * sizeof(cfx_limb_t));
+    if (!primes.data) {
+        free(mark); return (cfx_vec_t){0};
+    }
     size_t pos = 0;
     primes.data[pos++] = 2;
     for (cfx_limb_t k = 0; k < m; ++k) {
@@ -110,7 +112,7 @@ uint64_t cfx_powmod_u64(uint64_t a, uint64_t e, uint64_t m) {
  * - then n is "probably" prime if either:
  *      - a^d == 1 mod n, or
  *      - a^(2r*d) == -1 mod n for some 0 <= r < s;
-*/
+ */
 int cfx_is_prime_u64(uint64_t n) {
     if (n < 2) return 0;
     if (n == 2) return 1;
@@ -126,7 +128,9 @@ int cfx_is_prime_u64(uint64_t n) {
 
     /* write n-1 = d * 2^s with d odd */
     uint64_t d = n - 1, s = 0;
-    while ((d & 1) == 0) { d >>= 1; ++s; }
+    while ((d & 1) == 0) {
+        d >>= 1; ++s;
+    }
 
     /* Initialize Montgomery context (n is odd) */
     cfx_mont64_t mont;
@@ -151,7 +155,9 @@ int cfx_is_prime_u64(uint64_t n) {
         int witness = 1;
         for (uint64_t r = 1; r < s; ++r) {
             x = cfx_mont64_sqr(&mont, x);
-            if (x == nm1_mont) { witness = 0; break; }
+            if (x == nm1_mont) {
+                witness = 0; break;
+            }
         }
         if (witness) return 0; /* composite */
     }
@@ -160,11 +166,13 @@ int cfx_is_prime_u64(uint64_t n) {
 
 
 uint64_t cfx_gcd_u64(uint64_t a, uint64_t b) {
-    while (b) { uint64_t t = a % b; a = b; b = t; }
+    while (b) {
+        uint64_t t = a % b; a = b; b = t;
+    }
     return a;
 }
 
-uint64_t cfx_xgcd_u64(uint64_t a, uint64_t b, int64_t* x, int64_t* y) {
+uint64_t cfx_xgcd_u64(uint64_t a, uint64_t b, int64_t *x, int64_t *y) {
     int64_t x0 = 1, x1 = 0;
     int64_t y0 = 0, y1 = 1;
     uint64_t a0 = a, b0 = b;
@@ -203,11 +211,11 @@ static inline uint64_t _rand_u64(void) {
 }
 
 /* Pollard's rho method of finding a non-trivial factor of some
-integer n. It uses the fact that if there is some divisor p (not necessarily prime)
-of n, then there are cycles in a well chosen function that's applied repeatedly
-to element in Zp...
+   integer n. It uses the fact that if there is some divisor p (not necessarily prime)
+   of n, then there are cycles in a well chosen function that's applied repeatedly
+   to element in Zp...
 
-Uses Montgomery multiplication to avoid expensive divisions - */
+   Uses Montgomery multiplication to avoid expensive divisions - */
 uint64_t cfx_pollard_rho_brent(uint64_t n) {
     if (n < 2) return 0;
     if ((n & 1) == 0) return 2;
@@ -267,16 +275,16 @@ uint64_t cfx_pollard_rho_brent(uint64_t n) {
 }
 
 /* comparator fn for qsort */
-static int cmp_u64(const void* a, const void* b) {
-    uint64_t x = *(const uint64_t*)a, y = *(const uint64_t*)b;
+static int cmp_u64(const void *a, const void *b) {
+    uint64_t x = *(const uint64_t *)a, y = *(const uint64_t *)b;
     return (x < y) ? -1 : (x > y);
 }
 
 
-int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n) {
+int cfx_factor_u64(cfx_vec_t *primes, cfx_vec_t *exps, uint64_t n) {
 
     if (n == 0) return -1;
-    
+
     cfx_vec_init(primes);
     cfx_vec_init(exps);
 
@@ -337,7 +345,9 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n) {
             /* (For 64-bit inputs this almost never triggers with a decent rho.) */
             uint64_t found = 0;
             for (uint64_t p = 3; p*p <= m; p += 2) {
-                if (m % p == 0) { found = p; break; }
+                if (m % p == 0) {
+                    found = p; break;
+                }
             }
             if (!found) { /* if we still failed, treat as prime to avoid infinite loop */
                 if (pcount < 256) plist[pcount++] = m;
@@ -350,7 +360,9 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n) {
         uint64_t a = d;
         uint64_t b = m / d;
         /* Prefer to push the larger first (optional), purely heuristic */
-        if (a < b) { uint64_t t=a; a=b; b=t; }
+        if (a < b) {
+            uint64_t t=a; a=b; b=t;
+        }
         st[top++] = a;
         st[top++] = b;
     }
@@ -362,7 +374,9 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n) {
         uint64_t p = plist[i];
         uint32_t e = 1;
         size_t j = i + 1;
-        while (j < pcount && plist[j] == p) { ++e; ++j; }
+        while (j < pcount && plist[j] == p) {
+            ++e; ++j;
+        }
         cfx_vec_push(primes, (cfx_limb_t)p);  /* Note: truncates if limb is 32-bit and p > 2^32 */
         cfx_vec_push(exps, e);
         i = j;
@@ -380,13 +394,13 @@ int cfx_factor_u64(cfx_vec_t* primes, cfx_vec_t* exps, uint64_t n) {
 /* } */
 
 /* Zero only the first `nout` entries that the multiplication will touch */
-void cfx_mul_scratch_zero(cfx_mul_scratch_t* s, size_t nout) {
+void cfx_mul_scratch_zero(cfx_mul_scratch_t *s, size_t nout) {
     assert(nout <= s->cap);
     memset(s->acc,   0, nout * sizeof(*s->acc));
     memset(s->spill, 0, (nout+1) * sizeof(cfx_limb_t));
 }
 
-void cfx_mul_scratch_alloc(cfx_mul_scratch_t* s, size_t needed) {
+void cfx_mul_scratch_alloc(cfx_mul_scratch_t *s, size_t needed) {
     if (s->cap >= needed) return;  /* already big enough */
 
     /* free old */
@@ -394,8 +408,8 @@ void cfx_mul_scratch_alloc(cfx_mul_scratch_t* s, size_t needed) {
     free(s->spill);
 
     /* or use typeof(s->acc) :D gcc extension*/
-    s->acc   = (csa128_t*)calloc(needed, sizeof(*s->acc));
-    s->spill = (cfx_limb_t*)calloc(needed+1, sizeof(cfx_limb_t)); /* we write spill[k+1] when k==nout-1) */
+    s->acc   = (csa128_t *)calloc(needed, sizeof(*s->acc));
+    s->spill = (cfx_limb_t *)calloc(needed+1, sizeof(cfx_limb_t)); /* we write spill[k+1] when k==nout-1) */
     s->cap   = needed;
 
     if (!s->acc || !s->spill) {
@@ -404,7 +418,7 @@ void cfx_mul_scratch_alloc(cfx_mul_scratch_t* s, size_t needed) {
     }
 }
 
-void cfx_mul_scratch_free(cfx_mul_scratch_t* s) {
+void cfx_mul_scratch_free(cfx_mul_scratch_t *s) {
     free(s->acc);
     free(s->spill);
     s->acc = NULL;
@@ -414,18 +428,18 @@ void cfx_mul_scratch_free(cfx_mul_scratch_t* s) {
 
 /* CSA (Carry-Save Adder) Multiplication
 
-  Core Concept
+   Core Concept
 
-  CSA is an optimization for big-integer multiplication that defers carry propagation
-  during the accumulation phase. Instead of propagating carries immediately (which 
-  creates serial dependencies), it stores partial results in a "carry-save" format */
+   CSA is an optimization for big-integer multiplication that defers carry propagation
+   during the accumulation phase. Instead of propagating carries immediately (which
+   creates serial dependencies), it stores partial results in a "carry-save" format */
 /* Assumes scratch->acc[0..nout-1] and scratch->spill[0..nout-1] are zeroed by the caller. */
-void cfx_mul_csa_portable_fast(const cfx_limb_t* A, size_t na,
-                               const cfx_limb_t* B, size_t nb,
-                               cfx_limb_t* R, cfx_mul_scratch_t* scratch) {
+void cfx_mul_csa_portable_fast(const cfx_limb_t *A, size_t na,
+    const cfx_limb_t *B, size_t nb,
+    cfx_limb_t *R, cfx_mul_scratch_t *scratch) {
     const size_t nout = na + nb;
-    csa128_t* acc = scratch->acc;
-    cfx_limb_t* spill = scratch->spill;
+    csa128_t *acc = scratch->acc;
+    cfx_limb_t *spill = scratch->spill;
 
     /* --- Accumulate all partial products (no ripple spills) --- */
     for (size_t i = 0; i < na; ++i) {
@@ -472,13 +486,15 @@ void cfx_mul_csa_portable_fast(const cfx_limb_t* A, size_t na,
 }
 
 
-void cfx_mul_csa_portable(const cfx_limb_t* A, size_t na,
-                          const cfx_limb_t* B, size_t nb, cfx_limb_t* R) {
+void cfx_mul_csa_portable(const cfx_limb_t *A, size_t na,
+    const cfx_limb_t *B, size_t nb, cfx_limb_t *R) {
 
     assert(na > 0 && nb > 0);
     const size_t nout = na + nb;              /* result limbs */
-    csa128_t* acc = (csa128_t*)alloca(nout * sizeof(csa128_t));
-    for (size_t k = 0; k < nout; ++k) { acc[k].lo = 0; acc[k].hi = 0; }
+    csa128_t *acc = (csa128_t *)alloca(nout * sizeof(csa128_t));
+    for (size_t k = 0; k < nout; ++k) {
+        acc[k].lo = 0; acc[k].hi = 0;
+    }
 
     /* Accumulate all partial products per diagonal, carry-save style */
     for (size_t i = 0; i < na; ++i) {
@@ -534,10 +550,9 @@ void cfx_mul_csa_portable(const cfx_limb_t* A, size_t na,
 }
 
 /* Accumulate rows i in [ia, ia+na_rows) of A against full B into acc/spill (size nout). */
-void cfx_mul_csa_portable_fast_rows(const cfx_limb_t* A, size_t ia, size_t na_rows,
-                                    const cfx_limb_t* B, size_t nb,
-                                    csa128_t* acc, cfx_limb_t* spill)
-{
+void cfx_mul_csa_portable_fast_rows(const cfx_limb_t *A, size_t ia, size_t na_rows,
+    const cfx_limb_t *B, size_t nb,
+    csa128_t *acc, cfx_limb_t *spill){
     for (size_t ii = 0; ii < na_rows; ++ii) {
         size_t i = ia + ii;
         cfx_limb_t ai = A[i];
@@ -559,9 +574,8 @@ void cfx_mul_csa_portable_fast_rows(const cfx_limb_t* A, size_t ia, size_t na_ro
     }
 }
 
-void cfx_mul_csa_fold_and_normalize(csa128_t* acc, cfx_limb_t* spill,
-                                    size_t nout, cfx_limb_t* R)
-{
+void cfx_mul_csa_fold_and_normalize(csa128_t *acc, cfx_limb_t *spill,
+    size_t nout, cfx_limb_t *R){
     /* Fold spills left->right (predictable) */
     cfx_limb_t pending = spill[0];
     for (size_t k = 0; k < nout; ++k) {

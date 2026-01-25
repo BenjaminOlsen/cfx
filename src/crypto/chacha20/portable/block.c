@@ -6,12 +6,12 @@
 #define ROTL32(x, n) ((uint32_t)(((x) << (n)) | ((x) >> (32 - (n)))))
 
 #define QR(a, b, c, d) \
-    a += b; d ^= a; d = ROTL32(d, 16); \
-    c += d; b ^= c; b = ROTL32(b, 12); \
-    a += b; d ^= a; d = ROTL32(d,  8); \
-    c += d; b ^= c; b = ROTL32(b,  7);
+        a += b; d ^= a; d = ROTL32(d, 16); \
+        c += d; b ^= c; b = ROTL32(b, 12); \
+        a += b; d ^= a; d = ROTL32(d,  8); \
+        c += d; b ^= c; b = ROTL32(b,  7);
 
-void cfx_chacha20_block_impl(const cfx_chacha20_state_t* ctx, uint32_t counter, uint8_t out[64]) {
+void cfx_chacha20_block_impl(const cfx_chacha20_state_t *ctx, uint32_t counter, uint8_t out[64]) {
     uint32_t w[16];
     for (int i = 0; i < 16; ++i) w[i] = ctx->s[i];
     w[12] = counter;

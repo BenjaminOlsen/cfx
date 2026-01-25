@@ -40,8 +40,8 @@
  */
 void cfx_poly1305_block_impl(
     uint32_t *h0, uint32_t *h1, uint32_t *h2, uint32_t *h3, uint32_t *h4,
-    uint32_t  t0, uint32_t  t1, uint32_t  t2, uint32_t  t3, uint32_t  t4,
-    uint32_t  r0, uint32_t  r1, uint32_t  r2, uint32_t  r3, uint32_t  r4,
-    uint32_t  s1, uint32_t  s2, uint32_t  s3, uint32_t  s4);
+    uint32_t t0, uint32_t t1, uint32_t t2, uint32_t t3, uint32_t t4,
+    uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t r4,
+    uint32_t s1, uint32_t s2, uint32_t s3, uint32_t s4);
 
 #endif /* CFX_POLY1305_BACKEND_H */

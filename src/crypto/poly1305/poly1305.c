@@ -31,37 +31,37 @@ typedef struct {
     uint32_t pad0, pad1, pad2, pad3;
     uint32_t h0, h1, h2, h3, h4;
 
-    uint8_t  buffer[16];    /* holds any incomplete (< 16 byte ) blocks */
-    uint8_t  buflen;        /* 0..15 */
-    uint8_t  done;          /* After cfx_poly1305_finish(state, tag), the Poly1305 key must never be reused */
+    uint8_t buffer[16];     /* holds any incomplete (< 16 byte ) blocks */
+    uint8_t buflen;         /* 0..15 */
+    uint8_t done;           /* After cfx_poly1305_finish(state, tag), the Poly1305 key must never be reused */
 } cfx_poly1305_state_t;
 
 /* ---------------------------------------------------------------------------------------------------- */
 /* The amazing poly1305 message authenticator algorithm - shamelessly plagiarized from libsodium.
 
-the '1305' comes from  p = 2^130 - 5, so we can do some tricks:
+   the '1305' comes from  p = 2^130 - 5, so we can do some tricks:
 
-if a and b are expressed in 5 x 26  bit limbs, then
-we can take advantage of the fact that the top column (in parens below)
-which are in the (2^26)^5 = 2^130 place. So if we have a quantity n in that
-term it's:
-  n * 2^130 mod p
-= n*2^130 mod (2^130 - 5)
-= (n mod p) * (2^130 mod p)
-= (n mod p) * 5
+   if a and b are expressed in 5 x 26  bit limbs, then
+   we can take advantage of the fact that the top column (in parens below)
+   which are in the (2^26)^5 = 2^130 place. So if we have a quantity n in that
+   term it's:
+   n * 2^130 mod p
+   = n*2^130 mod (2^130 - 5)
+   = (n mod p) * (2^130 mod p)
+   = (n mod p) * 5
 
-= n * 5     - (if 0 <= n < p, then n mod p = n.)
+   = n * 5     - (if 0 <= n < p, then n mod p = n.)
 
-This makes the multiplication of two 5 limb numbers look like this:
+   This makes the multiplication of two 5 limb numbers look like this:
 
                                    a4      a3      a2      a1      a0
-                              *    b4      b3      b2      b1      b0
+ *    b4      b3      b2      b1      b0
                               ---------------------------------------
                                 a4*b0   a3*b0   a2*b0   a1*b0   a0*b0
                      (a4*b1)  + a3*b1   a2*b1   a1*b1   a0*b1 5*a4*b1  <--
               ...  + (a3*b2)  + a2*b2   a1*b2   a0*b2 5*a4*b2 5*a3*b2  <--
         ... + ...  + (a2*b3)  + a1*b3   a0*b3 5*a4*b3 5*a3*b3 5*a2*b3
- ... + .... + ...  + (a1*b4)  + a0*b4 5*a4*b4 5*a3*b4 5*a2*b4 5*a1*b4
+   ... + .... + ...  + (a1*b4)  + a0*b4 5*a4*b4 5*a3*b4 5*a2*b4 5*a1*b4
 
  * ----- */
 
@@ -101,8 +101,8 @@ CFX_INLINE void poly1305_mul_mod(
     *out1 += c;
 }
 
-void cfx_poly1305_init(cfx_poly1305_ctx_t* ctx, const uint8_t key[32]) {
-    cfx_poly1305_state_t* s = (cfx_poly1305_state_t*)ctx->opaque;
+void cfx_poly1305_init(cfx_poly1305_ctx_t *ctx, const uint8_t key[32]) {
+    cfx_poly1305_state_t *s = (cfx_poly1305_state_t *)ctx->opaque;
 
     /*  clamp(r): r &= 0x0ffffffc0ffffffc0ffffffc0fffffff */
     s->r0 =  CFX_LOAD32_LE(&key[0])  & 0x3ffffffu;
@@ -117,9 +117,9 @@ void cfx_poly1305_init(cfx_poly1305_ctx_t* ctx, const uint8_t key[32]) {
 
     /* precompute r^2 */
     poly1305_mul_mod(&s->r2_0, &s->r2_1, &s->r2_2, &s->r2_3, &s->r2_4,
-                     s->r0, s->r1, s->r2, s->r3, s->r4,
-                     s->r0, s->r1, s->r2, s->r3, s->r4,
-                     s->s1, s->s2, s->s3, s->s4);
+        s->r0, s->r1, s->r2, s->r3, s->r4,
+        s->r0, s->r1, s->r2, s->r3, s->r4,
+        s->s1, s->s2, s->s3, s->s4);
     s->r2_s1 = (uint64_t)s->r2_1 * 5u;
     s->r2_s2 = (uint64_t)s->r2_2 * 5u;
     s->r2_s3 = (uint64_t)s->r2_3 * 5u;
@@ -127,9 +127,9 @@ void cfx_poly1305_init(cfx_poly1305_ctx_t* ctx, const uint8_t key[32]) {
 
     /* precompute r^3 = r^2 * r */
     poly1305_mul_mod(&s->r3_0, &s->r3_1, &s->r3_2, &s->r3_3, &s->r3_4,
-                     s->r2_0, s->r2_1, s->r2_2, s->r2_3, s->r2_4,
-                     s->r0, s->r1, s->r2, s->r3, s->r4,
-                     s->s1, s->s2, s->s3, s->s4);
+        s->r2_0, s->r2_1, s->r2_2, s->r2_3, s->r2_4,
+        s->r0, s->r1, s->r2, s->r3, s->r4,
+        s->s1, s->s2, s->s3, s->s4);
     s->r3_s1 = (uint64_t)s->r3_1 * 5u;
     s->r3_s2 = (uint64_t)s->r3_2 * 5u;
     s->r3_s3 = (uint64_t)s->r3_3 * 5u;
@@ -137,9 +137,9 @@ void cfx_poly1305_init(cfx_poly1305_ctx_t* ctx, const uint8_t key[32]) {
 
     /* precompute r^4 = r^2 * r^2 */
     poly1305_mul_mod(&s->r4_0, &s->r4_1, &s->r4_2, &s->r4_3, &s->r4_4,
-                     s->r2_0, s->r2_1, s->r2_2, s->r2_3, s->r2_4,
-                     s->r2_0, s->r2_1, s->r2_2, s->r2_3, s->r2_4,
-                     s->r2_s1, s->r2_s2, s->r2_s3, s->r2_s4);
+        s->r2_0, s->r2_1, s->r2_2, s->r2_3, s->r2_4,
+        s->r2_0, s->r2_1, s->r2_2, s->r2_3, s->r2_4,
+        s->r2_s1, s->r2_s2, s->r2_s3, s->r2_s4);
     s->r4_s1 = (uint64_t)s->r4_1 * 5u;
     s->r4_s2 = (uint64_t)s->r4_2 * 5u;
     s->r4_s3 = (uint64_t)s->r4_3 * 5u;
@@ -162,8 +162,8 @@ void cfx_poly1305_init(cfx_poly1305_ctx_t* ctx, const uint8_t key[32]) {
 
 CFX_INLINE void cfx_poly1305_block(
     uint32_t *h0, uint32_t *h1, uint32_t *h2, uint32_t *h3, uint32_t *h4,
-    uint32_t  r0, uint32_t  r1, uint32_t  r2, uint32_t  r3, uint32_t  r4,
-    uint64_t  s1, uint64_t  s2, uint64_t  s3, uint64_t  s4,
+    uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t r4,
+    uint64_t s1, uint64_t s2, uint64_t s3, uint64_t s4,
     const uint8_t *p) {
 
     uint32_t t0, t1, t2, t3, t4;
@@ -369,10 +369,12 @@ CFX_INLINE void cfx_poly1305_4blocks(
     *h0 = H0; *h1 = H1; *h2 = H2; *h3 = H3; *h4 = H4;
 }
 
-void cfx_poly1305_update(cfx_poly1305_ctx_t* ctx, const uint8_t* msg, size_t mlen) {
-    cfx_poly1305_state_t* s = (cfx_poly1305_state_t*)ctx->opaque;
+void cfx_poly1305_update(cfx_poly1305_ctx_t *ctx, const uint8_t *msg, size_t mlen) {
+    cfx_poly1305_state_t *s = (cfx_poly1305_state_t *)ctx->opaque;
 
-    if (s->done || mlen == 0) { return; }
+    if (s->done || mlen == 0) {
+        return;
+    }
     uint8_t buflen = s->buflen;
 
     uint32_t h0 = s->h0, h1 = s->h1, h2 = s->h2, h3 = s->h3, h4 = s->h4;
@@ -389,9 +391,9 @@ void cfx_poly1305_update(cfx_poly1305_ctx_t* ctx, const uint8_t* msg, size_t mle
 
         memcpy(s->buffer + buflen, msg, remain);
         cfx_poly1305_block(&h0, &h1, &h2, &h3, &h4,
-                            r0, r1, r2, r3, r4,
-                            s1, s2, s3, s4,
-                            s->buffer);
+            r0, r1, r2, r3, r4,
+            s1, s2, s3, s4,
+            s->buffer);
         msg += remain;
         mlen -= remain;
         s->buflen = 0;
@@ -400,15 +402,15 @@ void cfx_poly1305_update(cfx_poly1305_ctx_t* ctx, const uint8_t* msg, size_t mle
     /* 4-block processing */
     while (mlen >= 64) {
         cfx_poly1305_4blocks(&h0, &h1, &h2, &h3, &h4,
-                             r0, r1, r2, r3, r4,
-                             s1, s2, s3, s4,
-                             s->r2_0, s->r2_1, s->r2_2, s->r2_3, s->r2_4,
-                             s->r2_s1, s->r2_s2, s->r2_s3, s->r2_s4,
-                             s->r3_0, s->r3_1, s->r3_2, s->r3_3, s->r3_4,
-                             s->r3_s1, s->r3_s2, s->r3_s3, s->r3_s4,
-                             s->r4_0, s->r4_1, s->r4_2, s->r4_3, s->r4_4,
-                             s->r4_s1, s->r4_s2, s->r4_s3, s->r4_s4,
-                             msg, msg + 16, msg + 32, msg + 48);
+            r0, r1, r2, r3, r4,
+            s1, s2, s3, s4,
+            s->r2_0, s->r2_1, s->r2_2, s->r2_3, s->r2_4,
+            s->r2_s1, s->r2_s2, s->r2_s3, s->r2_s4,
+            s->r3_0, s->r3_1, s->r3_2, s->r3_3, s->r3_4,
+            s->r3_s1, s->r3_s2, s->r3_s3, s->r3_s4,
+            s->r4_0, s->r4_1, s->r4_2, s->r4_3, s->r4_4,
+            s->r4_s1, s->r4_s2, s->r4_s3, s->r4_s4,
+            msg, msg + 16, msg + 32, msg + 48);
         msg  += 64;
         mlen -= 64;
     }
@@ -416,11 +418,11 @@ void cfx_poly1305_update(cfx_poly1305_ctx_t* ctx, const uint8_t* msg, size_t mle
     /* 2-block processing */
     while (mlen >= 32) {
         cfx_poly1305_2blocks(&h0, &h1, &h2, &h3, &h4,
-                             r0, r1, r2, r3, r4,
-                             s1, s2, s3, s4,
-                             s->r2_0, s->r2_1, s->r2_2, s->r2_3, s->r2_4,
-                             s->r2_s1, s->r2_s2, s->r2_s3, s->r2_s4,
-                             msg, msg + 16);
+            r0, r1, r2, r3, r4,
+            s1, s2, s3, s4,
+            s->r2_0, s->r2_1, s->r2_2, s->r2_3, s->r2_4,
+            s->r2_s1, s->r2_s2, s->r2_s3, s->r2_s4,
+            msg, msg + 16);
         msg  += 32;
         mlen -= 32;
     }
@@ -428,9 +430,9 @@ void cfx_poly1305_update(cfx_poly1305_ctx_t* ctx, const uint8_t* msg, size_t mle
     /* remaining single blocks */
     while (mlen >= 16) {
         cfx_poly1305_block(&h0, &h1, &h2, &h3, &h4,
-                            r0, r1, r2, r3, r4,
-                            s1, s2, s3, s4,
-                            msg);
+            r0, r1, r2, r3, r4,
+            s1, s2, s3, s4,
+            msg);
         msg  += 16;
         mlen -= 16;
     }
@@ -448,8 +450,8 @@ void cfx_poly1305_update(cfx_poly1305_ctx_t* ctx, const uint8_t* msg, size_t mle
     s->h4 = h4;
 }
 
-void cfx_poly1305_finish(cfx_poly1305_ctx_t* ctx, uint8_t tag[16]) {
-    cfx_poly1305_state_t* s = (cfx_poly1305_state_t*)ctx->opaque;
+void cfx_poly1305_finish(cfx_poly1305_ctx_t *ctx, uint8_t tag[16]) {
+    cfx_poly1305_state_t *s = (cfx_poly1305_state_t *)ctx->opaque;
 
     if (s->done) return;
 
@@ -596,7 +598,7 @@ void cfx_poly1305_finish(cfx_poly1305_ctx_t* ctx, uint8_t tag[16]) {
     s->done = 1;
 }
 
-void cfx_poly1305(uint8_t tag[16], const uint8_t* m, size_t mlen, const uint8_t key[32]) {
+void cfx_poly1305(uint8_t tag[16], const uint8_t *m, size_t mlen, const uint8_t key[32]) {
     cfx_poly1305_ctx_t ctx;
     cfx_poly1305_init(&ctx, key);
     cfx_poly1305_update(&ctx, m, mlen);

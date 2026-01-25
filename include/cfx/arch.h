@@ -52,12 +52,12 @@
     #define CFX_ALIGNAS(N) alignas(N)
 #elif defined(_MSC_VER)
     #include <stddef.h>
-    struct offset_struct_32 {char c; uint32_t x;};
+struct offset_struct_32 {char c; uint32_t x;};
     #define CFX_ALIGNOF(T) __alignof(T)
     #define CFX_ALIGNAS(N) __declspec(align(N))
 #else
     #include <stddef.h>
-    struct offset_struct_32 {char c; uint32_t x;};
+struct offset_struct_32 {char c; uint32_t x;};
     #define CFX_ALIGNOF(T) offsetof(struct offset_struct_32, x)
     #define CFX_ALIGNAS(N) __attribute__((aligned(N)))
 #endif
@@ -169,7 +169,9 @@ CFX_INLINE uint64_t cfx_mulmod64(uint64_t a, uint64_t b, uint64_t m) {
     if (m <= 1) return 0;
     a %= m;
     b %= m;
-    if (a > b) { uint64_t t = a; a = b; b = t; }
+    if (a > b) {
+        uint64_t t = a; a = b; b = t;
+    }
     uint64_t result = 0;
     while (a > 0) {
         if (a & 1) {

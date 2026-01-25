@@ -23,7 +23,7 @@
 const fe25519_t cfx_fe25519_zero = {{ 0, 0, 0, 0, 0 }};
 const fe25519_t cfx_fe25519_one  = {{ 1, 0, 0, 0, 0 }};
 
-void cfx_fe25519_0(fe25519_t* h) {
+void cfx_fe25519_0(fe25519_t *h) {
     h->v[0] = 0;
     h->v[1] = 0;
     h->v[2] = 0;
@@ -31,7 +31,7 @@ void cfx_fe25519_0(fe25519_t* h) {
     h->v[4] = 0;
 }
 
-void cfx_fe25519_1(fe25519_t* h) {
+void cfx_fe25519_1(fe25519_t *h) {
     h->v[0] = 1;
     h->v[1] = 0;
     h->v[2] = 0;
@@ -39,7 +39,7 @@ void cfx_fe25519_1(fe25519_t* h) {
     h->v[4] = 0;
 }
 
-void cfx_fe25519_copy(fe25519_t* h, const fe25519_t* f) {
+void cfx_fe25519_copy(fe25519_t *h, const fe25519_t *f) {
     h->v[0] = f->v[0];
     h->v[1] = f->v[1];
     h->v[2] = f->v[2];
@@ -48,7 +48,7 @@ void cfx_fe25519_copy(fe25519_t* h, const fe25519_t* f) {
 }
 
 /* h = f + g, no reduction needed - headroom absorbs the growth */
-void cfx_fe25519_add(fe25519_t* h, const fe25519_t* f, const fe25519_t* g) {
+void cfx_fe25519_add(fe25519_t *h, const fe25519_t *f, const fe25519_t *g) {
     h->v[0] = f->v[0] + g->v[0];
     h->v[1] = f->v[1] + g->v[1];
     h->v[2] = f->v[2] + g->v[2];
@@ -57,7 +57,7 @@ void cfx_fe25519_add(fe25519_t* h, const fe25519_t* f, const fe25519_t* g) {
 }
 
 /* h = f - g, add 2p first to ensure non-negative result */
-void cfx_fe25519_sub(fe25519_t* h, const fe25519_t* f, const fe25519_t* g) {
+void cfx_fe25519_sub(fe25519_t *h, const fe25519_t *f, const fe25519_t *g) {
     const uint64_t two_p0 = 0xFFFFFFFFFFFDA;  /* 2*(2^51 - 19) */
     const uint64_t two_p1 = 0xFFFFFFFFFFFFE;  /* 2*(2^51 - 1) */
 
@@ -69,14 +69,14 @@ void cfx_fe25519_sub(fe25519_t* h, const fe25519_t* f, const fe25519_t* g) {
 }
 
 /* h = -f */
-void cfx_fe25519_neg(fe25519_t* h, const fe25519_t* f) {
+void cfx_fe25519_neg(fe25519_t *h, const fe25519_t *f) {
     fe25519_t zero;
     cfx_fe25519_0(&zero);
     cfx_fe25519_sub(h, &zero, f);
 }
 
 /* carry propagation: reduce each limb to ~51 bits, final carry wraps * 19 */
-void cfx_fe25519_carry(fe25519_t* h) {
+void cfx_fe25519_carry(fe25519_t *h) {
     uint64_t c;
 
     c = h->v[0] >> 51;
@@ -106,7 +106,7 @@ void cfx_fe25519_carry(fe25519_t* h) {
 }
 
 /* h = f * g, schoolbook 5x5 with inline reduction, 128-bit accumulators */
-void cfx_fe25519_mul(fe25519_t* h, const fe25519_t* f, const fe25519_t* g) {
+void cfx_fe25519_mul(fe25519_t *h, const fe25519_t *f, const fe25519_t *g) {
     uint64_t f0 = f->v[0], f1 = f->v[1], f2 = f->v[2], f3 = f->v[3], f4 = f->v[4];
     uint64_t g0 = g->v[0], g1 = g->v[1], g2 = g->v[2], g3 = g->v[3], g4 = g->v[4];
 
@@ -132,34 +132,34 @@ void cfx_fe25519_mul(fe25519_t* h, const fe25519_t* f, const fe25519_t* g) {
     __uint128_t h0, h1, h2, h3, h4;
 
     h0 = (__uint128_t)f0 * g0
-       + (__uint128_t)f1 * g4_19
-       + (__uint128_t)f2 * g3_19
-       + (__uint128_t)f3 * g2_19
-       + (__uint128_t)f4 * g1_19;
+         + (__uint128_t)f1 * g4_19
+         + (__uint128_t)f2 * g3_19
+         + (__uint128_t)f3 * g2_19
+         + (__uint128_t)f4 * g1_19;
 
     h1 = (__uint128_t)f0 * g1
-       + (__uint128_t)f1 * g0
-       + (__uint128_t)f2 * g4_19
-       + (__uint128_t)f3 * g3_19
-       + (__uint128_t)f4 * g2_19;
+         + (__uint128_t)f1 * g0
+         + (__uint128_t)f2 * g4_19
+         + (__uint128_t)f3 * g3_19
+         + (__uint128_t)f4 * g2_19;
 
     h2 = (__uint128_t)f0 * g2
-       + (__uint128_t)f1 * g1
-       + (__uint128_t)f2 * g0
-       + (__uint128_t)f3 * g4_19
-       + (__uint128_t)f4 * g3_19;
+         + (__uint128_t)f1 * g1
+         + (__uint128_t)f2 * g0
+         + (__uint128_t)f3 * g4_19
+         + (__uint128_t)f4 * g3_19;
 
     h3 = (__uint128_t)f0 * g3
-       + (__uint128_t)f1 * g2
-       + (__uint128_t)f2 * g1
-       + (__uint128_t)f3 * g0
-       + (__uint128_t)f4 * g4_19;
+         + (__uint128_t)f1 * g2
+         + (__uint128_t)f2 * g1
+         + (__uint128_t)f3 * g0
+         + (__uint128_t)f4 * g4_19;
 
     h4 = (__uint128_t)f0 * g4
-       + (__uint128_t)f1 * g3
-       + (__uint128_t)f2 * g2
-       + (__uint128_t)f3 * g1
-       + (__uint128_t)f4 * g0;
+         + (__uint128_t)f1 * g3
+         + (__uint128_t)f2 * g2
+         + (__uint128_t)f3 * g1
+         + (__uint128_t)f4 * g0;
 
     /* carry propagation */
     uint64_t c;
@@ -252,7 +252,7 @@ void cfx_fe25519_mul(fe25519_t* h, const fe25519_t* f, const fe25519_t* g) {
 }
 
 /* h = f^2, exploits symmetry: f[i]*f[j] appears twice when i != j */
-void cfx_fe25519_sqr(fe25519_t* h, const fe25519_t* f) {
+void cfx_fe25519_sqr(fe25519_t *h, const fe25519_t *f) {
     uint64_t f0 = f->v[0], f1 = f->v[1], f2 = f->v[2], f3 = f->v[3], f4 = f->v[4];
 
     /* double the cross terms */
@@ -279,24 +279,24 @@ void cfx_fe25519_sqr(fe25519_t* h, const fe25519_t* f) {
     uint64_t f3_19 = f3 * 19;
 
     h0 = (__uint128_t)f0   * f0
-       + (__uint128_t)f1_38 * f4
-       + (__uint128_t)f2_19 * f3_2;
+         + (__uint128_t)f1_38 * f4
+         + (__uint128_t)f2_19 * f3_2;
 
     h1 = (__uint128_t)f0_2 * f1
-       + (__uint128_t)f2_19 * f4 * 2
-       + (__uint128_t)f3_19 * f3;
+         + (__uint128_t)f2_19 * f4 * 2
+         + (__uint128_t)f3_19 * f3;
 
     h2 = (__uint128_t)f0_2 * f2
-       + (__uint128_t)f1   * f1
-       + (__uint128_t)f3_38 * f4;
+         + (__uint128_t)f1   * f1
+         + (__uint128_t)f3_38 * f4;
 
     h3 = (__uint128_t)f0_2 * f3
-       + (__uint128_t)f1_2 * f2
-       + (__uint128_t)f4_19 * f4;
+         + (__uint128_t)f1_2 * f2
+         + (__uint128_t)f4_19 * f4;
 
     h4 = (__uint128_t)f0_2 * f4
-       + (__uint128_t)f1_2 * f3
-       + (__uint128_t)f2   * f2;
+         + (__uint128_t)f1_2 * f3
+         + (__uint128_t)f2   * f2;
 
     /* carry propagation */
     uint64_t c;
@@ -379,7 +379,7 @@ void cfx_fe25519_sqr(fe25519_t* h, const fe25519_t* f) {
 }
 
 /* h = f^(2^n) - repeated squaring */
-void cfx_fe25519_sqr_n(fe25519_t* h, const fe25519_t* f, unsigned n) {
+void cfx_fe25519_sqr_n(fe25519_t *h, const fe25519_t *f, unsigned n) {
     cfx_fe25519_sqr(h, f);
     for (unsigned i = 1; i < n; i++) {
         cfx_fe25519_sqr(h, h);
@@ -387,7 +387,7 @@ void cfx_fe25519_sqr_n(fe25519_t* h, const fe25519_t* f, unsigned n) {
 }
 
 /* h = f * 121666, used in montgomery ladder: (A+2)/4 = 121666 for curve25519 */
-void cfx_fe25519_mul121666(fe25519_t* h, const fe25519_t* f) {
+void cfx_fe25519_mul121666(fe25519_t *h, const fe25519_t *f) {
 #ifdef __SIZEOF_INT128__
     __uint128_t t;
     uint64_t c;
@@ -443,7 +443,7 @@ void cfx_fe25519_mul121666(fe25519_t* h, const fe25519_t* f) {
 }
 
 /* full reduction to canonical [0, p) range, required before comparison or serialization */
-void cfx_fe25519_reduce(fe25519_t* h) {
+void cfx_fe25519_reduce(fe25519_t *h) {
     cfx_fe25519_carry(h);
     cfx_fe25519_carry(h);  /* second round ensures all limbs < 2^51 */
 
@@ -474,7 +474,7 @@ void cfx_fe25519_reduce(fe25519_t* h) {
 }
 
 /* constant-time conditional swap */
-void cfx_fe25519_cswap(fe25519_t* f, fe25519_t* g, unsigned int b) {
+void cfx_fe25519_cswap(fe25519_t *f, fe25519_t *g, unsigned int b) {
     uint64_t mask = (uint64_t)0 - (uint64_t)(b != 0);
     uint64_t t;
 
@@ -486,7 +486,7 @@ void cfx_fe25519_cswap(fe25519_t* f, fe25519_t* g, unsigned int b) {
 }
 
 /* constant-time conditional move: if b, h = f */
-void cfx_fe25519_cmov(fe25519_t* h, const fe25519_t* f, unsigned int b) {
+void cfx_fe25519_cmov(fe25519_t *h, const fe25519_t *f, unsigned int b) {
     uint64_t mask = (uint64_t)0 - (uint64_t)(b != 0);
 
     h->v[0] = (h->v[0] & ~mask) | (f->v[0] & mask);
@@ -497,7 +497,7 @@ void cfx_fe25519_cmov(fe25519_t* h, const fe25519_t* f, unsigned int b) {
 }
 
 /* returns 1 if f == 0, else 0 */
-int cfx_fe25519_iszero(const fe25519_t* f) {
+int cfx_fe25519_iszero(const fe25519_t *f) {
     fe25519_t t;
     cfx_fe25519_copy(&t, f);
     cfx_fe25519_reduce(&t);
@@ -510,7 +510,7 @@ int cfx_fe25519_iszero(const fe25519_t* f) {
 }
 
 /* returns 1 if f is negative (LSB of reduced form) */
-int cfx_fe25519_isnegative(const fe25519_t* f) {
+int cfx_fe25519_isnegative(const fe25519_t *f) {
     fe25519_t t;
     cfx_fe25519_copy(&t, f);
     cfx_fe25519_reduce(&t);
@@ -518,54 +518,54 @@ int cfx_fe25519_isnegative(const fe25519_t* f) {
 }
 
 /* returns 1 if f == g */
-int cfx_fe25519_eq(const fe25519_t* f, const fe25519_t* g) {
+int cfx_fe25519_eq(const fe25519_t *f, const fe25519_t *g) {
     fe25519_t d;
     cfx_fe25519_sub(&d, f, g);
     return cfx_fe25519_iszero(&d);
 }
 
 /* deserialize 32 bytes (little-endian) to field element, clears bit 255 per RFC 7748 */
-void cfx_fe25519_frombytes(fe25519_t* h, const uint8_t s[32]) {
+void cfx_fe25519_frombytes(fe25519_t *h, const uint8_t s[32]) {
     uint64_t h0 = (uint64_t)s[0]
-                | ((uint64_t)s[1] << 8)
-                | ((uint64_t)s[2] << 16)
-                | ((uint64_t)s[3] << 24)
-                | ((uint64_t)s[4] << 32)
-                | ((uint64_t)s[5] << 40)
-                | ((uint64_t)(s[6] & 0x07) << 48);
+                  | ((uint64_t)s[1] << 8)
+                  | ((uint64_t)s[2] << 16)
+                  | ((uint64_t)s[3] << 24)
+                  | ((uint64_t)s[4] << 32)
+                  | ((uint64_t)s[5] << 40)
+                  | ((uint64_t)(s[6] & 0x07) << 48);
 
     uint64_t h1 = ((uint64_t)s[6] >> 3)
-                | ((uint64_t)s[7] << 5)
-                | ((uint64_t)s[8] << 13)
-                | ((uint64_t)s[9] << 21)
-                | ((uint64_t)s[10] << 29)
-                | ((uint64_t)s[11] << 37)
-                | ((uint64_t)(s[12] & 0x3F) << 45);
+                  | ((uint64_t)s[7] << 5)
+                  | ((uint64_t)s[8] << 13)
+                  | ((uint64_t)s[9] << 21)
+                  | ((uint64_t)s[10] << 29)
+                  | ((uint64_t)s[11] << 37)
+                  | ((uint64_t)(s[12] & 0x3F) << 45);
 
     uint64_t h2 = ((uint64_t)s[12] >> 6)
-                | ((uint64_t)s[13] << 2)
-                | ((uint64_t)s[14] << 10)
-                | ((uint64_t)s[15] << 18)
-                | ((uint64_t)s[16] << 26)
-                | ((uint64_t)s[17] << 34)
-                | ((uint64_t)s[18] << 42)
-                | ((uint64_t)(s[19] & 0x01) << 50);
+                  | ((uint64_t)s[13] << 2)
+                  | ((uint64_t)s[14] << 10)
+                  | ((uint64_t)s[15] << 18)
+                  | ((uint64_t)s[16] << 26)
+                  | ((uint64_t)s[17] << 34)
+                  | ((uint64_t)s[18] << 42)
+                  | ((uint64_t)(s[19] & 0x01) << 50);
 
     uint64_t h3 = ((uint64_t)s[19] >> 1)
-                | ((uint64_t)s[20] << 7)
-                | ((uint64_t)s[21] << 15)
-                | ((uint64_t)s[22] << 23)
-                | ((uint64_t)s[23] << 31)
-                | ((uint64_t)s[24] << 39)
-                | ((uint64_t)(s[25] & 0x0F) << 47);
+                  | ((uint64_t)s[20] << 7)
+                  | ((uint64_t)s[21] << 15)
+                  | ((uint64_t)s[22] << 23)
+                  | ((uint64_t)s[23] << 31)
+                  | ((uint64_t)s[24] << 39)
+                  | ((uint64_t)(s[25] & 0x0F) << 47);
 
     uint64_t h4 = ((uint64_t)s[25] >> 4)
-                | ((uint64_t)s[26] << 4)
-                | ((uint64_t)s[27] << 12)
-                | ((uint64_t)s[28] << 20)
-                | ((uint64_t)s[29] << 28)
-                | ((uint64_t)s[30] << 36)
-                | ((uint64_t)(s[31] & 0x7F) << 44);  /* clear bit 255 */
+                  | ((uint64_t)s[26] << 4)
+                  | ((uint64_t)s[27] << 12)
+                  | ((uint64_t)s[28] << 20)
+                  | ((uint64_t)s[29] << 28)
+                  | ((uint64_t)s[30] << 36)
+                  | ((uint64_t)(s[31] & 0x7F) << 44); /* clear bit 255 */
 
     h->v[0] = h0;
     h->v[1] = h1;
@@ -575,7 +575,7 @@ void cfx_fe25519_frombytes(fe25519_t* h, const uint8_t s[32]) {
 }
 
 /* serialize to 32 bytes (little-endian), fully reduces first */
-void cfx_fe25519_tobytes(uint8_t s[32], const fe25519_t* h) {
+void cfx_fe25519_tobytes(uint8_t s[32], const fe25519_t *h) {
     fe25519_t t;
     cfx_fe25519_copy(&t, h);
     cfx_fe25519_reduce(&t);
@@ -618,7 +618,7 @@ void cfx_fe25519_tobytes(uint8_t s[32], const fe25519_t* h) {
 }
 
 /* h = 1/f via fermat: f^(-1) = f^(p-2), p-2 = 2^255 - 21, computed via addition chain */
-void cfx_fe25519_inv(fe25519_t* h, const fe25519_t* f) {
+void cfx_fe25519_inv(fe25519_t *h, const fe25519_t *f) {
     fe25519_t t0, t1, t2, t3;
 
     /* addition chain for p-2 = 2^255 - 21 */
@@ -657,7 +657,7 @@ void cfx_fe25519_inv(fe25519_t* h, const fe25519_t* f) {
 }
 
 /* h = f^((p-5)/8) = f^(2^252 - 3), used for square roots */
-void cfx_fe25519_pow22523(fe25519_t* h, const fe25519_t* f) {
+void cfx_fe25519_pow22523(fe25519_t *h, const fe25519_t *f) {
     fe25519_t t0, t1, t2;
 
     cfx_fe25519_sqr(&t0, f);

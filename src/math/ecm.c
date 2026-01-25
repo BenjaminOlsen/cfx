@@ -26,17 +26,17 @@
  * ============================================================================
  */
 
-void cfx_ecm_point_init(cfx_ecm_point_t* P) {
+void cfx_ecm_point_init(cfx_ecm_point_t *P) {
     cfx_big_init(&P->X);
     cfx_big_init(&P->Z);
 }
 
-void cfx_ecm_point_free(cfx_ecm_point_t* P) {
+void cfx_ecm_point_free(cfx_ecm_point_t *P) {
     cfx_big_free(&P->X);
     cfx_big_free(&P->Z);
 }
 
-void cfx_ecm_point_copy(cfx_ecm_point_t* dst, const cfx_ecm_point_t* src) {
+void cfx_ecm_point_copy(cfx_ecm_point_t *dst, const cfx_ecm_point_t *src) {
     cfx_big_copy(&dst->X, &src->X);
     cfx_big_copy(&dst->Z, &src->Z);
 }
@@ -64,8 +64,8 @@ void cfx_ecm_point_copy(cfx_ecm_point_t* dst, const cfx_ecm_point_t* src) {
  *
  * The projective formulas avoid the division by working with (X:Z).
  */
-static void ecm_point_double(cfx_ecm_point_t* R, const cfx_ecm_point_t* P,
-                             const cfx_big_t* a24, const cfx_big_mont_ctx_t* ctx) {
+static void ecm_point_double(cfx_ecm_point_t *R, const cfx_ecm_point_t *P,
+    const cfx_big_t *a24, const cfx_big_mont_ctx_t *ctx) {
     cfx_big_t u, v, diff, t1;
     cfx_big_init(&u);
     cfx_big_init(&v);
@@ -143,8 +143,8 @@ static void ecm_point_double(cfx_ecm_point_t* R, const cfx_ecm_point_t* P,
  * are related by a simple formula involving x(P) and x(Q). If we know
  * any three of {P, Q, P+Q, P-Q}, we can compute the fourth.
  */
-static void ecm_point_add(cfx_ecm_point_t* R, const cfx_ecm_point_t* P, const cfx_ecm_point_t* Q,
-                          const cfx_ecm_point_t* PminusQ, const cfx_big_mont_ctx_t* ctx) {
+static void ecm_point_add(cfx_ecm_point_t *R, const cfx_ecm_point_t *P, const cfx_ecm_point_t *Q,
+    const cfx_ecm_point_t *PminusQ, const cfx_big_mont_ctx_t *ctx) {
     cfx_big_t u, v, t1, t2, t3, t4;
     cfx_big_init(&u);
     cfx_big_init(&v);
@@ -253,8 +253,8 @@ static void ecm_point_add(cfx_ecm_point_t* R, const cfx_ecm_point_t* P, const cf
  *   - If we double R0 and add to get R1: new R1 - new R0 = (R0+R1) - 2R0 = R1-R0 = P ✓
  *   - If we double R1 and add to get R0: new R1 - new R0 = 2R1 - (R0+R1) = R1-R0 = P ✓
  */
-static void ecm_scalar_mul(cfx_ecm_point_t* R, const cfx_ecm_point_t* P, const cfx_big_t* k,
-                           const cfx_big_t* a24, const cfx_big_mont_ctx_t* ctx) {
+static void ecm_scalar_mul(cfx_ecm_point_t *R, const cfx_ecm_point_t *P, const cfx_big_t *k,
+    const cfx_big_t *a24, const cfx_big_mont_ctx_t *ctx) {
     if (cfx_big_is_zero(k)) {
         /* k = 0: return point at infinity (Z = 0) */
         cfx_big_from_limb(&R->X, 1);
@@ -339,13 +339,12 @@ static void ecm_scalar_mul(cfx_ecm_point_t* R, const cfx_ecm_point_t* P, const c
  * factors ≤ B1), then k is a multiple of the group order, so k*P = O,
  * meaning Z becomes 0 mod p (but probably not mod q).
  */
-static int ecm_stage1(cfx_big_t* factor,
-                      cfx_ecm_point_t* Q,
-                      uint64_t B1,
-                      const cfx_big_t* a24,
-                      const cfx_big_mont_ctx_t* ctx,
-                      const cfx_big_t* n)
-{
+static int ecm_stage1(cfx_big_t *factor,
+    cfx_ecm_point_t *Q,
+    uint64_t B1,
+    const cfx_big_t *a24,
+    const cfx_big_mont_ctx_t *ctx,
+    const cfx_big_t *n){
     cfx_big_t k, g;
     cfx_big_init(&k);
     cfx_big_init(&g);
@@ -427,11 +426,10 @@ static int ecm_stage1(cfx_big_t* factor,
  *
  * For simplicity, we use a simpler method: pick random A and x₀.
  */
-static void ecm_random_curve(cfx_big_t* a24,
-                             cfx_ecm_point_t* P,
-                             const cfx_big_mont_ctx_t* ctx,
-                             uint64_t seed)
-{
+static void ecm_random_curve(cfx_big_t *a24,
+    cfx_ecm_point_t *P,
+    const cfx_big_mont_ctx_t *ctx,
+    uint64_t seed){
     /* Simple PRNG for deterministic curve generation */
     uint64_t state = seed * 6364136223846793005ULL + 1442695040888963407ULL;
 
@@ -460,9 +458,8 @@ static void ecm_random_curve(cfx_big_t* a24,
 /*
  * Main ECM factorization
  */
-int cfx_ecm_factor(cfx_big_t* factor, const cfx_big_t* n,
-                   uint64_t B1, unsigned curves)
-{
+int cfx_ecm_factor(cfx_big_t *factor, const cfx_big_t *n,
+    uint64_t B1, unsigned curves){
     /* Basic checks */
     if (cfx_big_is_zero(n) || cfx_big_is_one(n)) {
         return 0;
@@ -515,8 +512,7 @@ int cfx_ecm_factor(cfx_big_t* factor, const cfx_big_t* n,
  * Picks B1 and curve count based on n's size.
  * These are rough heuristics based on the expected factor size.
  */
-int cfx_ecm_factor_auto(cfx_big_t* factor, const cfx_big_t* n)
-{
+int cfx_ecm_factor_auto(cfx_big_t *factor, const cfx_big_t *n){
     size_t bits = n->n * CFX_LIMB_BITS;
 
     /* Heuristic: assume smallest factor is about bits/2 */

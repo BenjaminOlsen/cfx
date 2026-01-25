@@ -12,49 +12,49 @@ extern "C" {
 
 /* chacha20-poly1271 AEAD (like RFC8439 but with poly1271, pads to 15-byte boundaries) */
 int cfx_chacha20_poly1271_encrypt(
-    uint8_t*        ct,             /* out: ciphertext, length = pt_len */
-    uint8_t         tag[16],        /* out */
-    const uint8_t*  pt,             /* in: plaintext, length = pt_len */
-    size_t          pt_len,
-    const uint8_t*  aad,            /* in, may be NULL iff aad_len == 0 */
-    size_t          aad_len,
-    const uint8_t   key[32],
-    const uint8_t   nonce[12]
-);
+    uint8_t *ct,                    /* out: ciphertext, length = pt_len */
+    uint8_t tag[16],                /* out */
+    const uint8_t *pt,              /* in: plaintext, length = pt_len */
+    size_t pt_len,
+    const uint8_t *aad,             /* in, may be NULL iff aad_len == 0 */
+    size_t aad_len,
+    const uint8_t key[32],
+    const uint8_t nonce[12]
+    );
 
 int cfx_chacha20_poly1271_decrypt(
-    uint8_t*        pt,             /* out: plaintext, length = ct_len */
-    const uint8_t*  ct,             /* in: ciphertext, length = ct_len */
-    size_t          ct_len,
-    const uint8_t*  aad,            /* in, may be NULL iff aad_len == 0 */
-    size_t          aad_len,
-    const uint8_t   key[32],
-    const uint8_t   nonce[12],
-    const uint8_t   tag[16]
-);
+    uint8_t *pt,                    /* out: plaintext, length = ct_len */
+    const uint8_t *ct,              /* in: ciphertext, length = ct_len */
+    size_t ct_len,
+    const uint8_t *aad,             /* in, may be NULL iff aad_len == 0 */
+    size_t aad_len,
+    const uint8_t key[32],
+    const uint8_t nonce[12],
+    const uint8_t tag[16]
+    );
 
 /* xchacha20-poly1271: 24-byte nonce (safe for random nonces) */
 int cfx_xchacha20_poly1271_encrypt(
-    uint8_t*        ct,
-    uint8_t         tag[16],
-    const uint8_t*  pt,
-    size_t          pt_len,
-    const uint8_t*  aad,
-    size_t          aad_len,
-    const uint8_t   key[32],
-    const uint8_t   nonce[24]
-);
+    uint8_t *ct,
+    uint8_t tag[16],
+    const uint8_t *pt,
+    size_t pt_len,
+    const uint8_t *aad,
+    size_t aad_len,
+    const uint8_t key[32],
+    const uint8_t nonce[24]
+    );
 
 int cfx_xchacha20_poly1271_decrypt(
-    uint8_t*        pt,
-    const uint8_t*  ct,
-    size_t          ct_len,
-    const uint8_t*  aad,
-    size_t          aad_len,
-    const uint8_t   key[32],
-    const uint8_t   nonce[24],
-    const uint8_t   tag[16]
-);
+    uint8_t *pt,
+    const uint8_t *ct,
+    size_t ct_len,
+    const uint8_t *aad,
+    size_t aad_len,
+    const uint8_t key[32],
+    const uint8_t nonce[24],
+    const uint8_t tag[16]
+    );
 
 #ifdef __cplusplus
 }

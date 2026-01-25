@@ -15,7 +15,7 @@
 /*
  * Load 3 bytes as little-endian 21-bit value
  */
-static int64_t load_3(const uint8_t* in) {
+static int64_t load_3(const uint8_t *in) {
     int64_t result;
     result = (int64_t)in[0];
     result |= ((int64_t)in[1]) << 8;
@@ -26,7 +26,7 @@ static int64_t load_3(const uint8_t* in) {
 /*
  * Load 4 bytes as little-endian 32-bit value
  */
-static int64_t load_4(const uint8_t* in) {
+static int64_t load_4(const uint8_t *in) {
     int64_t result;
     result = (int64_t)in[0];
     result |= ((int64_t)in[1]) << 8;

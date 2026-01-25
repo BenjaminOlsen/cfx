@@ -20,8 +20,8 @@ typedef struct {
 } cfx_chacha20_state_t;
 #endif
 
-void cfx_chacha20_block_impl(const cfx_chacha20_state_t* ctx, uint32_t counter, uint8_t out[64]);
-void cfx_chacha20_block4_impl(const cfx_chacha20_state_t* ctx, uint32_t counter, uint8_t out[4][64]);
-void cfx_chacha20_block8_impl(const cfx_chacha20_state_t* ctx, uint32_t counter, uint8_t out[8][64]);
+void cfx_chacha20_block_impl(const cfx_chacha20_state_t *ctx, uint32_t counter, uint8_t out[64]);
+void cfx_chacha20_block4_impl(const cfx_chacha20_state_t *ctx, uint32_t counter, uint8_t out[4][64]);
+void cfx_chacha20_block8_impl(const cfx_chacha20_state_t *ctx, uint32_t counter, uint8_t out[8][64]);
 
 #endif /* CFX_CHACHA20_BACKEND_H */

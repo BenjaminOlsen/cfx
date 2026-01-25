@@ -38,9 +38,9 @@ static void clamp_scalar(uint8_t e[32]) {
  * formulas from https://cr.yp.to/ecdh.html
  * a24 = (A+2)/4 = 121666 where A = 486662
  */
-static void ladder_step(fe25519_t* x2, fe25519_t* z2,
-                        fe25519_t* x3, fe25519_t* z3,
-                        const fe25519_t* x1) {
+static void ladder_step(fe25519_t *x2, fe25519_t *z2,
+    fe25519_t *x3, fe25519_t *z3,
+    const fe25519_t *x1) {
     fe25519_t a, aa, b, bb, c, d, da, cb, e;
 
     /* doubling side */
@@ -76,7 +76,7 @@ static void ladder_step(fe25519_t* x2, fe25519_t* z2,
  * computes [scalar] * point using constant-time x-only ladder.
  * processes bits top-down, maintaining x2 = [n]*P and x3 = [n+1]*P.
  */
-static void ladder(fe25519_t* result, const uint8_t scalar[32], const fe25519_t* point) {
+static void ladder(fe25519_t *result, const uint8_t scalar[32], const fe25519_t *point) {
     fe25519_t x1, x2, z2, x3, z3;
     int i, bit, swap, prev_swap;
 

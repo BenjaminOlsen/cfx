@@ -6,14 +6,14 @@
 typedef struct {
     uint32_t state[8];     /* H0..H7 */
     uint64_t total_bits;   /* total message length in bits (mod 2^64) */
-    uint8_t  buffer[64];   /* partial block buffer */
-    size_t   buffer_len;   /* number of bytes currently in buffer [0..64) */
+    uint8_t buffer[64];    /* partial block buffer */
+    size_t buffer_len;     /* number of bytes currently in buffer [0..64) */
 } cfx_sha256_state_t;
 
 CFX_STATIC_ASSERT(
     sizeof(cfx_sha256_state_t) <= CFX_SHA256_CTX_SIZE,
     CFX_SHA256_CTX_SIZE_too_small_for_cfx_sha256_state
-);
+    );
 
 /* todo - move these helpers to common header vvvvvvvvvvvvv ?*/
 
@@ -47,9 +47,9 @@ static inline uint32_t Maj(uint32_t x, uint32_t y, uint32_t z) {
 
 static inline uint32_t load_be32(const uint8_t *p) {
     return ((uint32_t)p[0] << 24)
-         | ((uint32_t)p[1] << 16)
-         | ((uint32_t)p[2] <<  8)
-         | ((uint32_t)p[3]);
+           | ((uint32_t)p[1] << 16)
+           | ((uint32_t)p[2] <<  8)
+           | ((uint32_t)p[3]);
 }
 
 static inline void store_be32(uint8_t *p, uint32_t x) {
@@ -127,7 +127,7 @@ static void cfx_sha256_compress(cfx_sha256_state_t *st, const uint8_t block[64])
 
 
 
-void cfx_sha256_init(cfx_sha256_ctx* ctx) {
+void cfx_sha256_init(cfx_sha256_ctx *ctx) {
     cfx_sha256_state_t *st = (cfx_sha256_state_t *)ctx->opaque;
 
     st->state[0] = 0x6a09e667u;
@@ -188,7 +188,7 @@ void cfx_sha256_update(cfx_sha256_ctx *ctx, const uint8_t *data, size_t len) {
 void cfx_sha256_final(cfx_sha256_ctx *ctx, uint8_t out[32]) {
     cfx_sha256_state_t *st = (cfx_sha256_state_t *)ctx->opaque;
     uint8_t *buf = st->buffer;
-    size_t   i   = st->buffer_len;
+    size_t i   = st->buffer_len;
 
     /* append the '1' bit as 0x80 */
     buf[i++] = 0x80;

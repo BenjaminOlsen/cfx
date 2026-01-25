@@ -55,21 +55,21 @@ extern "C" {
 typedef HANDLE cfx_thread_t;
 
 typedef struct {
-    void* (*func)(void*);
-    void* arg;
+    void * (*func)(void *);
+    void *arg;
 } cfx_thread_wrapper_t;
 
-static DWORD WINAPI cfx_thread_wrapper(void* param) {
-    cfx_thread_wrapper_t* w = (cfx_thread_wrapper_t*)param;
-    void* (*func)(void*) = w->func;
-    void* arg = w->arg;
+static DWORD WINAPI cfx_thread_wrapper(void *param) {
+    cfx_thread_wrapper_t *w = (cfx_thread_wrapper_t *)param;
+    void * (*func)(void *) = w->func;
+    void *arg = w->arg;
     free(w);
     func(arg);
     return 0;
 }
 
-static inline int cfx_thread_create(cfx_thread_t* thread, void* (*func)(void*), void* arg) {
-    cfx_thread_wrapper_t* w = (cfx_thread_wrapper_t*)malloc(sizeof(*w));
+static inline int cfx_thread_create(cfx_thread_t *thread, void * (*func)(void *), void *arg) {
+    cfx_thread_wrapper_t *w = (cfx_thread_wrapper_t *)malloc(sizeof(*w));
     if (!w) return -1;
     w->func = func;
     w->arg = arg;
@@ -81,7 +81,7 @@ static inline int cfx_thread_create(cfx_thread_t* thread, void* (*func)(void*), 
     return 0;
 }
 
-static inline int cfx_thread_join(cfx_thread_t thread, void** retval) {
+static inline int cfx_thread_join(cfx_thread_t thread, void **retval) {
     (void)retval; /* Windows doesn't easily support return values */
     DWORD result = WaitForSingleObject(thread, INFINITE);
     CloseHandle(thread);
@@ -93,12 +93,12 @@ static inline int cfx_thread_join(cfx_thread_t thread, void** retval) {
 /* Bare-metal / freestanding - no threading support */
 typedef int cfx_thread_t;
 
-static inline int cfx_thread_create(cfx_thread_t* thread, void* (*func)(void*), void* arg) {
+static inline int cfx_thread_create(cfx_thread_t *thread, void * (*func)(void *), void *arg) {
     (void)thread; (void)func; (void)arg;
     return -1; /* Threading not supported */
 }
 
-static inline int cfx_thread_join(cfx_thread_t thread, void** retval) {
+static inline int cfx_thread_join(cfx_thread_t thread, void **retval) {
     (void)thread; (void)retval;
     return -1;
 }
@@ -107,11 +107,11 @@ static inline int cfx_thread_join(cfx_thread_t thread, void** retval) {
 
 typedef pthread_t cfx_thread_t;
 
-static inline int cfx_thread_create(cfx_thread_t* thread, void* (*func)(void*), void* arg) {
+static inline int cfx_thread_create(cfx_thread_t *thread, void * (*func)(void *), void *arg) {
     return pthread_create(thread, NULL, func, arg);
 }
 
-static inline int cfx_thread_join(cfx_thread_t thread, void** retval) {
+static inline int cfx_thread_join(cfx_thread_t thread, void **retval) {
     return pthread_join(thread, retval);
 }
 
@@ -126,19 +126,19 @@ static inline int cfx_thread_join(cfx_thread_t thread, void** retval) {
 typedef SRWLOCK cfx_mutex_t;
 #define CFX_MUTEX_INITIALIZER SRWLOCK_INIT
 
-static inline void cfx_mutex_init(cfx_mutex_t* mtx) {
+static inline void cfx_mutex_init(cfx_mutex_t *mtx) {
     InitializeSRWLock(mtx);
 }
 
-static inline void cfx_mutex_lock(cfx_mutex_t* mtx) {
+static inline void cfx_mutex_lock(cfx_mutex_t *mtx) {
     AcquireSRWLockExclusive(mtx);
 }
 
-static inline void cfx_mutex_unlock(cfx_mutex_t* mtx) {
+static inline void cfx_mutex_unlock(cfx_mutex_t *mtx) {
     ReleaseSRWLockExclusive(mtx);
 }
 
-static inline void cfx_mutex_destroy(cfx_mutex_t* mtx) {
+static inline void cfx_mutex_destroy(cfx_mutex_t *mtx) {
     (void)mtx; /* SRWLOCK doesn't need destruction */
 }
 
@@ -148,29 +148,37 @@ static inline void cfx_mutex_destroy(cfx_mutex_t* mtx) {
 typedef int cfx_mutex_t;
 #define CFX_MUTEX_INITIALIZER 0
 
-static inline void cfx_mutex_init(cfx_mutex_t* mtx) { (void)mtx; }
-static inline void cfx_mutex_lock(cfx_mutex_t* mtx) { (void)mtx; }
-static inline void cfx_mutex_unlock(cfx_mutex_t* mtx) { (void)mtx; }
-static inline void cfx_mutex_destroy(cfx_mutex_t* mtx) { (void)mtx; }
+static inline void cfx_mutex_init(cfx_mutex_t *mtx) {
+    (void)mtx;
+}
+static inline void cfx_mutex_lock(cfx_mutex_t *mtx) {
+    (void)mtx;
+}
+static inline void cfx_mutex_unlock(cfx_mutex_t *mtx) {
+    (void)mtx;
+}
+static inline void cfx_mutex_destroy(cfx_mutex_t *mtx) {
+    (void)mtx;
+}
 
 #else /* POSIX */
 
 typedef pthread_mutex_t cfx_mutex_t;
 #define CFX_MUTEX_INITIALIZER PTHREAD_MUTEX_INITIALIZER
 
-static inline void cfx_mutex_init(cfx_mutex_t* mtx) {
+static inline void cfx_mutex_init(cfx_mutex_t *mtx) {
     pthread_mutex_init(mtx, NULL);
 }
 
-static inline void cfx_mutex_lock(cfx_mutex_t* mtx) {
+static inline void cfx_mutex_lock(cfx_mutex_t *mtx) {
     pthread_mutex_lock(mtx);
 }
 
-static inline void cfx_mutex_unlock(cfx_mutex_t* mtx) {
+static inline void cfx_mutex_unlock(cfx_mutex_t *mtx) {
     pthread_mutex_unlock(mtx);
 }
 
-static inline void cfx_mutex_destroy(cfx_mutex_t* mtx) {
+static inline void cfx_mutex_destroy(cfx_mutex_t *mtx) {
     pthread_mutex_destroy(mtx);
 }
 
@@ -182,21 +190,21 @@ static inline void cfx_mutex_destroy(cfx_mutex_t* mtx) {
 
 #ifdef _WIN32
 
-static inline int cfx_atomic_load(volatile long* ptr) {
+static inline int cfx_atomic_load(volatile long *ptr) {
     return InterlockedCompareExchange(ptr, 0, 0);
 }
 
-static inline void cfx_atomic_store(volatile long* ptr, long val) {
+static inline void cfx_atomic_store(volatile long *ptr, long val) {
     InterlockedExchange(ptr, val);
 }
 
 #else /* POSIX / GCC */
 
-static inline int cfx_atomic_load(volatile int* ptr) {
+static inline int cfx_atomic_load(volatile int *ptr) {
     return __atomic_load_n(ptr, __ATOMIC_SEQ_CST);
 }
 
-static inline void cfx_atomic_store(volatile int* ptr, int val) {
+static inline void cfx_atomic_store(volatile int *ptr, int val) {
     __atomic_store_n(ptr, val, __ATOMIC_SEQ_CST);
 }
 
@@ -252,10 +260,10 @@ static inline uint64_t cfx_time_ns(void) {
  * ============================================================ */
 
 /* strndup: duplicate at most n characters of a string */
-static inline char* cfx_strndup(const char* s, size_t n) {
+static inline char * cfx_strndup(const char *s, size_t n) {
     size_t len = 0;
     while (len < n && s[len] != '\0') len++;
-    char* dup = (char*)malloc(len + 1);
+    char *dup = (char *)malloc(len + 1);
     if (dup) {
         memcpy(dup, s, len);
         dup[len] = '\0';

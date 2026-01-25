@@ -29,10 +29,9 @@
  * The inner loop accumulates: out[k] += a[j] * b[i] + carry
  * Using UMLAL, this becomes a single-cycle operation for the multiply-add.
  */
-void cfx_big_mul_limbs_impl(cfx_limb_t* out,
-                            const cfx_limb_t* a, size_t na,
-                            const cfx_limb_t* b, size_t nb)
-{
+void cfx_big_mul_limbs_impl(cfx_limb_t *out,
+    const cfx_limb_t *a, size_t na,
+    const cfx_limb_t *b, size_t nb){
     /* Zero the output buffer */
     memset(out, 0, (na + nb) * sizeof(cfx_limb_t));
 
@@ -56,7 +55,7 @@ void cfx_big_mul_limbs_impl(cfx_limb_t* out,
                 "umlal %[lo], %[hi], %[aj], %[bi]"
                 : [lo] "+r" (lo), [hi] "+r" (hi)
                 : [aj] "r" (a[j]), [bi] "r" (bi)
-            );
+                );
 
             out[k] = lo;
             carry = hi;
@@ -78,14 +77,13 @@ void cfx_big_mul_limbs_impl(cfx_limb_t* out,
  *
  * Handles memory allocation and trimming around the limb-level operation.
  */
-void cfx_big_mul_impl(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
-{
+void cfx_big_mul_impl(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *b){
     size_t na = a->n;
     size_t nb = b->n;
 
     /* Handle aliasing: if out overlaps with a or b, use temporary */
     cfx_big_t tmp;
-    cfx_big_t* result = out;
+    cfx_big_t *result = out;
 
     if (out == a || out == b) {
         cfx_big_init(&tmp);
@@ -118,10 +116,9 @@ void cfx_big_mul_impl(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
  * Uses ARM ADDS/ADCS instructions to chain carries through the flags register.
  * Returns the final carry (0 or 1).
  */
-cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t* dst,
-                                  const cfx_limb_t* src,
-                                  size_t n)
-{
+cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t *dst,
+    const cfx_limb_t *src,
+    size_t n){
     if (n == 0) {
         return 0;
     }
@@ -149,7 +146,7 @@ cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t* dst,
             : [res] "=&r" (result), [cout] "=&r" (carry)
             : [d] "r" (d), [s] "r" (s), [cin] "r" (carry)
             : "cc"
-        );
+            );
 
         dst[i] = result;
     }
@@ -163,10 +160,9 @@ cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t* dst,
  * Uses ARM SUBS/SBCS instructions for borrow propagation.
  * Returns the final borrow (0 or 1).
  */
-cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t* dst,
-                                  const cfx_limb_t* src,
-                                  size_t n)
-{
+cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t *dst,
+    const cfx_limb_t *src,
+    size_t n){
     if (n == 0) {
         return 0;
     }
@@ -191,7 +187,7 @@ cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t* dst,
             : [res] "=&r" (result), [bout] "=&r" (borrow)
             : [d] "r" (d), [s] "r" (s), [bin] "r" (borrow)
             : "cc"
-        );
+            );
 
         dst[i] = result;
     }
@@ -208,13 +204,12 @@ cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t* dst,
  *
  * CIOS algorithm with ARM DSP instructions for the multiply-accumulate chains.
  */
-void cfx_big_mont_mul_impl(cfx_limb_t* T,
-                           const cfx_limb_t* a, size_t a_n,
-                           const cfx_limb_t* b, size_t b_n,
-                           const cfx_limb_t* n,
-                           cfx_limb_t n0inv,
-                           size_t k)
-{
+void cfx_big_mont_mul_impl(cfx_limb_t *T,
+    const cfx_limb_t *a, size_t a_n,
+    const cfx_limb_t *b, size_t b_n,
+    const cfx_limb_t *n,
+    cfx_limb_t n0inv,
+    size_t k){
     for (size_t i = 0; i < k; ++i) {
         /* Get b[i], zero-pad if beyond actual length */
         const uint32_t bi = (i < b_n) ? b[i] : 0;
@@ -238,14 +233,14 @@ void cfx_big_mont_mul_impl(cfx_limb_t* T,
                 : [lo] "+r" (lo), [hi] "+r" (hi)
                 : [clo] "r" (carry_lo), [chi] "r" (carry_hi)
                 : "cc"
-            );
+                );
 
             /* Multiply-accumulate: {hi:lo} += aj * bi */
             __asm__ volatile (
                 "umlal %[lo], %[hi], %[aj], %[bi]"
                 : [lo] "+r" (lo), [hi] "+r" (hi)
                 : [aj] "r" (aj), [bi] "r" (bi)
-            );
+                );
 
             T[j] = lo;
             carry_lo = hi;
@@ -263,7 +258,7 @@ void cfx_big_mont_mul_impl(cfx_limb_t* T,
                 : [lo] "+r" (lo), [hi] "+r" (hi)
                 : [clo] "r" (carry_lo)
                 : "cc"
-            );
+                );
 
             T[k] = lo;
             T[k + 1] = hi;
@@ -291,14 +286,14 @@ void cfx_big_mont_mul_impl(cfx_limb_t* T,
                 : [lo] "+r" (lo), [hi] "+r" (hi)
                 : [clo] "r" (carry_lo), [chi] "r" (carry_hi)
                 : "cc"
-            );
+                );
 
             /* Multiply-accumulate: {hi:lo} += m * n[j] */
             __asm__ volatile (
                 "umlal %[lo], %[hi], %[m], %[nj]"
                 : [lo] "+r" (lo), [hi] "+r" (hi)
                 : [m] "r" (m), [nj] "r" (n[j])
-            );
+                );
 
             T[j] = lo;
             carry_lo = hi;
@@ -316,7 +311,7 @@ void cfx_big_mont_mul_impl(cfx_limb_t* T,
                 : [lo] "+r" (lo), [hi] "+r" (hi)
                 : [clo] "r" (carry_lo)
                 : "cc"
-            );
+                );
 
             T[k] = lo;
             T[k + 1] = hi;

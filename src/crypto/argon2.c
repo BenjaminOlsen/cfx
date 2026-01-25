@@ -20,7 +20,7 @@ typedef struct {
 } block_t;
 
 typedef struct {
-    block_t* memory;
+    block_t *memory;
     uint32_t m_cost;
     uint32_t t_cost;
     uint32_t lanes;
@@ -34,7 +34,7 @@ static inline uint64_t rotr64(uint64_t x, unsigned n) {
 }
 
 /* H' variable length hash */
-static void hash_long(uint8_t* out, size_t outlen, const uint8_t* in, size_t inlen) {
+static void hash_long(uint8_t *out, size_t outlen, const uint8_t *in, size_t inlen) {
     uint8_t outlen_bytes[4];
     cfx_store32_le(outlen_bytes, (uint32_t)outlen);
 
@@ -75,17 +75,17 @@ static void hash_long(uint8_t* out, size_t outlen, const uint8_t* in, size_t inl
 
 /* blake2b mixing function G (modified for argon2) */
 #define G(a, b, c, d) do { \
-    a = a + b + 2 * (uint64_t)(uint32_t)a * (uint64_t)(uint32_t)b; \
-    d = rotr64(d ^ a, 32); \
-    c = c + d + 2 * (uint64_t)(uint32_t)c * (uint64_t)(uint32_t)d; \
-    b = rotr64(b ^ c, 24); \
-    a = a + b + 2 * (uint64_t)(uint32_t)a * (uint64_t)(uint32_t)b; \
-    d = rotr64(d ^ a, 16); \
-    c = c + d + 2 * (uint64_t)(uint32_t)c * (uint64_t)(uint32_t)d; \
-    b = rotr64(b ^ c, 63); \
+            a = a + b + 2 * (uint64_t)(uint32_t)a * (uint64_t)(uint32_t)b; \
+            d = rotr64(d ^ a, 32); \
+            c = c + d + 2 * (uint64_t)(uint32_t)c * (uint64_t)(uint32_t)d; \
+            b = rotr64(b ^ c, 24); \
+            a = a + b + 2 * (uint64_t)(uint32_t)a * (uint64_t)(uint32_t)b; \
+            d = rotr64(d ^ a, 16); \
+            c = c + d + 2 * (uint64_t)(uint32_t)c * (uint64_t)(uint32_t)d; \
+            b = rotr64(b ^ c, 63); \
 } while (0)
 
-static void blake2b_round(uint64_t* v) {
+static void blake2b_round(uint64_t *v) {
     G(v[0], v[4], v[8],  v[12]);
     G(v[1], v[5], v[9],  v[13]);
     G(v[2], v[6], v[10], v[14]);
@@ -96,12 +96,12 @@ static void blake2b_round(uint64_t* v) {
     G(v[3], v[4], v[9],  v[14]);
 }
 
-static void P(uint64_t* v) {
+static void P(uint64_t *v) {
     blake2b_round(v);
     blake2b_round(v);
 }
 
-static void fill_block(const block_t* prev, const block_t* ref, block_t* next, int with_xor) {
+static void fill_block(const block_t *prev, const block_t *ref, block_t *next, int with_xor) {
     block_t tmp;
     uint64_t r[ARGON2_QWORDS_IN_BLOCK];
 
@@ -136,8 +136,8 @@ static void fill_block(const block_t* prev, const block_t* ref, block_t* next, i
     }
 }
 
-static uint32_t index_alpha(const argon2_ctx_t* ctx, uint32_t pass, uint32_t slice,
-                            uint32_t index, uint64_t pseudo_rand, int same_lane) {
+static uint32_t index_alpha(const argon2_ctx_t *ctx, uint32_t pass, uint32_t slice,
+    uint32_t index, uint64_t pseudo_rand, int same_lane) {
     uint32_t ref_area_size;
     uint32_t start_position;
 
@@ -169,7 +169,7 @@ static uint32_t index_alpha(const argon2_ctx_t* ctx, uint32_t pass, uint32_t sli
     return (start_position + (uint32_t)rel_pos) % ctx->lane_length;
 }
 
-static void fill_segment(argon2_ctx_t* ctx, uint32_t pass, uint32_t lane, uint32_t slice) {
+static void fill_segment(argon2_ctx_t *ctx, uint32_t pass, uint32_t lane, uint32_t slice) {
     uint32_t start_index = (pass == 0 && slice == 0) ? 2 : 0;
     uint32_t curr_offset = lane * ctx->lane_length + slice * ctx->segment_length + start_index;
     uint32_t prev_offset = curr_offset - 1;
@@ -224,14 +224,14 @@ static void fill_segment(argon2_ctx_t* ctx, uint32_t pass, uint32_t lane, uint32
         uint32_t ref_offset = ref_lane * ctx->lane_length + ref_index;
 
         fill_block(&ctx->memory[prev_offset], &ctx->memory[ref_offset],
-                   &ctx->memory[curr_offset], pass > 0);
+            &ctx->memory[curr_offset], pass > 0);
     }
 }
 
-static void initial_hash(uint8_t* h0, const uint8_t* pwd, size_t pwdlen,
-                         const uint8_t* salt, size_t saltlen,
-                         uint32_t m_cost, uint32_t t_cost, uint32_t p,
-                         size_t outlen, int type) {
+static void initial_hash(uint8_t *h0, const uint8_t *pwd, size_t pwdlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p,
+    size_t outlen, int type) {
     cfx_blake2b_ctx_t ctx;
     uint8_t buf[4];
 
@@ -273,11 +273,11 @@ static void initial_hash(uint8_t* h0, const uint8_t* pwd, size_t pwdlen,
     cfx_blake2b_final(&ctx, h0);
 }
 
-int cfx_argon2(uint8_t* out, size_t outlen,
-               const uint8_t* pwd, size_t pwdlen,
-               const uint8_t* salt, size_t saltlen,
-               uint32_t m_cost, uint32_t t_cost, uint32_t p,
-               int type) {
+int cfx_argon2(uint8_t *out, size_t outlen,
+    const uint8_t *pwd, size_t pwdlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p,
+    int type) {
     if (out == NULL) return CFX_ARGON2_ERR_OUTPUT;
     if (outlen < CFX_ARGON2_MIN_OUTLEN) return CFX_ARGON2_ERR_OUTPUT;
     if (salt == NULL || saltlen < CFX_ARGON2_MIN_SALT_LEN) return CFX_ARGON2_ERR_SALT;
@@ -293,7 +293,7 @@ int cfx_argon2(uint8_t* out, size_t outlen,
     memory_blocks = segment_length * 4 * p;
 
     argon2_ctx_t ctx;
-    ctx.memory = (block_t*)calloc(memory_blocks, sizeof(block_t));
+    ctx.memory = (block_t *)calloc(memory_blocks, sizeof(block_t));
     if (ctx.memory == NULL) {
         return CFX_ARGON2_ERR_MEMORY;
     }
@@ -314,12 +314,12 @@ int cfx_argon2(uint8_t* out, size_t outlen,
     for (uint32_t lane = 0; lane < p; lane++) {
         cfx_store32_le(block_hash_input + 64, 0);
         cfx_store32_le(block_hash_input + 68, lane);
-        hash_long((uint8_t*)ctx.memory[lane * ctx.lane_length].v, ARGON2_BLOCK_SIZE,
-                  block_hash_input, 72);
+        hash_long((uint8_t *)ctx.memory[lane * ctx.lane_length].v, ARGON2_BLOCK_SIZE,
+            block_hash_input, 72);
 
         cfx_store32_le(block_hash_input + 64, 1);
-        hash_long((uint8_t*)ctx.memory[lane * ctx.lane_length + 1].v, ARGON2_BLOCK_SIZE,
-                  block_hash_input, 72);
+        hash_long((uint8_t *)ctx.memory[lane * ctx.lane_length + 1].v, ARGON2_BLOCK_SIZE,
+            block_hash_input, 72);
     }
 
     for (uint32_t pass = 0; pass < t_cost; pass++) {
@@ -339,7 +339,7 @@ int cfx_argon2(uint8_t* out, size_t outlen,
         }
     }
 
-    hash_long(out, outlen, (uint8_t*)final_block.v, ARGON2_BLOCK_SIZE);
+    hash_long(out, outlen, (uint8_t *)final_block.v, ARGON2_BLOCK_SIZE);
 
     cfx_memzero_s(ctx.memory, memory_blocks * sizeof(block_t));
     cfx_memzero_s(h0, sizeof(h0));
@@ -349,46 +349,46 @@ int cfx_argon2(uint8_t* out, size_t outlen,
     return CFX_ARGON2_OK;
 }
 
-int cfx_argon2id(uint8_t* out, size_t outlen,
-                 const uint8_t* pwd, size_t pwdlen,
-                 const uint8_t* salt, size_t saltlen,
-                 uint32_t m_cost, uint32_t t_cost, uint32_t p) {
+int cfx_argon2id(uint8_t *out, size_t outlen,
+    const uint8_t *pwd, size_t pwdlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p) {
     return cfx_argon2(out, outlen, pwd, pwdlen, salt, saltlen,
-                      m_cost, t_cost, p, CFX_ARGON2ID);
+        m_cost, t_cost, p, CFX_ARGON2ID);
 }
 
-int cfx_argon2d(uint8_t* out, size_t outlen,
-                const uint8_t* pwd, size_t pwdlen,
-                const uint8_t* salt, size_t saltlen,
-                uint32_t m_cost, uint32_t t_cost, uint32_t p) {
+int cfx_argon2d(uint8_t *out, size_t outlen,
+    const uint8_t *pwd, size_t pwdlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p) {
     return cfx_argon2(out, outlen, pwd, pwdlen, salt, saltlen,
-                      m_cost, t_cost, p, CFX_ARGON2D);
+        m_cost, t_cost, p, CFX_ARGON2D);
 }
 
-int cfx_argon2i(uint8_t* out, size_t outlen,
-                const uint8_t* pwd, size_t pwdlen,
-                const uint8_t* salt, size_t saltlen,
-                uint32_t m_cost, uint32_t t_cost, uint32_t p) {
+int cfx_argon2i(uint8_t *out, size_t outlen,
+    const uint8_t *pwd, size_t pwdlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p) {
     return cfx_argon2(out, outlen, pwd, pwdlen, salt, saltlen,
-                      m_cost, t_cost, p, CFX_ARGON2I);
+        m_cost, t_cost, p, CFX_ARGON2I);
 }
 
 /* PHC string encoding */
 
-static const char* type_name(int type) {
+static const char * type_name(int type) {
     switch (type) {
-        case CFX_ARGON2D:  return "argon2d";
-        case CFX_ARGON2I:  return "argon2i";
-        case CFX_ARGON2ID: return "argon2id";
-        default: return "argon2";
+    case CFX_ARGON2D:  return "argon2d";
+    case CFX_ARGON2I:  return "argon2i";
+    case CFX_ARGON2ID: return "argon2id";
+    default: return "argon2";
     }
 }
 
-int cfx_argon2_encode(char* out, size_t outlen,
-                      const uint8_t* hash, size_t hashlen,
-                      const uint8_t* salt, size_t saltlen,
-                      uint32_t m_cost, uint32_t t_cost, uint32_t p,
-                      int type) {
+int cfx_argon2_encode(char *out, size_t outlen,
+    const uint8_t *hash, size_t hashlen,
+    const uint8_t *salt, size_t saltlen,
+    uint32_t m_cost, uint32_t t_cost, uint32_t p,
+    int type) {
     size_t salt_b64_len = cfx_base64_enc_len(saltlen);
     size_t hash_b64_len = cfx_base64_enc_len(hashlen);
     size_t needed = 1 + strlen(type_name(type)) + 1 + 5 + 3 +
@@ -411,13 +411,13 @@ int cfx_argon2_encode(char* out, size_t outlen,
     hash_b64[hlen] = '\0';
 
     int len = snprintf(out, outlen, "$%s$v=%d$m=%u,t=%u,p=%u$%s$%s",
-                       type_name(type), CFX_ARGON2_VERSION,
-                       m_cost, t_cost, p, salt_b64, hash_b64);
+        type_name(type), CFX_ARGON2_VERSION,
+        m_cost, t_cost, p, salt_b64, hash_b64);
 
     return len;
 }
 
-static int b64_decode_unpadded(uint8_t* out, size_t* outlen, const char* in, size_t inlen) {
+static int b64_decode_unpadded(uint8_t *out, size_t *outlen, const char *in, size_t inlen) {
     char padded[512];
     if (inlen >= sizeof(padded) - 4) return -1;
 
@@ -431,7 +431,7 @@ static int b64_decode_unpadded(uint8_t* out, size_t* outlen, const char* in, siz
     return cfx_base64_decode(out, outlen, padded, inlen + pad);
 }
 
-int cfx_argon2_verify(const char* encoded, const uint8_t* pwd, size_t pwdlen) {
+int cfx_argon2_verify(const char *encoded, const uint8_t *pwd, size_t pwdlen) {
     if (encoded == NULL || encoded[0] != '$') return CFX_ARGON2_ERR_PARAM;
 
     int type;
@@ -464,7 +464,7 @@ int cfx_argon2_verify(const char* encoded, const uint8_t* pwd, size_t pwdlen) {
     if (!encoded) return CFX_ARGON2_ERR_PARAM;
     encoded++;
 
-    const char* salt_end = strchr(encoded, '$');
+    const char *salt_end = strchr(encoded, '$');
     if (!salt_end) return CFX_ARGON2_ERR_PARAM;
     size_t salt_b64_len = salt_end - encoded;
 
@@ -485,7 +485,7 @@ int cfx_argon2_verify(const char* encoded, const uint8_t* pwd, size_t pwdlen) {
 
     uint8_t computed_hash[256];
     int rc = cfx_argon2(computed_hash, hashlen, pwd, pwdlen, salt, saltlen,
-                        m_cost, t_cost, p, type);
+        m_cost, t_cost, p, type);
     if (rc != CFX_ARGON2_OK) {
         return rc;
     }
@@ -501,14 +501,14 @@ int cfx_argon2_verify(const char* encoded, const uint8_t* pwd, size_t pwdlen) {
     return (diff == 0) ? 0 : 1;
 }
 
-const char* cfx_argon2_strerror(int err) {
+const char * cfx_argon2_strerror(int err) {
     switch (err) {
-        case CFX_ARGON2_OK:         return "OK";
-        case CFX_ARGON2_ERR_MEMORY: return "memory allocation failed";
-        case CFX_ARGON2_ERR_PARAM:  return "invalid parameter";
-        case CFX_ARGON2_ERR_SALT:   return "salt too short";
-        case CFX_ARGON2_ERR_PWD:    return "password error";
-        case CFX_ARGON2_ERR_OUTPUT: return "invalid output length";
-        default:                    return "unknown error";
+    case CFX_ARGON2_OK:         return "OK";
+    case CFX_ARGON2_ERR_MEMORY: return "memory allocation failed";
+    case CFX_ARGON2_ERR_PARAM:  return "invalid parameter";
+    case CFX_ARGON2_ERR_SALT:   return "salt too short";
+    case CFX_ARGON2_ERR_PWD:    return "password error";
+    case CFX_ARGON2_ERR_OUTPUT: return "invalid output length";
+    default:                    return "unknown error";
     }
 }

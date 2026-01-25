@@ -72,7 +72,7 @@ static int8_t cfx_b64_val(unsigned char c) {
     return -1;
 }
 
-int cfx_base64_decode(uint8_t* out, size_t* out_len, const char* in, size_t in_len) {
+int cfx_base64_decode(uint8_t *out, size_t *out_len, const char *in, size_t in_len) {
     if (out_len == NULL) return -2;
 
     /* First pass: count non-ws chars and validate charset/padding placement roughly. */
@@ -101,7 +101,9 @@ int cfx_base64_decode(uint8_t* out, size_t* out_len, const char* in, size_t in_l
     }
 
     if (n == 0) {
-        if (out == NULL) { *out_len = 0; return 0; }
+        if (out == NULL) {
+            *out_len = 0; return 0;
+        }
         *out_len = 0;
         return 0;
     }
@@ -118,7 +120,9 @@ int cfx_base64_decode(uint8_t* out, size_t* out_len, const char* in, size_t in_l
         *out_len = dec_len;
         return 0;
     }
-    if (*out_len < dec_len) { return -7; }
+    if (*out_len < dec_len) {
+        return -7;
+    }
 
     /* Second pass: decode. */
     size_t o = 0;

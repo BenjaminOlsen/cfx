@@ -23,10 +23,9 @@
  */
 void cfx_poly1305_block_impl(
     uint32_t *h0, uint32_t *h1, uint32_t *h2, uint32_t *h3, uint32_t *h4,
-    uint32_t  t0, uint32_t  t1, uint32_t  t2, uint32_t  t3, uint32_t  t4,
-    uint32_t  r0, uint32_t  r1, uint32_t  r2, uint32_t  r3, uint32_t  r4,
-    uint32_t  s1, uint32_t  s2, uint32_t  s3, uint32_t  s4)
-{
+    uint32_t t0, uint32_t t1, uint32_t t2, uint32_t t3, uint32_t t4,
+    uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t r4,
+    uint32_t s1, uint32_t s2, uint32_t s3, uint32_t s4){
     uint32_t c;
 
     /* h += t */
@@ -61,11 +60,11 @@ void cfx_poly1305_block_impl(
         "umlal %[lo], %[hi], %[a4], %[b4]"
         : [lo] "=&r" (d0_lo), [hi] "=&r" (d0_hi)
         : [a0] "r" (H0), [b0] "r" (r0),
-          [a1] "r" (H1), [b1] "r" (s4),
-          [a2] "r" (H2), [b2] "r" (s3),
-          [a3] "r" (H3), [b3] "r" (s2),
-          [a4] "r" (H4), [b4] "r" (s1)
-    );
+        [a1] "r" (H1), [b1] "r" (s4),
+        [a2] "r" (H2), [b2] "r" (s3),
+        [a3] "r" (H3), [b3] "r" (s2),
+        [a4] "r" (H4), [b4] "r" (s1)
+        );
 
     /* d1 = H0*r1 + H1*r0 + H2*s4 + H3*s3 + H4*s2 */
     __asm__ volatile (
@@ -76,11 +75,11 @@ void cfx_poly1305_block_impl(
         "umlal %[lo], %[hi], %[a4], %[b4]"
         : [lo] "=&r" (d1_lo), [hi] "=&r" (d1_hi)
         : [a0] "r" (H0), [b0] "r" (r1),
-          [a1] "r" (H1), [b1] "r" (r0),
-          [a2] "r" (H2), [b2] "r" (s4),
-          [a3] "r" (H3), [b3] "r" (s3),
-          [a4] "r" (H4), [b4] "r" (s2)
-    );
+        [a1] "r" (H1), [b1] "r" (r0),
+        [a2] "r" (H2), [b2] "r" (s4),
+        [a3] "r" (H3), [b3] "r" (s3),
+        [a4] "r" (H4), [b4] "r" (s2)
+        );
 
     /* d2 = H0*r2 + H1*r1 + H2*r0 + H3*s4 + H4*s3 */
     __asm__ volatile (
@@ -91,11 +90,11 @@ void cfx_poly1305_block_impl(
         "umlal %[lo], %[hi], %[a4], %[b4]"
         : [lo] "=&r" (d2_lo), [hi] "=&r" (d2_hi)
         : [a0] "r" (H0), [b0] "r" (r2),
-          [a1] "r" (H1), [b1] "r" (r1),
-          [a2] "r" (H2), [b2] "r" (r0),
-          [a3] "r" (H3), [b3] "r" (s4),
-          [a4] "r" (H4), [b4] "r" (s3)
-    );
+        [a1] "r" (H1), [b1] "r" (r1),
+        [a2] "r" (H2), [b2] "r" (r0),
+        [a3] "r" (H3), [b3] "r" (s4),
+        [a4] "r" (H4), [b4] "r" (s3)
+        );
 
     /* d3 = H0*r3 + H1*r2 + H2*r1 + H3*r0 + H4*s4 */
     __asm__ volatile (
@@ -106,11 +105,11 @@ void cfx_poly1305_block_impl(
         "umlal %[lo], %[hi], %[a4], %[b4]"
         : [lo] "=&r" (d3_lo), [hi] "=&r" (d3_hi)
         : [a0] "r" (H0), [b0] "r" (r3),
-          [a1] "r" (H1), [b1] "r" (r2),
-          [a2] "r" (H2), [b2] "r" (r1),
-          [a3] "r" (H3), [b3] "r" (r0),
-          [a4] "r" (H4), [b4] "r" (s4)
-    );
+        [a1] "r" (H1), [b1] "r" (r2),
+        [a2] "r" (H2), [b2] "r" (r1),
+        [a3] "r" (H3), [b3] "r" (r0),
+        [a4] "r" (H4), [b4] "r" (s4)
+        );
 
     /* d4 = H0*r4 + H1*r3 + H2*r2 + H3*r1 + H4*r0 */
     __asm__ volatile (
@@ -121,11 +120,11 @@ void cfx_poly1305_block_impl(
         "umlal %[lo], %[hi], %[a4], %[b4]"
         : [lo] "=&r" (d4_lo), [hi] "=&r" (d4_hi)
         : [a0] "r" (H0), [b0] "r" (r4),
-          [a1] "r" (H1), [b1] "r" (r3),
-          [a2] "r" (H2), [b2] "r" (r2),
-          [a3] "r" (H3), [b3] "r" (r1),
-          [a4] "r" (H4), [b4] "r" (r0)
-    );
+        [a1] "r" (H1), [b1] "r" (r3),
+        [a2] "r" (H2), [b2] "r" (r2),
+        [a3] "r" (H3), [b3] "r" (r1),
+        [a4] "r" (H4), [b4] "r" (r0)
+        );
 
     /*
      * Carry chain: reduce to 26-bit limbs.
@@ -145,7 +144,7 @@ void cfx_poly1305_block_impl(
         : [lo] "+r" (d1_lo), [hi] "+r" (d1_hi)
         : [c] "r" (c)
         : "cc"
-    );
+        );
 
     /* c = d1 >> 26; H1 = d1 & 0x3ffffff; d2 += c */
     c = (d1_lo >> 26) | (d1_hi << 6);
@@ -157,7 +156,7 @@ void cfx_poly1305_block_impl(
         : [lo] "+r" (d2_lo), [hi] "+r" (d2_hi)
         : [c] "r" (c)
         : "cc"
-    );
+        );
 
     /* c = d2 >> 26; H2 = d2 & 0x3ffffff; d3 += c */
     c = (d2_lo >> 26) | (d2_hi << 6);
@@ -169,7 +168,7 @@ void cfx_poly1305_block_impl(
         : [lo] "+r" (d3_lo), [hi] "+r" (d3_hi)
         : [c] "r" (c)
         : "cc"
-    );
+        );
 
     /* c = d3 >> 26; H3 = d3 & 0x3ffffff; d4 += c */
     c = (d3_lo >> 26) | (d3_hi << 6);
@@ -181,7 +180,7 @@ void cfx_poly1305_block_impl(
         : [lo] "+r" (d4_lo), [hi] "+r" (d4_hi)
         : [c] "r" (c)
         : "cc"
-    );
+        );
 
     /* c = d4 >> 26; H4 = d4 & 0x3ffffff */
     c = (d4_lo >> 26) | (d4_hi << 6);

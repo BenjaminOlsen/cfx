@@ -3,19 +3,19 @@
 #include "../chacha20_backend.h"
 #include "cfx/memory.h"
 
-#define ROTL16(x) ({ uint32_t _r; __asm__ ("ror %0, %1, #16" : "=r"(_r) : "r"(x)); _r; })
-#define ROTL12(x) ({ uint32_t _r; __asm__ ("ror %0, %1, #20" : "=r"(_r) : "r"(x)); _r; })
-#define ROTL8(x)  ({ uint32_t _r; __asm__ ("ror %0, %1, #24" : "=r"(_r) : "r"(x)); _r; })
-#define ROTL7(x)  ({ uint32_t _r; __asm__ ("ror %0, %1, #25" : "=r"(_r) : "r"(x)); _r; })
+#define ROTL16(x) ({ uint32_t _r; __asm__ ("ror %0, %1, #16" : "=r" (_r) : "r" (x)); _r; })
+#define ROTL12(x) ({ uint32_t _r; __asm__ ("ror %0, %1, #20" : "=r" (_r) : "r" (x)); _r; })
+#define ROTL8(x)  ({ uint32_t _r; __asm__ ("ror %0, %1, #24" : "=r" (_r) : "r" (x)); _r; })
+#define ROTL7(x)  ({ uint32_t _r; __asm__ ("ror %0, %1, #25" : "=r" (_r) : "r" (x)); _r; })
 
 #define QR(a, b, c, d) do { \
-    (a) += (b); (d) ^= (a); (d) = ROTL16(d); \
-    (c) += (d); (b) ^= (c); (b) = ROTL12(b); \
-    (a) += (b); (d) ^= (a); (d) = ROTL8(d); \
-    (c) += (d); (b) ^= (c); (b) = ROTL7(b); \
+            (a) += (b); (d) ^= (a); (d) = ROTL16(d); \
+            (c) += (d); (b) ^= (c); (b) = ROTL12(b); \
+            (a) += (b); (d) ^= (a); (d) = ROTL8(d); \
+            (c) += (d); (b) ^= (c); (b) = ROTL7(b); \
 } while (0)
 
-void cfx_chacha20_block_impl(const cfx_chacha20_state_t* ctx, uint32_t counter, uint8_t out[64]) {
+void cfx_chacha20_block_impl(const cfx_chacha20_state_t *ctx, uint32_t counter, uint8_t out[64]) {
     uint32_t w[16];
     for (int i = 0; i < 16; ++i) w[i] = ctx->s[i];
     w[12] = counter;

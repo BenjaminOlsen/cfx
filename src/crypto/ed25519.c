@@ -47,27 +47,27 @@ static void ge25519_mul_cofactor(ge25519_t *r, const ge25519_t *p) {
  */
 
 /*************************************
-simple example in base 10:
-........................................
-ex 1:
- s = 100 L = 99
--> s = {0, 0, 1}, L = {9, 9, 0}
+   simple example in base 10:
+   ........................................
+   ex 1:
+   s = 100 L = 99
+   -> s = {0, 0, 1}, L = {9, 9, 0}
 
-i = 0:
-diff = 0 - 9 - 0 = -9 -> borrow = 1
-i = 1
-diff = 0 -9 -1 = -10 -> borrow = 1;
-i = 2
-diff = 1 - 0 - 1 = 0 -> borrow = 0; -> L < s
+   i = 0:
+   diff = 0 - 9 - 0 = -9 -> borrow = 1
+   i = 1
+   diff = 0 -9 -1 = -10 -> borrow = 1;
+   i = 2
+   diff = 1 - 0 - 1 = 0 -> borrow = 0; -> L < s
 
-........................................
-ex 2:
-s = 99, L = 100:
-i = 0
-diff = 9 - 0 - 0 -> borrow = 0;
-diff = 9 - 0 - 0 -> borrow = 0;
-diff = 1 - 0 - 0 -> borrow = 1; -> s < L
-*/
+   ........................................
+   ex 2:
+   s = 99, L = 100:
+   i = 0
+   diff = 9 - 0 - 0 -> borrow = 0;
+   diff = 9 - 0 - 0 -> borrow = 0;
+   diff = 1 - 0 - 0 -> borrow = 1; -> s < L
+ */
 static int sc25519_is_canonical(const uint8_t s[32]) {
     static const uint8_t L[32] = {
         0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
@@ -109,7 +109,7 @@ void cfx_ed25519_get_public_key(uint8_t pk[32], const uint8_t sk[64]) {
     memcpy(pk, sk + 32, 32);
 }
 
-void cfx_ed25519_sign(uint8_t sig[64], const uint8_t* msg, size_t msg_len, const uint8_t sk[64]) {
+void cfx_ed25519_sign(uint8_t sig[64], const uint8_t *msg, size_t msg_len, const uint8_t sk[64]) {
     uint8_t hash[64];
     uint8_t r_scalar[64];
     uint8_t k_scalar[64];
@@ -157,7 +157,7 @@ void cfx_ed25519_sign(uint8_t sig[64], const uint8_t* msg, size_t msg_len, const
     CFX_MEMZERO_S(k, sizeof(k));
 }
 
-int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t* msg, size_t msg_len, const uint8_t pk[32]) {
+int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t *msg, size_t msg_len, const uint8_t pk[32]) {
     ge25519_t A, R, sB, kA, check;
     ge25519_cached_t kA_cached;
     uint8_t k_scalar[64];

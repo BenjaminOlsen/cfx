@@ -22,14 +22,14 @@ extern "C" {
 #define CFX_SHA512_CTX_SIZE    224u
 
 typedef union {
-    uint8_t  opaque[CFX_SHA512_CTX_SIZE];
+    uint8_t opaque[CFX_SHA512_CTX_SIZE];
     uint64_t aligner;
 } cfx_sha512_ctx_t;
 
-void cfx_sha512_init(cfx_sha512_ctx_t* ctx);
-void cfx_sha512_update(cfx_sha512_ctx_t* ctx, const uint8_t* data, size_t len);
-void cfx_sha512_final(cfx_sha512_ctx_t* ctx, uint8_t out[64]);
-void cfx_sha512(uint8_t out[64], const uint8_t* data, size_t len);  /* one-shot */
+void cfx_sha512_init(cfx_sha512_ctx_t *ctx);
+void cfx_sha512_update(cfx_sha512_ctx_t *ctx, const uint8_t *data, size_t len);
+void cfx_sha512_final(cfx_sha512_ctx_t *ctx, uint8_t out[64]);
+void cfx_sha512(uint8_t out[64], const uint8_t *data, size_t len);  /* one-shot */
 
 #ifdef __cplusplus
 }

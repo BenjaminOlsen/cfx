@@ -59,23 +59,23 @@ extern const fe25519_t cfx_ge25519_2d;       /* 2*d for faster doubling */
 extern const fe25519_t cfx_ge25519_sqrtm1;   /* sqrt(-1) mod p */
 extern const ge25519_t cfx_ge25519_base;     /* basepoint B (generator) */
 
-void cfx_ge25519_0(ge25519_t* r);            /* identity (neutral element): (0, 1, 1, 0) */
-void cfx_ge25519_copy(ge25519_t* r, const ge25519_t* p);
-void cfx_ge25519_add_cached(ge25519_t* r, const ge25519_t* p, const ge25519_cached_t* q);  /* r = p + q */
-void cfx_ge25519_sub_cached(ge25519_t* r, const ge25519_t* p, const ge25519_cached_t* q);  /* r = p - q */
-void cfx_ge25519_add_precomp(ge25519_t* r, const ge25519_t* p, const ge25519_precomp_t* q); /* r = p + q (affine q) */
-void cfx_ge25519_sub_precomp(ge25519_t* r, const ge25519_t* p, const ge25519_precomp_t* q); /* r = p - q (affine q) */
-void cfx_ge25519_double(ge25519_t* r, const ge25519_t* p);    /* r = 2*p */
-void cfx_ge25519_to_cached(ge25519_cached_t* r, const ge25519_t* p);
-void cfx_ge25519_scalarmult(ge25519_t* r, const uint8_t s[32], const ge25519_t* p);       /* r = [s]p */
-void cfx_ge25519_scalarmult_base(ge25519_t* r, const uint8_t s[32]);                       /* r = [s]B */
-void cfx_ge25519_pack(uint8_t out[32], const ge25519_t* p);   /* pack point to 32 bytes */
-int cfx_ge25519_unpack(ge25519_t* p, const uint8_t in[32]);   /* unpack, returns 0 on success */
-int cfx_ge25519_is_on_curve(const ge25519_t* p);
-int cfx_ge25519_is_identity(const ge25519_t* p);
-void cfx_ge25519_cmov(ge25519_t* r, const ge25519_t* p, unsigned int b);  /* conditional move */
-void cfx_ge25519_cneg(ge25519_t* p, unsigned int b);          /* conditional negate */
-void cfx_ge25519_neg(ge25519_t* r, const ge25519_t* p);       /* r = -p */
+void cfx_ge25519_0(ge25519_t *r);            /* identity (neutral element): (0, 1, 1, 0) */
+void cfx_ge25519_copy(ge25519_t *r, const ge25519_t *p);
+void cfx_ge25519_add_cached(ge25519_t *r, const ge25519_t *p, const ge25519_cached_t *q);  /* r = p + q */
+void cfx_ge25519_sub_cached(ge25519_t *r, const ge25519_t *p, const ge25519_cached_t *q);  /* r = p - q */
+void cfx_ge25519_add_precomp(ge25519_t *r, const ge25519_t *p, const ge25519_precomp_t *q); /* r = p + q (affine q) */
+void cfx_ge25519_sub_precomp(ge25519_t *r, const ge25519_t *p, const ge25519_precomp_t *q); /* r = p - q (affine q) */
+void cfx_ge25519_double(ge25519_t *r, const ge25519_t *p);    /* r = 2*p */
+void cfx_ge25519_to_cached(ge25519_cached_t *r, const ge25519_t *p);
+void cfx_ge25519_scalarmult(ge25519_t *r, const uint8_t s[32], const ge25519_t *p);       /* r = [s]p */
+void cfx_ge25519_scalarmult_base(ge25519_t *r, const uint8_t s[32]);                       /* r = [s]B */
+void cfx_ge25519_pack(uint8_t out[32], const ge25519_t *p);   /* pack point to 32 bytes */
+int cfx_ge25519_unpack(ge25519_t *p, const uint8_t in[32]);   /* unpack, returns 0 on success */
+int cfx_ge25519_is_on_curve(const ge25519_t *p);
+int cfx_ge25519_is_identity(const ge25519_t *p);
+void cfx_ge25519_cmov(ge25519_t *r, const ge25519_t *p, unsigned int b);  /* conditional move */
+void cfx_ge25519_cneg(ge25519_t *p, unsigned int b);          /* conditional negate */
+void cfx_ge25519_neg(ge25519_t *r, const ge25519_t *p);       /* r = -p */
 
 #ifdef __cplusplus
 }

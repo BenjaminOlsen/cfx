@@ -17,22 +17,22 @@ extern "C" {
 /**
  * Q: Why do i keep the CFX_ALL_CAPS macros that just call the static inline functions?
  * A: To communicate that they're just like macros - they "inflate" at the call sites.
-**/
+ **/
 
 /* ---------------------------------------------------------------------------------------------- */
 #define CFX_MEMZERO_S(ptr, size) cfx_memzero_s((ptr), (size))
 
 /* make it impossible to optimize away a memory clear to avoid dead-store elimination,
-so we dont leave anything hanging around in RAM */
-static inline void cfx_memzero_s(void* p, size_t n) {
-    volatile unsigned char* v = (unsigned char*)p;
+   so we dont leave anything hanging around in RAM */
+static inline void cfx_memzero_s(void *p, size_t n) {
+    volatile unsigned char *v = (unsigned char *)p;
     while (n--) *v++ = 0;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
 #define CFX_STORE64_LE(dst, x) cfx_store64_le((dst), (x))
 
-static inline void cfx_store64_le(void* dst, uint64_t x) {
+static inline void cfx_store64_le(void *dst, uint64_t x) {
 #if CFX_LITTLE_ENDIAN
     memcpy(dst, &x, sizeof x);
 #else
@@ -50,7 +50,7 @@ static inline void cfx_store64_le(void* dst, uint64_t x) {
 
 #define CFX_LOAD64_LE(src) cfx_load64_le((src))
 
-static inline uint64_t cfx_load64_le(const void* src) {
+static inline uint64_t cfx_load64_le(const void *src) {
 #if CFX_LITTLE_ENDIAN
     uint64_t w;
     memcpy(&w, src, sizeof w);
@@ -70,7 +70,7 @@ static inline uint64_t cfx_load64_le(const void* src) {
 
 #define CFX_LOAD32_LE_2(DST, SRC) cfx_load32_le_to((DST), (SRC))
 
-static inline void cfx_load32_le_to(uint32_t *dst, const void* src) {
+static inline void cfx_load32_le_to(uint32_t *dst, const void *src) {
     #ifdef CFX_LITTLE_ENDIAN
     uint32_t v;
     memcpy(&v, src, sizeof v);
@@ -82,7 +82,7 @@ static inline void cfx_load32_le_to(uint32_t *dst, const void* src) {
 /* ---------------------------------------------------------------------------------------------- */
 #define CFX_LOAD32_LE(SRC) cfx_load32_le(SRC)
 
-static inline uint32_t cfx_load32_le(const void* src) {
+static inline uint32_t cfx_load32_le(const void *src) {
 #ifdef CFX_LITTLE_ENDIAN
     uint32_t w;
     memcpy(&w, src, sizeof w);

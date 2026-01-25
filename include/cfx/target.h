@@ -52,7 +52,7 @@ extern "C" {
 #endif
 
 /* Returns the target name string (same as CFX_TARGET_NAME macro) */
-static inline const char* cfx_target_name(void) {
+static inline const char * cfx_target_name(void) {
     return CFX_TARGET_NAME;
 }
 

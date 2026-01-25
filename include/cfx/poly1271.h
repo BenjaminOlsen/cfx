@@ -33,25 +33,25 @@ typedef struct {
     uint64_t r3[2];    /* r^3 mod M127 (precomputed) */
     uint64_t r4[2];    /* r^4 mod M127 (precomputed for 4-block processing) */
     uint64_t s[2];     /* s key (128 bits) */
-    uint8_t  buf[15];  /* partial block buffer */
-    uint8_t  buflen;   /* bytes in buffer */
-    uint8_t  blkcnt;   /* blocks since last full reduction (for lazy reduction) */
+    uint8_t buf[15];   /* partial block buffer */
+    uint8_t buflen;    /* bytes in buffer */
+    uint8_t blkcnt;    /* blocks since last full reduction (for lazy reduction) */
 } cfx_poly1271_ctx_t;
 
 /* initialize with 32-byte key (first 16 = r, second 16 = s) */
-void cfx_poly1271_init(cfx_poly1271_ctx_t* ctx, const uint8_t key[32]);
+void cfx_poly1271_init(cfx_poly1271_ctx_t *ctx, const uint8_t key[32]);
 
 /* process message data (streaming) */
-void cfx_poly1271_update(cfx_poly1271_ctx_t* ctx, const uint8_t* msg, size_t len);
+void cfx_poly1271_update(cfx_poly1271_ctx_t *ctx, const uint8_t *msg, size_t len);
 
 /* finalize and output 16-byte tag */
-void cfx_poly1271_finish(cfx_poly1271_ctx_t* ctx, uint8_t tag[16]);
+void cfx_poly1271_finish(cfx_poly1271_ctx_t *ctx, uint8_t tag[16]);
 
 /* one-shot MAC */
-void cfx_poly1271(uint8_t tag[16], const uint8_t* msg, size_t len, const uint8_t key[32]);
+void cfx_poly1271(uint8_t tag[16], const uint8_t *msg, size_t len, const uint8_t key[32]);
 
 /* constant-time verify, returns 0 on match, -1 on mismatch */
-int cfx_poly1271_verify(const uint8_t tag[16], const uint8_t* msg, size_t len, const uint8_t key[32]);
+int cfx_poly1271_verify(const uint8_t tag[16], const uint8_t *msg, size_t len, const uint8_t key[32]);
 
 /* AVX2 implementation - radix-2^26, 4-way parallel */
 #include "cfx/arch.h"
@@ -73,15 +73,15 @@ typedef struct {
     __m256i rv[5];       /* rv[i] = {r[i], r2[i], r3[i], r4[i]} for combine */
     __m256i r4v[5];      /* r4v[i] = broadcast(r4[i]) for mul_r4 */
     uint64_t s[2];       /* s key */
-    uint8_t  buf[60];    /* partial block buffer (4 blocks) */
-    uint8_t  buflen;
+    uint8_t buf[60];     /* partial block buffer (4 blocks) */
+    uint8_t buflen;
 } cfx_poly1271_avx2_ctx_t;
 
-void cfx_poly1271_avx2_init(cfx_poly1271_avx2_ctx_t* ctx, const uint8_t key[32]);
-void cfx_poly1271_avx2_update(cfx_poly1271_avx2_ctx_t* ctx, const uint8_t* msg, size_t len);
-void cfx_poly1271_avx2_finish(cfx_poly1271_avx2_ctx_t* ctx, uint8_t tag[16]);
-void cfx_poly1271_avx2(uint8_t tag[16], const uint8_t* msg, size_t len, const uint8_t key[32]);
-int cfx_poly1271_avx2_verify(const uint8_t tag[16], const uint8_t* msg, size_t len, const uint8_t key[32]);
+void cfx_poly1271_avx2_init(cfx_poly1271_avx2_ctx_t *ctx, const uint8_t key[32]);
+void cfx_poly1271_avx2_update(cfx_poly1271_avx2_ctx_t *ctx, const uint8_t *msg, size_t len);
+void cfx_poly1271_avx2_finish(cfx_poly1271_avx2_ctx_t *ctx, uint8_t tag[16]);
+void cfx_poly1271_avx2(uint8_t tag[16], const uint8_t *msg, size_t len, const uint8_t key[32]);
+int cfx_poly1271_avx2_verify(const uint8_t tag[16], const uint8_t *msg, size_t len, const uint8_t key[32]);
 
 #ifdef _MSC_VER
 #pragma warning(pop)

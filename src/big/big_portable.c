@@ -30,10 +30,9 @@
  *
  * Classic O(n*m) schoolbook algorithm with accumulator for carries.
  */
-void cfx_big_mul_limbs_impl(cfx_limb_t* out,
-                            const cfx_limb_t* a, size_t na,
-                            const cfx_limb_t* b, size_t nb)
-{
+void cfx_big_mul_limbs_impl(cfx_limb_t *out,
+    const cfx_limb_t *a, size_t na,
+    const cfx_limb_t *b, size_t nb){
     /* Zero the output buffer */
     memset(out, 0, (na + nb) * sizeof(cfx_limb_t));
 
@@ -44,8 +43,8 @@ void cfx_big_mul_limbs_impl(cfx_limb_t* out,
         size_t k = i;
         for (size_t j = 0; j < na; ++j, ++k) {
             cfx_acc_t s = (cfx_acc_t)out[k]
-                        + bi * (cfx_acc_t)a[j]
-                        + carry;
+                          + bi * (cfx_acc_t)a[j]
+                          + carry;
             out[k] = (cfx_limb_t)s;
             carry = s >> CFX_LIMB_BITS;
         }
@@ -65,14 +64,13 @@ void cfx_big_mul_limbs_impl(cfx_limb_t* out,
  *
  * Handles memory allocation and trimming around the limb-level operation.
  */
-void cfx_big_mul_impl(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
-{
+void cfx_big_mul_impl(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *b){
     size_t na = a->n;
     size_t nb = b->n;
 
     /* Handle aliasing: if out overlaps with a or b, use temporary */
     cfx_big_t tmp;
-    cfx_big_t* result = out;
+    cfx_big_t *result = out;
 
     if (out == a || out == b) {
         cfx_big_init(&tmp);
@@ -105,10 +103,9 @@ void cfx_big_mul_impl(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b)
  * Adds n limbs from src to dst, propagating carry.
  * Returns the final carry (0 or 1).
  */
-cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t* dst,
-                                  const cfx_limb_t* src,
-                                  size_t n)
-{
+cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t *dst,
+    const cfx_limb_t *src,
+    size_t n){
     cfx_limb_t carry = 0;
 
     for (size_t i = 0; i < n; ++i) {
@@ -128,10 +125,9 @@ cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t* dst,
  *
  * Caller must ensure dst >= src mathematically (no underflow).
  */
-cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t* dst,
-                                  const cfx_limb_t* src,
-                                  size_t n)
-{
+cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t *dst,
+    const cfx_limb_t *src,
+    size_t n){
     cfx_limb_t borrow = 0;
 
     for (size_t i = 0; i < n; ++i) {
@@ -166,13 +162,12 @@ cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t* dst,
  * Postconditions:
  *   - T[0..k] contains result (may be >= n, caller does final reduction)
  */
-void cfx_big_mont_mul_impl(cfx_limb_t* T,
-                           const cfx_limb_t* a, size_t a_n,
-                           const cfx_limb_t* b, size_t b_n,
-                           const cfx_limb_t* n,
-                           cfx_limb_t n0inv,
-                           size_t k)
-{
+void cfx_big_mont_mul_impl(cfx_limb_t *T,
+    const cfx_limb_t *a, size_t a_n,
+    const cfx_limb_t *b, size_t b_n,
+    const cfx_limb_t *n,
+    cfx_limb_t n0inv,
+    size_t k){
     for (size_t i = 0; i < k; ++i) {
         /* Get b[i], zero-pad if beyond actual length */
         const cfx_limb_t bi = (i < b_n) ? b[i] : 0;

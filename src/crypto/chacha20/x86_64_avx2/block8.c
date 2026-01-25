@@ -10,10 +10,10 @@ static inline __m256i rotl32(__m256i x, int n) {
 }
 
 #define QR(a, b, c, d) do { \
-    a = _mm256_add_epi32(a, b); d = _mm256_xor_si256(d, a); d = rotl32(d, 16); \
-    c = _mm256_add_epi32(c, d); b = _mm256_xor_si256(b, c); b = rotl32(b, 12); \
-    a = _mm256_add_epi32(a, b); d = _mm256_xor_si256(d, a); d = rotl32(d,  8); \
-    c = _mm256_add_epi32(c, d); b = _mm256_xor_si256(b, c); b = rotl32(b,  7); \
+            a = _mm256_add_epi32(a, b); d = _mm256_xor_si256(d, a); d = rotl32(d, 16); \
+            c = _mm256_add_epi32(c, d); b = _mm256_xor_si256(b, c); b = rotl32(b, 12); \
+            a = _mm256_add_epi32(a, b); d = _mm256_xor_si256(d, a); d = rotl32(d,  8); \
+            c = _mm256_add_epi32(c, d); b = _mm256_xor_si256(b, c); b = rotl32(b,  7); \
 } while (0)
 
 #define LANE32(v, idx) ((uint32_t)_mm_extract_epi32(v, idx))
@@ -36,13 +36,13 @@ static inline void transpose(const __m256i x[16], uint32_t out[8][16]) {
     }
 }
 
-void cfx_chacha20_block8_impl(const cfx_chacha20_state_t* ctx, uint32_t counter, uint8_t out[8][64]) {
+void cfx_chacha20_block8_impl(const cfx_chacha20_state_t *ctx, uint32_t counter, uint8_t out[8][64]) {
     const __m256i lane = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
     __m256i x[16], s[16];
 
     /* Load pre-broadcast state from SoA layout - no per-call broadcast overhead */
     for (int i = 0; i < 16; ++i)
-        s[i] = _mm256_loadu_si256((const __m256i*)ctx->s[i]);
+        s[i] = _mm256_loadu_si256((const __m256i *)ctx->s[i]);
 
     /* Set counters: counter+0, counter+1, ..., counter+7 */
     s[12] = _mm256_add_epi32(_mm256_set1_epi32((int32_t)counter), lane);
@@ -63,7 +63,7 @@ void cfx_chacha20_block8_impl(const cfx_chacha20_state_t* ctx, uint32_t counter,
     for (int i = 0; i < 16; ++i)
         x[i] = _mm256_add_epi32(x[i], s[i]);
 
-    transpose(x, (uint32_t (*)[16])out);
+    transpose(x, (uint32_t (*)[16]) out);
 
     CFX_MEMZERO_S(x, sizeof(x));
     CFX_MEMZERO_S(s, sizeof(s));

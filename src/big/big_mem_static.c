@@ -41,8 +41,7 @@ static int g_static_in_use[CFX_STATIC_POOL_SIZE];
 /*
  * Initialize big integer by allocating a buffer from the pool.
  */
-void cfx_big_init(cfx_big_t* b)
-{
+void cfx_big_init(cfx_big_t *b){
     /* Find a free buffer in the pool */
     for (int i = 0; i < CFX_STATIC_POOL_SIZE; ++i) {
         if (!g_static_in_use[i]) {
@@ -57,7 +56,7 @@ void cfx_big_init(cfx_big_t* b)
 
     /* Pool exhausted */
     fprintf(stderr, "cfx_big_init: static buffer pool exhausted "
-            "(max %d concurrent big integers)\n", CFX_STATIC_POOL_SIZE);
+        "(max %d concurrent big integers)\n", CFX_STATIC_POOL_SIZE);
     abort();
 }
 
@@ -71,8 +70,7 @@ void cfx_big_init(cfx_big_t* b)
  * In static mode, this validates that the existing buffer is large enough.
  * If the big has no buffer yet (cap=0), allocate one from the pool.
  */
-void cfx_big_reserve(cfx_big_t* b, size_t need)
-{
+void cfx_big_reserve(cfx_big_t *b, size_t need){
     /* If big has no buffer, grab one from the pool */
     if (b->cap == 0) {
         for (int i = 0; i < CFX_STATIC_POOL_SIZE; ++i) {
@@ -86,7 +84,7 @@ void cfx_big_reserve(cfx_big_t* b, size_t need)
         }
         if (b->cap == 0) {
             fprintf(stderr, "cfx_big_reserve: static buffer pool exhausted "
-                    "(max %d concurrent big integers)\n", CFX_STATIC_POOL_SIZE);
+                "(max %d concurrent big integers)\n", CFX_STATIC_POOL_SIZE);
             abort();
         }
     }
@@ -94,7 +92,7 @@ void cfx_big_reserve(cfx_big_t* b, size_t need)
     /* Validate that we have enough capacity */
     if (need > b->cap) {
         fprintf(stderr, "cfx_big_reserve: requested %zu limbs exceeds static capacity %zu "
-                "(max %d limbs per big integer)\n", need, b->cap, CFX_STATIC_LIMBS);
+            "(max %d limbs per big integer)\n", need, b->cap, CFX_STATIC_LIMBS);
         abort();
     }
 }
@@ -106,8 +104,7 @@ void cfx_big_reserve(cfx_big_t* b, size_t need)
 /*
  * Return buffer to the pool for reuse.
  */
-void cfx_big_free(cfx_big_t* b)
-{
+void cfx_big_free(cfx_big_t *b){
     if (!b->limb) return;
 
     /* Find which buffer this is and mark it free */

@@ -15,21 +15,21 @@ typedef struct {
 CFX_STATIC_ASSERT(
     sizeof(cfx_siphash_state_t) <= CFX_SIPHASH_CTX_SIZE,
     CFX_SIPHASH_CTX_SIZE_too_small
-);
+    );
 
 static inline uint64_t rotl64(uint64_t x, int b) {
     return (x << b) | (x >> (64 - b));
 }
 
 #define SIPROUND(v0, v1, v2, v3) do { \
-    v0 += v1; v1 = rotl64(v1, 13); v1 ^= v0; v0 = rotl64(v0, 32); \
-    v2 += v3; v3 = rotl64(v3, 16); v3 ^= v2; \
-    v0 += v3; v3 = rotl64(v3, 21); v3 ^= v0; \
-    v2 += v1; v1 = rotl64(v1, 17); v1 ^= v2; v2 = rotl64(v2, 32); \
+            v0 += v1; v1 = rotl64(v1, 13); v1 ^= v0; v0 = rotl64(v0, 32); \
+            v2 += v3; v3 = rotl64(v3, 16); v3 ^= v2; \
+            v0 += v3; v3 = rotl64(v3, 21); v3 ^= v0; \
+            v2 += v1; v1 = rotl64(v1, 17); v1 ^= v2; v2 = rotl64(v2, 32); \
 } while (0)
 
-uint64_t cfx_siphash_cd(const uint8_t* data, size_t len, const uint8_t key[16],
-                        int c_rounds, int d_rounds) {
+uint64_t cfx_siphash_cd(const uint8_t *data, size_t len, const uint8_t key[16],
+    int c_rounds, int d_rounds) {
     uint64_t k0 = cfx_load64_le(key);
     uint64_t k1 = cfx_load64_le(key + 8);
 
@@ -38,7 +38,7 @@ uint64_t cfx_siphash_cd(const uint8_t* data, size_t len, const uint8_t key[16],
     uint64_t v2 = k0 ^ 0x6c7967656e657261ULL;
     uint64_t v3 = k1 ^ 0x7465646279746573ULL;
 
-    const uint8_t* end = data + (len & ~7ULL);
+    const uint8_t *end = data + (len & ~7ULL);
     const size_t left = len & 7;
 
     /* process full 8-byte blocks */
@@ -53,14 +53,14 @@ uint64_t cfx_siphash_cd(const uint8_t* data, size_t len, const uint8_t key[16],
     /* final block with length byte */
     uint64_t b = (uint64_t)len << 56;
     switch (left) {
-        case 7: b |= (uint64_t)data[6] << 48; /* fall through */
-        case 6: b |= (uint64_t)data[5] << 40; /* fall through */
-        case 5: b |= (uint64_t)data[4] << 32; /* fall through */
-        case 4: b |= (uint64_t)data[3] << 24; /* fall through */
-        case 3: b |= (uint64_t)data[2] << 16; /* fall through */
-        case 2: b |= (uint64_t)data[1] << 8;  /* fall through */
-        case 1: b |= (uint64_t)data[0];       /* fall through */
-        case 0: break;
+    case 7: b |= (uint64_t)data[6] << 48;     /* fall through */
+    case 6: b |= (uint64_t)data[5] << 40;     /* fall through */
+    case 5: b |= (uint64_t)data[4] << 32;     /* fall through */
+    case 4: b |= (uint64_t)data[3] << 24;     /* fall through */
+    case 3: b |= (uint64_t)data[2] << 16;     /* fall through */
+    case 2: b |= (uint64_t)data[1] << 8;      /* fall through */
+    case 1: b |= (uint64_t)data[0];           /* fall through */
+    case 0: break;
     }
 
     v3 ^= b;
@@ -78,7 +78,7 @@ uint64_t cfx_siphash(const uint8_t *data, size_t len, const uint8_t key[16]) {
 }
 
 void cfx_siphash128(uint8_t out[16], const uint8_t *data, size_t len,
-                    const uint8_t key[16]) {
+    const uint8_t key[16]) {
     uint64_t k0 = cfx_load64_le(key);
     uint64_t k1 = cfx_load64_le(key + 8);
 
@@ -103,14 +103,14 @@ void cfx_siphash128(uint8_t out[16], const uint8_t *data, size_t len,
 
     uint64_t b = (uint64_t)len << 56;
     switch (left) {
-        case 7: b |= (uint64_t)data[6] << 48; /* fall through */
-        case 6: b |= (uint64_t)data[5] << 40; /* fall through */
-        case 5: b |= (uint64_t)data[4] << 32; /* fall through */
-        case 4: b |= (uint64_t)data[3] << 24; /* fall through */
-        case 3: b |= (uint64_t)data[2] << 16; /* fall through */
-        case 2: b |= (uint64_t)data[1] << 8;  /* fall through */
-        case 1: b |= (uint64_t)data[0];       /* fall through */
-        case 0: break;
+    case 7: b |= (uint64_t)data[6] << 48;     /* fall through */
+    case 6: b |= (uint64_t)data[5] << 40;     /* fall through */
+    case 5: b |= (uint64_t)data[4] << 32;     /* fall through */
+    case 4: b |= (uint64_t)data[3] << 24;     /* fall through */
+    case 3: b |= (uint64_t)data[2] << 16;     /* fall through */
+    case 2: b |= (uint64_t)data[1] << 8;      /* fall through */
+    case 1: b |= (uint64_t)data[0];           /* fall through */
+    case 0: break;
     }
 
     v3 ^= b;
@@ -141,8 +141,8 @@ void cfx_siphash128(uint8_t out[16], const uint8_t *data, size_t len,
 
 /* streaming interface */
 
-void cfx_siphash_init_cd(cfx_siphash_ctx_t* ctx, const uint8_t key[16], int c_rounds, int d_rounds) {
-    cfx_siphash_state_t* s = (cfx_siphash_state_t *)ctx;
+void cfx_siphash_init_cd(cfx_siphash_ctx_t *ctx, const uint8_t key[16], int c_rounds, int d_rounds) {
+    cfx_siphash_state_t *s = (cfx_siphash_state_t *)ctx;
     uint64_t k0 = cfx_load64_le(key);
     uint64_t k1 = cfx_load64_le(key + 8);
 
@@ -156,12 +156,12 @@ void cfx_siphash_init_cd(cfx_siphash_ctx_t* ctx, const uint8_t key[16], int c_ro
     s->d_rounds = (uint8_t)d_rounds;
 }
 
-void cfx_siphash_init(cfx_siphash_ctx_t* ctx, const uint8_t key[16]) {
+void cfx_siphash_init(cfx_siphash_ctx_t *ctx, const uint8_t key[16]) {
     cfx_siphash_init_cd(ctx, key, 2, 4);
 }
 
-void cfx_siphash_update(cfx_siphash_ctx_t* ctx, const uint8_t* data, size_t len) {
-    cfx_siphash_state_t* s = (cfx_siphash_state_t *)ctx;
+void cfx_siphash_update(cfx_siphash_ctx_t *ctx, const uint8_t *data, size_t len) {
+    cfx_siphash_state_t *s = (cfx_siphash_state_t *)ctx;
     s->total += len;
 
     /* fill buffer if we have partial data */
@@ -201,19 +201,19 @@ void cfx_siphash_update(cfx_siphash_ctx_t* ctx, const uint8_t* data, size_t len)
     }
 }
 
-uint64_t cfx_siphash_final(cfx_siphash_ctx_t* ctx) {
-    cfx_siphash_state_t* s = (cfx_siphash_state_t *)ctx;
+uint64_t cfx_siphash_final(cfx_siphash_ctx_t *ctx) {
+    cfx_siphash_state_t *s = (cfx_siphash_state_t *)ctx;
     uint64_t b = s->total << 56;
 
     switch (s->buflen) {
-        case 7: b |= (uint64_t)s->buf[6] << 48; /* fall through */
-        case 6: b |= (uint64_t)s->buf[5] << 40; /* fall through */
-        case 5: b |= (uint64_t)s->buf[4] << 32; /* fall through */
-        case 4: b |= (uint64_t)s->buf[3] << 24; /* fall through */
-        case 3: b |= (uint64_t)s->buf[2] << 16; /* fall through */
-        case 2: b |= (uint64_t)s->buf[1] << 8;  /* fall through */
-        case 1: b |= (uint64_t)s->buf[0];       /* fall through */
-        case 0: break;
+    case 7: b |= (uint64_t)s->buf[6] << 48;     /* fall through */
+    case 6: b |= (uint64_t)s->buf[5] << 40;     /* fall through */
+    case 5: b |= (uint64_t)s->buf[4] << 32;     /* fall through */
+    case 4: b |= (uint64_t)s->buf[3] << 24;     /* fall through */
+    case 3: b |= (uint64_t)s->buf[2] << 16;     /* fall through */
+    case 2: b |= (uint64_t)s->buf[1] << 8;      /* fall through */
+    case 1: b |= (uint64_t)s->buf[0];           /* fall through */
+    case 0: break;
     }
 
     s->v[3] ^= b;

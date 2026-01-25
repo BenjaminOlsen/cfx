@@ -68,36 +68,36 @@ uint64_t cfx_ntt_root_of_unity(uint64_t g, uint64_t p, size_t n);
  * Precomputed powers of the primitive root for a given transform size.
  */
 typedef struct {
-    uint64_t* forward;   /* twiddles for forward NTT */
-    uint64_t* inverse;   /* twiddles for inverse NTT */
+    uint64_t *forward;   /* twiddles for forward NTT */
+    uint64_t *inverse;   /* twiddles for inverse NTT */
     size_t n;            /* transform size (power of 2) */
     uint64_t p;          /* the prime modulus */
     uint64_t n_inv;      /* n^(-1) mod p for inverse scaling */
 } cfx_ntt_twiddles_t;
 
 /* allocate and precompute twiddle factors for size n with prime p and root g */
-int cfx_ntt_twiddles_init(cfx_ntt_twiddles_t* tw, size_t n, uint64_t p, uint64_t g);
+int cfx_ntt_twiddles_init(cfx_ntt_twiddles_t *tw, size_t n, uint64_t p, uint64_t g);
 
 /* free twiddle table */
-void cfx_ntt_twiddles_free(cfx_ntt_twiddles_t* tw);
+void cfx_ntt_twiddles_free(cfx_ntt_twiddles_t *tw);
 
 /*
  * Bit-Reversal Permutation
  */
 
 /* in-place bit-reversal permutation of array a of length n (n must be power of 2) */
-void cfx_ntt_bit_reverse(uint64_t* a, size_t n);
+void cfx_ntt_bit_reverse(uint64_t *a, size_t n);
 
 /*
  * Core NTT Transforms
  */
 
 /* forward NTT: a -> DFT(a) mod p */
-void cfx_ntt_forward(uint64_t* a, size_t n, uint64_t p, const uint64_t* twiddles);
+void cfx_ntt_forward(uint64_t *a, size_t n, uint64_t p, const uint64_t *twiddles);
 
 /* inverse NTT: a -> IDFT(a) mod p (includes 1/n scaling) */
-void cfx_ntt_inverse(uint64_t* a, size_t n, uint64_t p,
-                     const uint64_t* twiddles, uint64_t n_inv);
+void cfx_ntt_inverse(uint64_t *a, size_t n, uint64_t p,
+    const uint64_t *twiddles, uint64_t n_inv);
 
 /*
  * Polynomial Convolution via NTT
@@ -117,9 +117,9 @@ void cfx_ntt_inverse(uint64_t* a, size_t n, uint64_t p,
  *
  * Returns 0 on success, -1 on error (allocation failure or invalid n).
  */
-int cfx_ntt_convolve(uint64_t* c, const uint64_t* a, size_t len_a,
-                     const uint64_t* b, size_t len_b,
-                     size_t n, uint64_t p, uint64_t g);
+int cfx_ntt_convolve(uint64_t *c, const uint64_t *a, size_t len_a,
+    const uint64_t *b, size_t len_b,
+    size_t n, uint64_t p, uint64_t g);
 
 /*
  * Big Integer Multiplication via NTT
@@ -136,8 +136,8 @@ int cfx_ntt_convolve(uint64_t* c, const uint64_t* a, size_t len_a,
  * Each limb is split into CFX_LIMB_BITS/16 chunks (2 for 32-bit, 4 for 64-bit).
  * Output chunks are stored little-endian (low chunks first).
  */
-size_t cfx_ntt_limbs_to_chunks(uint64_t* chunks, size_t max_chunks,
-                                const cfx_limb_t* limbs, size_t n_limbs);
+size_t cfx_ntt_limbs_to_chunks(uint64_t *chunks, size_t max_chunks,
+    const cfx_limb_t *limbs, size_t n_limbs);
 
 /*
  * Convert NTT output chunks back to limbs with carry propagation.
@@ -146,16 +146,16 @@ size_t cfx_ntt_limbs_to_chunks(uint64_t* chunks, size_t max_chunks,
  * Input chunks may have values > 16 bits (from convolution sums).
  * Carry propagation reduces each to 16 bits and accumulates into limbs.
  */
-size_t cfx_ntt_chunks_to_limbs(cfx_limb_t* limbs, size_t max_limbs,
-                                const uint64_t* chunks, size_t n_chunks);
+size_t cfx_ntt_chunks_to_limbs(cfx_limb_t *limbs, size_t max_limbs,
+    const uint64_t *chunks, size_t n_chunks);
 
 /*
  * Multiply two limb arrays using NTT.
  * out must have space for (n_a + n_b) limbs.
  * Returns number of result limbs (excluding trailing zeros).
  */
-size_t cfx_ntt_mul_limbs(cfx_limb_t* out, size_t out_cap,
-                          const cfx_limb_t* a, size_t n_a,
-                          const cfx_limb_t* b, size_t n_b);
+size_t cfx_ntt_mul_limbs(cfx_limb_t *out, size_t out_cap,
+    const cfx_limb_t *a, size_t n_a,
+    const cfx_limb_t *b, size_t n_b);
 
 #endif /* CFX_NTT_H */

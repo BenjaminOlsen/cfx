@@ -25,8 +25,7 @@
 /*
  * Initialize big integer to empty state with no allocated memory.
  */
-void cfx_big_init(cfx_big_t* b)
-{
+void cfx_big_init(cfx_big_t *b){
     memset(b, 0, sizeof(*b));
 }
 
@@ -40,8 +39,7 @@ void cfx_big_init(cfx_big_t* b)
  * Uses exponential growth strategy (doubling) to amortize allocation cost.
  * New memory is zeroed after allocation.
  */
-void cfx_big_reserve(cfx_big_t* b, size_t need)
-{
+void cfx_big_reserve(cfx_big_t *b, size_t need){
     if (need <= b->cap) return;
 
     size_t old_cap = b->cap;
@@ -64,13 +62,13 @@ void cfx_big_reserve(cfx_big_t* b, size_t need)
 
     size_t new_bytes = new_cap * sizeof(cfx_limb_t);
 
-    void* tmp = realloc(b->limb, new_bytes);
+    void *tmp = realloc(b->limb, new_bytes);
     if (!tmp) {
         fprintf(stderr, "cfx_big_reserve: out of memory (requested %zu bytes)\n", new_bytes);
         abort();
     }
 
-    b->limb = (cfx_limb_t*)tmp;
+    b->limb = (cfx_limb_t *)tmp;
 
     /* Zero the newly added region */
     if (new_cap > old_cap) {
@@ -88,8 +86,7 @@ void cfx_big_reserve(cfx_big_t* b, size_t need)
 /*
  * Free the limb array and reset the structure.
  */
-void cfx_big_free(cfx_big_t* b)
-{
+void cfx_big_free(cfx_big_t *b){
     b->n = 0;
     b->cap = 0;
     if (b->limb) free(b->limb);

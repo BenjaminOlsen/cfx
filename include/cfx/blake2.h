@@ -35,37 +35,37 @@ extern "C" {
 
 typedef union {
     uint8_t opaque[CFX_BLAKE2B_CTX_SIZE];
-    size_t   aligner;
+    size_t aligner;
 } cfx_blake2b_ctx_t;
 
 typedef union {
     uint8_t opaque[CFX_BLAKE2S_CTX_SIZE];
-    size_t   aligner;
+    size_t aligner;
 } cfx_blake2s_ctx_t;
 
 /* BLAKE2b - 64-bit optimized */
-int cfx_blake2b_init(cfx_blake2b_ctx_t* ctx, size_t outlen);
-int cfx_blake2b_init_key(cfx_blake2b_ctx_t* ctx, size_t outlen,
-                         const void* key, size_t keylen);
-int cfx_blake2b_update(cfx_blake2b_ctx_t* ctx, const void* in, size_t inlen);
-int cfx_blake2b_final(cfx_blake2b_ctx_t* ctx, void* out);
+int cfx_blake2b_init(cfx_blake2b_ctx_t *ctx, size_t outlen);
+int cfx_blake2b_init_key(cfx_blake2b_ctx_t *ctx, size_t outlen,
+    const void *key, size_t keylen);
+int cfx_blake2b_update(cfx_blake2b_ctx_t *ctx, const void *in, size_t inlen);
+int cfx_blake2b_final(cfx_blake2b_ctx_t *ctx, void *out);
 
 /* one-shot */
-int cfx_blake2b(void* out, size_t outlen,
-                const void* in, size_t inlen,
-                const void* key, size_t keylen);
+int cfx_blake2b(void *out, size_t outlen,
+    const void *in, size_t inlen,
+    const void *key, size_t keylen);
 
 /* BLAKE2s - 32-bit optimized */
-int cfx_blake2s_init(cfx_blake2s_ctx_t* ctx, size_t outlen);
-int cfx_blake2s_init_key(cfx_blake2s_ctx_t* ctx, size_t outlen,
-                         const void* key, size_t keylen);
-int cfx_blake2s_update(cfx_blake2s_ctx_t* ctx, const void* in, size_t inlen);
-int cfx_blake2s_final(cfx_blake2s_ctx_t* ctx, void* out);
+int cfx_blake2s_init(cfx_blake2s_ctx_t *ctx, size_t outlen);
+int cfx_blake2s_init_key(cfx_blake2s_ctx_t *ctx, size_t outlen,
+    const void *key, size_t keylen);
+int cfx_blake2s_update(cfx_blake2s_ctx_t *ctx, const void *in, size_t inlen);
+int cfx_blake2s_final(cfx_blake2s_ctx_t *ctx, void *out);
 
 /* one-shot */
-int cfx_blake2s(void* out, size_t outlen,
-                const void* in, size_t inlen,
-                const void* key, size_t keylen);
+int cfx_blake2s(void *out, size_t outlen,
+    const void *in, size_t inlen,
+    const void *key, size_t keylen);
 
 #ifdef __cplusplus
 }

@@ -75,12 +75,12 @@ typedef uint32_t cfx_limb_t;
 #if (CFX_LIMB_BITS == 64)
 
 #  if CFX_HAS_UINT128 && !defined(CFX_FORCE_ACC_STRUCT)
-    /* 64-bit limbs, native 128-bit accumulator */
-    typedef __uint128_t cfx_acc_t;
+/* 64-bit limbs, native 128-bit accumulator */
+typedef __uint128_t cfx_acc_t;
 #    define CFX_ACC_NATIVE 1
 #  else
-    /* 64-bit limbs, no __uint128_t -> use struct {lo,hi} */
-    typedef struct { cfx_limb_t lo, hi; } cfx_acc_t;
+/* 64-bit limbs, no __uint128_t -> use struct {lo,hi} */
+typedef struct { cfx_limb_t lo, hi; } cfx_acc_t;
 #    define CFX_ACC_STRUCT 1
 #  endif
 
@@ -136,7 +136,7 @@ CFX_INLINE cfx_limb_t cfx_acc_hi(cfx_acc_t a) {
 #endif
 }
 
-CFX_INLINE void cfx_acc_mul(cfx_acc_t* out, cfx_limb_t x, cfx_limb_t y) {
+CFX_INLINE void cfx_acc_mul(cfx_acc_t *out, cfx_limb_t x, cfx_limb_t y) {
 #if (CFX_LIMB_BITS == 64) && CFX_HAS_UINT128
 
     *out = (__uint128_t)x * (__uint128_t)y;
@@ -166,7 +166,7 @@ CFX_INLINE void cfx_acc_mul(cfx_acc_t* out, cfx_limb_t x, cfx_limb_t y) {
 
 /* -------- primitive: limb*limb -> {hi,lo} (each limb-sized) -------- */
 CFX_INLINE void cfx_mul_wide(cfx_limb_t x, cfx_limb_t y,
-                             cfx_limb_t* hi, cfx_limb_t* lo) {
+    cfx_limb_t *hi, cfx_limb_t *lo) {
 #if (CFX_ACC_NATIVE)
     /* 64*64->128: use native when present (even if acc is struct) */
     cfx_acc_t p = ( (cfx_acc_t)x * (cfx_acc_t)y );
@@ -195,7 +195,7 @@ CFX_INLINE void cfx_mul_wide(cfx_limb_t x, cfx_limb_t y,
 #endif
 }
 
-CFX_INLINE void cfx_acc_mul_eq(cfx_acc_t* a, const cfx_acc_t* b) {
+CFX_INLINE void cfx_acc_mul_eq(cfx_acc_t *a, const cfx_acc_t *b) {
 #if defined(CFX_ACC_NATIVE)
 
     *a *= *b;
@@ -224,7 +224,7 @@ CFX_INLINE void cfx_acc_mul_eq(cfx_acc_t* a, const cfx_acc_t* b) {
     /* Full product:
          (a_hi B + a_lo)(b_hi B + b_lo) ≡ (p1_lo + p2_lo + p0_hi)·B + p0_lo  (mod B^2)
        High part of p1, p2 and a_hi*b_hi live in B^2 and above, discarded.
-    */
+     */
 
     cfx_limb_t lo = p0_lo;
     cfx_limb_t hi = p0_hi;
@@ -238,7 +238,7 @@ CFX_INLINE void cfx_acc_mul_eq(cfx_acc_t* a, const cfx_acc_t* b) {
 }
 
 /* -------- primitive: acc += low limb -------- */
-CFX_INLINE void cfx_acc_add_lo(cfx_acc_t* acc, cfx_limb_t add) {
+CFX_INLINE void cfx_acc_add_lo(cfx_acc_t *acc, cfx_limb_t add) {
 #if defined(CFX_ACC_NATIVE)
     *acc += (cfx_acc_t)add;
 #else
@@ -249,7 +249,7 @@ CFX_INLINE void cfx_acc_add_lo(cfx_acc_t* acc, cfx_limb_t add) {
 }
 
 /* -------- primitive: acc += high limb (i.e., add at +LIMB_BITS) -------- */
-CFX_INLINE void cfx_acc_add_hi(cfx_acc_t* acc, cfx_limb_t add_hi) {
+CFX_INLINE void cfx_acc_add_hi(cfx_acc_t *acc, cfx_limb_t add_hi) {
 #if defined(CFX_ACC_NATIVE)
     *acc += ( (cfx_acc_t)add_hi << CFX_LIMB_BITS );
 #else
@@ -261,7 +261,7 @@ CFX_INLINE void cfx_acc_add_hi(cfx_acc_t* acc, cfx_limb_t add_hi) {
 }
 
 /* -------- primitive: acc += x*y -------- */
-CFX_INLINE void cfx_acc_mac(cfx_acc_t* acc, cfx_limb_t x, cfx_limb_t y) {
+CFX_INLINE void cfx_acc_mac(cfx_acc_t *acc, cfx_limb_t x, cfx_limb_t y) {
 #if defined(CFX_ACC_NATIVE)
     *acc += ( (cfx_acc_t)x * (cfx_acc_t)y );
 #else
@@ -272,7 +272,7 @@ CFX_INLINE void cfx_acc_mac(cfx_acc_t* acc, cfx_limb_t x, cfx_limb_t y) {
 #endif
 }
 
-CFX_INLINE int cfx_acc_lt(const cfx_acc_t* u, const cfx_acc_t* v) {
+CFX_INLINE int cfx_acc_lt(const cfx_acc_t *u, const cfx_acc_t *v) {
 #if defined(CFX_ACC_NATIVE)
     return *u < *v;
 #else
@@ -280,7 +280,7 @@ CFX_INLINE int cfx_acc_lt(const cfx_acc_t* u, const cfx_acc_t* v) {
 #endif
 }
 
-CFX_INLINE int cfx_acc_le(const cfx_acc_t* u, const cfx_acc_t* v) {
+CFX_INLINE int cfx_acc_le(const cfx_acc_t *u, const cfx_acc_t *v) {
 #if defined(CFX_ACC_NATIVE)
     return *u <= *v;
 #else
@@ -288,7 +288,7 @@ CFX_INLINE int cfx_acc_le(const cfx_acc_t* u, const cfx_acc_t* v) {
 #endif
 }
 
-CFX_INLINE int cfx_acc_eq(const cfx_acc_t* u, const cfx_acc_t* v) {
+CFX_INLINE int cfx_acc_eq(const cfx_acc_t *u, const cfx_acc_t *v) {
 #if defined(CFX_ACC_NATIVE)
     return *u == *v;
 #else
@@ -296,8 +296,8 @@ CFX_INLINE int cfx_acc_eq(const cfx_acc_t* u, const cfx_acc_t* v) {
 #endif
 }
 
-CFX_INLINE void cfx_acc_divrem(cfx_acc_t* q, cfx_acc_t* r,
-                               const cfx_acc_t* u, const cfx_acc_t* v) {
+CFX_INLINE void cfx_acc_divrem(cfx_acc_t *q, cfx_acc_t *r,
+    const cfx_acc_t *u, const cfx_acc_t *v) {
 #if defined(CFX_ACC_NATIVE)
 
     *q = *u / *v;
@@ -307,7 +307,7 @@ CFX_INLINE void cfx_acc_divrem(cfx_acc_t* q, cfx_acc_t* r,
     /* Portable 2-limb / 2-limb unsigned division:
        q = u / v, r = u % v, where each is (hi, lo) in base 2^CFX_LIMB_BITS.
        Works for CFX_LIMB_BITS == 32 or 64.
-    */
+     */
 
     cfx_acc_t U = *u;
     cfx_acc_t V = *v;

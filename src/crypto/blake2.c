@@ -18,18 +18,18 @@ typedef struct {
     uint64_t h[8];
     uint64_t t[2];
     uint64_t f[2];
-    uint8_t  buf[128];
-    size_t   buflen;
-    size_t   outlen;
+    uint8_t buf[128];
+    size_t buflen;
+    size_t outlen;
 } cfx_blake2b_state_t;
 
 typedef struct {
     uint32_t h[8];
     uint32_t t[2];
     uint32_t f[2];
-    uint8_t  buf[64];
-    size_t   buflen;
-    size_t   outlen;
+    uint8_t buf[64];
+    size_t buflen;
+    size_t outlen;
 } cfx_blake2s_state_t;
 
 CFX_STATIC_ASSERT(sizeof(cfx_blake2b_state_t) <= sizeof(cfx_blake2b_ctx_t), blake2b_ctx_too_small);
@@ -73,30 +73,30 @@ static inline uint32_t rotr32(uint32_t x, int n) {
     return (x >> n) | (x << (32 - n));
 }
 
-static inline uint64_t load64_le(const void* src) {
-    const uint8_t* p = (const uint8_t*)src;
+static inline uint64_t load64_le(const void *src) {
+    const uint8_t *p = (const uint8_t *)src;
     return ((uint64_t)p[0])       | ((uint64_t)p[1] << 8)  |
            ((uint64_t)p[2] << 16) | ((uint64_t)p[3] << 24) |
            ((uint64_t)p[4] << 32) | ((uint64_t)p[5] << 40) |
            ((uint64_t)p[6] << 48) | ((uint64_t)p[7] << 56);
 }
 
-static inline uint32_t load32_le(const void* src) {
-    const uint8_t* p = (const uint8_t*)src;
+static inline uint32_t load32_le(const void *src) {
+    const uint8_t *p = (const uint8_t *)src;
     return ((uint32_t)p[0])       | ((uint32_t)p[1] << 8) |
            ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-static inline void store64_le(void* dst, uint64_t x) {
-    uint8_t* p = (uint8_t*)dst;
+static inline void store64_le(void *dst, uint64_t x) {
+    uint8_t *p = (uint8_t *)dst;
     p[0] = (uint8_t)x; p[1] = (uint8_t)(x >> 8);
     p[2] = (uint8_t)(x >> 16); p[3] = (uint8_t)(x >> 24);
     p[4] = (uint8_t)(x >> 32); p[5] = (uint8_t)(x >> 40);
     p[6] = (uint8_t)(x >> 48); p[7] = (uint8_t)(x >> 56);
 }
 
-static inline void store32_le(void* dst, uint32_t x) {
-    uint8_t* p = (uint8_t*)dst;
+static inline void store32_le(void *dst, uint32_t x) {
+    uint8_t *p = (uint8_t *)dst;
     p[0] = (uint8_t)x; p[1] = (uint8_t)(x >> 8);
     p[2] = (uint8_t)(x >> 16); p[3] = (uint8_t)(x >> 24);
 }
@@ -106,18 +106,18 @@ static inline void store32_le(void* dst, uint32_t x) {
 /* ========================================================================== */
 
 #define B2B_G(a, b, c, d, x, y) do { \
-    a = a + b + x; \
-    d = rotr64(d ^ a, 32); \
-    c = c + d; \
-    b = rotr64(b ^ c, 24); \
-    a = a + b + y; \
-    d = rotr64(d ^ a, 16); \
-    c = c + d; \
-    b = rotr64(b ^ c, 63); \
+            a = a + b + x; \
+            d = rotr64(d ^ a, 32); \
+            c = c + d; \
+            b = rotr64(b ^ c, 24); \
+            a = a + b + y; \
+            d = rotr64(d ^ a, 16); \
+            c = c + d; \
+            b = rotr64(b ^ c, 63); \
 } while(0)
 
 CFX_MAYBE_UNUSED
-static void blake2b_compress(cfx_blake2b_state_t* S, const uint8_t block[128]) {
+static void blake2b_compress(cfx_blake2b_state_t *S, const uint8_t block[128]) {
     uint64_t m[16], v[16];
 
     for (int i = 0; i < 16; i++) {
@@ -135,7 +135,7 @@ static void blake2b_compress(cfx_blake2b_state_t* S, const uint8_t block[128]) {
     v[15] ^= S->f[1];
 
     for (int r = 0; r < 12; r++) {
-        const uint8_t* s = sigma[r];
+        const uint8_t *s = sigma[r];
         B2B_G(v[0], v[4], v[ 8], v[12], m[s[ 0]], m[s[ 1]]);
         B2B_G(v[1], v[5], v[ 9], v[13], m[s[ 2]], m[s[ 3]]);
         B2B_G(v[2], v[6], v[10], v[14], m[s[ 4]], m[s[ 5]]);
@@ -151,7 +151,7 @@ static void blake2b_compress(cfx_blake2b_state_t* S, const uint8_t block[128]) {
     }
 }
 
-static void blake2b_increment_counter(cfx_blake2b_state_t* S, uint64_t inc) {
+static void blake2b_increment_counter(cfx_blake2b_state_t *S, uint64_t inc) {
     S->t[0] += inc;
     S->t[1] += (S->t[0] < inc) ? 1 : 0;
 }
@@ -166,7 +166,7 @@ static inline __m256i rotr64_24(__m256i x) {
     const __m256i mask = _mm256_setr_epi8(
         3, 4, 5, 6, 7, 0, 1, 2, 11, 12, 13, 14, 15, 8, 9, 10,
         3, 4, 5, 6, 7, 0, 1, 2, 11, 12, 13, 14, 15, 8, 9, 10
-    );
+        );
     return _mm256_shuffle_epi8(x, mask);
 }
 
@@ -174,7 +174,7 @@ static inline __m256i rotr64_16(__m256i x) {
     const __m256i mask = _mm256_setr_epi8(
         2, 3, 4, 5, 6, 7, 0, 1, 10, 11, 12, 13, 14, 15, 8, 9,
         2, 3, 4, 5, 6, 7, 0, 1, 10, 11, 12, 13, 14, 15, 8, 9
-    );
+        );
     return _mm256_shuffle_epi8(x, mask);
 }
 
@@ -183,43 +183,43 @@ static inline __m256i rotr64_63(__m256i x) {
 }
 
 #define B2B_G_AVX2(row0, row1, row2, row3, m_x, m_y) do { \
-    row0 = _mm256_add_epi64(_mm256_add_epi64(row0, row1), m_x); \
-    row3 = rotr64_32(_mm256_xor_si256(row3, row0)); \
-    row2 = _mm256_add_epi64(row2, row3); \
-    row1 = rotr64_24(_mm256_xor_si256(row1, row2)); \
-    row0 = _mm256_add_epi64(_mm256_add_epi64(row0, row1), m_y); \
-    row3 = rotr64_16(_mm256_xor_si256(row3, row0)); \
-    row2 = _mm256_add_epi64(row2, row3); \
-    row1 = rotr64_63(_mm256_xor_si256(row1, row2)); \
+            row0 = _mm256_add_epi64(_mm256_add_epi64(row0, row1), m_x); \
+            row3 = rotr64_32(_mm256_xor_si256(row3, row0)); \
+            row2 = _mm256_add_epi64(row2, row3); \
+            row1 = rotr64_24(_mm256_xor_si256(row1, row2)); \
+            row0 = _mm256_add_epi64(_mm256_add_epi64(row0, row1), m_y); \
+            row3 = rotr64_16(_mm256_xor_si256(row3, row0)); \
+            row2 = _mm256_add_epi64(row2, row3); \
+            row1 = rotr64_63(_mm256_xor_si256(row1, row2)); \
 } while(0)
 
 /* row1 rotates by 1, row2 by 2, row3 by 3 for diagonal round */
 #define DIAG_PERM(row1, row2, row3) do { \
-    row1 = _mm256_permute4x64_epi64(row1, _MM_SHUFFLE(0, 3, 2, 1)); \
-    row2 = _mm256_permute4x64_epi64(row2, _MM_SHUFFLE(1, 0, 3, 2)); \
-    row3 = _mm256_permute4x64_epi64(row3, _MM_SHUFFLE(2, 1, 0, 3)); \
+            row1 = _mm256_permute4x64_epi64(row1, _MM_SHUFFLE(0, 3, 2, 1)); \
+            row2 = _mm256_permute4x64_epi64(row2, _MM_SHUFFLE(1, 0, 3, 2)); \
+            row3 = _mm256_permute4x64_epi64(row3, _MM_SHUFFLE(2, 1, 0, 3)); \
 } while(0)
 
 #define UNDIAG_PERM(row1, row2, row3) do { \
-    row1 = _mm256_permute4x64_epi64(row1, _MM_SHUFFLE(2, 1, 0, 3)); \
-    row2 = _mm256_permute4x64_epi64(row2, _MM_SHUFFLE(1, 0, 3, 2)); \
-    row3 = _mm256_permute4x64_epi64(row3, _MM_SHUFFLE(0, 3, 2, 1)); \
+            row1 = _mm256_permute4x64_epi64(row1, _MM_SHUFFLE(2, 1, 0, 3)); \
+            row2 = _mm256_permute4x64_epi64(row2, _MM_SHUFFLE(1, 0, 3, 2)); \
+            row3 = _mm256_permute4x64_epi64(row3, _MM_SHUFFLE(0, 3, 2, 1)); \
 } while(0)
 
-static void blake2b_compress_avx2(cfx_blake2b_state_t* S, const uint8_t block[128]) {
+static void blake2b_compress_avx2(cfx_blake2b_state_t *S, const uint8_t block[128]) {
     __m256i row0, row1, row2, row3;
 
-    row0 = _mm256_loadu_si256((const __m256i*)&S->h[0]);
-    row1 = _mm256_loadu_si256((const __m256i*)&S->h[4]);
-    row2 = _mm256_loadu_si256((const __m256i*)&blake2b_IV[0]);
-    row3 = _mm256_loadu_si256((const __m256i*)&blake2b_IV[4]);
+    row0 = _mm256_loadu_si256((const __m256i *)&S->h[0]);
+    row1 = _mm256_loadu_si256((const __m256i *)&S->h[4]);
+    row2 = _mm256_loadu_si256((const __m256i *)&blake2b_IV[0]);
+    row3 = _mm256_loadu_si256((const __m256i *)&blake2b_IV[4]);
 
     row3 = _mm256_xor_si256(row3, _mm256_setr_epi64x(
         (int64_t)S->t[0], (int64_t)S->t[1], (int64_t)S->f[0], (int64_t)S->f[1]
-    ));
+        ));
 
     for (int r = 0; r < 12; r++) {
-        const uint8_t* s = sigma[r];
+        const uint8_t *s = sigma[r];
 
         /* column round */
         __m256i mx0 = _mm256_setr_epi64x(
@@ -244,12 +244,12 @@ static void blake2b_compress_avx2(cfx_blake2b_state_t* S, const uint8_t block[12
         UNDIAG_PERM(row1, row2, row3);
     }
 
-    __m256i h0 = _mm256_loadu_si256((const __m256i*)&S->h[0]);
-    __m256i h1 = _mm256_loadu_si256((const __m256i*)&S->h[4]);
+    __m256i h0 = _mm256_loadu_si256((const __m256i *)&S->h[0]);
+    __m256i h1 = _mm256_loadu_si256((const __m256i *)&S->h[4]);
     h0 = _mm256_xor_si256(h0, _mm256_xor_si256(row0, row2));
     h1 = _mm256_xor_si256(h1, _mm256_xor_si256(row1, row3));
-    _mm256_storeu_si256((__m256i*)&S->h[0], h0);
-    _mm256_storeu_si256((__m256i*)&S->h[4], h1);
+    _mm256_storeu_si256((__m256i *)&S->h[0], h0);
+    _mm256_storeu_si256((__m256i *)&S->h[4], h1);
 }
 
 #undef B2B_G_AVX2
@@ -261,10 +261,10 @@ static void blake2b_compress_avx2(cfx_blake2b_state_t* S, const uint8_t block[12
 #define blake2b_compress_fn blake2b_compress
 #endif /* CFX_HAVE_AVX2 */
 
-int cfx_blake2b_init(cfx_blake2b_ctx_t* ctx, size_t outlen) {
+int cfx_blake2b_init(cfx_blake2b_ctx_t *ctx, size_t outlen) {
     if (outlen == 0 || outlen > CFX_BLAKE2B_OUTBYTES) return -1;
 
-    cfx_blake2b_state_t* S = (cfx_blake2b_state_t*)ctx;
+    cfx_blake2b_state_t *S = (cfx_blake2b_state_t *)ctx;
     memset(S, 0, sizeof(*S));
     for (int i = 0; i < 8; i++) {
         S->h[i] = blake2b_IV[i];
@@ -276,12 +276,12 @@ int cfx_blake2b_init(cfx_blake2b_ctx_t* ctx, size_t outlen) {
     return 0;
 }
 
-int cfx_blake2b_init_key(cfx_blake2b_ctx_t* ctx, size_t outlen,
-                         const void* key, size_t keylen) {
+int cfx_blake2b_init_key(cfx_blake2b_ctx_t *ctx, size_t outlen,
+    const void *key, size_t keylen) {
     if (outlen == 0 || outlen > CFX_BLAKE2B_OUTBYTES) return -1;
     if (keylen > CFX_BLAKE2B_KEYBYTES) return -1;
 
-    cfx_blake2b_state_t* S = (cfx_blake2b_state_t*)ctx;
+    cfx_blake2b_state_t *S = (cfx_blake2b_state_t *)ctx;
     memset(S, 0, sizeof(*S));
     for (int i = 0; i < 8; i++) {
         S->h[i] = blake2b_IV[i];
@@ -300,9 +300,9 @@ int cfx_blake2b_init_key(cfx_blake2b_ctx_t* ctx, size_t outlen,
     return 0;
 }
 
-int cfx_blake2b_update(cfx_blake2b_ctx_t* ctx, const void* in, size_t inlen) {
-    cfx_blake2b_state_t* S = (cfx_blake2b_state_t*)ctx;
-    const uint8_t* pin = (const uint8_t*)in;
+int cfx_blake2b_update(cfx_blake2b_ctx_t *ctx, const void *in, size_t inlen) {
+    cfx_blake2b_state_t *S = (cfx_blake2b_state_t *)ctx;
+    const uint8_t *pin = (const uint8_t *)in;
 
     if (inlen == 0) return 0;
 
@@ -331,8 +331,8 @@ int cfx_blake2b_update(cfx_blake2b_ctx_t* ctx, const void* in, size_t inlen) {
     return 0;
 }
 
-int cfx_blake2b_final(cfx_blake2b_ctx_t* ctx, void* out) {
-    cfx_blake2b_state_t* S = (cfx_blake2b_state_t*)ctx;
+int cfx_blake2b_final(cfx_blake2b_ctx_t *ctx, void *out) {
+    cfx_blake2b_state_t *S = (cfx_blake2b_state_t *)ctx;
     uint8_t buffer[CFX_BLAKE2B_OUTBYTES];
 
     blake2b_increment_counter(S, S->buflen);
@@ -351,9 +351,9 @@ int cfx_blake2b_final(cfx_blake2b_ctx_t* ctx, void* out) {
     return 0;
 }
 
-int cfx_blake2b(void* out, size_t outlen,
-                const void* in, size_t inlen,
-                const void* key, size_t keylen) {
+int cfx_blake2b(void *out, size_t outlen,
+    const void *in, size_t inlen,
+    const void *key, size_t keylen) {
     cfx_blake2b_ctx_t ctx;
     int ret;
 
@@ -375,17 +375,17 @@ int cfx_blake2b(void* out, size_t outlen,
 /* ========================================================================== */
 
 #define B2S_G(a, b, c, d, x, y) do { \
-    a = a + b + x; \
-    d = rotr32(d ^ a, 16); \
-    c = c + d; \
-    b = rotr32(b ^ c, 12); \
-    a = a + b + y; \
-    d = rotr32(d ^ a, 8); \
-    c = c + d; \
-    b = rotr32(b ^ c, 7); \
+            a = a + b + x; \
+            d = rotr32(d ^ a, 16); \
+            c = c + d; \
+            b = rotr32(b ^ c, 12); \
+            a = a + b + y; \
+            d = rotr32(d ^ a, 8); \
+            c = c + d; \
+            b = rotr32(b ^ c, 7); \
 } while(0)
 
-static void blake2s_compress(cfx_blake2s_state_t* S, const uint8_t block[64]) {
+static void blake2s_compress(cfx_blake2s_state_t *S, const uint8_t block[64]) {
     uint32_t m[16], v[16];
 
     for (int i = 0; i < 16; i++) {
@@ -403,7 +403,7 @@ static void blake2s_compress(cfx_blake2s_state_t* S, const uint8_t block[64]) {
     v[15] ^= S->f[1];
 
     for (int r = 0; r < 10; r++) {
-        const uint8_t* s = sigma[r];
+        const uint8_t *s = sigma[r];
         B2S_G(v[0], v[4], v[ 8], v[12], m[s[ 0]], m[s[ 1]]);
         B2S_G(v[1], v[5], v[ 9], v[13], m[s[ 2]], m[s[ 3]]);
         B2S_G(v[2], v[6], v[10], v[14], m[s[ 4]], m[s[ 5]]);
@@ -419,15 +419,15 @@ static void blake2s_compress(cfx_blake2s_state_t* S, const uint8_t block[64]) {
     }
 }
 
-static void blake2s_increment_counter(cfx_blake2s_state_t* S, uint32_t inc) {
+static void blake2s_increment_counter(cfx_blake2s_state_t *S, uint32_t inc) {
     S->t[0] += inc;
     S->t[1] += (S->t[0] < inc) ? 1 : 0;
 }
 
-int cfx_blake2s_init(cfx_blake2s_ctx_t* ctx, size_t outlen) {
+int cfx_blake2s_init(cfx_blake2s_ctx_t *ctx, size_t outlen) {
     if (outlen == 0 || outlen > CFX_BLAKE2S_OUTBYTES) return -1;
 
-    cfx_blake2s_state_t* S = (cfx_blake2s_state_t*)ctx;
+    cfx_blake2s_state_t *S = (cfx_blake2s_state_t *)ctx;
     memset(S, 0, sizeof(*S));
     for (int i = 0; i < 8; i++) {
         S->h[i] = blake2s_IV[i];
@@ -439,12 +439,12 @@ int cfx_blake2s_init(cfx_blake2s_ctx_t* ctx, size_t outlen) {
     return 0;
 }
 
-int cfx_blake2s_init_key(cfx_blake2s_ctx_t* ctx, size_t outlen,
-                         const void* key, size_t keylen) {
+int cfx_blake2s_init_key(cfx_blake2s_ctx_t *ctx, size_t outlen,
+    const void *key, size_t keylen) {
     if (outlen == 0 || outlen > CFX_BLAKE2S_OUTBYTES) return -1;
     if (keylen > CFX_BLAKE2S_KEYBYTES) return -1;
 
-    cfx_blake2s_state_t* S = (cfx_blake2s_state_t*)ctx;
+    cfx_blake2s_state_t *S = (cfx_blake2s_state_t *)ctx;
     memset(S, 0, sizeof(*S));
     for (int i = 0; i < 8; i++) {
         S->h[i] = blake2s_IV[i];
@@ -463,9 +463,9 @@ int cfx_blake2s_init_key(cfx_blake2s_ctx_t* ctx, size_t outlen,
     return 0;
 }
 
-int cfx_blake2s_update(cfx_blake2s_ctx_t* ctx, const void* in, size_t inlen) {
-    cfx_blake2s_state_t* S = (cfx_blake2s_state_t*)ctx;
-    const uint8_t* pin = (const uint8_t*)in;
+int cfx_blake2s_update(cfx_blake2s_ctx_t *ctx, const void *in, size_t inlen) {
+    cfx_blake2s_state_t *S = (cfx_blake2s_state_t *)ctx;
+    const uint8_t *pin = (const uint8_t *)in;
 
     if (inlen == 0) return 0;
 
@@ -494,8 +494,8 @@ int cfx_blake2s_update(cfx_blake2s_ctx_t* ctx, const void* in, size_t inlen) {
     return 0;
 }
 
-int cfx_blake2s_final(cfx_blake2s_ctx_t* ctx, void* out) {
-    cfx_blake2s_state_t* S = (cfx_blake2s_state_t*)ctx;
+int cfx_blake2s_final(cfx_blake2s_ctx_t *ctx, void *out) {
+    cfx_blake2s_state_t *S = (cfx_blake2s_state_t *)ctx;
     uint8_t buffer[CFX_BLAKE2S_OUTBYTES];
 
     blake2s_increment_counter(S, (uint32_t)S->buflen);
@@ -514,9 +514,9 @@ int cfx_blake2s_final(cfx_blake2s_ctx_t* ctx, void* out) {
     return 0;
 }
 
-int cfx_blake2s(void* out, size_t outlen,
-                const void* in, size_t inlen,
-                const void* key, size_t keylen) {
+int cfx_blake2s(void *out, size_t outlen,
+    const void *in, size_t inlen,
+    const void *key, size_t keylen) {
     cfx_blake2s_ctx_t ctx;
     int ret;
 
