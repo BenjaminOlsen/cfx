@@ -156,8 +156,8 @@ static void test_exp_compare_with_naive_mul(void) {
     cfx_limb_t bases[] = {2,3,5,10,17,1234567};
     cfx_limb_t exps[]  = {2,3,4,5,8,16};
 
-    for (size_t i=0;i<sizeof(bases)/sizeof(bases[0]);++i) {
-        for (size_t j=0;j<sizeof(exps)/sizeof(exps[0]);++j) {
+    for (size_t i=0; i<sizeof(bases)/sizeof(bases[0]); ++i) {
+        for (size_t j=0; j<sizeof(exps)/sizeof(exps[0]); ++j) {
             cfx_big_from_limb(&n, bases[i]);
             cfx_big_from_limb(&p, exps[j]);
 

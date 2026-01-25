@@ -15,7 +15,7 @@ static void test_binstring(void) {
 }
 
 static void test_binstring2(void) {
-    const char* s =
+    const char *s =
         "0b110101010101010101010101010101010101010101010101010101010101010101010101"
         "01010101010101010101010101010101010101010101010101010101010101010101010101"
         "010101010101010101010101001010101010101010101010101001100111010101010101010"
@@ -26,9 +26,9 @@ static void test_binstring2(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_from_bin(&b,s);
-    char* hex = cfx_big_hex_alloc(&b, NULL);
-    const char* expected = "35555555555555555555555555555555555555555552aaaaaa6755555"
-        "55555555555555555aaaaaaaaaaaabd4a040282527955415fffffffffe";
+    char *hex = cfx_big_hex_alloc(&b, NULL);
+    const char *expected = "35555555555555555555555555555555555555555552aaaaaa6755555"
+                           "55555555555555555aaaaaaaaaaaabd4a040282527955415fffffffffe";
     int cmp = strcmp(hex, expected);
     CFX_ASSERT(cmp == 0);
     free(hex);
@@ -36,7 +36,7 @@ static void test_binstring2(void) {
 }
 
 static void test_binstring3(void) {
-    const char* expected =
+    const char *expected =
         "110101010101010101010101010101010101010101010101010101010101010101010101"
         "01010101010101010101010101010101010101010101010101010101010101010101010101"
         "010101010101010101010101001010101010101010101010101001100111010101010101010"
@@ -45,13 +45,13 @@ static void test_binstring3(void) {
         "010100000100101001001111001010101010100000101011111111111111111111111111111"
         "111111111110";
 
-    const char* s = "35555555555555555555555555555555555555555552aaaaaa6755555"
-        "55555555555555555aaaaaaaaaaaabd4a040282527955415fffffffffe";
+    const char *s = "35555555555555555555555555555555555555555552aaaaaa6755555"
+                    "55555555555555555aaaaaaaaaaaabd4a040282527955415fffffffffe";
 
     cfx_big_t b;
     cfx_big_init(&b);
     cfx_big_from_hex(&b,s);
-    char* bin = cfx_big_bin_alloc(&b, NULL);
+    char *bin = cfx_big_bin_alloc(&b, NULL);
 
     int cmp = strcmp(bin, expected);
     CFX_ASSERT(cmp == 0);

@@ -24,7 +24,7 @@ static void test_rng_reproducible(const cfx_rand_desc_t *rng) {
 }
 
 /* catches "seed is ignored" bugs */
-static void test_rng_different_seeds_differ(const cfx_rand_desc_t* rng) {
+static void test_rng_different_seeds_differ(const cfx_rand_desc_t *rng) {
     uint32_t seq1[N], seq2[N];
 
     rng->seed(1u);
@@ -41,7 +41,7 @@ static void test_rng_different_seeds_differ(const cfx_rand_desc_t* rng) {
 }
 
 /* checks output isn't degenerate (all zeros, all ones, or constant) */
-static void test_rng_non_degeneracy(const cfx_rand_desc_t* rng) {
+static void test_rng_non_degeneracy(const cfx_rand_desc_t *rng) {
     rng->seed(42u);
 
     uint32_t or_acc = 0;
@@ -63,7 +63,7 @@ static void test_rng_non_degeneracy(const cfx_rand_desc_t* rng) {
 }
 
 /* test _bytes() api with various lengths */
-static void test_rng_bytes_api(const cfx_rand_desc_t* rng) {
+static void test_rng_bytes_api(const cfx_rand_desc_t *rng) {
     uint8_t buf[128];
     size_t lengths[] = {0, 1, 3, 4, 7, 8, 15, 16, 31, 32, 100};
     size_t num_lengths = sizeof(lengths) / sizeof(lengths[0]);
@@ -88,7 +88,7 @@ static void test_rng_bytes_api(const cfx_rand_desc_t* rng) {
     }
 }
 
-static void test_rng_zero_seed(const cfx_rand_desc_t* rng) {
+static void test_rng_zero_seed(const cfx_rand_desc_t *rng) {
     rng->seed(0u);
     uint32_t v1 = rng->rng32();
     uint32_t v2 = rng->rng32();
@@ -99,7 +99,7 @@ static void test_rng_zero_seed(const cfx_rand_desc_t* rng) {
 
 static void run_all_table_rng_tests(void) {
     for (size_t i = 0; i < g_rand_gen_cnt; ++i) {
-        const cfx_rand_desc_t* rng = &g_rand_gens[i];
+        const cfx_rand_desc_t *rng = &g_rand_gens[i];
         printf("  %s\n", rng->name);
 
         test_rng_reproducible(rng);
@@ -253,7 +253,7 @@ static void test_srand_os_various_sizes(void) {
 
     for (size_t i = 0; i < num_sizes; i++) {
         size_t len = sizes[i];
-        uint8_t* buf = (uint8_t*)malloc(len);
+        uint8_t *buf = (uint8_t *)malloc(len);
         CFX_ASSERT(buf != NULL);
         memset(buf, 0, len);
 

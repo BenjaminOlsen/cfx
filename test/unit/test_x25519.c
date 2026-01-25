@@ -14,18 +14,18 @@ static int tests_run = 0;
 static int tests_passed = 0;
 
 #define TEST(name) do { \
-    printf("  %-50s ", #name); \
-    tests_run++; \
-    if (name()) { \
-        printf("[PASS]\n"); \
-        tests_passed++; \
-    } else { \
-        printf("[FAIL]\n"); \
-    } \
+            printf("  %-50s ", #name); \
+            tests_run++; \
+            if (name()) { \
+                printf("[PASS]\n"); \
+                tests_passed++; \
+            } else { \
+                printf("[FAIL]\n"); \
+            } \
 } while(0)
 
 /* convert hex string to bytes */
-static void hex_to_bytes(uint8_t* out, const char* hex, size_t len) {
+static void hex_to_bytes(uint8_t *out, const char *hex, size_t len) {
     for (size_t i = 0; i < len; i++) {
         unsigned int byte;
         sscanf(hex + 2*i, "%02x", &byte);
@@ -33,7 +33,7 @@ static void hex_to_bytes(uint8_t* out, const char* hex, size_t len) {
     }
 }
 
-static void print_hex(const char* label, const uint8_t* data, size_t len) {
+static void print_hex(const char *label, const uint8_t *data, size_t len) {
     printf("%s: ", label);
     for (size_t i = 0; i < len; i++) {
         printf("%02x", data[i]);
@@ -44,10 +44,10 @@ static void print_hex(const char* label, const uint8_t* data, size_t len) {
 /* RFC 7748 section 6.1 test vector 1 */
 static int test_rfc7748_vector1(void) {
     /* alice's private key (before clamping) */
-    const char* alice_sk_hex =
+    const char *alice_sk_hex =
         "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a";
     /* alice's public key (expected) */
-    const char* alice_pk_hex =
+    const char *alice_pk_hex =
         "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a";
 
     uint8_t sk[32], pk[32], expected[32];
@@ -67,10 +67,10 @@ static int test_rfc7748_vector1(void) {
 /* RFC 7748 section 6.1 test vector 2 */
 static int test_rfc7748_vector2(void) {
     /* bob's private key */
-    const char* bob_sk_hex =
+    const char *bob_sk_hex =
         "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb";
     /* bob's public key (expected) */
-    const char* bob_pk_hex =
+    const char *bob_pk_hex =
         "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f";
 
     uint8_t sk[32], pk[32], expected[32];
@@ -90,11 +90,11 @@ static int test_rfc7748_vector2(void) {
 /* RFC 7748 section 6.1 - shared secret */
 static int test_rfc7748_shared_secret(void) {
     /* alice's private, bob's public -> shared secret */
-    const char* alice_sk_hex =
+    const char *alice_sk_hex =
         "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a";
-    const char* bob_pk_hex =
+    const char *bob_pk_hex =
         "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f";
-    const char* shared_hex =
+    const char *shared_hex =
         "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742";
 
     uint8_t alice_sk[32], bob_pk[32], shared[32], expected[32];
@@ -118,9 +118,9 @@ static int test_rfc7748_shared_secret(void) {
 
 /* test that alice and bob compute same shared secret */
 static int test_dh_symmetry(void) {
-    const char* alice_sk_hex =
+    const char *alice_sk_hex =
         "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a";
-    const char* bob_sk_hex =
+    const char *bob_sk_hex =
         "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb";
 
     uint8_t alice_sk[32], bob_sk[32];
@@ -155,7 +155,7 @@ static int test_rfc7748_iterate_1(void) {
     cfx_x25519(r, k, u);
 
     /* expected after 1 iteration */
-    const char* expected_hex =
+    const char *expected_hex =
         "422c8e7a6227d7bca1350b3e2bb7279f7897b87bb6854b783c60e80311ae3079";
     uint8_t expected[32];
     hex_to_bytes(expected, expected_hex, 32);
@@ -181,7 +181,7 @@ static int test_rfc7748_iterate_1000(void) {
     }
 
     /* expected after 1000 iterations */
-    const char* expected_hex =
+    const char *expected_hex =
         "684cf59ba83309552800ef566f2f4d3c1c3887c49360e3875f2eb94d99532c51";
     uint8_t expected[32];
     hex_to_bytes(expected, expected_hex, 32);
@@ -580,11 +580,11 @@ static int test_various_scalars(void) {
 
 static int test_rfc7748_alice_bob_full(void) {
     /* complete alice-bob exchange from RFC 7748 */
-    const char* alice_sk = "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a";
-    const char* alice_pk_exp = "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a";
-    const char* bob_sk = "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb";
-    const char* bob_pk_exp = "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f";
-    const char* shared_exp = "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742";
+    const char *alice_sk = "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a";
+    const char *alice_pk_exp = "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a";
+    const char *bob_sk = "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb";
+    const char *bob_pk_exp = "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f";
+    const char *shared_exp = "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742";
 
     uint8_t a_sk[32], a_pk[32], b_sk[32], b_pk[32], shared_a[32], shared_b[32];
     uint8_t a_pk_expected[32], b_pk_expected[32], shared_expected[32];

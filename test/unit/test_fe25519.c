@@ -5,23 +5,23 @@
 #include <string.h>
 
 /* helper to print a field element for debugging */
-static void fe_print(const char* name, const fe25519_t* f) {
+static void fe_print(const char *name, const fe25519_t *f) {
     printf("%s: [%016llx, %016llx, %016llx, %016llx, %016llx]\n",
-           name,
-           (unsigned long long)f->v[0],
-           (unsigned long long)f->v[1],
-           (unsigned long long)f->v[2],
-           (unsigned long long)f->v[3],
-           (unsigned long long)f->v[4]);
+        name,
+        (unsigned long long)f->v[0],
+        (unsigned long long)f->v[1],
+        (unsigned long long)f->v[2],
+        (unsigned long long)f->v[3],
+        (unsigned long long)f->v[4]);
 }
 
-static void fe_print_bytes(const char* name, const uint8_t s[32]) {
+static void fe_print_bytes(const char *name, const uint8_t s[32]) {
     printf("%s: ", name);
     for (int i = 0; i < 32; i++) printf("%02x", s[i]);
     printf("\n");
 }
 
-static int fe_limbs_eq(const fe25519_t* a, const fe25519_t* b) {
+static int fe_limbs_eq(const fe25519_t *a, const fe25519_t *b) {
     return a->v[0] == b->v[0] &&
            a->v[1] == b->v[1] &&
            a->v[2] == b->v[2] &&
@@ -475,12 +475,12 @@ static void test_reduce_large_limb(void) {
 static void test_carry_propagation(void) {
     /* cascading carries */
     fe25519_t a = {{
-        (1ULL << 52) - 1,
-        (1ULL << 52) - 1,
-        (1ULL << 52) - 1,
-        (1ULL << 52) - 1,
-        (1ULL << 52) - 1
-    }};
+                       (1ULL << 52) - 1,
+                       (1ULL << 52) - 1,
+                       (1ULL << 52) - 1,
+                       (1ULL << 52) - 1,
+                       (1ULL << 52) - 1
+                   }};
     cfx_fe25519_carry(&a);
     cfx_fe25519_carry(&a);
 

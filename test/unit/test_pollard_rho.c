@@ -46,7 +46,7 @@ static void expect_factor(uint64_t n) {
         cfx_srand(123456u + (unsigned)attempts + 1);
     }
     fprintf(stderr, "cfx_pollard_rho_brent failed to find a factor for %" PRIu64 "\n",
-            n);
+        n);
     CFX_ASSERT(0);
 }
 

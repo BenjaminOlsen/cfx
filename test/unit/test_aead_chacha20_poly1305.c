@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
 
-#include "cfx/aead_chacha20_poly1305.h" 
+#include "cfx/aead_chacha20_poly1305.h"
 #include "cfx/macros.h"
 #include "cfx/rand.h"
 
@@ -11,7 +11,7 @@
 
 #define PR printf
 
-static void print_hex(const char* label, const uint8_t* buf, size_t len) {
+static void print_hex(const char *label, const uint8_t *buf, size_t len) {
     printf("%s (len=%zu):\n", label, len);
     for (size_t i = 0; i < len; ++i) {
         printf("%02x", buf[i]);
@@ -83,7 +83,7 @@ static void test_rfc8439_encrypt(void) {
         PT, sizeof PT,
         AAD, sizeof AAD,
         KEY, NONCE
-    );
+        );
     CFX_ASSERT(rc == 0);
 
     print_hex("ct (got)", ct, sizeof ct);
@@ -108,7 +108,7 @@ static void test_rfc8439_decrypt(void) {
         AAD, sizeof AAD,
         KEY, NONCE,
         TAG_EXPECTED
-    );
+        );
     CFX_ASSERT(rc == 0);
 
     print_hex("pt_out", pt_out, sizeof pt_out);
@@ -134,12 +134,12 @@ static void test_rfc8439_bad_tag(void) {
         AAD, sizeof AAD,
         KEY, NONCE,
         bad_tag
-    );
+        );
     CFX_ASSERT(rc != 0);
 }
 
 
-static void fuzz_fill(uint8_t* buf, size_t len) {
+static void fuzz_fill(uint8_t *buf, size_t len) {
     for (size_t i = 0; i < len; ++i) {
         buf[i] = (uint8_t)cfx_rand();
     }
@@ -202,7 +202,7 @@ static void test_xchacha_encrypt(void) {
         XCHACHA_PT, sizeof XCHACHA_PT,
         XCHACHA_AAD, sizeof XCHACHA_AAD,
         XCHACHA_KEY, XCHACHA_NONCE
-    );
+        );
     CFX_ASSERT(rc == 0);
 
     print_hex("ct (got)", ct, sizeof ct);
@@ -225,7 +225,7 @@ static void test_xchacha_decrypt(void) {
         XCHACHA_AAD, sizeof XCHACHA_AAD,
         XCHACHA_KEY, XCHACHA_NONCE,
         XCHACHA_TAG_EXPECTED
-    );
+        );
     CFX_ASSERT(rc == 0);
     CFX_ASSERT(memcmp(pt_out, XCHACHA_PT, sizeof XCHACHA_PT) == 0);
 }
@@ -245,7 +245,7 @@ static void test_xchacha_bad_tag(void) {
         XCHACHA_AAD, sizeof XCHACHA_AAD,
         XCHACHA_KEY, XCHACHA_NONCE,
         bad_tag
-    );
+        );
     CFX_ASSERT(rc != 0);
 }
 
@@ -277,7 +277,7 @@ static void test_xchacha_fuzz(void) {
         for (size_t i = 0; i < pt_len; ++i) pt[i] = (uint8_t)cfx_rand();
         for (size_t i = 0; i < aad_len; ++i) aad[i] = (uint8_t)cfx_rand();
 
-        const uint8_t* aad_ptr = aad_len ? aad : NULL;
+        const uint8_t *aad_ptr = aad_len ? aad : NULL;
 
         int rc = cfx_xchacha20_poly1305_encrypt(ct, tag, pt, pt_len, aad_ptr, aad_len, key, nonce);
         CFX_ASSERT(rc == 0);
@@ -328,7 +328,7 @@ static void test_aead_fuzz_basic(void) {
         fuzz_fill(pt,  pt_len);
         fuzz_fill(aad, aad_len);
 
-        const uint8_t* aad_ptr = aad;
+        const uint8_t *aad_ptr = aad;
         if (aad_len == 0 && (cfx_rand() & 1u)) {
             aad_ptr = NULL;
         }
@@ -338,7 +338,7 @@ static void test_aead_fuzz_basic(void) {
             pt, pt_len,
             aad_ptr, aad_len,
             key, nonce
-        );
+            );
         CFX_ASSERT(rc == 0);
 
         rc = cfx_chacha20_poly1305_decrypt(
@@ -347,7 +347,7 @@ static void test_aead_fuzz_basic(void) {
             aad_ptr, aad_len,
             key, nonce,
             tag
-        );
+            );
         CFX_ASSERT(rc == 0);
         CFX_ASSERT(memcmp(pt_out, pt, pt_len) == 0);
 
@@ -362,7 +362,7 @@ static void test_aead_fuzz_basic(void) {
             aad_ptr, aad_len,
             key, nonce,
             bad_tag
-        );
+            );
         CFX_ASSERT(rc != 0);
 
         ++ok_cnt;

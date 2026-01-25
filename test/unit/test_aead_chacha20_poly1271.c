@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-static void print_hex(const char* label, const uint8_t* buf, size_t len) {
+static void print_hex(const char *label, const uint8_t *buf, size_t len) {
     printf("%s: ", label);
     for (size_t i = 0; i < len && i < 32; ++i) printf("%02x", buf[i]);
     if (len > 32) printf("...");
@@ -29,8 +29,8 @@ static void test_basic_roundtrip(void) {
                          "If I could offer you only one tip for the future, "
                          "sunscreen would be it.";
     const uint8_t aad[] = "Additional authenticated data";
-    size_t pt_len = strlen((const char*)pt);
-    size_t aad_len = strlen((const char*)aad);
+    size_t pt_len = strlen((const char *)pt);
+    size_t aad_len = strlen((const char *)aad);
 
     uint8_t ct[256], tag[16], pt_out[256];
 
@@ -51,7 +51,7 @@ static void test_bad_tag(void) {
     const uint8_t key[32] = {0};
     const uint8_t nonce[12] = {0};
     const uint8_t pt[] = "Test message for authentication";
-    size_t pt_len = strlen((const char*)pt);
+    size_t pt_len = strlen((const char *)pt);
 
     uint8_t ct[64], tag[16], bad_tag[16], pt_out[64];
 
@@ -73,7 +73,7 @@ static void test_empty_plaintext(void) {
                              17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32};
     const uint8_t nonce[12] = {0};
     const uint8_t aad[] = "Only AAD, no plaintext";
-    size_t aad_len = strlen((const char*)aad);
+    size_t aad_len = strlen((const char *)aad);
     uint8_t tag[16], dummy;
 
     int rc = cfx_chacha20_poly1271_encrypt(&dummy, tag, NULL, 0, aad, aad_len, key, nonce);
@@ -89,7 +89,7 @@ static void test_empty_aad(void) {
     const uint8_t key[32] = {0};
     const uint8_t nonce[12] = {0};
     const uint8_t pt[] = "Message without AAD";
-    size_t pt_len = strlen((const char*)pt);
+    size_t pt_len = strlen((const char *)pt);
     uint8_t ct[64], tag[16], pt_out[64];
 
     int rc = cfx_chacha20_poly1271_encrypt(ct, tag, pt, pt_len, NULL, 0, key, nonce);
@@ -139,8 +139,8 @@ static void test_xchacha_roundtrip(void) {
     };
     const uint8_t pt[] = "XChaCha20-Poly1271 test message with 24-byte nonce";
     const uint8_t aad[] = "XChaCha AAD";
-    size_t pt_len = strlen((const char*)pt);
-    size_t aad_len = strlen((const char*)aad);
+    size_t pt_len = strlen((const char *)pt);
+    size_t aad_len = strlen((const char *)aad);
     uint8_t ct[128], tag[16], pt_out[128], bad_tag[16];
 
     int rc = cfx_xchacha20_poly1271_encrypt(ct, tag, pt, pt_len, aad, aad_len, key, nonce);
@@ -175,7 +175,7 @@ static void test_fuzz(void) {
         for (size_t i = 0; i < pt_len; i++) pt[i] = (uint8_t)cfx_rand();
         for (size_t i = 0; i < aad_len; i++) aad[i] = (uint8_t)cfx_rand();
 
-        const uint8_t* aad_ptr = aad_len ? aad : NULL;
+        const uint8_t *aad_ptr = aad_len ? aad : NULL;
 
         int rc = cfx_chacha20_poly1271_encrypt(ct, tag, pt, pt_len, aad_ptr, aad_len, key, nonce);
         CFX_ASSERT(rc == 0);
@@ -212,7 +212,7 @@ static void test_xchacha_fuzz(void) {
         for (size_t i = 0; i < pt_len; i++) pt[i] = (uint8_t)cfx_rand();
         for (size_t i = 0; i < aad_len; i++) aad[i] = (uint8_t)cfx_rand();
 
-        const uint8_t* aad_ptr = aad_len ? aad : NULL;
+        const uint8_t *aad_ptr = aad_len ? aad : NULL;
 
         int rc = cfx_xchacha20_poly1271_encrypt(ct, tag, pt, pt_len, aad_ptr, aad_len, key, nonce);
         CFX_ASSERT(rc == 0);

@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-static void print_hex(const char* label, const uint8_t* data, size_t len) {
+static void print_hex(const char *label, const uint8_t *data, size_t len) {
     printf("%s: ", label);
     for (size_t i = 0; i < len; i++) printf("%02x", data[i]);
     printf("\n");
@@ -171,7 +171,7 @@ static void test_blake2s_keyed(void) {
 static void test_blake2b_streaming(void) {
     cfx_blake2b_ctx_t ctx;
     uint8_t out_oneshot[64], out_stream[64];
-    const char* msg = "The quick brown fox jumps over the lazy dog";
+    const char *msg = "The quick brown fox jumps over the lazy dog";
 
     cfx_blake2b(out_oneshot, 64, msg, strlen(msg), NULL, 0);
 
@@ -188,7 +188,7 @@ static void test_blake2b_streaming(void) {
 static void test_blake2s_streaming(void) {
     cfx_blake2s_ctx_t ctx;
     uint8_t out_oneshot[32], out_stream[32];
-    const char* msg = "The quick brown fox jumps over the lazy dog";
+    const char *msg = "The quick brown fox jumps over the lazy dog";
 
     cfx_blake2s(out_oneshot, 32, msg, strlen(msg), NULL, 0);
 
@@ -206,7 +206,7 @@ static void test_blake2s_streaming(void) {
 static void test_blake2b_byte_by_byte(void) {
     cfx_blake2b_ctx_t ctx;
     uint8_t out_oneshot[64], out_stream[64];
-    const char* msg = "hello world";
+    const char *msg = "hello world";
     size_t len = strlen(msg);
 
     cfx_blake2b(out_oneshot, 64, msg, len, NULL, 0);
@@ -223,7 +223,7 @@ static void test_blake2b_byte_by_byte(void) {
 
 /* Long message (multiple blocks) */
 static void test_blake2b_long_message(void) {
-    uint8_t* msg = malloc(1000);
+    uint8_t *msg = malloc(1000);
     uint8_t out[64];
 
     for (int i = 0; i < 1000; i++) msg[i] = (uint8_t)i;
@@ -238,7 +238,7 @@ static void test_blake2b_long_message(void) {
 }
 
 static void test_blake2s_long_message(void) {
-    uint8_t* msg = malloc(1000);
+    uint8_t *msg = malloc(1000);
     uint8_t out[32];
 
     for (int i = 0; i < 1000; i++) msg[i] = (uint8_t)i;
@@ -322,7 +322,7 @@ static void test_blake2b_keyed_streaming(void) {
     uint8_t out_oneshot[64], out_stream[64];
     const uint8_t key[32] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
                              16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31};
-    const char* msg = "hello";
+    const char *msg = "hello";
 
     cfx_blake2b(out_oneshot, 64, msg, 5, key, 32);
 
@@ -394,8 +394,8 @@ static void test_blake2s_consistency(void) {
 typedef struct {
     uint32_t state[8];
     uint64_t total_bits;
-    uint8_t  buffer[64];
-    size_t   buffer_len;
+    uint8_t buffer[64];
+    size_t buffer_len;
 } sha256_internal_state_t;
 
 static void test_sha256_length_extension_attack(void) {
@@ -405,16 +405,16 @@ static void test_sha256_length_extension_attack(void) {
      * Message: "user=alice" (10 bytes)
      * Total: 21 bytes
      */
-    const char* secret = "supersecret";
-    const char* original_msg = "user=alice";
-    const char* extension = "&admin=true";
+    const char *secret = "supersecret";
+    const char *original_msg = "user=alice";
+    const char *extension = "&admin=true";
 
     /* Step 1: Server computes MAC = SHA256(secret || message) */
     cfx_sha256_ctx ctx;
     uint8_t original_mac[32];
     cfx_sha256_init(&ctx);
-    cfx_sha256_update(&ctx, (const uint8_t*)secret, strlen(secret));
-    cfx_sha256_update(&ctx, (const uint8_t*)original_msg, strlen(original_msg));
+    cfx_sha256_update(&ctx, (const uint8_t *)secret, strlen(secret));
+    cfx_sha256_update(&ctx, (const uint8_t *)original_msg, strlen(original_msg));
     cfx_sha256_final(&ctx, original_mac);
 
     /*
@@ -444,7 +444,7 @@ static void test_sha256_length_extension_attack(void) {
      */
     cfx_sha256_ctx attacker_ctx;
     cfx_sha256_init(&attacker_ctx);
-    sha256_internal_state_t* internal = (sha256_internal_state_t*)&attacker_ctx;
+    sha256_internal_state_t *internal = (sha256_internal_state_t *)&attacker_ctx;
 
     /* Inject the MAC as internal state (h0-h7) */
     for (int i = 0; i < 8; i++) {
@@ -458,7 +458,7 @@ static void test_sha256_length_extension_attack(void) {
     internal->buffer_len = 0;
 
     /* Hash the extension */
-    cfx_sha256_update(&attacker_ctx, (const uint8_t*)extension, strlen(extension));
+    cfx_sha256_update(&attacker_ctx, (const uint8_t *)extension, strlen(extension));
     uint8_t forged_mac[32];
     cfx_sha256_final(&attacker_ctx, forged_mac);
 
@@ -467,10 +467,10 @@ static void test_sha256_length_extension_attack(void) {
      * H(secret || original_msg || padding || extension)
      */
     cfx_sha256_init(&ctx);
-    cfx_sha256_update(&ctx, (const uint8_t*)secret, strlen(secret));
-    cfx_sha256_update(&ctx, (const uint8_t*)original_msg, strlen(original_msg));
+    cfx_sha256_update(&ctx, (const uint8_t *)secret, strlen(secret));
+    cfx_sha256_update(&ctx, (const uint8_t *)original_msg, strlen(original_msg));
     cfx_sha256_update(&ctx, padding, sizeof(padding));
-    cfx_sha256_update(&ctx, (const uint8_t*)extension, strlen(extension));
+    cfx_sha256_update(&ctx, (const uint8_t *)extension, strlen(extension));
     uint8_t real_extended_mac[32];
     cfx_sha256_final(&ctx, real_extended_mac);
 
@@ -498,20 +498,20 @@ typedef struct {
     uint64_t h[8];
     uint64_t t[2];
     uint64_t f[2];
-    uint8_t  buf[128];
-    size_t   buflen;
-    size_t   outlen;
+    uint8_t buf[128];
+    size_t buflen;
+    size_t outlen;
 } blake2b_internal_state_t;
 
 static void test_blake2b_resists_length_extension(void) {
-    const char* secret = "supersecret";
-    const char* original_msg = "user=alice";
-    const char* extension = "&admin=true";
+    const char *secret = "supersecret";
+    const char *original_msg = "user=alice";
+    const char *extension = "&admin=true";
 
     /* Step 1: Compute original MAC with BLAKE2b keyed mode */
     uint8_t original_mac[64];
     cfx_blake2b(original_mac, 64, original_msg, strlen(original_msg),
-                secret, strlen(secret));
+        secret, strlen(secret));
 
     /*
      * Step 2: Attacker attempts length extension
@@ -524,7 +524,7 @@ static void test_blake2b_resists_length_extension(void) {
      */
     cfx_blake2b_ctx_t attacker_ctx;
     cfx_blake2b_init(&attacker_ctx, 64);
-    blake2b_internal_state_t* internal = (blake2b_internal_state_t*)&attacker_ctx;
+    blake2b_internal_state_t *internal = (blake2b_internal_state_t *)&attacker_ctx;
 
     /* Try to inject MAC as state (this is fundamentally wrong for BLAKE2) */
     for (int i = 0; i < 8; i++) {
@@ -552,7 +552,7 @@ static void test_blake2b_resists_length_extension(void) {
 
     uint8_t real_extended_mac[64];
     cfx_blake2b(real_extended_mac, 64, extended_data, total_len,
-                secret, strlen(secret));
+        secret, strlen(secret));
 
     /* THE ATTACK FAILS: forged_mac != real_extended_mac */
     CFX_ASSERT(memcmp(forged_mac, real_extended_mac, 64) != 0);

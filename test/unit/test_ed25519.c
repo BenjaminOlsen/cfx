@@ -220,7 +220,7 @@ static void test_sign_various_lengths(void) {
 
 /* SHA-512 test vector */
 static void test_sha512_basic(void) {
-    const char* input = "abc";
+    const char *input = "abc";
     const uint8_t expected[64] = {
         0xdd, 0xaf, 0x35, 0xa1, 0x93, 0x61, 0x7a, 0xba,
         0xcc, 0x41, 0x73, 0x49, 0xae, 0x20, 0x41, 0x31,
@@ -233,7 +233,7 @@ static void test_sha512_basic(void) {
     };
 
     uint8_t output[64];
-    cfx_sha512(output, (const uint8_t*)input, 3);
+    cfx_sha512(output, (const uint8_t *)input, 3);
 
     CFX_ASSERT(memcmp(output, expected, 64) == 0);
 }
@@ -636,7 +636,7 @@ static void test_verify_s_ge_L(void) {
 static void test_sign_4kb_message(void) {
     uint8_t seed[32] = {0x42};
     uint8_t pk[32], sk[64], sig[64];
-    uint8_t *msg = (uint8_t*)malloc(4096);
+    uint8_t *msg = (uint8_t *)malloc(4096);
     CFX_ASSERT(msg != NULL);
 
     for (int i = 0; i < 4096; i++) msg[i] = (uint8_t)(i * 17 + i / 256);

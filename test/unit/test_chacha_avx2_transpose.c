@@ -5,9 +5,9 @@
 #include <immintrin.h>
 
 /* ------------------------------------------------------
-* This are some tests of some tricky transpose logic that's
-* used in the avx2 mm256 chacha20 implementation...
-*/
+ * This are some tests of some tricky transpose logic that's
+ * used in the avx2 mm256 chacha20 implementation...
+ */
 
 #define LANE32(v, idx) (uint32_t)_mm_extract_epi32(v, idx)
 
@@ -24,12 +24,12 @@ static void print_m128(const char *label, __m128i v) {
 
 static void print_m256(const char *label, __m256i v) {
     uint32_t tmp[8];
-    _mm256_storeu_si256((__m256i*)tmp, v);
+    _mm256_storeu_si256((__m256i *)tmp, v);
 
     DBG_P("%s = [%u %u %u %u %u %u %u %u]\n",
-           label,
-           tmp[0], tmp[1], tmp[2], tmp[3],
-           tmp[4], tmp[5], tmp[6], tmp[7]);
+        label,
+        tmp[0], tmp[1], tmp[2], tmp[3],
+        tmp[4], tmp[5], tmp[6], tmp[7]);
 }
 
 
@@ -64,15 +64,15 @@ static inline void transpose_16x8_to_blocks(const __m256i x[16], uint32_t out[8]
     uint32_t *dst;
 
 #define EXTRACT_BLOCK(ARR, lane_idx, out_idx)                           \
-    do {                                                                \
-        DBG_P("\n-- Extract block %d from %s lane %d --\n",            \
-               (out_idx), #ARR, (lane_idx));                            \
-        dst = out[(out_idx)];                                           \
-        for (int w = 0; w < 16; ++w) {                                  \
-            dst[w] = LANE32((ARR)[w], (lane_idx));                      \
-            DBG_P("out[%d][%02d] = %u\n", out_idx, w, dst[w]);         \
-        }                                                               \
-    } while (0)
+        do {                                                                \
+            DBG_P("\n-- Extract block %d from %s lane %d --\n",            \
+        (out_idx), #ARR, (lane_idx));                            \
+            dst = out[(out_idx)];                                           \
+            for (int w = 0; w < 16; ++w) {                                  \
+                dst[w] = LANE32((ARR)[w], (lane_idx));                      \
+                DBG_P("out[%d][%02d] = %u\n", out_idx, w, dst[w]);         \
+            }                                                               \
+        } while (0)
 
     /* Blocks 0..3 from lo */
     EXTRACT_BLOCK(lo, 0, 0);
@@ -107,7 +107,7 @@ static void test_avx2_transpose(void) {
         x[w] = _mm256_setr_epi32(
             (int)in[0][w], (int)in[1][w], (int)in[2][w], (int)in[3][w],
             (int)in[4][w], (int)in[5][w], (int)in[6][w], (int)in[7][w]
-        );
+            );
     }
 
     uint32_t out[8][16] = {0};
@@ -120,7 +120,7 @@ static void test_avx2_transpose(void) {
             uint32_t got    = out[blk][w];
             if (expect != got) {
                 DBG_P("Mismatch at block %d, word %d: expect %u, got %u\n",
-                       blk, w, expect, got);
+                    blk, w, expect, got);
                 ++errors;
             }
         }

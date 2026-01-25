@@ -85,7 +85,7 @@ static void test_mul_by_base_2_64_shift(void) {
 
     for (size_t n = 1; n < N; ++n) {
         cfx_big_mul_eq(&b, &m);
-        cfx_limb_t* expect = (cfx_limb_t*)malloc((n + sz0)*sizeof(cfx_limb_t));
+        cfx_limb_t *expect = (cfx_limb_t *)malloc((n + sz0)*sizeof(cfx_limb_t));
         for (size_t k = 0; k < n; ++k) {
             expect[k] = 0;
         }
@@ -135,7 +135,7 @@ static void test_self_multiply_big(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     size_t N = 10;
-    cfx_limb_t* limbs = (cfx_limb_t*)malloc(N * sizeof(cfx_limb_t));
+    cfx_limb_t *limbs = (cfx_limb_t *)malloc(N * sizeof(cfx_limb_t));
     for (size_t i = 0; i < N; ++i) {
         limbs[i] = 2;
     }
@@ -153,8 +153,8 @@ static void test_known_squares(void) {
         "12554203470773361528352143580257209"
         "759168353591939024551938");
     cfx_big_sq_eq(&b);
-    char* s = cfx_big_dec_alloc(&b, NULL);
-    char* expect =
+    char *s = cfx_big_dec_alloc(&b, NULL);
+    char *expect =
         "15760802478557791686620405668794173"
         "58808686358020659979337980952437065"
         "51032029871143396883518477623727858"
@@ -212,9 +212,9 @@ static void test_known_squares_2(void) {
         "3095350971345437292114654548843072761868784"
         "674125049315509629339381027496416991005114370");
     cfx_big_mul_eq_csa(&b, &b);
-    char* s = cfx_big_dec_alloc(&b, NULL);
+    char *s = cfx_big_dec_alloc(&b, NULL);
 
-    char* expect =
+    char *expect =
         "24468930997138827791465884302231872460739875"
         "68207399045598121707346936565872814004700782"
         "89425671088010093095401304027496760620656589"

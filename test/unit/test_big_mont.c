@@ -43,7 +43,7 @@ static void test_mont_mul_matches_scalar(void) {
     cfx_big_init(&n);
     cfx_big_init(&a);
     cfx_big_init(&b);
-    
+
     cfx_big_from_limb(&n, n64);
     cfx_big_from_limb(&a, a64);
     cfx_big_from_limb(&b, b64);
@@ -61,7 +61,7 @@ static void test_mont_mul_matches_scalar(void) {
     cfx_big_t out;
     cfx_big_init(&out);
     cfx_big_mont_from(&out, &r, &C);
-    
+
 
     /* read back as u64 */
     cfx_limb_t got = (out.n ? out.limb[0] : 0);
@@ -158,7 +158,7 @@ static void test_mont_aliasing_safe(void) {
 
     /* alias: overwrite aR with product */
     CFX_ASSERT_PRINT(cfx_big_mont_mul(&aR, &aR, &bR, &C));
-    
+
     /* sanity */
     CFX_ASSERT_PRINT(cfx_big_cmp(&aR, &aR) == 0);
 
@@ -183,7 +183,7 @@ static void test_mont_aliasing_safe(void) {
 
 /*********************** Montgomery  *******************************/
 
-static void EXPECT_EQ_BIG(const cfx_big_t* A, const cfx_big_t* B) {
+static void EXPECT_EQ_BIG(const cfx_big_t *A, const cfx_big_t *B) {
     int cmp = cfx_big_cmp(A, B);
     if (cmp != 0) {
         fprintf(stderr, "BIG mismatch (cmp=%d)\n", cmp);
@@ -192,7 +192,7 @@ static void EXPECT_EQ_BIG(const cfx_big_t* A, const cfx_big_t* B) {
             cfx_limb_t av = (i < A->n) ? A->limb[i] : 0;
             cfx_limb_t bv = (i < B->n) ? B->limb[i] : 0;
             fprintf(stderr, "  [%zu] A=" CFX_PRI0xLIMB "  B=" CFX_PRI0xLIMB "%s\n",
-                    i, av, bv, (av==bv? "":"  <<"));
+                i, av, bv, (av==bv? "":"  <<"));
         }
         CFX_ASSERT(0 && "EXPECT_EQ_BIG failed");
     }
@@ -218,7 +218,7 @@ static cfx_limb_t powmod_u64_ref(cfx_limb_t a, cfx_limb_t e, cfx_limb_t n) {
 }
 
 /* Init a mont ctx for 64-bit odd n */
-static void init_ctx_u64(cfx_big_mont_ctx_t* C, cfx_big_t* n, cfx_limb_t n64) {
+static void init_ctx_u64(cfx_big_mont_ctx_t *C, cfx_big_t *n, cfx_limb_t n64) {
     cfx_big_init(n);
     cfx_big_from_limb(n, n64 | 1ull);    /* ensure odd */
     int ok = cfx_big_mont_ctx_init(C, n);
@@ -226,18 +226,18 @@ static void init_ctx_u64(cfx_big_mont_ctx_t* C, cfx_big_t* n, cfx_limb_t n64) {
 }
 
 /* Convert a u64 to cfx_big */
-static void big_from_u64(cfx_big_t* x, cfx_limb_t v) {
+static void big_from_u64(cfx_big_t *x, cfx_limb_t v) {
     cfx_big_init(x);
     cfx_big_from_limb(x, v);
 }
 
 /* Read cfx_big as u64 (only for tests where we know it fits) */
-static cfx_limb_t big_as_u64(const cfx_big_t* x) {
+static cfx_limb_t big_as_u64(const cfx_big_t *x) {
     return x->n ? x->limb[0] : 0;
 }
 
 /* left-shift by (64*L) limbs without using bit shifter */
-static void big_shl_limbs_inplace(cfx_big_t* x, size_t L) {
+static void big_shl_limbs_inplace(cfx_big_t *x, size_t L) {
     if (x->n == 0 || L == 0) return;
     size_t newn = x->n + L;
     if (x->cap < newn) cfx_big_reserve(x, newn);
@@ -307,8 +307,10 @@ static void test_modexp_binary_matches_u64_ref(void) {
 
     for (int t = 0; t < 200; ++t) {
         cfx_limb_t n64;
-        do { n64 = (rand64() | 1ull); } while (n64 < 3);  /* odd, >1 */
-        cfx_big_t n; 
+        do {
+            n64 = (rand64() | 1ull);
+        } while (n64 < 3);                                /* odd, >1 */
+        cfx_big_t n;
         cfx_big_mont_ctx_t C;
         init_ctx_u64(&C, &n, n64);
 
@@ -316,7 +318,7 @@ static void test_modexp_binary_matches_u64_ref(void) {
         cfx_limb_t e64 = rand64();          /* any exponent */
         cfx_limb_t expect = powmod_u64_ref(a64, e64, n64);
 
-        cfx_big_t a,e,out; 
+        cfx_big_t a,e,out;
         cfx_big_init(&a);
         cfx_big_init(&e);
         cfx_big_init(&out);
@@ -328,15 +330,15 @@ static void test_modexp_binary_matches_u64_ref(void) {
         cfx_limb_t got = big_as_u64(&out);
         if (got != expect) {
             fprintf(stderr, "Mismatch: a=%" PRIu64 " e=%" PRIu64 " n=%" PRIu64
-                            " got=%" PRIu64 " exp=%" PRIu64 "\n",
-                    a64, e64, n64, got, expect);
+                " got=%" PRIu64 " exp=%" PRIu64 "\n",
+                a64, e64, n64, got, expect);
             CFX_ASSERT(0);
         }
 
         cfx_big_free(&out);
-        cfx_big_free(&e); 
+        cfx_big_free(&e);
         cfx_big_free(&a);
-        cfx_big_mont_ctx_free(&C); 
+        cfx_big_mont_ctx_free(&C);
         cfx_big_free(&n);
     }
 }
@@ -375,7 +377,7 @@ static void test_modexp_binary_aliasing(void) {
 
 /* Fermat check with a known 64-bit prime p = 2^61 - 1 (Mersenne prime):
    For 1 <= a < p, a^(p-1) ≡ 1 (mod p).
-*/
+ */
 static void test_modexp_binary_fermat_mersenne61(void) {
     const cfx_limb_t p = ((1ull << 61) - 1ull);
 
@@ -393,7 +395,9 @@ static void test_modexp_binary_fermat_mersenne61(void) {
 
     for (int t = 0; t < 100; ++t) {
         cfx_limb_t a64;
-        do { a64 = rand64() % p; } while (a64 == 0);
+        do {
+            a64 = rand64() % p;
+        } while (a64 == 0);
 
         cfx_big_t a; big_from_u64(&a, a64);
         int ok = cfx_big_modexp_binary(&out, &a, &e, &C);
@@ -418,11 +422,11 @@ static void test_modexp_binary_exponent_reduction(void) {
     init_ctx_u64(&C, &n, p);
 
     /* base a in [1..p-1] */
-    cfx_big_t a; 
+    cfx_big_t a;
     big_from_u64(&a, (rand64() % (p - 1ull)) + 1ull);
 
     /* e1 small, e2 = e1 + (p-1)<<(64) (two-limb) */
-    cfx_big_t e1, e2; 
+    cfx_big_t e1, e2;
     big_from_u64(&e1, 0x123456789abcdef0ull % (p-1));
     cfx_big_init(&e2);
     cfx_big_assign(&e2, &e1);
@@ -441,7 +445,8 @@ static void test_modexp_binary_exponent_reduction(void) {
     if (e2.n < 2) e2.limb[e2.n++] = 0;
     e2.limb[1] += tmp.limb[1];  /* tmp.limb[1] = (p-1), tmp.limb[0]=0 */
     /* carry normalize if needed: */
-    if (e2.limb[1] == 0) { /* nothing */ }
+    if (e2.limb[1] == 0) { /* nothing */
+    }
 
     cfx_big_t r1, r2;
     cfx_big_init(&r1);

@@ -61,7 +61,7 @@ static void poly1305_rfc8439_2_5_2_kat(void) {
     cfx_poly1305(tag, M_2_5_2, sizeof(M_2_5_2), K_2_5_2);
     expect_tag("RFC8439 2.5.2 KAT", tag, T_2_5_2);
 }
- 
+
 
 /* Test Vector #1 */
 static const uint8_t K_A3_1[32] = {
@@ -390,21 +390,21 @@ static const unsigned char nacl_mac[16] = {
 static void poly1305_nacl_test(void) {
     uint8_t mac[16];
     size_t i;
-	for (i = 0; i < sizeof(mac); i++) mac[i] = 0;
+    for (i = 0; i < sizeof(mac); i++) mac[i] = 0;
     cfx_poly1305_ctx_t ctx;
     cfx_poly1305_init(&ctx, nacl_key);
     cfx_poly1305_update(&ctx, nacl_msg +   0, 32);
-	cfx_poly1305_update(&ctx, nacl_msg +  32, 64);
-	cfx_poly1305_update(&ctx, nacl_msg +  96, 16);
-	cfx_poly1305_update(&ctx, nacl_msg + 112,  8);
-	cfx_poly1305_update(&ctx, nacl_msg + 120,  4);
-	cfx_poly1305_update(&ctx, nacl_msg + 124,  2);
-	cfx_poly1305_update(&ctx, nacl_msg + 126,  1);
-	cfx_poly1305_update(&ctx, nacl_msg + 127,  1);
-	cfx_poly1305_update(&ctx, nacl_msg + 128,  1);
-	cfx_poly1305_update(&ctx, nacl_msg + 129,  1);
-	cfx_poly1305_update(&ctx, nacl_msg + 130,  1);
-	cfx_poly1305_finish(&ctx, mac);
+    cfx_poly1305_update(&ctx, nacl_msg +  32, 64);
+    cfx_poly1305_update(&ctx, nacl_msg +  96, 16);
+    cfx_poly1305_update(&ctx, nacl_msg + 112,  8);
+    cfx_poly1305_update(&ctx, nacl_msg + 120,  4);
+    cfx_poly1305_update(&ctx, nacl_msg + 124,  2);
+    cfx_poly1305_update(&ctx, nacl_msg + 126,  1);
+    cfx_poly1305_update(&ctx, nacl_msg + 127,  1);
+    cfx_poly1305_update(&ctx, nacl_msg + 128,  1);
+    cfx_poly1305_update(&ctx, nacl_msg + 129,  1);
+    cfx_poly1305_update(&ctx, nacl_msg + 130,  1);
+    cfx_poly1305_finish(&ctx, mac);
 
     expect_tag("poly1305_nacl_test", mac, nacl_mac);
 }

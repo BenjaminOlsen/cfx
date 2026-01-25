@@ -11,11 +11,11 @@
 #include <string.h>
 
 
-static void ensure_cap(cfx_big_t* b, size_t need) {
+static void ensure_cap(cfx_big_t *b, size_t need) {
     cfx_big_reserve(b, need);
 }
 
-static void fill_zero(cfx_big_t* b, size_t nlimbs) {
+static void fill_zero(cfx_big_t *b, size_t nlimbs) {
     ensure_cap(b, nlimbs);
     memset(b->limb, 0, nlimbs * sizeof(cfx_limb_t));
     b->n = nlimbs ? 1 : 0; /* canonical zero usually n=0, but harmless if 1 with limb[0]==0 */
@@ -23,21 +23,23 @@ static void fill_zero(cfx_big_t* b, size_t nlimbs) {
     b->n = 0; /* prefer canonical zero */
 }
 
-static void fill_val(cfx_big_t* b, size_t nlimbs, cfx_limb_t v) {
+static void fill_val(cfx_big_t *b, size_t nlimbs, cfx_limb_t v) {
     ensure_cap(b, nlimbs);
     memset(b->limb, 0, nlimbs * sizeof(cfx_limb_t));
-    if (nlimbs == 0) { b->n = 0; return; }
+    if (nlimbs == 0) {
+        b->n = 0; return;
+    }
     b->limb[0] = v;
     b->n = (v == 0) ? 0 : 1;
 }
 
-static void fill_ones(cfx_big_t* b, size_t nlimbs) {
+static void fill_ones(cfx_big_t *b, size_t nlimbs) {
     ensure_cap(b, nlimbs);
     for (size_t i = 0; i < nlimbs; ++i) b->limb[i] = CFX_LIMB_MAX;
     b->n = nlimbs;
 }
 
-static void fill_rand(cfx_big_t* b, size_t nlimbs, cfx_limb_t seed) {
+static void fill_rand(cfx_big_t *b, size_t nlimbs, cfx_limb_t seed) {
     ensure_cap(b, nlimbs);
 #if CFX_LIMB_BITS == 64
     cfx_limb_t s = seed ? seed : 0x123456789abcdef0ULL;
@@ -49,7 +51,7 @@ static void fill_rand(cfx_big_t* b, size_t nlimbs, cfx_limb_t seed) {
     b->n = nlimbs;
 }
 
-static int big_equal(const cfx_big_t* a, const cfx_big_t* b, size_t upto /*nlimbs*/) {
+static int big_equal(const cfx_big_t *a, const cfx_big_t *b, size_t upto /*nlimbs*/) {
     size_t n = upto;
     for (size_t i = 0; i < n; ++i) {
         cfx_limb_t av = (i < a->n) ? a->limb[i] : 0;
@@ -59,7 +61,7 @@ static int big_equal(const cfx_big_t* a, const cfx_big_t* b, size_t upto /*nlimb
     return 1;
 }
 
-static void print_limbs(const char* tag, const cfx_big_t* x, size_t upto) {
+static void print_limbs(const char *tag, const cfx_big_t *x, size_t upto) {
     fprintf(stderr, "%s: [", tag);
     for (size_t i = 0; i < upto; ++i) {
         cfx_limb_t v = (i < x->n) ? x->limb[i] : 0;
@@ -69,7 +71,7 @@ static void print_limbs(const char* tag, const cfx_big_t* x, size_t upto) {
 }
 
 
-static void run_case(const char* name, const cfx_big_t* b0_in, const cfx_big_t* m_in, int threads) {
+static void run_case(const char *name, const cfx_big_t *b0_in, const cfx_big_t *m_in, int threads) {
     printf("\n------------------- %s -------------------\n", name);
 
     /* Make working copies */

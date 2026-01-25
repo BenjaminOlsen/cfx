@@ -13,10 +13,10 @@
 
 /* Wide type for reference math */
 #if (CFX_LIMB_BITS == 32)
-    typedef uint64_t cfx_wide_t;
+typedef uint64_t cfx_wide_t;
     #define CFX_HAVE_WIDE_TEST 1
 #elif (CFX_LIMB_BITS == 64) && CFX_HAS_UINT128
-    typedef __uint128_t cfx_wide_t;
+typedef __uint128_t cfx_wide_t;
     #define CFX_HAVE_WIDE_TEST 1
 #endif
 
@@ -37,7 +37,7 @@ static void dump_acc(const char *label, const cfx_acc_t *a) {
     (void)a;
 #if 0
     printf("%s: hi=" CFX_PRI0xLIMB " lo=" CFX_PRI0xLIMB "\n",
-           label, cfx_acc_hi(*a), cfx_acc_lo(*a));
+        label, cfx_acc_hi(*a), cfx_acc_lo(*a));
 #endif
 }
 

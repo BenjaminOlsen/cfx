@@ -7,13 +7,13 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "cfx/big.h" 
+#include "cfx/big.h"
 #include "cfx/macros.h"
 
 
 /* ---- Tiny helpers ----------------------------------------------------------- */
 
-static void big_set_limbs(cfx_big_t* x, const cfx_limb_t* limbs, size_t n) {
+static void big_set_limbs(cfx_big_t *x, const cfx_limb_t *limbs, size_t n) {
     cfx_big_reserve(x, n);
     if (n) memcpy(x->limb, limbs, n * sizeof(cfx_limb_t));
     x->n = n;
@@ -21,14 +21,14 @@ static void big_set_limbs(cfx_big_t* x, const cfx_limb_t* limbs, size_t n) {
     while (x->n && x->limb[x->n - 1] == 0) x->n--;
 }
 
-static int big_equal(const cfx_big_t* a, const cfx_big_t* b) {
+static int big_equal(const cfx_big_t *a, const cfx_big_t *b) {
     if (a->n != b->n) return 0;
     for (size_t i = 0; i < a->n; ++i)
         if (a->limb[i] != b->limb[i]) return 0;
     return 1;
 }
 
-static void big_print(const char* tag, const cfx_big_t* x) {
+static void big_print(const char *tag, const cfx_big_t *x) {
     printf("%s n=%zu [", tag, x->n);
     for (size_t i = x->n; i-- > 0;) {
         printf("" CFX_PRI0xLIMB "", x->limb[i]);
@@ -38,7 +38,7 @@ static void big_print(const char* tag, const cfx_big_t* x) {
 }
 
 /* Reference schoolbook multiply: out = a * b  (no threading, exact) */
-static void big_mul_ref(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) {
+static void big_mul_ref(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *b) {
     cfx_big_reserve(out, a->n + b->n + 1);
     memset(out->limb, 0, (a->n + b->n + 1) * sizeof(cfx_limb_t));
     out->n = a->n + b->n + 1;
@@ -64,19 +64,21 @@ static void big_mul_ref(cfx_big_t* out, const cfx_big_t* a, const cfx_big_t* b) 
 }
 
 /* Deterministic PRNG (SplitMix64) - uses uint64_t internally */
-static uint64_t splitmix64(uint64_t* s) {
+static uint64_t splitmix64(uint64_t *s) {
     uint64_t z = (*s += 0x9e3779b97f4a7c15ULL);
     z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
     z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
     return z ^ (z >> 31);
 }
 
-static void big_rand(cfx_big_t* x, size_t n, uint64_t* seed) {
+static void big_rand(cfx_big_t *x, size_t n, uint64_t *seed) {
     cfx_big_reserve(x, n);
     for (size_t i = 0; i < n; ++i) x->limb[i] = (cfx_limb_t)splitmix64(seed);
     x->n = n;
     /* Ensure top limb is nonzero (if n>0) to avoid degenerate trims */
-    if (n) { if (x->limb[n - 1] == 0) x->limb[n - 1] = 1; }
+    if (n) {
+        if (x->limb[n - 1] == 0) x->limb[n - 1] = 1;
+    }
 }
 
 /* ---- Tests ------------------------------------------------------------------ */
@@ -178,7 +180,7 @@ static void test_small_vector_known(void) {
     cfx_big_free(&a); cfx_big_free(&m); cfx_big_free(&ref);
 }
 
-static void test_random_compare_ref(size_t na, size_t nb, int threads, uint64_t seed_init, char* msg) {
+static void test_random_compare_ref(size_t na, size_t nb, int threads, uint64_t seed_init, char *msg) {
     cfx_big_t a, b, ref, tmpa;
     cfx_big_init(&a); cfx_big_init(&b); cfx_big_init(&ref); cfx_big_init(&tmpa);
 
@@ -246,8 +248,8 @@ static void test_thread_counts_agree(void) {
 /* ---- Main ------------------------------------------------------------------- */
 
 #define TEST_RAND(na, nb, threads, seed_init) \
-    test_random_compare_ref(na, nb, threads, seed_init, \
-        "test_random_compare_ref(" STR(na) ", " STR(nb) ", " STR(threads) ", " STR(seed_init) ") - OK")
+        test_random_compare_ref(na, nb, threads, seed_init, \
+    "test_random_compare_ref(" STR(na) ", " STR(nb) ", " STR(threads) ", " STR(seed_init) ") - OK")
 
 int main(void) {
 #ifdef CFX_MEMORY_STATIC

@@ -137,7 +137,7 @@ static void test_shake256_empty(void) {
 static void test_sha3_256_streaming(void) {
     cfx_sha3_ctx_t ctx;
     uint8_t out_oneshot[32], out_stream[32];
-    const char* msg = "The quick brown fox jumps over the lazy dog";
+    const char *msg = "The quick brown fox jumps over the lazy dog";
 
     cfx_sha3_256(out_oneshot, msg, strlen(msg));
 
@@ -214,7 +214,7 @@ static void test_sha3_256_different_inputs(void) {
 static void test_sha3_256_byte_by_byte(void) {
     cfx_sha3_ctx_t ctx;
     uint8_t out_oneshot[32], out_stream[32];
-    const char* msg = "hello world";
+    const char *msg = "hello world";
     size_t len = strlen(msg);
 
     cfx_sha3_256(out_oneshot, msg, len);

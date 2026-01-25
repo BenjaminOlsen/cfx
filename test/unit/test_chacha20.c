@@ -8,10 +8,10 @@
 
 #define ROTL32(x, n) ((uint32_t)(((x) << (n)) | ((x) >> (32 - (n)))))
 #define QR(a, b, c, d) \
-    a += b; d ^= a; d = ROTL32(d, 16); \
-    c += d; b ^= c; b = ROTL32(b, 12); \
-    a += b; d ^= a; d = ROTL32(d,  8); \
-    c += d; b ^= c; b = ROTL32(b,  7);
+        a += b; d ^= a; d = ROTL32(d, 16); \
+        c += d; b ^= c; b = ROTL32(b, 12); \
+        a += b; d ^= a; d = ROTL32(d,  8); \
+        c += d; b ^= c; b = ROTL32(b,  7);
 
 static const uint8_t KEY[32] = {
     0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,
@@ -55,7 +55,7 @@ static const uint8_t CIPHERTEXT_EXPECT[] = {
     0x87,0x4d
 };
 
-static int expect_eq(const char* name, const uint8_t* got, const uint8_t* exp, size_t n) {
+static int expect_eq(const char *name, const uint8_t *got, const uint8_t *exp, size_t n) {
     if (memcmp(got, exp, n) == 0) return 1;
     printf("%s: mismatch\n", name);
     return 0;
@@ -263,9 +263,9 @@ static void test_xchacha20_various_lengths(void) {
 
     for (size_t i = 0; i < num_lengths; ++i) {
         size_t len = lengths[i];
-        uint8_t* pt = calloc(len, 1);
-        uint8_t* ct = malloc(len);
-        uint8_t* dec = malloc(len);
+        uint8_t *pt = calloc(len, 1);
+        uint8_t *ct = malloc(len);
+        uint8_t *dec = malloc(len);
 
         for (size_t j = 0; j < len; ++j) pt[j] = (uint8_t)(j & 0xff);
 

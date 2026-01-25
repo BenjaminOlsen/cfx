@@ -29,7 +29,7 @@ static void test_big_to_bytes_be_zero(void) {
 static void test_big_to_bytes_be(void) {
 
     struct {
-        const char*hex_in;
+        const char *hex_in;
         const char *hex_be;
     } cases[] = {
         { "01", "01" },
@@ -100,7 +100,7 @@ static void test_to_bin_zero(void) {
     cfx_big_t a;
     cfx_big_init(&a);
     size_t sz = 0;
-    char* s = cfx_big_bin_alloc(&a, &sz);
+    char *s = cfx_big_bin_alloc(&a, &sz);
     CFX_ASSERT(s != NULL);
     CFX_ASSERT(strcmp(s, "0") == 0);
     CFX_ASSERT(sz == 1);
@@ -113,7 +113,7 @@ static void test_to_bin_nonzero(void) {
     cfx_big_init(&a);
     cfx_big_from_limb(&a, 5);  /* 101 in binary */
     size_t sz = 0;
-    char* s = cfx_big_bin_alloc(&a, &sz);
+    char *s = cfx_big_bin_alloc(&a, &sz);
     CFX_ASSERT(s != NULL);
     CFX_ASSERT(strcmp(s, "101") == 0);
     free(s);
@@ -124,7 +124,7 @@ static void test_to_b64_zero(void) {
     cfx_big_t a;
     cfx_big_init(&a);
     size_t sz = 0;
-    char* s = cfx_big_b64_alloc(&a, &sz);
+    char *s = cfx_big_b64_alloc(&a, &sz);
     CFX_ASSERT(s != NULL);
     CFX_ASSERT(strcmp(s, "0") == 0);
     free(s);

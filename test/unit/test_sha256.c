@@ -48,8 +48,8 @@ static void cfx_sha256_once(const uint8_t *msg, size_t len, uint8_t out[32]) {
 }
 
 static void check_vector(const char *name,
-                         const uint8_t *msg, size_t msg_len,
-                         const char *expected_hex) {
+    const uint8_t *msg, size_t msg_len,
+    const char *expected_hex) {
     uint8_t got[32];
     uint8_t expect[32];
 
@@ -75,7 +75,7 @@ static void check_vector(const char *name,
 }
 
 static void check_incremental(const char *name,
-                              const uint8_t *msg, size_t msg_len) {
+    const uint8_t *msg, size_t msg_len) {
     uint8_t dig_one[32];
     uint8_t dig_inc[32];
 

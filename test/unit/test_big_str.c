@@ -45,7 +45,7 @@ static void test_limb6(void) {
         "300000000"
         "200000000"
         "1"
-    );
+        );
     PRINT_TEST(1);
 }
 
@@ -57,8 +57,8 @@ static void test_limb7(void) {
     char *s = cfx_big_dec_alloc(&b, NULL);
     CFX_ASSERT(s[0] == '9');
     CFX_ASSERT(strlen(s) >= 9);
-    char* expect = "999999990000000044999999880000000209999999"
-        "748000000209999999880000000044999999990000000001";
+    char *expect = "999999990000000044999999880000000209999999"
+                   "748000000209999999880000000044999999990000000001";
     CFX_ASSERT(strcmp(s, expect) == 0);
     free(s);
     cfx_big_free(&b);
@@ -69,9 +69,9 @@ static void test_str1(void) {
     cfx_big_t b;
     cfx_big_init(&b);
     const char *sin =   "99911231231238761239876981273469128374169283476129"
-                        "38471629384761250389172603459812630498672312387123"
-                        "87123981723918273912891238719248719238719248169723"
-                        "00091203901290909090911100091231283761000101023882";
+                      "38471629384761250389172603459812630498672312387123"
+                      "87123981723918273912891238719248719238719248169723"
+                      "00091203901290909090911100091231283761000101023882";
     cfx_big_from_dec(&b, sin);
     char *sout = cfx_big_dec_alloc(&b, NULL);
     CFX_ASSERT(strcmp(sin, sout) == 0);
@@ -277,7 +277,7 @@ static void test_scan_num_hex_basic(void) {
     const char *s = "0xFFF+1";
     size_t n = 12345;
 
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)s, strlen(s), &n) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)s, strlen(s), &n) == 0);
     CFX_ASSERT(n == 5);
 
     CFX_ASSERT(cfx_big_from_str(&ref, "4095") == 0);
@@ -295,7 +295,7 @@ static void test_scan_num_bin_basic(void) {
     const char *s = "0b0000000001+7";
     size_t n = 0;
 
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)s, strlen(s), &n) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)s, strlen(s), &n) == 0);
     CFX_ASSERT(n == 12);
 
     CFX_ASSERT(cfx_big_from_str(&ref, "1") == 0);
@@ -313,7 +313,7 @@ static void test_scan_num_b64_basic(void) {
     const char *s = "b64:AQ==+7";
     size_t n = 0;
 
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)s, strlen(s), &n) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)s, strlen(s), &n) == 0);
     CFX_ASSERT(n == 8);
 
     CFX_ASSERT(cfx_big_from_str(&ref, "1") == 0);
@@ -331,7 +331,7 @@ static void test_scan_num_b64_whitespace_inside(void) {
     const char *s = "b64: A Q = =   +1";
     size_t n = 12345;
 
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)s, strlen(s), &n) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)s, strlen(s), &n) == 0);
     CFX_ASSERT(n == 15);
     CFX_ASSERT(cfx_big_from_str(&ref, "1") == 0);
     CFX_ASSERT(cfx_big_eq(&b, &ref));
@@ -345,10 +345,10 @@ static void test_scan_num_b64_multibyte_value(void) {
     cfx_big_init(&b);
     cfx_big_init(&ref);
 
-    const char* s = "b64:AQA=+1";
+    const char *s = "b64:AQA=+1";
     size_t n = 0;
 
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)s, strlen(s), &n) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)s, strlen(s), &n) == 0);
     CFX_ASSERT(n == 8);
     CFX_ASSERT(cfx_big_from_str(&ref, "256") == 0);
     CFX_ASSERT(cfx_big_eq(&b, &ref));
@@ -365,7 +365,7 @@ static void test_scan_num_b64_stops_before_junk(void) {
     const char *s = "b64:AQ==!+7";
     size_t n = 0;
 
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)s, strlen(s), &n) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)s, strlen(s), &n) == 0);
     CFX_ASSERT(n == 8);
 
     CFX_ASSERT(cfx_big_from_str(&ref, "1") == 0);
@@ -417,7 +417,7 @@ static void test_scan_num_dec_basic(void) {
     const char *s = "12345*9";
     size_t n = 0;
 
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)s, strlen(s), &n) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)s, strlen(s), &n) == 0);
     CFX_ASSERT(n == 5);
 
     CFX_ASSERT(cfx_big_from_str(&ref, "12345") == 0);
@@ -435,7 +435,7 @@ static void test_scan_num_stops_at_invalid_digit(void) {
     const char *s = "0x12zz";
     size_t n = 0;
 
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)s, strlen(s), &n) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)s, strlen(s), &n) == 0);
     CFX_ASSERT(n == 4);
 
     CFX_ASSERT(cfx_big_from_str(&ref, "18") == 0);
@@ -450,11 +450,11 @@ static void test_scan_num_prefix_only_fails(void) {
     cfx_big_init(&b);
 
     size_t n = 777;
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)"0x", 2, &n) < 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)"0x", 2, &n) < 0);
     CFX_ASSERT(n == 0);
 
     n = 777;
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)"0b", 2, &n) < 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)"0b", 2, &n) < 0);
     CFX_ASSERT(n == 0);
 
     cfx_big_free(&b);
@@ -465,15 +465,15 @@ static void test_scan_num_non_number_fails(void) {
     cfx_big_init(&b);
 
     size_t n = 777;
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)"+123", 4, &n) < 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)"+123", 4, &n) < 0);
     CFX_ASSERT(n == 0);
 
     n = 777;
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)"(", 1, &n) < 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)"(", 1, &n) < 0);
     CFX_ASSERT(n == 0);
 
     n = 777;
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)" 123", 4, &n) < 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)" 123", 4, &n) < 0);
     CFX_ASSERT(n == 0);
 
     cfx_big_free(&b);
@@ -486,10 +486,10 @@ static void test_scan_num_prefix_case_insensitive(void) {
 
     size_t na = 0, nb = 0;
 
-    CFX_ASSERT(cfx_big_scan_num_n(&a, (const uint8_t*)"0XFF ", 5, &na) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&a, (const uint8_t *)"0XFF ", 5, &na) == 0);
     CFX_ASSERT(na == 4);
 
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)"0B1010", 6, &nb) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)"0B1010", 6, &nb) == 0);
     CFX_ASSERT(nb == 6);
 
     cfx_big_free(&a);
@@ -504,7 +504,7 @@ static void test_scan_num_respects_in_len(void) {
     const char *s = "0x1234+999";
     size_t n = 0;
 
-    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t*)s, 4, &n) == 0);
+    CFX_ASSERT(cfx_big_scan_num_n(&b, (const uint8_t *)s, 4, &n) == 0);
     CFX_ASSERT(n == 4);
 
     CFX_ASSERT(cfx_big_from_str(&ref, "18") == 0);

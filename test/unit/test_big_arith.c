@@ -13,7 +13,7 @@ static void test_mul_by_zero(void) {
     cfx_big_mul_sm_eq(&b, 123765);
     cfx_big_mul_sm_eq(&b, 0);
     size_t sz = 0;
-    char* s = cfx_big_dec_alloc(&b, &sz);
+    char *s = cfx_big_dec_alloc(&b, &sz);
     CFX_ASSERT(sz == 1);
     CFX_ASSERT(strcmp(s, "0") == 0);
     free(s);
@@ -239,7 +239,7 @@ static void test_add_non_inplace(void) {
     cfx_big_from_hex(&a, "ffffffffffffffffffffffffffffffff");
     cfx_big_from_hex(&b, "1");
     cfx_big_add(&out, &a, &b);
-    char* s = cfx_big_hex_alloc(&out, NULL);
+    char *s = cfx_big_hex_alloc(&out, NULL);
     CFX_ASSERT(strcmp(s, "100000000000000000000000000000000") == 0);
     free(s);
 
@@ -295,7 +295,7 @@ static void test_sub_non_inplace(void) {
     cfx_big_from_hex(&a, "100000000000000000000000000000000");
     cfx_big_from_hex(&b, "1");
     cfx_big_sub(&out, &a, &b);
-    char* s = cfx_big_hex_alloc(&out, NULL);
+    char *s = cfx_big_hex_alloc(&out, NULL);
     CFX_ASSERT(strcmp(s, "ffffffffffffffffffffffffffffffff") == 0);
     free(s);
 

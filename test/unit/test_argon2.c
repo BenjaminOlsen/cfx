@@ -8,16 +8,16 @@
 #include <string.h>
 
 static void test_argon2id_basic(void) {
-    const char* password = "password";
-    const char* salt_str = "somesalt";
+    const char *password = "password";
+    const char *salt_str = "somesalt";
 
     uint8_t hash[32];
     int rc = cfx_argon2id(
         hash, sizeof(hash),
-        (const uint8_t*)password, strlen(password),
-        (const uint8_t*)salt_str, strlen(salt_str),
+        (const uint8_t *)password, strlen(password),
+        (const uint8_t *)salt_str, strlen(salt_str),
         65536, 3, 4
-    );
+        );
 
     CFX_ASSERT(rc == CFX_ARGON2_OK);
 }
@@ -34,7 +34,7 @@ static void test_argon2i_rfc(void) {
         password, sizeof(password),
         salt, sizeof(salt),
         32, 3, 4
-    );
+        );
 
     CFX_ASSERT(rc == CFX_ARGON2_OK);
 }
@@ -51,7 +51,7 @@ static void test_argon2d_rfc(void) {
         password, sizeof(password),
         salt, sizeof(salt),
         32, 3, 4
-    );
+        );
 
     CFX_ASSERT(rc == CFX_ARGON2_OK);
 }
@@ -68,40 +68,40 @@ static void test_argon2id_rfc(void) {
         password, sizeof(password),
         salt, sizeof(salt),
         32, 3, 4
-    );
+        );
 
     CFX_ASSERT(rc == CFX_ARGON2_OK);
 }
 
 static void test_argon2_encode_verify(void) {
-    const char* password = "correcthorsebatterystaple";
+    const char *password = "correcthorsebatterystaple";
     uint8_t salt[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
                         0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
 
     uint8_t hash[32];
     int rc = cfx_argon2id(
         hash, sizeof(hash),
-        (const uint8_t*)password, strlen(password),
+        (const uint8_t *)password, strlen(password),
         salt, sizeof(salt),
         1024, 2, 1
-    );
+        );
     CFX_ASSERT(rc == CFX_ARGON2_OK);
 
     char encoded[256];
     int len = cfx_argon2_encode(encoded, sizeof(encoded),
-                                 hash, sizeof(hash),
-                                 salt, sizeof(salt),
-                                 1024, 2, 1,
-                                 CFX_ARGON2ID);
+        hash, sizeof(hash),
+        salt, sizeof(salt),
+        1024, 2, 1,
+        CFX_ARGON2ID);
     CFX_ASSERT(len > 0);
 
     /* verify correct password */
-    rc = cfx_argon2_verify(encoded, (const uint8_t*)password, strlen(password));
+    rc = cfx_argon2_verify(encoded, (const uint8_t *)password, strlen(password));
     CFX_ASSERT(rc == 0);
 
     /* verify wrong password is rejected */
-    const char* wrong = "wrongpassword";
-    rc = cfx_argon2_verify(encoded, (const uint8_t*)wrong, strlen(wrong));
+    const char *wrong = "wrongpassword";
+    rc = cfx_argon2_verify(encoded, (const uint8_t *)wrong, strlen(wrong));
     CFX_ASSERT(rc != 0);
 }
 

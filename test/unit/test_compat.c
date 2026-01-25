@@ -51,14 +51,14 @@ static void test_clz64(void) {
 }
 
 static void test_strndup_basic(void) {
-    char* s = cfx_strndup("hello", 10);
+    char *s = cfx_strndup("hello", 10);
     CFX_ASSERT(s != NULL);
     CFX_ASSERT(strcmp(s, "hello") == 0);
     free(s);
 }
 
 static void test_strndup_truncate(void) {
-    char* s = cfx_strndup("hello world", 5);
+    char *s = cfx_strndup("hello world", 5);
     CFX_ASSERT(s != NULL);
     CFX_ASSERT(strcmp(s, "hello") == 0);
     CFX_ASSERT(strlen(s) == 5);
@@ -66,7 +66,7 @@ static void test_strndup_truncate(void) {
 }
 
 static void test_strndup_zero(void) {
-    char* s = cfx_strndup("hello", 0);
+    char *s = cfx_strndup("hello", 0);
     CFX_ASSERT(s != NULL);
     CFX_ASSERT(s[0] == '\0');
     CFX_ASSERT(strlen(s) == 0);
@@ -74,7 +74,7 @@ static void test_strndup_zero(void) {
 }
 
 static void test_strndup_exact(void) {
-    char* s = cfx_strndup("abc", 3);
+    char *s = cfx_strndup("abc", 3);
     CFX_ASSERT(s != NULL);
     CFX_ASSERT(strcmp(s, "abc") == 0);
     free(s);
@@ -82,7 +82,7 @@ static void test_strndup_exact(void) {
 
 static void test_strndup_embedded_null(void) {
     /* strndup stops at first null regardless of n */
-    char* s = cfx_strndup("ab\0cd", 10);
+    char *s = cfx_strndup("ab\0cd", 10);
     CFX_ASSERT(s != NULL);
     CFX_ASSERT(strcmp(s, "ab") == 0);
     CFX_ASSERT(strlen(s) == 2);
@@ -121,8 +121,8 @@ static void test_time_ns_advances(void) {
 
 /* ---- Threading tests ---- */
 
-static void* thread_increment(void* arg) {
-    int* counter = (int*)arg;
+static void * thread_increment(void *arg) {
+    int *counter = (int *)arg;
     (*counter) += 1;
     return NULL;
 }
@@ -158,13 +158,13 @@ static void test_thread_multiple(void) {
 /* ---- Mutex tests ---- */
 
 typedef struct {
-    cfx_mutex_t* mtx;
-    int* counter;
+    cfx_mutex_t *mtx;
+    int *counter;
     int iterations;
 } mutex_test_arg_t;
 
-static void* thread_mutex_increment(void* arg) {
-    mutex_test_arg_t* mta = (mutex_test_arg_t*)arg;
+static void * thread_mutex_increment(void *arg) {
+    mutex_test_arg_t *mta = (mutex_test_arg_t *)arg;
     for (int i = 0; i < mta->iterations; ++i) {
         cfx_mutex_lock(mta->mtx);
         (*mta->counter)++;
@@ -231,10 +231,10 @@ static void test_ctx_alignment_stack(void) {
 
 static void test_ctx_alignment_heap(void) {
     /* heap-allocated contexts should also be properly aligned */
-    cfx_sha256_ctx* sha256_ctx = malloc(sizeof(cfx_sha256_ctx));
-    cfx_siphash_ctx_t* siphash_ctx = malloc(sizeof(cfx_siphash_ctx_t));
-    cfx_poly1305_ctx_t* poly1305_ctx = malloc(sizeof(cfx_poly1305_ctx_t));
-    cfx_chacha20_ctx_t* chacha20_ctx = malloc(sizeof(cfx_chacha20_ctx_t));
+    cfx_sha256_ctx *sha256_ctx = malloc(sizeof(cfx_sha256_ctx));
+    cfx_siphash_ctx_t *siphash_ctx = malloc(sizeof(cfx_siphash_ctx_t));
+    cfx_poly1305_ctx_t *poly1305_ctx = malloc(sizeof(cfx_poly1305_ctx_t));
+    cfx_chacha20_ctx_t *chacha20_ctx = malloc(sizeof(cfx_chacha20_ctx_t));
 
     CFX_ASSERT(sha256_ctx != NULL);
     CFX_ASSERT(siphash_ctx != NULL);
@@ -309,12 +309,12 @@ static void test_atomic_basic(void) {
 }
 
 typedef struct {
-    cfx_atomic_int* flag;
-    int* shared_data;
+    cfx_atomic_int *flag;
+    int *shared_data;
 } atomic_test_arg_t;
 
-static void* thread_wait_for_flag(void* arg) {
-    atomic_test_arg_t* ata = (atomic_test_arg_t*)arg;
+static void * thread_wait_for_flag(void *arg) {
+    atomic_test_arg_t *ata = (atomic_test_arg_t *)arg;
 
     /* spin until flag is set */
     while (cfx_atomic_load(ata->flag) == 0) {
@@ -322,7 +322,7 @@ static void* thread_wait_for_flag(void* arg) {
     }
 
     /* flag was set, read shared data */
-    return (void*)(intptr_t)(*ata->shared_data);
+    return (void *)(intptr_t)(*ata->shared_data);
 }
 
 static void test_atomic_synchronization(void) {

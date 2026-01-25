@@ -22,11 +22,11 @@
 /* ---- Assertion helpers -------------------------------------------------- */
 
 #define ASSERT_BIG_HEX(b, hex) \
-    do { \
-        char* s = cfx_big_hex_alloc(b, NULL); \
-        CFX_ASSERT(strcasecmp(s, hex) == 0); \
-        free(s); \
-    } while (0)
+        do { \
+            char *s = cfx_big_hex_alloc(b, NULL); \
+            CFX_ASSERT(strcasecmp(s, hex) == 0); \
+            free(s); \
+        } while (0)
 
 /* ---- Big integer creation helpers --------------------------------------- */
 
@@ -37,17 +37,17 @@ static inline cfx_big_t make_u64(uint64_t x) {
     return r;
 }
 
-static inline void big_from_hex(cfx_big_t* out, const char* hex) {
+static inline void big_from_hex(cfx_big_t *out, const char *hex) {
     int rc = cfx_big_from_hex(out, hex);
     CFX_ASSERT(rc == 0);
 }
 
-static inline void big_from_u64(cfx_big_t* out, uint64_t v) {
+static inline void big_from_u64(cfx_big_t *out, uint64_t v) {
     int rc = cfx_big_from_u64(out, v);
     CFX_ASSERT(rc == 0);
 }
 
-static inline void big_init_from_limbs_base_1e9(cfx_big_t* b, const cfx_limb_t *limbs, size_t n) {
+static inline void big_init_from_limbs_base_1e9(cfx_big_t *b, const cfx_limb_t *limbs, size_t n) {
     cfx_big_init(b);
     if (n == 0) return;
     for (size_t i = n; i--;) {
@@ -58,8 +58,8 @@ static inline void big_init_from_limbs_base_1e9(cfx_big_t* b, const cfx_limb_t *
 
 /* ---- Comparison/assertion helpers --------------------------------------- */
 
-static inline void assert_hex_eq(const char* tag, const cfx_big_t* x, const char* hex_exp) {
-    char* got = cfx_big_hex_alloc(x, NULL);
+static inline void assert_hex_eq(const char *tag, const cfx_big_t *x, const char *hex_exp) {
+    char *got = cfx_big_hex_alloc(x, NULL);
     int ok = (strcmp(got, hex_exp) == 0);
     if (!ok) {
         fprintf(stderr, "[%s] expected 0x%s, got 0x%s\n", tag, hex_exp, got);
@@ -68,24 +68,24 @@ static inline void assert_hex_eq(const char* tag, const cfx_big_t* x, const char
     free(got);
 }
 
-static inline void assert_big_eq_hex(const cfx_big_t* x, const char* expected_hex) {
+static inline void assert_big_eq_hex(const cfx_big_t *x, const char *expected_hex) {
     size_t sz = 0;
-    char* got = cfx_big_hex_alloc(x, &sz);
+    char *got = cfx_big_hex_alloc(x, &sz);
     CFX_ASSERT(got != NULL);
 
     /* Allow either "0" or "00...0" depending on hex formatting.
        Compare after stripping leading zeros (except keep one). */
-    const char* e = expected_hex;
+    const char *e = expected_hex;
     while (e[0] == '0' && e[1] != '\0') e++;
 
-    char* g = got;
+    char *g = got;
     while (g[0] == '0' && g[1] != '\0') g++;
 
     CFX_ASSERT(strcmp(g, e) == 0);
     free(got);
 }
 
-static inline void expect_dec_eq(const cfx_big_t* x, const char* dec) {
+static inline void expect_dec_eq(const cfx_big_t *x, const char *dec) {
     cfx_big_t tmp;
     cfx_big_init(&tmp);
     cfx_big_from_dec(&tmp, dec);
@@ -93,7 +93,7 @@ static inline void expect_dec_eq(const cfx_big_t* x, const char* dec) {
     cfx_big_free(&tmp);
 }
 
-static inline void big_expect_limbs(const char* s, const cfx_big_t* b, const cfx_limb_t* limbs, size_t n) {
+static inline void big_expect_limbs(const char *s, const cfx_big_t *b, const cfx_limb_t *limbs, size_t n) {
     if (b->n != n) {
         printf("[%s]: size mismatch! n: %zu, b->n: %zu!\n", s, n, b->n);
     }
@@ -109,8 +109,8 @@ static inline void big_expect_limbs(const char* s, const cfx_big_t* b, const cfx
     CFX_ASSERT(ok);
 }
 
-static inline void expect_limb_pattern(const cfx_big_t* a, size_t n,
-                                cfx_limb_t l2, cfx_limb_t l1, cfx_limb_t l0) {
+static inline void expect_limb_pattern(const cfx_big_t *a, size_t n,
+    cfx_limb_t l2, cfx_limb_t l1, cfx_limb_t l0) {
     CFX_ASSERT(a->n == n);
     if (n >= 1) CFX_ASSERT(a->limb[0] == l0);
     if (n >= 2) CFX_ASSERT(a->limb[1] == l1);
@@ -118,8 +118,8 @@ static inline void expect_limb_pattern(const cfx_big_t* a, size_t n,
 }
 
 /* Division verification: n == q*d + r and r < d */
-static inline void assert_n_eq_qd_plus_r(const cfx_big_t* n, const cfx_big_t* q,
-                                  const cfx_big_t* d, const cfx_big_t* r) {
+static inline void assert_n_eq_qd_plus_r(const cfx_big_t *n, const cfx_big_t *q,
+    const cfx_big_t *d, const cfx_big_t *r) {
     cfx_big_t check;
     cfx_big_init(&check);
     cfx_big_copy(&check, q);
@@ -154,7 +154,7 @@ static inline void check_str_conversion(const char *label, const cfx_limb_t *lim
 
 /* ---- Shift test helpers ------------------------------------------------- */
 
-static inline void check_shl_case(const char* msg, const char* hex_in, unsigned s, const char* hex_exp) {
+static inline void check_shl_case(const char *msg, const char *hex_in, unsigned s, const char *hex_exp) {
     /* out-of-place */
     cfx_big_t a, out;
     cfx_big_init(&a);
@@ -174,7 +174,7 @@ static inline void check_shl_case(const char* msg, const char* hex_in, unsigned 
     cfx_big_free(&a);
 }
 
-static inline void check_shr_case(const char* msg, const char* hex_in, unsigned s, const char* hex_exp) {
+static inline void check_shr_case(const char *msg, const char *hex_in, unsigned s, const char *hex_exp) {
     /* out-of-place */
     cfx_big_t a, out;
     cfx_big_init(&a);
@@ -199,7 +199,7 @@ static inline void check_shr_case(const char* msg, const char* hex_in, unsigned 
 
 /* ---- Byte conversion helpers -------------------------------------------- */
 
-static inline void hex_to_bytes(uint8_t* out, size_t out_len, const char *hex) {
+static inline void hex_to_bytes(uint8_t *out, size_t out_len, const char *hex) {
     /* hex length must be 2*out_len, no "0x", no spaces */
     for (size_t i = 0; i < out_len; i++) {
         unsigned v = 0;
@@ -222,7 +222,7 @@ static inline void hex_to_bytes(uint8_t* out, size_t out_len, const char *hex) {
 
 /* ---- Debug printing helpers --------------------------------------------- */
 
-static inline void print_limbs(const char* name, const cfx_big_t* b) {
+static inline void print_limbs(const char *name, const cfx_big_t *b) {
     printf("%s: n=%zu, limbs = {", name, b->n);
     for (size_t i = 0; i < b->n; i++) {
         printf("0x" CFX_PRIxLIMB "%s", b->limb[i], i < b->n - 1 ? ", " : "");
@@ -231,7 +231,7 @@ static inline void print_limbs(const char* name, const cfx_big_t* b) {
 }
 
 /* Decrement by 1 (helper for some tests) */
-static inline void big_dec1(cfx_big_t* x) {
+static inline void big_dec1(cfx_big_t *x) {
     cfx_limb_t borrow = 1;
     for (size_t i = 0; i < x->n && borrow; ++i) {
         cfx_limb_t old = x->limb[i];

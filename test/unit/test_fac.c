@@ -66,7 +66,7 @@ static void test_push_zero_exp(void) {
     cfx_fac_free(&f);
 }
 
-char* F[] = {
+char *F[] = {
     "1",    /* 0! */
     "1",    /* 1! */
     "2",    /* 2! */
@@ -181,7 +181,7 @@ static void test_factorial_to_100(int quiet) {
         cfx_big_init(&b);
         cfx_big_from_fac(&b, &f);
         size_t sz = 0;
-        char* s = cfx_big_dec_alloc(&b, &sz);
+        char *s = cfx_big_dec_alloc(&b, &sz);
         int ok = (strcmp(s, F[n]) == 0);
         if (!quiet) CFX_PRINT_DBG("%zu! %s\n", n, ok ? "ok" : "NOT OK!");
         aok &= ok;
@@ -193,9 +193,11 @@ static void test_factorial_to_100(int quiet) {
     CFX_ASSERT(aok);
 }
 
-static void fac(cfx_big_t* out, const cfx_big_t* in) {
+static void fac(cfx_big_t *out, const cfx_big_t *in) {
     cfx_big_init(out);
-    if(cfx_big_is_zero(in)) { cfx_big_from_limb(out, 1); return; }
+    if(cfx_big_is_zero(in)) {
+        cfx_big_from_limb(out, 1); return;
+    }
     cfx_big_t tmp;
     cfx_big_init(&tmp);
     cfx_big_copy(&tmp, in);
@@ -204,7 +206,7 @@ static void fac(cfx_big_t* out, const cfx_big_t* in) {
     while (!cfx_big_is_zero(&tmp)) {
         cfx_big_mul_eq(out, &tmp);
         cfx_big_sub_sm_eq(&tmp, 1);
-        char* s = cfx_big_dec_alloc(&tmp, NULL);
+        char *s = cfx_big_dec_alloc(&tmp, NULL);
         /* printf("tmp: %s\n", s); */
         free(s);
     }
@@ -220,7 +222,7 @@ static void test_big_factorial_to_100(int quiet) {
         cfx_big_init(&f);
         cfx_big_from_limb(&b, n);
         fac(&f, &b);
-        char* s = cfx_big_dec_alloc(&f, NULL);
+        char *s = cfx_big_dec_alloc(&f, NULL);
         int ok = (strcmp(s, F[n]) == 0);
         if (!quiet){
             CFX_PRINT_DBG("%zu! %s", n, ok ? "ok" : "NOT OK!");
@@ -238,12 +240,14 @@ static void test_big_factorial_to_100(int quiet) {
 }
 
 /* primes[] must be in strictly increasing order! */
-static void test_facs(cfx_fac_t* f, uint64_t primes[], uint64_t exps[], size_t nprimes) {
+static void test_facs(cfx_fac_t *f, uint64_t primes[], uint64_t exps[], size_t nprimes) {
     cfx_fac_init(f);
     uint64_t n = 1;
     for (size_t i = 0; i < nprimes; ++i) {
         size_t e = (size_t)exps[i];
-        while(e-->0) { n *= primes[i]; }
+        while(e-->0) {
+            n *= primes[i];
+        }
     }
 
     int ok = cfx_fac_from_u64(f, n);

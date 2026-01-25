@@ -346,7 +346,7 @@ static void test_string_io(void) {
     CFX_ASSERT(cfx_sbig_sign(&s) == 1);
     CFX_ASSERT(cfx_big_eq_u64(&s.mag, 12345));
 
-    char* str = cfx_sbig_dec_alloc(&s, NULL);
+    char *str = cfx_sbig_dec_alloc(&s, NULL);
     CFX_ASSERT(strcmp(str, "12345") == 0);
     free(str);
 

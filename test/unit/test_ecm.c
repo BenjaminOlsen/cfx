@@ -105,7 +105,7 @@ static int test_ecm_large_semiprime(void) {
     /* Compute n = p * q */
     cfx_big_mul(&n, &p, &q);
 
-    char* str = cfx_big_dec_alloc(&n, NULL);
+    char *str = cfx_big_dec_alloc(&n, NULL);
     printf("\nn = %s\n", str);
     printf("expected = 340282366920938460843936948965011886881\n");
     free(str);
@@ -134,7 +134,7 @@ static int test_ecm_large_semiprime(void) {
 
     if (found) {
         /* Print factor as decimal */
-        char* str = cfx_big_dec_alloc(&factor, NULL);
+        char *str = cfx_big_dec_alloc(&factor, NULL);
         printf("Found factor: %s\n", str);
         free(str);
 

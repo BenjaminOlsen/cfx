@@ -173,9 +173,9 @@ static void test_fermat_primes(void) {
 
 
 /* --- simple reference multiply with carry propagation --- */
-static void mul_ref(const cfx_limb_t* A, size_t na,
-                    const cfx_limb_t* B, size_t nb,
-                    cfx_limb_t* R) {
+static void mul_ref(const cfx_limb_t *A, size_t na,
+    const cfx_limb_t *B, size_t nb,
+    cfx_limb_t *R) {
     size_t nout = na + nb;
     memset(R, 0, nout * sizeof(cfx_limb_t));
 
@@ -205,7 +205,7 @@ static void mul_ref(const cfx_limb_t* A, size_t na,
 }
 
 /* --- helpers --- */
-static void assert_eq_arr(const cfx_limb_t* X, const cfx_limb_t* Y, size_t n) {
+static void assert_eq_arr(const cfx_limb_t *X, const cfx_limb_t *Y, size_t n) {
     for (size_t i = 0; i < n; ++i) {
         CFX_ASSERT(X[i] == Y[i]);
     }
@@ -306,7 +306,7 @@ static void test_power_of_two_alignment(void) {
 }
 
 /* a tiny deterministic fuzz */
-static cfx_limb_t xorshift(cfx_limb_t* s) {
+static cfx_limb_t xorshift(cfx_limb_t *s) {
     cfx_limb_t x = *s;
 #if CFX_LIMB_BITS == 64
     x ^= x << 13; x ^= x >> 7; x ^= x << 17;
@@ -383,7 +383,7 @@ static void test_factor_u64(void) {
     CFX_ASSERT(cfx_factor_u64(&primes, &exps, 17) == 0);
     CFX_ASSERT(primes.size == 1);
     CFX_ASSERT(primes.data[0] == 17);
-    CFX_ASSERT(exps.data[0] == 1); 
+    CFX_ASSERT(exps.data[0] == 1);
     cfx_vec_free(&primes);
     cfx_vec_free(&exps);
 

@@ -745,7 +745,7 @@ static void usage(const char *prog) {
     printf("  sha512           SHA-512 hash\n");
     printf("  all              Run all tests (default)\n\n");
     printf("A test passes if |t| < %.1f after %d measurements.\n",
-           THRESHOLD, num_measurements);
+        THRESHOLD, num_measurements);
 }
 
 int main(int argc, char **argv) {
@@ -795,7 +795,7 @@ int main(int argc, char **argv) {
 
     printf("Constant-time test (Welch's t-test)\n");
     printf("Measurements: %d, threshold: |t| > %.1f\n\n",
-           num_measurements, THRESHOLD);
+        num_measurements, THRESHOLD);
 
     /* Seed RNG from OS entropy */
     cfx_srand_os();

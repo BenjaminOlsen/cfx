@@ -365,7 +365,7 @@ static void test_bit_reverse(void) {
        101 -> 101 (5 -> 5)
        110 -> 011 (6 -> 3)
        111 -> 111 (7 -> 7)
-    */
+     */
     CFX_ASSERT(a[0] == 0);
     CFX_ASSERT(a[1] == 4);
     CFX_ASSERT(a[2] == 2);
@@ -413,8 +413,8 @@ static void test_bit_reverse_n16(void) {
 static void test_bit_reverse_involution(void) {
     /* bit-reverse twice should give original */
     size_t n = 32;
-    uint64_t* a = (uint64_t*)malloc(n * sizeof(uint64_t));
-    uint64_t* orig = (uint64_t*)malloc(n * sizeof(uint64_t));
+    uint64_t *a = (uint64_t *)malloc(n * sizeof(uint64_t));
+    uint64_t *orig = (uint64_t *)malloc(n * sizeof(uint64_t));
     CFX_ASSERT(a && orig);
 
     for (size_t i = 0; i < n; ++i) {
@@ -469,8 +469,8 @@ static void test_ntt_larger(void) {
     int rc = cfx_ntt_twiddles_init(&tw, n, p, CFX_NTT_G1);
     CFX_ASSERT(rc == 0);
 
-    uint64_t* a = (uint64_t*)malloc(n * sizeof(uint64_t));
-    uint64_t* orig = (uint64_t*)malloc(n * sizeof(uint64_t));
+    uint64_t *a = (uint64_t *)malloc(n * sizeof(uint64_t));
+    uint64_t *orig = (uint64_t *)malloc(n * sizeof(uint64_t));
     CFX_ASSERT(a && orig);
 
     for (size_t i = 0; i < n; ++i) {
@@ -844,7 +844,7 @@ static void test_convolve_large_coefficients(void) {
     /* verify against schoolbook */
     uint64_t c0 = cfx_ntt_mod_mul(a[0], b[0], p);
     uint64_t c1 = cfx_ntt_mod_add(cfx_ntt_mod_mul(a[0], b[1], p),
-                                   cfx_ntt_mod_mul(a[1], b[0], p), p);
+        cfx_ntt_mod_mul(a[1], b[0], p), p);
     uint64_t c2 = cfx_ntt_mod_mul(a[1], b[1], p);
 
     CFX_ASSERT(c[0] == c0);
@@ -874,10 +874,10 @@ static void test_convolve_larger_random(void) {
     size_t len = 32;
     size_t n = 64;
 
-    uint64_t* a = (uint64_t*)malloc(len * sizeof(uint64_t));
-    uint64_t* b = (uint64_t*)malloc(len * sizeof(uint64_t));
-    uint64_t* c_ntt = (uint64_t*)malloc(n * sizeof(uint64_t));
-    uint64_t* c_school = (uint64_t*)malloc(n * sizeof(uint64_t));
+    uint64_t *a = (uint64_t *)malloc(len * sizeof(uint64_t));
+    uint64_t *b = (uint64_t *)malloc(len * sizeof(uint64_t));
+    uint64_t *c_ntt = (uint64_t *)malloc(n * sizeof(uint64_t));
+    uint64_t *c_school = (uint64_t *)malloc(n * sizeof(uint64_t));
     CFX_ASSERT(a && b && c_ntt && c_school);
 
     /* deterministic "random" values */
@@ -1155,7 +1155,7 @@ static void test_ntt_mul_limbs_max_single(void) {
        actually: (2^32 - 1)^2 = 2^64 - 2^33 + 1
        in base 2^32: low = 1, high = 2^32 - 2
        because 2^64 - 2^33 + 1 = (2^32 - 2) * 2^32 + 1
-    */
+     */
 #if CFX_LIMB_BITS == 32
     CFX_ASSERT(out[0] == 1);
     CFX_ASSERT(out[1] == 0xFFFFFFFE);
