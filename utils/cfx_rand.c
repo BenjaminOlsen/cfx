@@ -53,10 +53,18 @@ static void print_bytes(const uint8_t* bytes, size_t n, enum cfx_str_format fmt)
             free(b64);
         }
     } else {
-        for (size_t i = 0; i < n; ++i) {
-            printf("%02x", bytes[i]);
+        static const char hex_chars[] = "0123456789abcdef";
+        char* hex = (char*)malloc(n * 2 + 2);
+        if (hex) {
+            for (size_t i = 0; i < n; ++i) {
+                hex[i * 2]     = hex_chars[bytes[i] >> 4];
+                hex[i * 2 + 1] = hex_chars[bytes[i] & 0x0F];
+            }
+            hex[n * 2] = '\n';
+            hex[n * 2 + 1] = '\0';
+            fputs(hex, stdout);
+            free(hex);
         }
-        printf("\n");
     }
 }
 

@@ -1,6 +1,6 @@
 # Constant-time test (no external dependencies)
 add_executable(test_ct test_ct.c)
-target_link_libraries(test_ct PRIVATE cfx::cfx m)
+target_link_libraries(test_ct PRIVATE cfx::cfx)
 target_compile_options(test_ct PRIVATE ${CFX_CFLAGS})
 message(STATUS "added stats test 'test_ct'")
 
