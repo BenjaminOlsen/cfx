@@ -70,7 +70,7 @@ const size_t g_rand_gen_cnt = sizeof(g_rand_gens) / sizeof(g_rand_gens[0]);
 #define CHACHA20_BUF_BYTES (CHACHA20_BLOCK_BYTES * CHACHA20_LANE_CNT)
 
 typedef struct {
-    uint8_t buf[CHACHA20_BUF_BYTES];
+    CFX_ALIGNAS(CFX_CHACHA20_CTX_ALIGN) uint8_t buf[CHACHA20_BUF_BYTES];
     cfx_chacha20_ctx_t ctx;
     uint32_t counter;
     size_t idx;

@@ -17,24 +17,24 @@
 void cfx_chacha20_ctx_init(cfx_chacha20_ctx_t *ctx, const uint8_t key[32], const uint8_t nonce[12]) {
     cfx_chacha20_state_t *st = (cfx_chacha20_state_t *)ctx->opaque;
 #if defined(CFX_CAP_AVX2)
-    /* SoA layout: broadcast each word to all 8 lanes */
+    /* SoA layout: broadcast each word to all 8 lanes (32-byte aligned) */
     __m256i *row = (__m256i *)st->s;
-    _mm256_storeu_si256(&row[0],  _mm256_set1_epi32((int)_EXPA));
-    _mm256_storeu_si256(&row[1],  _mm256_set1_epi32((int)_ND_3));
-    _mm256_storeu_si256(&row[2],  _mm256_set1_epi32((int)_2_BY));
-    _mm256_storeu_si256(&row[3],  _mm256_set1_epi32((int)_TE_K));
-    _mm256_storeu_si256(&row[4],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 0)));
-    _mm256_storeu_si256(&row[5],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 4)));
-    _mm256_storeu_si256(&row[6],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 8)));
-    _mm256_storeu_si256(&row[7],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 12)));
-    _mm256_storeu_si256(&row[8],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 16)));
-    _mm256_storeu_si256(&row[9],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 20)));
-    _mm256_storeu_si256(&row[10], _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 24)));
-    _mm256_storeu_si256(&row[11], _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 28)));
-    _mm256_storeu_si256(&row[12], _mm256_setzero_si256());
-    _mm256_storeu_si256(&row[13], _mm256_set1_epi32((int)CFX_LOAD32_LE(nonce + 0)));
-    _mm256_storeu_si256(&row[14], _mm256_set1_epi32((int)CFX_LOAD32_LE(nonce + 4)));
-    _mm256_storeu_si256(&row[15], _mm256_set1_epi32((int)CFX_LOAD32_LE(nonce + 8)));
+    row[0]  = _mm256_set1_epi32((int)_EXPA);
+    row[1]  = _mm256_set1_epi32((int)_ND_3);
+    row[2]  = _mm256_set1_epi32((int)_2_BY);
+    row[3]  = _mm256_set1_epi32((int)_TE_K);
+    row[4]  = _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 0));
+    row[5]  = _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 4));
+    row[6]  = _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 8));
+    row[7]  = _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 12));
+    row[8]  = _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 16));
+    row[9]  = _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 20));
+    row[10] = _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 24));
+    row[11] = _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 28));
+    row[12] = _mm256_setzero_si256();
+    row[13] = _mm256_set1_epi32((int)CFX_LOAD32_LE(nonce + 0));
+    row[14] = _mm256_set1_epi32((int)CFX_LOAD32_LE(nonce + 4));
+    row[15] = _mm256_set1_epi32((int)CFX_LOAD32_LE(nonce + 8));
 #else
     st->s[0]  = _EXPA;
     st->s[1]  = _ND_3;

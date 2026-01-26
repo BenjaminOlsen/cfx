@@ -3,16 +3,17 @@
 #ifndef CFX_CHACHA20_BACKEND_H
 #define CFX_CHACHA20_BACKEND_H
 
+#include "cfx/arch.h"
 #include <stdint.h>
 
 /*
  * Internal state layout depends on target:
- *   - AVX2: s[16][8] - SoA layout, pre-broadcast for 8-lane SIMD
+ *   - AVX2: s[16][8] - SoA layout, pre-broadcast for 8-lane SIMD (32-byte aligned)
  *   - Others: s[16] - scalar layout
  */
 #if defined(CFX_CAP_AVX2)
 typedef struct {
-    uint32_t s[16][8];
+    CFX_ALIGNAS(32) uint32_t s[16][8];
 } cfx_chacha20_state_t;
 #else
 typedef struct {

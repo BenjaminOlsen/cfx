@@ -3,6 +3,7 @@
 #ifndef CFX_CHACHA20_H
 #define CFX_CHACHA20_H
 
+#include "cfx/arch.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -12,18 +13,19 @@ extern "C" {
 
 /*
  * Context size depends on target:
- *   - AVX2: 512 bytes (pre-broadcast SoA layout for 8-lane SIMD)
+ *   - AVX2: 512 bytes (pre-broadcast SoA layout for 8-lane SIMD, 32-byte aligned)
  *   - Others: 64 bytes (scalar layout)
  */
 #if defined(CFX_CAP_AVX2)
 #define CFX_CHACHA20_CTX_SIZE 512
+#define CFX_CHACHA20_CTX_ALIGN 32
 #else
 #define CFX_CHACHA20_CTX_SIZE 64
+#define CFX_CHACHA20_CTX_ALIGN 8
 #endif
 
 typedef union {
-    uint8_t opaque[CFX_CHACHA20_CTX_SIZE];
-    uint64_t aligner;
+    CFX_ALIGNAS(CFX_CHACHA20_CTX_ALIGN) uint8_t opaque[CFX_CHACHA20_CTX_SIZE];
 } cfx_chacha20_ctx_t;
 
 void cfx_chacha20_ctx_init(cfx_chacha20_ctx_t *ctx, const uint8_t key[32], const uint8_t nonce[12]);
