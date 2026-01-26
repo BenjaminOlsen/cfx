@@ -5,6 +5,9 @@
 #include "chacha20_backend.h"
 
 #include <string.h>
+#if defined(CFX_CAP_AVX2)
+#include <immintrin.h>
+#endif
 
 #define _EXPA 0x61707865u
 #define _ND_3 0x3320646eu
@@ -15,24 +18,23 @@ void cfx_chacha20_ctx_init(cfx_chacha20_ctx_t *ctx, const uint8_t key[32], const
     cfx_chacha20_state_t *st = (cfx_chacha20_state_t *)ctx->opaque;
 #if defined(CFX_CAP_AVX2)
     /* SoA layout: broadcast each word to all 8 lanes */
-    for (int j = 0; j < 8; ++j) {
-        st->s[0][j]  = _EXPA;
-        st->s[1][j]  = _ND_3;
-        st->s[2][j]  = _2_BY;
-        st->s[3][j]  = _TE_K;
-        st->s[4][j]  = CFX_LOAD32_LE(key + 0);
-        st->s[5][j]  = CFX_LOAD32_LE(key + 4);
-        st->s[6][j]  = CFX_LOAD32_LE(key + 8);
-        st->s[7][j]  = CFX_LOAD32_LE(key + 12);
-        st->s[8][j]  = CFX_LOAD32_LE(key + 16);
-        st->s[9][j]  = CFX_LOAD32_LE(key + 20);
-        st->s[10][j] = CFX_LOAD32_LE(key + 24);
-        st->s[11][j] = CFX_LOAD32_LE(key + 28);
-        st->s[12][j] = 0;
-        st->s[13][j] = CFX_LOAD32_LE(nonce + 0);
-        st->s[14][j] = CFX_LOAD32_LE(nonce + 4);
-        st->s[15][j] = CFX_LOAD32_LE(nonce + 8);
-    }
+    __m256i *row = (__m256i *)st->s;
+    _mm256_storeu_si256(&row[0],  _mm256_set1_epi32((int)_EXPA));
+    _mm256_storeu_si256(&row[1],  _mm256_set1_epi32((int)_ND_3));
+    _mm256_storeu_si256(&row[2],  _mm256_set1_epi32((int)_2_BY));
+    _mm256_storeu_si256(&row[3],  _mm256_set1_epi32((int)_TE_K));
+    _mm256_storeu_si256(&row[4],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 0)));
+    _mm256_storeu_si256(&row[5],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 4)));
+    _mm256_storeu_si256(&row[6],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 8)));
+    _mm256_storeu_si256(&row[7],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 12)));
+    _mm256_storeu_si256(&row[8],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 16)));
+    _mm256_storeu_si256(&row[9],  _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 20)));
+    _mm256_storeu_si256(&row[10], _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 24)));
+    _mm256_storeu_si256(&row[11], _mm256_set1_epi32((int)CFX_LOAD32_LE(key + 28)));
+    _mm256_storeu_si256(&row[12], _mm256_setzero_si256());
+    _mm256_storeu_si256(&row[13], _mm256_set1_epi32((int)CFX_LOAD32_LE(nonce + 0)));
+    _mm256_storeu_si256(&row[14], _mm256_set1_epi32((int)CFX_LOAD32_LE(nonce + 4)));
+    _mm256_storeu_si256(&row[15], _mm256_set1_epi32((int)CFX_LOAD32_LE(nonce + 8)));
 #else
     st->s[0]  = _EXPA;
     st->s[1]  = _ND_3;
