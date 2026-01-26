@@ -35,6 +35,7 @@ static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s [options] <n>\n", prog);
     fprintf(stderr, "  List all primes up to n using sieve of Eratosthenes\n\n");
     fprintf(stderr, "Options:\n");
+    fprintf(stderr, "  --start=N    Start from N (default: 0)\n");
     fprintf(stderr, "  --width=N    Line width for formatting output (default: no wrap)\n");
     fprintf(stderr, "  --sep=STR    Separator string (default: ', ')\n");
     fprintf(stderr, "  -h, --help   Show this help\n");
@@ -44,6 +45,7 @@ int cfx_primes_run(int argc, char* argv[]) {
     int dmax = INT32_MAX;
     const char* sep = ", ";
     cfx_limb_t n = 0;
+    cfx_limb_t start = 0;
     int have_n = 0;
 
     for (int i = 1; i < argc; i++) {
@@ -55,6 +57,8 @@ int cfx_primes_run(int argc, char* argv[]) {
             dmax = (int)strtol(arg + 8, NULL, 10);
         } else if (strncmp(arg, "--sep=", 6) == 0) {
             sep = arg + 6;
+        } else if (strncmp(arg, "--start=", 8) == 0) {
+            start = (cfx_limb_t)strtol(arg + 8, NULL, 10);
         } else {
             n = (cfx_limb_t)strtol(arg, NULL, 10);
             have_n = 1;
@@ -68,8 +72,21 @@ int cfx_primes_run(int argc, char* argv[]) {
 
     size_t sep_len = strlen(sep);
     cfx_vec_t primes = cfx_sieve_primes(n);
+
+    /* find first prime >= start */
+    size_t first = 0;
+    while (first < primes.size && primes.data[first] < start) {
+        first++;
+    }
+
+    if (first >= primes.size) {
+        printf("found 0 primes in range [" CFX_PRIuLIMB ", " CFX_PRIuLIMB "]\n", start, n);
+        cfx_vec_free(&primes);
+        return 0;
+    }
+
     int dcnt = 0;
-    for (size_t k = 0; k < primes.size-1; ++k) {
+    for (size_t k = first; k < primes.size-1; ++k) {
         int c = dec_digits(primes.data[k]) + (int)sep_len;
         if (dcnt + c > dmax) {
             printf("\n");
@@ -81,7 +98,8 @@ int cfx_primes_run(int argc, char* argv[]) {
     }
     printf(CFX_PRIuLIMB "\n", primes.data[primes.size-1]);
 
-    printf("found %zu primes until " CFX_PRIuLIMB " (0x" CFX_PRIuLIMB ")\n", primes.size, n, n);
+    size_t count = primes.size - first;
+    printf("found %zu primes in range [" CFX_PRIuLIMB ", " CFX_PRIuLIMB "]\n", count, start, n);
 
     cfx_vec_free(&primes);
     return 0;
