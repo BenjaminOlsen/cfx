@@ -53,6 +53,22 @@ void cfx_chacha20_ctx_init(cfx_chacha20_ctx_t *ctx, const uint8_t key[32], const
 #endif
 }
 
+/* increment 96-bit nonce (s[13..15]) as little-endian integer */
+void cfx_chacha20_ctx_inc_nonce(cfx_chacha20_ctx_t *ctx) {
+    cfx_chacha20_state_t *st = (cfx_chacha20_state_t *)ctx->opaque;
+#if defined(CFX_CAP_AVX2)
+    for (int j = 0; j < 8; ++j) {
+        if (++st->s[13][j] != 0) continue;
+        if (++st->s[14][j] != 0) continue;
+        ++st->s[15][j];
+    }
+#else
+    if (++st->s[13] != 0) return;
+    if (++st->s[14] != 0) return;
+    ++st->s[15];
+#endif
+}
+
 void cfx_chacha20_block(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[64]) {
     cfx_chacha20_block_impl((cfx_chacha20_state_t *)ctx->opaque, counter, out);
 }

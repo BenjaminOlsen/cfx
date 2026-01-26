@@ -81,7 +81,12 @@ CFX_STATIC_ASSERT(sizeof(cfx_chacha20_rng_t) <= CFX_CHACHA_RNG_CTX_SIZE,
     chacha_rng_ctx_too_small);
 
 static inline void chacha20_advance_counter(cfx_chacha20_rng_t *st, uint32_t blocks) {
+    uint32_t old = st->counter;
     st->counter += blocks;
+    if (st->counter < old) {
+        /* counter wrapped - increment nonce to avoid reuse */
+        cfx_chacha20_ctx_inc_nonce(&st->ctx);
+    }
 }
 
 

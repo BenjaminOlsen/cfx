@@ -27,6 +27,7 @@ typedef union {
 } cfx_chacha20_ctx_t;
 
 void cfx_chacha20_ctx_init(cfx_chacha20_ctx_t *ctx, const uint8_t key[32], const uint8_t nonce[12]);
+void cfx_chacha20_ctx_inc_nonce(cfx_chacha20_ctx_t *ctx);
 void cfx_chacha20_block(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[64]);
 void cfx_chacha20_block4(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[4][64]);
 void cfx_chacha20_block8(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[8][64]);
