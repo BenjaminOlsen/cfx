@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/stat.h>
 
 #include "cfx_cmd.h"
 #include "misc.h"
@@ -15,7 +16,31 @@
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#include <shlobj.h>
+#else
+#include <unistd.h>
+#include <pwd.h>
 #endif
+
+/* get path to default public key file */
+static int get_default_pubkey_path(char *buf, size_t bufsz) {
+#ifdef _WIN32
+    char home[MAX_PATH];
+    if (SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, home) != S_OK) {
+        return -1;
+    }
+#else
+    const char *home = getenv("HOME");
+    if (!home) {
+        struct passwd *pw = getpwuid(getuid());
+        if (pw) home = pw->pw_dir;
+    }
+    if (!home) return -1;
+#endif
+    int n = snprintf(buf, bufsz, "%s/.cfx/id_ed25519.pub", home);
+    if (n < 0 || (size_t)n >= bufsz) return -1;
+    return 0;
+}
 
 static void usage(const char* prog) {
     fprintf(stderr,
@@ -23,6 +48,7 @@ static void usage(const char* prog) {
         "  Verify an Ed25519ph signature on a file (RFC 8032 pre-hashed mode).\n\n"
         "Options:\n"
         "  -k, --pubkey-file <file>   Read 32-byte public key from file\n"
+        "                             Default: ~/.cfx/id_ed25519.pub\n"
         "  -K, --pubkey <hex>         Provide public key as 64 hex chars\n"
         "  -s, --sig-file <file>      Read signature from file\n"
         "  -S, --sig <hex>            Provide signature as 128 hex chars\n"
@@ -30,9 +56,10 @@ static void usage(const char* prog) {
         "  -h, --help                 Show this help\n\n"
         "Exit codes: 0 = valid, 1 = invalid or error\n\n"
         "Examples:\n"
+        "  %s --sig-file doc.sig document.pdf           Verify with default key\n"
         "  %s --pubkey-file pub.key --sig-file doc.sig document.pdf\n"
         "  %s --pubkey <64-hex> --sig <128-hex> file.txt\n",
-        prog, prog, prog);
+        prog, prog, prog, prog);
 }
 
 /* Read a 32-byte key from file, auto-detecting format (raw binary or hex) */
@@ -210,9 +237,20 @@ int cfx_verify_run(int argc, char** argv) {
         return 1;
     }
 
+    /* use default public key if not specified */
+    char default_key[1024];
     if (!keyfile && !keyhex) {
-        fprintf(stderr, "error: must specify -k <keyfile> or -K <hex>\n");
-        return 1;
+        if (get_default_pubkey_path(default_key, sizeof(default_key)) != 0) {
+            fprintf(stderr, "error: cannot determine default key path\n");
+            return 1;
+        }
+        struct stat st;
+        if (stat(default_key, &st) != 0) {
+            fprintf(stderr, "error: no public key specified and default key not found\n");
+            fprintf(stderr, "hint: run 'cfx_keygen --ed25519' to create one\n");
+            return 1;
+        }
+        keyfile = default_key;
     }
 
     if (!sigfile && !sighex) {
