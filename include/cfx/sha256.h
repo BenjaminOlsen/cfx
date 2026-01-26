@@ -20,6 +20,7 @@ typedef union {
 void cfx_sha256_init(cfx_sha256_ctx *ctx);
 void cfx_sha256_update(cfx_sha256_ctx *ctx, const uint8_t *data, size_t len);
 void cfx_sha256_final(cfx_sha256_ctx *ctx, uint8_t out[32]);
+void cfx_sha256(uint8_t out[32], const uint8_t *data, size_t len);
 
 #ifdef __cplusplus
 }

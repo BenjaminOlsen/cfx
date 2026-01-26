@@ -179,6 +179,64 @@ static void test_cmp_sm_branches(void) {
     cfx_big_free(&a);
 }
 
+static void test_cmp_u64(void) {
+    cfx_big_t a;
+    cfx_big_init(&a);
+
+    /* zero cases */
+    CFX_ASSERT(cfx_big_cmp_u64(&a, 0) == 0);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, 1) == -1);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, UINT64_MAX) == -1);
+
+    /* single limb */
+    cfx_big_from_u64(&a, 100);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, 100) == 0);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, 99) == 1);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, 101) == -1);
+
+    /* large u64 value */
+    cfx_big_from_u64(&a, 0xFFFFFFFFFFFFFFFFULL);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, UINT64_MAX) == 0);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, UINT64_MAX - 1) == 1);
+
+    /* bigger than any u64 */
+    cfx_big_from_hex(&a, "10000000000000000");  /* 2^64 */
+    CFX_ASSERT(cfx_big_cmp_u64(&a, UINT64_MAX) == 1);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, 0) == 1);
+
+    cfx_big_free(&a);
+    PRINT_TEST(1);
+}
+
+static void test_sub_u64(void) {
+    cfx_big_t a;
+    cfx_big_init(&a);
+
+    /* basic subtraction */
+    cfx_big_from_u64(&a, 1000);
+    cfx_big_sub_u64_eq(&a, 100);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, 900) == 0);
+
+    /* subtract to zero */
+    cfx_big_from_u64(&a, 42);
+    cfx_big_sub_u64_eq(&a, 42);
+    CFX_ASSERT(cfx_big_is_zero(&a));
+
+    /* subtract zero does nothing */
+    cfx_big_from_u64(&a, 123);
+    cfx_big_sub_u64_eq(&a, 0);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, 123) == 0);
+
+    /* borrow across limbs: 2^64 - 1 + 6 = 2^64 + 5, then subtract 10 => 2^64 - 5 */
+    cfx_big_from_u64(&a, UINT64_MAX);
+    cfx_big_add_sm_eq(&a, 1);  /* now 2^64 */
+    cfx_big_sub_u64_eq(&a, 1);
+    CFX_ASSERT(cfx_big_cmp_u64(&a, UINT64_MAX) == 0);
+
+    cfx_big_free(&a);
+    PRINT_TEST(1);
+}
+
 static void test_eq_u64_branches(void) {
     cfx_big_t a;
     cfx_big_init(&a);
@@ -313,6 +371,8 @@ int main(void) {
     CFX_TEST(test_zero_right);
     CFX_TEST(test_zero_left);
     CFX_TEST(test_cmp_sm_branches);
+    CFX_TEST(test_cmp_u64);
+    CFX_TEST(test_sub_u64);
     CFX_TEST(test_eq_u64_branches);
     CFX_TEST(test_is_even_zero);
     CFX_TEST(test_add_non_inplace);

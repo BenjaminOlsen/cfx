@@ -58,6 +58,7 @@ int cfx_big_eq_u64(const cfx_big_t *b, cfx_limb_t n);
 int cfx_big_eq(const cfx_big_t *b1, const cfx_big_t *b2);
 int cfx_big_cmp(const cfx_big_t *a, const cfx_big_t *b);
 int cfx_big_cmp_sm(const cfx_big_t *a, cfx_limb_t n);
+int cfx_big_cmp_u64(const cfx_big_t *a, uint64_t n);
 void cfx_big_swap(cfx_big_t *a, cfx_big_t *b);
 void cfx_big_cswap(cfx_big_t *a, cfx_big_t *b, int condition); /* (maybe) constant-time conditional swap */
 
@@ -115,6 +116,7 @@ void cfx_big_add_eq(cfx_big_t *b, const cfx_big_t *a);
 void cfx_big_add_sm_eq(cfx_big_t *b, cfx_limb_t n);
 void cfx_big_sub_eq(cfx_big_t *a, const cfx_big_t *b);
 void cfx_big_sub_sm_eq(cfx_big_t *b, cfx_limb_t n);
+void cfx_big_sub_u64_eq(cfx_big_t *b, uint64_t n);
 void cfx_big_mul_sm_eq(cfx_big_t *b, cfx_limb_t m);
 
 /* Knuth's long division from TAOCP Vol. 2, 4.3.1 */
@@ -180,6 +182,10 @@ void cfx_big_gcd(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *b);
 typedef struct cfx_sbig cfx_sbig_t;
 void cfx_big_xgcd(cfx_big_t *g, cfx_sbig_t *x, cfx_sbig_t *y,
     const cfx_big_t *a, const cfx_big_t *b);
+
+/* Modular inverse: out = a^(-1) mod n
+ * Returns 1 on success, 0 if inverse doesn't exist (gcd(a,n) != 1) */
+int cfx_big_modinv(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *n);
 
 /* Pollard-Rho factorization using Montgomery multiplication.
  * Returns a non-trivial factor, or a copy of n if n is prime/unfactorable. */

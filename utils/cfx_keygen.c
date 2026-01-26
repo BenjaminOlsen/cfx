@@ -3,6 +3,7 @@
 #include "cfx/rand.h"
 #include "cfx/ed25519.h"
 #include "cfx/x25519.h"
+#include "cfx/sha256.h"
 #include "cfx/base64.h"
 #include "cfx/memory.h"
 
@@ -27,6 +28,79 @@
 
 #include "cfx_cmd.h"
 #include "misc.h"
+
+/*
+ * Drunken Bishop randomart - attempt to visualize key fingerprints
+ * so humans can recognize them more easily than hex strings.
+ * grid is 17x9, bishop starts in center, moves based on hash bits.
+ */
+#define RA_WIDTH 17
+#define RA_HEIGHT 9
+
+static void randomart(char out[RA_HEIGHT][RA_WIDTH + 1], const uint8_t *hash, size_t hash_len) {
+    static const char glyphs[] = " .o+=*BOX@%&#/^SE";
+    uint8_t grid[RA_HEIGHT][RA_WIDTH] = {0};
+
+    int x = RA_WIDTH / 2;
+    int y = RA_HEIGHT / 2;
+    int start_x = x, start_y = y;
+
+    /* walk the bishop */
+    for (size_t i = 0; i < hash_len; i++) {
+        uint8_t b = hash[i];
+        for (int j = 0; j < 4; j++) {
+            int dx = (b & 1) ? 1 : -1;
+            int dy = (b & 2) ? 1 : -1;
+            b >>= 2;
+
+            x += dx;
+            y += dy;
+            if (x < 0) x = 0;
+            if (x >= RA_WIDTH) x = RA_WIDTH - 1;
+            if (y < 0) y = 0;
+            if (y >= RA_HEIGHT) y = RA_HEIGHT - 1;
+
+            if (grid[y][x] < 14) grid[y][x]++;
+        }
+    }
+
+    /* render */
+    for (int row = 0; row < RA_HEIGHT; row++) {
+        for (int col = 0; col < RA_WIDTH; col++) {
+            if (row == start_y && col == start_x) {
+                out[row][col] = 'S';
+            } else if (row == y && col == x) {
+                out[row][col] = 'E';
+            } else {
+                out[row][col] = glyphs[grid[row][col]];
+            }
+        }
+        out[row][RA_WIDTH] = '\0';
+    }
+}
+
+
+
+static void print_randomart(const uint8_t *pubkey, size_t len, const char *label) {
+    uint8_t hash[32];
+    cfx_sha256(hash, pubkey, len);
+
+    char art[RA_HEIGHT][RA_WIDTH + 1];
+    randomart(art, hash, 32);
+
+    printf("+---[%s]", label);
+    int pad = RA_WIDTH - 5 - (int)strlen(label);
+    for (int i = 0; i < pad; i++) printf("-");
+    printf("+\n");
+
+    for (int row = 0; row < RA_HEIGHT; row++) {
+        printf("|%s|\n", art[row]);
+    }
+
+    printf("+");
+    for (int i = 0; i < RA_WIDTH; i++) printf("-");
+    printf("+\n");
+}
 
 typedef enum {
     KEY_RAW,        /* random bytes */
@@ -108,7 +182,7 @@ static void usage(const char* prog) {
     printf("Usage: %s [options] [bytes]\n", prog);
     printf("  Generate cryptographic keys.\n\n");
     printf("Key types:\n");
-    printf("  --ed25519       Generate Ed25519 keypair (default identity key)\n");
+    printf("  --ed25519       Generate Ed25519 keypair (default)\n");
     printf("  --x25519        Generate X25519 keypair (encryption key)\n");
     printf("  <bytes>         Generate raw random bytes (for symmetric keys)\n\n");
     printf("Options:\n");
@@ -117,34 +191,76 @@ static void usage(const char* prog) {
     printf("  -b64            Output as base64\n");
     printf("  -r              Output raw bytes (binary)\n");
     printf("  -h, --help      Show this help\n\n");
+    printf("If run with no arguments, generates Ed25519 keypair interactively.\n\n");
     printf("Examples:\n");
-    printf("  %s --ed25519              Generate Ed25519 identity key\n", prog);
+    printf("  %s                        Generate Ed25519 key (interactive)\n", prog);
+    printf("  %s -f mykey               Generate Ed25519 key to mykey{,.pub}\n", prog);
     printf("  %s --x25519               Generate X25519 encryption key\n", prog);
-    printf("  %s --ed25519 -f mykey     Write to mykey and mykey.pub\n", prog);
     printf("  %s 32                     Generate 32-byte random key (hex)\n", prog);
-    printf("  %s 32 -r > key            Write raw key to file\n", prog);
 }
 
-static int keygen_ed25519(const char *basename) {
+/* prompt user for path, return 0 on success */
+static int prompt_path(const char *prompt, const char *default_path, char *out, size_t outsz) {
+    printf("%s (%s): ", prompt, default_path);
+    fflush(stdout);
+
+    if (!fgets(out, (int)outsz, stdin)) {
+        out[0] = '\0';
+    }
+    /* strip newline */
+    size_t len = strlen(out);
+    while (len > 0 && (out[len-1] == '\n' || out[len-1] == '\r')) {
+        out[--len] = '\0';
+    }
+    /* empty input means use default */
+    if (len == 0) {
+        snprintf(out, outsz, "%s", default_path);
+    }
+    return 0;
+}
+
+static int keygen_ed25519(const char *basename, int interactive) {
     char priv_path[1024], pub_path[1024];
+    char default_priv[1024];
+
+    /* determine default path */
+    char cfx_dir[1024];
+    if (get_cfx_dir(cfx_dir, sizeof(cfx_dir)) != 0) return 1;
+    snprintf(default_priv, sizeof(default_priv), "%s/id_ed25519", cfx_dir);
 
     if (basename) {
         snprintf(priv_path, sizeof(priv_path), "%s", basename);
-        snprintf(pub_path, sizeof(pub_path), "%s.pub", basename);
+    } else if (interactive) {
+        prompt_path("Enter file in which to save the key", default_priv, priv_path, sizeof(priv_path));
     } else {
-        char cfx_dir[1024];
-        if (get_cfx_dir(cfx_dir, sizeof(cfx_dir)) != 0) return 1;
+        snprintf(priv_path, sizeof(priv_path), "%s", default_priv);
+    }
+    snprintf(pub_path, sizeof(pub_path), "%s.pub", priv_path);
+
+    /* ensure parent directory exists if using default location */
+    if (strncmp(priv_path, cfx_dir, strlen(cfx_dir)) == 0) {
         if (ensure_cfx_dir() != 0) return 1;
-        snprintf(priv_path, sizeof(priv_path), "%s/id_ed25519", cfx_dir);
-        snprintf(pub_path, sizeof(pub_path), "%s/id_ed25519.pub", cfx_dir);
     }
 
     /* check if files exist */
     struct stat st;
     if (stat(priv_path, &st) == 0) {
-        fprintf(stderr, "error: %s already exists (use -f to specify different name)\n", priv_path);
-        return 1;
+        fprintf(stderr, "%s already exists.\n", priv_path);
+        if (interactive) {
+            printf("Overwrite (y/n)? ");
+            fflush(stdout);
+            char ans[16];
+            if (!fgets(ans, sizeof(ans), stdin) || (ans[0] != 'y' && ans[0] != 'Y')) {
+                printf("Aborted.\n");
+                return 1;
+            }
+        } else {
+            fprintf(stderr, "Use -f to specify different name, or run interactively.\n");
+            return 1;
+        }
     }
+
+    printf("Generating public/private ed25519 key pair.\n");
 
     /* generate keypair */
     uint8_t seed[32], pk[32], sk[64];
@@ -164,35 +280,65 @@ static int keygen_ed25519(const char *basename) {
         return 1;
     }
 
-    printf("Generated Ed25519 keypair:\n");
-    printf("  Private: %s\n", priv_path);
-    printf("  Public:  %s\n", pub_path);
+    printf("Your identification has been saved in %s\n", priv_path);
+    printf("Your public key has been saved in %s\n", pub_path);
+
+    /* fingerprint and randomart */
+    uint8_t fp[32];
+    cfx_sha256(fp, pk, 32);
+    printf("The key fingerprint is:\nSHA256:");
+    for (int i = 0; i < 32; i++) printf("%02x", fp[i]);
+    printf("\n");
+
+    print_randomart(pk, 32, "ED25519");
 
     cfx_memzero_s(seed, sizeof(seed));
     cfx_memzero_s(sk, sizeof(sk));
     return 0;
 }
 
-static int keygen_x25519(const char *basename) {
+static int keygen_x25519(const char *basename, int interactive) {
     char priv_path[1024], pub_path[1024];
+    char default_priv[1024];
+
+    /* determine default path */
+    char cfx_dir[1024];
+    if (get_cfx_dir(cfx_dir, sizeof(cfx_dir)) != 0) return 1;
+    snprintf(default_priv, sizeof(default_priv), "%s/id_x25519", cfx_dir);
 
     if (basename) {
         snprintf(priv_path, sizeof(priv_path), "%s", basename);
-        snprintf(pub_path, sizeof(pub_path), "%s.pub", basename);
+    } else if (interactive) {
+        prompt_path("Enter file in which to save the key", default_priv, priv_path, sizeof(priv_path));
     } else {
-        char cfx_dir[1024];
-        if (get_cfx_dir(cfx_dir, sizeof(cfx_dir)) != 0) return 1;
+        snprintf(priv_path, sizeof(priv_path), "%s", default_priv);
+    }
+    snprintf(pub_path, sizeof(pub_path), "%s.pub", priv_path);
+
+    /* ensure parent directory exists if using default location */
+    if (strncmp(priv_path, cfx_dir, strlen(cfx_dir)) == 0) {
         if (ensure_cfx_dir() != 0) return 1;
-        snprintf(priv_path, sizeof(priv_path), "%s/id_x25519", cfx_dir);
-        snprintf(pub_path, sizeof(pub_path), "%s/id_x25519.pub", cfx_dir);
     }
 
     /* check if files exist */
     struct stat st;
     if (stat(priv_path, &st) == 0) {
-        fprintf(stderr, "error: %s already exists (use -f to specify different name)\n", priv_path);
-        return 1;
+        fprintf(stderr, "%s already exists.\n", priv_path);
+        if (interactive) {
+            printf("Overwrite (y/n)? ");
+            fflush(stdout);
+            char ans[16];
+            if (!fgets(ans, sizeof(ans), stdin) || (ans[0] != 'y' && ans[0] != 'Y')) {
+                printf("Aborted.\n");
+                return 1;
+            }
+        } else {
+            fprintf(stderr, "Use -f to specify different name, or run interactively.\n");
+            return 1;
+        }
     }
+
+    printf("Generating public/private x25519 key pair.\n");
 
     /* generate keypair */
     uint8_t priv[32], pub[32];
@@ -210,9 +356,17 @@ static int keygen_x25519(const char *basename) {
         return 1;
     }
 
-    printf("Generated X25519 keypair:\n");
-    printf("  Private: %s\n", priv_path);
-    printf("  Public:  %s\n", pub_path);
+    printf("Your identification has been saved in %s\n", priv_path);
+    printf("Your public key has been saved in %s\n", pub_path);
+
+    /* fingerprint and randomart */
+    uint8_t fp[32];
+    cfx_sha256(fp, pub, 32);
+    printf("The key fingerprint is:\nSHA256:");
+    for (int i = 0; i < 32; i++) printf("%02x", fp[i]);
+    printf("\n");
+
+    print_randomart(pub, 32, "X25519");
 
     cfx_memzero_s(priv, sizeof(priv));
     return 0;
@@ -258,12 +412,7 @@ static int keygen_raw(long nbytes, enum cfx_str_format fmt) {
 }
 
 int cfx_keygen_run(int argc, char** argv) {
-    if (argc < 2) {
-        usage(argv[0]);
-        return 1;
-    }
-
-    key_type_t key_type = KEY_RAW;
+    key_type_t key_type = KEY_ED25519;  /* default to ed25519 */
     long nbytes = -1;
     enum cfx_str_format fmt = CFX_STR_FMT_HEX;
     const char *basename = NULL;
@@ -299,17 +448,21 @@ int cfx_keygen_run(int argc, char** argv) {
                 fprintf(stderr, "Invalid byte count: %s (must be 1-%d)\n", argv[i], 1024 * 1024);
                 return 1;
             }
+            key_type = KEY_RAW;
         }
     }
 
+    /* interactive mode if no -f and running on a tty */
+    int interactive = (basename == NULL) && isatty(fileno(stdin));
+
     switch (key_type) {
     case KEY_ED25519:
-        return keygen_ed25519(basename);
+        return keygen_ed25519(basename, interactive);
     case KEY_X25519:
-        return keygen_x25519(basename);
+        return keygen_x25519(basename, interactive);
     case KEY_RAW:
         if (nbytes <= 0) {
-            fprintf(stderr, "Error: specify key type (--ed25519, --x25519) or byte count\n");
+            fprintf(stderr, "Error: specify byte count for raw key\n");
             usage(argv[0]);
             return 1;
         }

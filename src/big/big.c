@@ -194,6 +194,28 @@ int cfx_big_cmp_sm(const cfx_big_t *a, cfx_limb_t b) {
     return 0;
 }
 
+/* compare with uint64_t - handles 32-bit limb builds too */
+int cfx_big_cmp_u64(const cfx_big_t *a, uint64_t b) {
+#if CFX_LIMB_BITS == 64
+    return cfx_big_cmp_sm(a, b);
+#else
+    /* 32-bit limbs: b might need 2 limbs */
+    uint32_t lo = (uint32_t)b;
+    uint32_t hi = (uint32_t)(b >> 32);
+    if (hi == 0) {
+        return cfx_big_cmp_sm(a, lo);
+    }
+    /* b needs 2 limbs */
+    if (a->n == 0) return -1;
+    if (a->n > 2) return 1;
+    if (a->n == 1) return -1;  /* a has 1 limb, b needs 2 */
+    /* a->n == 2 */
+    if (a->limb[1] != hi) return (a->limb[1] < hi) ? -1 : 1;
+    if (a->limb[0] != lo) return (a->limb[0] < lo) ? -1 : 1;
+    return 0;
+#endif
+}
+
 void cfx_big_swap(cfx_big_t *a, cfx_big_t *b) {
     if (a == b) return;
     cfx_big_t tmp = *a;
@@ -1149,6 +1171,42 @@ void cfx_big_xgcd(cfx_big_t *g, cfx_sbig_t *x, cfx_sbig_t *y,
     cfx_sbig_free(&tmp);
 }
 
+/* modular inverse via xgcd: out = a^(-1) mod n
+ * returns 1 on success, 0 if gcd(a,n) != 1 */
+int cfx_big_modinv(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *n) {
+    cfx_big_t g;
+    cfx_sbig_t x;
+    cfx_big_init(&g);
+    cfx_sbig_init(&x);
+
+    cfx_big_xgcd(&g, &x, NULL, a, n);
+
+    if (!cfx_big_is_one(&g)) {
+        /* no inverse exists */
+        cfx_big_free(&g);
+        cfx_sbig_free(&x);
+        return 0;
+    }
+
+    /* x might be negative, need to reduce mod n */
+    if (x.sign < 0) {
+        /* out = n - |x| */
+        cfx_big_copy(out, n);
+        cfx_big_sub_eq(out, &x.mag);
+    } else {
+        cfx_big_copy(out, &x.mag);
+    }
+
+    /* ensure out < n (shouldn't be needed but just in case) */
+    if (cfx_big_cmp(out, n) >= 0) {
+        cfx_big_mod(out, out, n);
+    }
+
+    cfx_big_free(&g);
+    cfx_sbig_free(&x);
+    return 1;
+}
+
 /* Pollard-Rho factorization using Montgomery multiplication (Brent's improvement).
  * Returns a non-trivial factor in 'factor', or copies n if n is prime/unfactorable. */
 void cfx_big_pollard_rho(cfx_big_t *factor, const cfx_big_t *n) {
@@ -1616,6 +1674,49 @@ void cfx_big_sub_sm_eq(cfx_big_t *b, cfx_limb_t n) {
     cfx_big_trim(b);
 }
 
+/* subtract uint64_t in place - handles 32-bit limb builds */
+void cfx_big_sub_u64_eq(cfx_big_t *b, uint64_t n) {
+#if CFX_LIMB_BITS == 64
+    cfx_big_sub_sm_eq(b, n);
+#else
+    /* 32-bit limbs: subtract low part first, then high */
+    uint32_t lo = (uint32_t)n;
+    uint32_t hi = (uint32_t)(n >> 32);
+
+    if (lo == 0 && hi == 0) return;
+    if (b->n == 0) {
+        assert(0 && "cfx_big_sub_u64_eq: underflow");
+        return;
+    }
+
+    /* subtract lo from limb[0] */
+    cfx_limb_t borrow = (b->limb[0] < lo) ? 1 : 0;
+    b->limb[0] -= lo;
+
+    /* subtract hi + borrow from limb[1] if needed */
+    if (hi || borrow) {
+        if (b->n < 2) {
+            assert(0 && "cfx_big_sub_u64_eq: underflow");
+            return;
+        }
+        uint64_t sub = (uint64_t)hi + borrow;
+        borrow = (b->limb[1] < sub) ? 1 : 0;
+        b->limb[1] -= (cfx_limb_t)sub;
+    }
+
+    /* propagate remaining borrow */
+    size_t i = 2;
+    while (borrow && i < b->n) {
+        cfx_limb_t old = b->limb[i];
+        b->limb[i] -= 1;
+        borrow = (old == 0);
+        ++i;
+    }
+
+    assert(!borrow && "cfx_big_sub_u64_eq: underflow");
+    cfx_big_trim(b);
+#endif
+}
 
 void cfx_big_mul_sm_eq(cfx_big_t *b, cfx_limb_t m) {
     if (m == 1) return;

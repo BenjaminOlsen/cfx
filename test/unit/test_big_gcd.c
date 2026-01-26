@@ -66,9 +66,91 @@ static void test_big_gcd_large(void) {
     cfx_big_free(&expected);
 }
 
+static void test_modinv_basic(void) {
+    cfx_big_t a, n, inv, t;
+    cfx_big_init(&a);
+    cfx_big_init(&n);
+    cfx_big_init(&inv);
+    cfx_big_init(&t);
+
+    /* 3^(-1) mod 7 = 5  (since 3*5 = 15 = 2*7 + 1) */
+    cfx_big_from_limb(&a, 3);
+    cfx_big_from_limb(&n, 7);
+    CFX_ASSERT(cfx_big_modinv(&inv, &a, &n) == 1);
+    CFX_ASSERT(cfx_big_cmp_u64(&inv, 5) == 0);
+
+    /* verify: a * inv mod n == 1 */
+    cfx_big_mul(&t, &a, &inv);
+    cfx_big_mod(&t, &t, &n);
+    CFX_ASSERT(cfx_big_is_one(&t));
+
+    /* 2^(-1) mod 11 = 6  (since 2*6 = 12 = 11 + 1) */
+    cfx_big_from_limb(&a, 2);
+    cfx_big_from_limb(&n, 11);
+    CFX_ASSERT(cfx_big_modinv(&inv, &a, &n) == 1);
+    cfx_big_mul(&t, &a, &inv);
+    cfx_big_mod(&t, &t, &n);
+    CFX_ASSERT(cfx_big_is_one(&t));
+
+    cfx_big_free(&a);
+    cfx_big_free(&n);
+    cfx_big_free(&inv);
+    cfx_big_free(&t);
+    PRINT_TEST(1);
+}
+
+static void test_modinv_no_inverse(void) {
+    cfx_big_t a, n, inv;
+    cfx_big_init(&a);
+    cfx_big_init(&n);
+    cfx_big_init(&inv);
+
+    /* 4^(-1) mod 8 doesn't exist (gcd = 4) */
+    cfx_big_from_limb(&a, 4);
+    cfx_big_from_limb(&n, 8);
+    CFX_ASSERT(cfx_big_modinv(&inv, &a, &n) == 0);
+
+    /* 6^(-1) mod 9 doesn't exist (gcd = 3) */
+    cfx_big_from_limb(&a, 6);
+    cfx_big_from_limb(&n, 9);
+    CFX_ASSERT(cfx_big_modinv(&inv, &a, &n) == 0);
+
+    cfx_big_free(&a);
+    cfx_big_free(&n);
+    cfx_big_free(&inv);
+    PRINT_TEST(1);
+}
+
+static void test_modinv_large(void) {
+    cfx_big_t a, n, inv, t;
+    cfx_big_init(&a);
+    cfx_big_init(&n);
+    cfx_big_init(&inv);
+    cfx_big_init(&t);
+
+    /* larger numbers - use a prime modulus */
+    cfx_big_from_str(&a, "123456789");
+    cfx_big_from_str(&n, "1000000007");  /* prime */
+    CFX_ASSERT(cfx_big_modinv(&inv, &a, &n) == 1);
+
+    /* verify: a * inv mod n == 1 */
+    cfx_big_mul(&t, &a, &inv);
+    cfx_big_mod(&t, &t, &n);
+    CFX_ASSERT(cfx_big_is_one(&t));
+
+    cfx_big_free(&a);
+    cfx_big_free(&n);
+    cfx_big_free(&inv);
+    cfx_big_free(&t);
+    PRINT_TEST(1);
+}
+
 int main(void) {
     CFX_TEST(test_big_gcd_basic);
     CFX_TEST(test_big_gcd_large);
+    CFX_TEST(test_modinv_basic);
+    CFX_TEST(test_modinv_no_inverse);
+    CFX_TEST(test_modinv_large);
     puts("OK");
     return 0;
 }

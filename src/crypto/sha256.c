@@ -227,3 +227,10 @@ void cfx_sha256_final(cfx_sha256_ctx *ctx, uint8_t out[32]) {
 
     memset(st, 0, sizeof(*st));
 }
+
+void cfx_sha256(uint8_t out[32], const uint8_t *data, size_t len) {
+    cfx_sha256_ctx ctx;
+    cfx_sha256_init(&ctx);
+    cfx_sha256_update(&ctx, data, len);
+    cfx_sha256_final(&ctx, out);
+}
