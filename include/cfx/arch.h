@@ -91,12 +91,27 @@ struct offset_struct_32 {char c; uint32_t x;};
 
 
 /* --- x86 intrinsics include --- */
-#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) \
-    && (defined(__has_include) && __has_include(<immintrin.h>))
-  #include <immintrin.h>
-  #define CFX_USE_X86_INTRINSICS 1
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)
+#  if defined(__has_include)
+#    if __has_include(<immintrin.h>)
+#      include <immintrin.h>
+#      define CFX_USE_X86_INTRINSICS 1
+#    else
+#      define CFX_USE_X86_INTRINSICS 0
+#    endif
+#  elif defined(_MSC_VER)
+     /* MSVC always has immintrin.h for x86/x64 targets */
+#    include <immintrin.h>
+#    define CFX_USE_X86_INTRINSICS 1
+#  elif defined(__GNUC__) || defined(__clang__)
+     /* GCC/Clang without __has_include likely has immintrin.h */
+#    include <immintrin.h>
+#    define CFX_USE_X86_INTRINSICS 1
+#  else
+#    define CFX_USE_X86_INTRINSICS 0
+#  endif
 #else
-  #define CFX_USE_X86_INTRINSICS 0
+#  define CFX_USE_X86_INTRINSICS 0
 #endif
 
 /* -------- 128-bit arithmetic detection -------- */

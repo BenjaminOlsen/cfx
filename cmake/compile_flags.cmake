@@ -9,6 +9,8 @@ if(MSVC)
         /W4         # High warning level
         /WX         # Warnings as errors
         /wd4100     # unreferenced formal parameter
+        /wd4204     # non-constant aggregate initializer (C99 compound literals)
+        /wd4206     # translation unit is empty (platform-specific files)
         /wd4244     # conversion, possible loss of data
         /wd4267     # conversion from size_t
         /wd4706     # assignment within conditional expression

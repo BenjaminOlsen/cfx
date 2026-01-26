@@ -311,10 +311,11 @@ static inline int cfx_clz64(uint64_t x) {
 }
 
 /* ============================================================
- * 128-bit Arithmetic (for MSVC without __uint128_t)
+ * 128-bit Arithmetic (for MSVC x64 without __uint128_t)
  * ============================================================ */
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && defined(_M_X64)
+#  include <intrin.h>
 typedef struct { uint64_t lo, hi; } cfx_uint128_t;
 
 static inline cfx_uint128_t cfx_mul64(uint64_t a, uint64_t b) {
