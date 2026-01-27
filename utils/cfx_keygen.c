@@ -6,6 +6,8 @@
 #include "cfx/sha256.h"
 #include "cfx/base64.h"
 #include "cfx/memory.h"
+#include "cfx/argon2.h"
+#include "cfx/aead_chacha20_poly1305.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,9 +35,7 @@
 #include "misc.h"
 
 /*
- * Drunken Bishop randomart - attempt to visualize key fingerprints
- * so humans can recognize them more easily than hex strings.
- * grid is 17x9, bishop starts in center, moves based on hash bits.
+ * Drunken Bishop randomart - https://www.dirk-loss.de/sshvis/drunken_bishop.pdf
  */
 #define RA_WIDTH 17
 #define RA_HEIGHT 9
@@ -193,6 +193,7 @@ static void usage(const char* prog) {
     printf("  -x              Output as hex (default for raw bytes)\n");
     printf("  -b64            Output as base64\n");
     printf("  -r              Output raw bytes (binary)\n");
+    printf("  --no-pw         Do not prompt for passphrase\n");
     printf("  -h, --help      Show this help\n\n");
     printf("If run with no arguments, generates Ed25519 keypair interactively.\n\n");
     printf("Examples:\n");
@@ -222,13 +223,176 @@ static int prompt_path(const char *prompt, const char *default_path, char *out, 
     return 0;
 }
 
-static int keygen_ed25519(const char *basename, int interactive) {
-    char priv_path[1024], pub_path[1024];
-    char default_priv[1024];
+#ifdef _WIN32
+#include <windows.h>
+                                                                                                            
+static int read_password(const char *prompt, char *buf, size_t bufsz) {
+    HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode;
+    GetConsoleMode(h, &mode);
+    SetConsoleMode(h, mode & ~ENABLE_ECHO_INPUT);
 
-    /* determine default path */
-    char cfx_dir[1024];
-    if (get_cfx_dir(cfx_dir, sizeof(cfx_dir)) != 0) return 1;
+    fprintf(stderr, "%s", prompt);
+    if (!fgets(buf, (int)bufsz, stdin)) buf[0] = '\0';
+    SetConsoleMode(h, mode);
+    fprintf(stderr, "\n");
+
+    size_t len = strlen(buf);
+    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+        buf[--len] = '\0';
+    return (int)len;
+}
+
+#else
+#include <termios.h>
+
+static int read_password(const char *prompt, char *buf, size_t bufsz) {
+    struct termios old, new;
+    tcgetattr(fileno(stdin), &old);
+    new = old;
+    new.c_lflag &= ~ECHO;
+    tcsetattr(fileno(stdin), TCSAFLUSH, &new);
+
+    fprintf(stderr, "%s", prompt);
+    if (!fgets(buf, (int)bufsz, stdin)) buf[0] = '\0';
+    tcsetattr(fileno(stdin), TCSAFLUSH, &old);
+    fprintf(stderr, "\n");
+
+    size_t len = strlen(buf);
+    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+        buf[--len] = '\0';
+    return (int)len;
+}
+#endif
+
+/*
+ *
+ *   Offset  Size  Field
+ *   0       4     magic: "CFX\x01"
+ *   4       4     argon2 m_cost  (LE32)
+ *   8       4     argon2 t_cost  (LE32)
+ *   12      4     argon2 parallelism (LE32)
+ *   16      16    salt
+ *   32      24    nonce
+ *   56      32    ciphertext (encrypted seed)
+ *   88      16    auth tag (Poly1305)
+ *
+ * the header (bytes 0-55) is used as AAD for the AEAD
+ */
+#define CFX_KEY_MAGIC "CFX\x01"
+#define CFX_KEY_HEADER_LEN 56
+#define CFX_KEY_FILE_LEN   104
+
+#define CFX_KEY_DEFAULT_M  65536
+#define CFX_KEY_DEFAULT_T  3
+#define CFX_KEY_DEFAULT_P  4
+
+static void store_le32(uint8_t *dst, uint32_t v) {
+    dst[0] = (uint8_t)(v);
+    dst[1] = (uint8_t)(v >> 8);
+    dst[2] = (uint8_t)(v >> 16);
+    dst[3] = (uint8_t)(v >> 24);
+}
+
+static int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
+                        const char *pw2, int pw2_len, size_t pw2_bufsz) {
+    size_t n = pw1_bufsz < pw2_bufsz ? pw1_bufsz : pw2_bufsz;
+    int diff = pw1_len ^ pw2_len;
+    for (size_t i = 0; i < n; ++i) {
+        diff |= pw1[i] ^ pw2[i];
+    }
+    return diff == 0;
+}
+
+/* prompt for passphrase (twice), return length. 0 = no passphrase. */
+static int prompt_passphrase(char *pwd, size_t pwdsz) {
+    char pwd2[256] = {0};
+    int len = read_password("Enter passphrase (empty for no passphrase): ", pwd, pwdsz);
+    if (len == 0) return 0;
+
+    int len2 = read_password("Enter same passphrase again: ", pwd2, sizeof(pwd2));
+    if (!ct_pwd_match(pwd, len, pwdsz, pwd2, len2, sizeof(pwd2))) {
+        fprintf(stderr, "Passphrases do not match.\n");
+        cfx_memzero_s(pwd, pwdsz);
+        cfx_memzero_s(pwd2, sizeof(pwd2));
+        return -1;
+    }
+    cfx_memzero_s(pwd2, sizeof(pwd2));
+    return len;
+}
+
+static int write_encrypted_key_file(const char *path, const uint8_t *seed, size_t seed_len,
+                                    const char *pwd, size_t pwd_len) {
+ 
+    uint8_t file_buf[CFX_KEY_FILE_LEN];
+    uint8_t enc_key[32];
+    uint8_t *header = file_buf;
+    uint8_t *salt   = file_buf + 16;
+    uint8_t *nonce  = file_buf + 32;
+    uint8_t *ct     = file_buf + 56;
+    uint8_t *tag    = file_buf + 88;
+    int ret = -1;
+
+    memcpy(header, CFX_KEY_MAGIC, 4);
+    store_le32(header + 4,  CFX_KEY_DEFAULT_M);
+    store_le32(header + 8,  CFX_KEY_DEFAULT_T);
+    store_le32(header + 12, CFX_KEY_DEFAULT_P);
+
+    cfx_rand_bytes(salt, 16);
+    cfx_rand_bytes(nonce, 24);
+
+    /* derive encryption key */
+    int rc = cfx_argon2id(enc_key, 32,
+        (const uint8_t *)pwd, pwd_len, salt, 16,
+        CFX_KEY_DEFAULT_M, CFX_KEY_DEFAULT_T, CFX_KEY_DEFAULT_P);
+    if (rc != CFX_ARGON2_OK) {
+        fprintf(stderr, "error: argon2 failed: %s\n", cfx_argon2_strerror(rc));
+        goto done;
+    }
+
+    /* encrypt seed, AAD = header (magic + params + salt + nonce) */
+    if (cfx_xchacha20_poly1305_encrypt(ct, tag, seed, seed_len,
+            header, CFX_KEY_HEADER_LEN, enc_key, nonce) != 0) {
+        fprintf(stderr, "error: encryption failed\n");
+        goto done;
+    }
+
+    FILE *f = fopen(path, "wb");
+    if (!f) {
+        fprintf(stderr, "error: cannot create %s: %s\n", path, strerror(errno));
+        goto done;
+    }
+    if (fwrite(file_buf, 1, CFX_KEY_FILE_LEN, f) != CFX_KEY_FILE_LEN) {
+        fprintf(stderr, "error: write failed: %s\n", strerror(errno));
+        fclose(f);
+        goto done;
+    }
+    fclose(f);
+
+#ifndef _WIN32
+    if (chmod(path, 0600) != 0) {
+        fprintf(stderr, "warning: cannot set permissions on %s: %s\n", path, strerror(errno));
+    }
+#endif
+    ret = 0;
+
+done:
+    cfx_memzero_s(enc_key, sizeof(enc_key));
+    cfx_memzero_s(file_buf, sizeof(file_buf));
+    return ret;
+}
+
+static int keygen_ed25519(const char *basename, int interactive) {
+    char priv_path[1024], pub_path[1024], default_priv[1024], cfx_dir[1024];
+    char pwd[256] = {0};
+    int pwd_len = 0;
+    int ret = 1;
+
+    uint8_t seed[32], pk[32], sk[64];
+    memset(seed, 0, sizeof(seed));
+    memset(sk, 0, sizeof(sk));
+
+    if (get_cfx_dir(cfx_dir, sizeof(cfx_dir)) != 0) goto cleanup;
     snprintf(default_priv, sizeof(default_priv), "%s/id_ed25519", cfx_dir);
 
     if (basename) {
@@ -240,9 +404,14 @@ static int keygen_ed25519(const char *basename, int interactive) {
     }
     snprintf(pub_path, sizeof(pub_path), "%s.pub", priv_path);
 
-    /* ensure parent directory exists if using default location */
+    /* prompt for passphrase if on a tty */
+    if (interactive) {
+        pwd_len = prompt_passphrase(pwd, sizeof(pwd));
+        if (pwd_len < 0) goto cleanup;
+    }
+
     if (strncmp(priv_path, cfx_dir, strlen(cfx_dir)) == 0) {
-        if (ensure_cfx_dir() != 0) return 1;
+        if (ensure_cfx_dir() != 0) goto cleanup;
     }
 
     /* check if files exist */
@@ -255,38 +424,36 @@ static int keygen_ed25519(const char *basename, int interactive) {
             char ans[16];
             if (!fgets(ans, sizeof(ans), stdin) || (ans[0] != 'y' && ans[0] != 'Y')) {
                 printf("Aborted.\n");
-                return 1;
+                goto cleanup;
             }
         } else {
             fprintf(stderr, "Use -f to specify different name, or run interactively.\n");
-            return 1;
+            goto cleanup;
         }
     }
 
     printf("Generating public/private ed25519 key pair.\n");
 
-    /* generate keypair */
-    uint8_t seed[32], pk[32], sk[64];
     cfx_srand_os();
     cfx_rand_bytes(seed, 32);
     cfx_ed25519_create_keypair(pk, sk, seed);
 
-    /* write files - store seed as private key (32 bytes), not expanded sk */
-    if (write_key_file(priv_path, seed, 32, 1) != 0) {
-        cfx_memzero_s(seed, sizeof(seed));
-        cfx_memzero_s(sk, sizeof(sk));
-        return 1;
-    }
-    if (write_key_file(pub_path, pk, 32, 0) != 0) {
-        cfx_memzero_s(seed, sizeof(seed));
-        cfx_memzero_s(sk, sizeof(sk));
-        return 1;
+    /* write private key — encrypted or plaintext */
+    if (pwd_len > 0) {
+        if (write_encrypted_key_file(priv_path, seed, 32, pwd, (size_t)pwd_len) != 0)
+            goto cleanup;
+    } else {
+        if (write_key_file(priv_path, seed, 32, 1) != 0)
+            goto cleanup;
     }
 
-    printf("Your identification has been saved in %s\n", priv_path);
+    /* public key is always plaintext */
+    if (write_key_file(pub_path, pk, 32, 0) != 0) goto cleanup;
+
+    printf("Your identification has been saved in %s%s\n",
+        priv_path, pwd_len > 0 ? " (encrypted)" : "");
     printf("Your public key has been saved in %s\n", pub_path);
 
-    /* fingerprint and randomart */
     uint8_t fp[32];
     cfx_sha256(fp, pk, 32);
     printf("The key fingerprint is:\nSHA256:");
@@ -294,19 +461,25 @@ static int keygen_ed25519(const char *basename, int interactive) {
     printf("\n");
 
     print_randomart(pk, 32, "ED25519");
+    ret = 0;
 
+cleanup:
     cfx_memzero_s(seed, sizeof(seed));
     cfx_memzero_s(sk, sizeof(sk));
-    return 0;
+    cfx_memzero_s(pwd, sizeof(pwd));
+    return ret;
 }
 
 static int keygen_x25519(const char *basename, int interactive) {
-    char priv_path[1024], pub_path[1024];
-    char default_priv[1024];
+    char priv_path[1024], pub_path[1024], default_priv[1024], cfx_dir[1024];
+    char pwd[256] = {0};
+    int pwd_len = 0;
+    int ret = 1;
 
-    /* determine default path */
-    char cfx_dir[1024];
-    if (get_cfx_dir(cfx_dir, sizeof(cfx_dir)) != 0) return 1;
+    uint8_t priv[32], pub[32];
+    memset(priv, 0, sizeof(priv));
+
+    if (get_cfx_dir(cfx_dir, sizeof(cfx_dir)) != 0) goto cleanup;
     snprintf(default_priv, sizeof(default_priv), "%s/id_x25519", cfx_dir);
 
     if (basename) {
@@ -318,12 +491,16 @@ static int keygen_x25519(const char *basename, int interactive) {
     }
     snprintf(pub_path, sizeof(pub_path), "%s.pub", priv_path);
 
-    /* ensure parent directory exists if using default location */
-    if (strncmp(priv_path, cfx_dir, strlen(cfx_dir)) == 0) {
-        if (ensure_cfx_dir() != 0) return 1;
+    /* prompt for passphrase if on a tty */
+    if (interactive) {
+        pwd_len = prompt_passphrase(pwd, sizeof(pwd));
+        if (pwd_len < 0) goto cleanup;
     }
 
-    /* check if files exist */
+    if (strncmp(priv_path, cfx_dir, strlen(cfx_dir)) == 0) {
+        if (ensure_cfx_dir() != 0) goto cleanup;
+    }
+
     struct stat st;
     if (stat(priv_path, &st) == 0) {
         fprintf(stderr, "%s already exists.\n", priv_path);
@@ -333,36 +510,35 @@ static int keygen_x25519(const char *basename, int interactive) {
             char ans[16];
             if (!fgets(ans, sizeof(ans), stdin) || (ans[0] != 'y' && ans[0] != 'Y')) {
                 printf("Aborted.\n");
-                return 1;
+                goto cleanup;
             }
         } else {
             fprintf(stderr, "Use -f to specify different name, or run interactively.\n");
-            return 1;
+            goto cleanup;
         }
     }
 
     printf("Generating public/private x25519 key pair.\n");
 
-    /* generate keypair */
-    uint8_t priv[32], pub[32];
     cfx_srand_os();
     cfx_rand_bytes(priv, 32);
     cfx_x25519_base(pub, priv);
 
-    /* write files */
-    if (write_key_file(priv_path, priv, 32, 1) != 0) {
-        cfx_memzero_s(priv, sizeof(priv));
-        return 1;
-    }
-    if (write_key_file(pub_path, pub, 32, 0) != 0) {
-        cfx_memzero_s(priv, sizeof(priv));
-        return 1;
+    /* write private key encrypted or plaintext */
+    if (pwd_len > 0) {
+        if (write_encrypted_key_file(priv_path, priv, 32, pwd, (size_t)pwd_len) != 0)
+            goto cleanup;
+    } else {
+        if (write_key_file(priv_path, priv, 32, 1) != 0)
+            goto cleanup;
     }
 
-    printf("Your identification has been saved in %s\n", priv_path);
+    /* public key is always plaintext */
+    if (write_key_file(pub_path, pub, 32, 0) != 0) goto cleanup;
+
+    printf("Your identification has been saved in %s%s\n", priv_path, pwd_len > 0 ? " (encrypted)" : "");
     printf("Your public key has been saved in %s\n", pub_path);
 
-    /* fingerprint and randomart */
     uint8_t fp[32];
     cfx_sha256(fp, pub, 32);
     printf("The key fingerprint is:\nSHA256:");
@@ -370,9 +546,12 @@ static int keygen_x25519(const char *basename, int interactive) {
     printf("\n");
 
     print_randomart(pub, 32, "X25519");
+    ret = 0;
 
+cleanup:
     cfx_memzero_s(priv, sizeof(priv));
-    return 0;
+    cfx_memzero_s(pwd, sizeof(pwd));
+    return ret;
 }
 
 static int keygen_raw(long nbytes, enum cfx_str_format fmt) {
@@ -392,7 +571,7 @@ static int keygen_raw(long nbytes, enum cfx_str_format fmt) {
         fwrite(buf, 1, (size_t)nbytes, stdout);
     } else if (fmt == CFX_STR_FMT_BASE64) {
         size_t b64_len = cfx_base64_enc_len((size_t)nbytes);
-        char* b64 = malloc(b64_len + 1);
+        char *b64 = malloc(b64_len + 1);
         if (!b64) {
             fprintf(stderr, "Allocation failed\n");
             free(buf);
@@ -419,12 +598,15 @@ int cfx_keygen_run(int argc, char** argv) {
     long nbytes = -1;
     enum cfx_str_format fmt = CFX_STR_FMT_HEX;
     const char *basename = NULL;
+    int no_pw = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--ed25519") == 0) {
             key_type = KEY_ED25519;
         } else if (strcmp(argv[i], "--x25519") == 0) {
             key_type = KEY_X25519;
+        } else if (strcmp(argv[i], "--no-pw") == 0) {
+            no_pw = 1;
         } else if (strcmp(argv[i], "-f") == 0) {
             if (++i >= argc) {
                 fprintf(stderr, "error: -f requires argument\n");
@@ -455,8 +637,7 @@ int cfx_keygen_run(int argc, char** argv) {
         }
     }
 
-    /* interactive mode if no -f and running on a tty */
-    int interactive = (basename == NULL) && isatty(fileno(stdin));
+    int interactive = !no_pw && isatty(fileno(stdin));
 
     switch (key_type) {
     case KEY_ED25519:
