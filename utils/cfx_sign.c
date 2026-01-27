@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 
 #include "cfx_cmd.h"
+#include "cfx_keyfile.h"
 #include "misc.h"
 
 #ifdef _WIN32
@@ -63,7 +64,11 @@ static void usage(const char* prog) {
         prog, prog, prog, prog, prog);
 }
 
-/* Read a 32-byte key from file, auto-detecting format (raw binary or hex) */
+/* Read a 32-byte key from file, auto-detecting format:
+ *   - 104 bytes starting with "CFX\x01": encrypted key (prompt for passphrase)
+ *   - 32 raw bytes: plaintext binary seed
+ *   - 64 hex chars (+ optional newline): plaintext hex seed
+ */
 static int read_key_auto(const char* path, uint8_t* out) {
     FILE* f;
     if (strcmp(path, "-") == 0) {
@@ -79,9 +84,14 @@ static int read_key_auto(const char* path, uint8_t* out) {
         }
     }
 
-    char buf[128];
+    uint8_t buf[128];
     size_t n = fread(buf, 1, sizeof(buf), f);
     if (f != stdin) fclose(f);
+
+    /* Encrypted key: exactly 104 bytes with CFX\x01 magic */
+    if (n == CFX_KEY_FILE_LEN && memcmp(buf, CFX_KEY_MAGIC, 4) == 0) {
+        return cfx_key_decrypt(buf, out);
+    }
 
     /* Raw binary: exactly 32 bytes */
     if (n == 32) {
@@ -97,13 +107,13 @@ static int read_key_auto(const char* path, uint8_t* out) {
         }
         if (n == 64) {
             buf[64] = '\0';
-            if (cfx_parse_hex(buf, out, 32) == 0) {
+            if (cfx_parse_hex((char *)buf, out, 32) == 0) {
                 return 0;
             }
         }
     }
 
-    fprintf(stderr, "error: key file must be 32 raw bytes or 64 hex chars\n");
+    fprintf(stderr, "error: key file must be 32 raw bytes, 64 hex chars, or encrypted (CFX)\n");
     return -1;
 }
 

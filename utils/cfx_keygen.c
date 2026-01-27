@@ -6,8 +6,6 @@
 #include "cfx/sha256.h"
 #include "cfx/base64.h"
 #include "cfx/memory.h"
-#include "cfx/argon2.h"
-#include "cfx/aead_chacha20_poly1305.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +30,7 @@
 #endif
 
 #include "cfx_cmd.h"
+#include "cfx_keyfile.h"
 #include "misc.h"
 
 /*
@@ -223,77 +222,6 @@ static int prompt_path(const char *prompt, const char *default_path, char *out, 
     return 0;
 }
 
-#ifdef _WIN32
-#include <windows.h>
-                                                                                                            
-static int read_password(const char *prompt, char *buf, size_t bufsz) {
-    HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
-    DWORD mode;
-    GetConsoleMode(h, &mode);
-    SetConsoleMode(h, mode & ~ENABLE_ECHO_INPUT);
-
-    fprintf(stderr, "%s", prompt);
-    if (!fgets(buf, (int)bufsz, stdin)) buf[0] = '\0';
-    SetConsoleMode(h, mode);
-    fprintf(stderr, "\n");
-
-    size_t len = strlen(buf);
-    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r'))
-        buf[--len] = '\0';
-    return (int)len;
-}
-
-#else
-#include <termios.h>
-
-static int read_password(const char *prompt, char *buf, size_t bufsz) {
-    struct termios old, new;
-    tcgetattr(fileno(stdin), &old);
-    new = old;
-    new.c_lflag &= ~ECHO;
-    tcsetattr(fileno(stdin), TCSAFLUSH, &new);
-
-    fprintf(stderr, "%s", prompt);
-    if (!fgets(buf, (int)bufsz, stdin)) buf[0] = '\0';
-    tcsetattr(fileno(stdin), TCSAFLUSH, &old);
-    fprintf(stderr, "\n");
-
-    size_t len = strlen(buf);
-    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r'))
-        buf[--len] = '\0';
-    return (int)len;
-}
-#endif
-
-/*
- *
- *   Offset  Size  Field
- *   0       4     magic: "CFX\x01"
- *   4       4     argon2 m_cost  (LE32)
- *   8       4     argon2 t_cost  (LE32)
- *   12      4     argon2 parallelism (LE32)
- *   16      16    salt
- *   32      24    nonce
- *   56      32    ciphertext (encrypted seed)
- *   88      16    auth tag (Poly1305)
- *
- * the header (bytes 0-55) is used as AAD for the AEAD
- */
-#define CFX_KEY_MAGIC "CFX\x01"
-#define CFX_KEY_HEADER_LEN 56
-#define CFX_KEY_FILE_LEN   104
-
-#define CFX_KEY_DEFAULT_M  65536
-#define CFX_KEY_DEFAULT_T  3
-#define CFX_KEY_DEFAULT_P  4
-
-static void store_le32(uint8_t *dst, uint32_t v) {
-    dst[0] = (uint8_t)(v);
-    dst[1] = (uint8_t)(v >> 8);
-    dst[2] = (uint8_t)(v >> 16);
-    dst[3] = (uint8_t)(v >> 24);
-}
-
 static int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
                         const char *pw2, int pw2_len, size_t pw2_bufsz) {
     size_t n = pw1_bufsz < pw2_bufsz ? pw1_bufsz : pw2_bufsz;
@@ -307,10 +235,10 @@ static int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
 /* prompt for passphrase (twice), return length. 0 = no passphrase. */
 static int prompt_passphrase(char *pwd, size_t pwdsz) {
     char pwd2[256] = {0};
-    int len = read_password("Enter passphrase (empty for no passphrase): ", pwd, pwdsz);
+    int len = cfx_key_read_password("Enter passphrase (empty for no passphrase): ", pwd, pwdsz);
     if (len == 0) return 0;
 
-    int len2 = read_password("Enter same passphrase again: ", pwd2, sizeof(pwd2));
+    int len2 = cfx_key_read_password("Enter same passphrase again: ", pwd2, sizeof(pwd2));
     if (!ct_pwd_match(pwd, len, pwdsz, pwd2, len2, sizeof(pwd2))) {
         fprintf(stderr, "Passphrases do not match.\n");
         cfx_memzero_s(pwd, pwdsz);
@@ -319,67 +247,6 @@ static int prompt_passphrase(char *pwd, size_t pwdsz) {
     }
     cfx_memzero_s(pwd2, sizeof(pwd2));
     return len;
-}
-
-static int write_encrypted_key_file(const char *path, const uint8_t *seed, size_t seed_len,
-                                    const char *pwd, size_t pwd_len) {
- 
-    uint8_t file_buf[CFX_KEY_FILE_LEN];
-    uint8_t enc_key[32];
-    uint8_t *header = file_buf;
-    uint8_t *salt   = file_buf + 16;
-    uint8_t *nonce  = file_buf + 32;
-    uint8_t *ct     = file_buf + 56;
-    uint8_t *tag    = file_buf + 88;
-    int ret = -1;
-
-    memcpy(header, CFX_KEY_MAGIC, 4);
-    store_le32(header + 4,  CFX_KEY_DEFAULT_M);
-    store_le32(header + 8,  CFX_KEY_DEFAULT_T);
-    store_le32(header + 12, CFX_KEY_DEFAULT_P);
-
-    cfx_rand_bytes(salt, 16);
-    cfx_rand_bytes(nonce, 24);
-
-    /* derive encryption key */
-    int rc = cfx_argon2id(enc_key, 32,
-        (const uint8_t *)pwd, pwd_len, salt, 16,
-        CFX_KEY_DEFAULT_M, CFX_KEY_DEFAULT_T, CFX_KEY_DEFAULT_P);
-    if (rc != CFX_ARGON2_OK) {
-        fprintf(stderr, "error: argon2 failed: %s\n", cfx_argon2_strerror(rc));
-        goto done;
-    }
-
-    /* encrypt seed, AAD = header (magic + params + salt + nonce) */
-    if (cfx_xchacha20_poly1305_encrypt(ct, tag, seed, seed_len,
-            header, CFX_KEY_HEADER_LEN, enc_key, nonce) != 0) {
-        fprintf(stderr, "error: encryption failed\n");
-        goto done;
-    }
-
-    FILE *f = fopen(path, "wb");
-    if (!f) {
-        fprintf(stderr, "error: cannot create %s: %s\n", path, strerror(errno));
-        goto done;
-    }
-    if (fwrite(file_buf, 1, CFX_KEY_FILE_LEN, f) != CFX_KEY_FILE_LEN) {
-        fprintf(stderr, "error: write failed: %s\n", strerror(errno));
-        fclose(f);
-        goto done;
-    }
-    fclose(f);
-
-#ifndef _WIN32
-    if (chmod(path, 0600) != 0) {
-        fprintf(stderr, "warning: cannot set permissions on %s: %s\n", path, strerror(errno));
-    }
-#endif
-    ret = 0;
-
-done:
-    cfx_memzero_s(enc_key, sizeof(enc_key));
-    cfx_memzero_s(file_buf, sizeof(file_buf));
-    return ret;
 }
 
 static int keygen_ed25519(const char *basename, int interactive) {
@@ -440,7 +307,7 @@ static int keygen_ed25519(const char *basename, int interactive) {
 
     /* write private key — encrypted or plaintext */
     if (pwd_len > 0) {
-        if (write_encrypted_key_file(priv_path, seed, 32, pwd, (size_t)pwd_len) != 0)
+        if (cfx_key_write_encrypted(priv_path, seed, 32, pwd, (size_t)pwd_len) != 0)
             goto cleanup;
     } else {
         if (write_key_file(priv_path, seed, 32, 1) != 0)
@@ -526,7 +393,7 @@ static int keygen_x25519(const char *basename, int interactive) {
 
     /* write private key encrypted or plaintext */
     if (pwd_len > 0) {
-        if (write_encrypted_key_file(priv_path, priv, 32, pwd, (size_t)pwd_len) != 0)
+        if (cfx_key_write_encrypted(priv_path, priv, 32, pwd, (size_t)pwd_len) != 0)
             goto cleanup;
     } else {
         if (write_key_file(priv_path, priv, 32, 1) != 0)

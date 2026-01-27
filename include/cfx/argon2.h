@@ -5,7 +5,9 @@
  *
  * Argon2d:  data-dependent (fastest, side-channel vulnerable)
  * Argon2i:  data-independent (side-channel resistant)
- * Argon2id: hybrid (recommended)
+ * Argon2id: hybrid (recommended for password hashing)
+ *
+ * All functions return 0 on success, -1 on error.
  */
 
 #ifndef CFX_ARGON2_H
@@ -22,54 +24,37 @@ extern "C" {
 #define CFX_ARGON2I  1
 #define CFX_ARGON2ID 2
 
-#define CFX_ARGON2_VERSION 0x13
-
-#define CFX_ARGON2_MIN_OUTLEN   4
-#define CFX_ARGON2_MIN_SALT_LEN 8
-#define CFX_ARGON2_MIN_TIME     1
-#define CFX_ARGON2_MIN_MEMORY   8
-#define CFX_ARGON2_MIN_LANES    1
-
-#define CFX_ARGON2_OK           0
-#define CFX_ARGON2_ERR_MEMORY  -1
-#define CFX_ARGON2_ERR_PARAM   -2
-#define CFX_ARGON2_ERR_SALT    -3
-#define CFX_ARGON2_ERR_PWD     -4
-#define CFX_ARGON2_ERR_OUTPUT  -5
-
 /* recommended: m=65536 (64MB), t=3, p=4 */
 int cfx_argon2id(uint8_t *out, size_t outlen,
     const uint8_t *pwd, size_t pwdlen,
     const uint8_t *salt, size_t saltlen,
-    uint32_t m_cost, uint32_t t_cost, uint32_t p);
+    uint32_t m, uint32_t t, uint32_t p);
 
 int cfx_argon2d(uint8_t *out, size_t outlen,
     const uint8_t *pwd, size_t pwdlen,
     const uint8_t *salt, size_t saltlen,
-    uint32_t m_cost, uint32_t t_cost, uint32_t p);
+    uint32_t m, uint32_t t, uint32_t p);
 
 int cfx_argon2i(uint8_t *out, size_t outlen,
     const uint8_t *pwd, size_t pwdlen,
     const uint8_t *salt, size_t saltlen,
-    uint32_t m_cost, uint32_t t_cost, uint32_t p);
+    uint32_t m, uint32_t t, uint32_t p);
 
 int cfx_argon2(uint8_t *out, size_t outlen,
     const uint8_t *pwd, size_t pwdlen,
     const uint8_t *salt, size_t saltlen,
-    uint32_t m_cost, uint32_t t_cost, uint32_t p,
+    uint32_t m, uint32_t t, uint32_t p,
     int type);
 
 /* PHC string format: $argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash> */
 int cfx_argon2_encode(char *out, size_t outlen,
     const uint8_t *hash, size_t hashlen,
     const uint8_t *salt, size_t saltlen,
-    uint32_t m_cost, uint32_t t_cost, uint32_t p,
+    uint32_t m, uint32_t t, uint32_t p,
     int type);
 
-/* returns 0 if password matches, 1 if not, <0 on error */
+/* returns 0 if password matches, 1 if mismatch, -1 on error */
 int cfx_argon2_verify(const char *encoded, const uint8_t *pwd, size_t pwdlen);
-
-const char * cfx_argon2_strerror(int err);
 
 #ifdef __cplusplus
 }

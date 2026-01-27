@@ -132,8 +132,8 @@ int cfx_pwhash_run(int argc, char** argv) {
                               salt, sizeof(salt),
                               m_cost, t_cost, p_cost);
 
-        if (rc != CFX_ARGON2_OK) {
-            fprintf(stderr, "Error: %s\n", cfx_argon2_strerror(rc));
+        if (rc != 0) {
+            fprintf(stderr, "Error: argon2 failed\n");
             result = 1;
         } else {
             char encoded[256];

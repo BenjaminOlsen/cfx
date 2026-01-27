@@ -29,7 +29,7 @@ set(UTIL_NAMES
 )
 
 # Helper library with misc utilities (hex parsing, etc.)
-add_library(cfx_misc misc.h misc.c)
+add_library(cfx_misc misc.h misc.c cfx_keyfile.h cfx_keyfile.c)
 target_link_libraries(cfx_misc PUBLIC cfx::cfx)
 
 # Library containing all utility logic (without main functions)

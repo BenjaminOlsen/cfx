@@ -1,0 +1,168 @@
+/* cfx_keyfile.c - encrypted key file read/write (CFX\x01 format) */
+
+#include "cfx_keyfile.h"
+#include "cfx/argon2.h"
+#include "cfx/aead_chacha20_poly1305.h"
+#include "cfx/rand.h"
+#include "cfx/memory.h"
+
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <termios.h>
+#include <unistd.h>
+#endif
+
+/* ── password prompt ──────────────────────────────────────────────── */
+
+#ifdef _WIN32
+int cfx_key_read_password(const char *prompt, char *buf, size_t bufsz) {
+    HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode;
+    GetConsoleMode(h, &mode);
+    SetConsoleMode(h, mode & ~ENABLE_ECHO_INPUT);
+
+    fprintf(stderr, "%s", prompt);
+    if (!fgets(buf, (int)bufsz, stdin)) buf[0] = '\0';
+    SetConsoleMode(h, mode);
+    fprintf(stderr, "\n");
+
+    size_t len = strlen(buf);
+    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+        buf[--len] = '\0';
+    return (int)len;
+}
+#else
+int cfx_key_read_password(const char *prompt, char *buf, size_t bufsz) {
+    struct termios old, new;
+    tcgetattr(fileno(stdin), &old);
+    new = old;
+    new.c_lflag &= ~ECHO;
+    tcsetattr(fileno(stdin), TCSAFLUSH, &new);
+
+    fprintf(stderr, "%s", prompt);
+    if (!fgets(buf, (int)bufsz, stdin)) buf[0] = '\0';
+    tcsetattr(fileno(stdin), TCSAFLUSH, &old);
+    fprintf(stderr, "\n");
+
+    size_t len = strlen(buf);
+    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+        buf[--len] = '\0';
+    return (int)len;
+}
+#endif
+
+/* ── decrypt ──────────────────────────────────────────────────────── */
+
+int cfx_key_decrypt(const uint8_t *file_buf, uint8_t *seed_out) {
+    const uint8_t *header = file_buf;
+    uint32_t m_cost = cfx_key_load_le32(header + 4);
+    uint32_t t_cost = cfx_key_load_le32(header + 8);
+    uint32_t p      = cfx_key_load_le32(header + 12);
+    const uint8_t *salt  = header + 16;
+    const uint8_t *nonce = header + 32;
+    const uint8_t *ct    = file_buf + 56;
+    const uint8_t *tag   = file_buf + 88;
+
+    char pwd[256] = {0};
+    int pwd_len = cfx_key_read_password("Enter passphrase: ", pwd, sizeof(pwd));
+    if (pwd_len <= 0) {
+        fprintf(stderr, "error: encrypted key requires a passphrase\n");
+        cfx_memzero_s(pwd, sizeof(pwd));
+        return -1;
+    }
+
+    /* derive decryption key with argon2id */
+    uint8_t dec_key[32];
+    int rc = cfx_argon2id(dec_key, 32,
+        (const uint8_t *)pwd, (size_t)pwd_len, salt, 16,
+        m_cost, t_cost, p);
+    cfx_memzero_s(pwd, sizeof(pwd));
+
+    if (rc != 0) {
+        fprintf(stderr, "error: argon2 key derivation failed\n");
+        cfx_memzero_s(dec_key, sizeof(dec_key));
+        return -1;
+    }
+
+    /* decrypt with xchacha20-poly1305, AAD = header bytes */
+    rc = cfx_xchacha20_poly1305_decrypt(
+        seed_out, ct, 32,
+        header, CFX_KEY_HEADER_LEN,
+        dec_key, nonce, tag);
+    cfx_memzero_s(dec_key, sizeof(dec_key));
+
+    if (rc != 0) {
+        fprintf(stderr, "error: decryption failed (wrong passphrase?)\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/* ── encrypt + write ──────────────────────────────────────────────── */
+
+int cfx_key_write_encrypted(const char *path, const uint8_t *seed, size_t seed_len,
+                            const char *pwd, size_t pwd_len) {
+    uint8_t file_buf[CFX_KEY_FILE_LEN];
+    uint8_t enc_key[32];
+    uint8_t *header = file_buf;
+    uint8_t *salt   = file_buf + 16;
+    uint8_t *nonce  = file_buf + 32;
+    uint8_t *ct     = file_buf + 56;
+    uint8_t *tag    = file_buf + 88;
+    int ret = -1;
+
+    memcpy(header, CFX_KEY_MAGIC, 4);
+    cfx_key_store_le32(header + 4,  CFX_KEY_DEFAULT_M);
+    cfx_key_store_le32(header + 8,  CFX_KEY_DEFAULT_T);
+    cfx_key_store_le32(header + 12, CFX_KEY_DEFAULT_P);
+
+    cfx_rand_bytes(salt, 16);
+    cfx_rand_bytes(nonce, 24);
+
+    /* derive encryption key */
+    int rc = cfx_argon2id(enc_key, 32,
+        (const uint8_t *)pwd, pwd_len, salt, 16,
+        CFX_KEY_DEFAULT_M, CFX_KEY_DEFAULT_T, CFX_KEY_DEFAULT_P);
+    if (rc != 0) {
+        fprintf(stderr, "error: argon2 key derivation failed\n");
+        goto done;
+    }
+
+    /* encrypt seed, AAD = header (magic + params + salt + nonce) */
+    if (cfx_xchacha20_poly1305_encrypt(ct, tag, seed, seed_len,
+            header, CFX_KEY_HEADER_LEN, enc_key, nonce) != 0) {
+        fprintf(stderr, "error: encryption failed\n");
+        goto done;
+    }
+
+    FILE *f = fopen(path, "wb");
+    if (!f) {
+        fprintf(stderr, "error: cannot create %s: %s\n", path, strerror(errno));
+        goto done;
+    }
+    if (fwrite(file_buf, 1, CFX_KEY_FILE_LEN, f) != CFX_KEY_FILE_LEN) {
+        fprintf(stderr, "error: write failed: %s\n", strerror(errno));
+        fclose(f);
+        goto done;
+    }
+    fclose(f);
+
+#ifndef _WIN32
+    if (chmod(path, 0600) != 0) {
+        fprintf(stderr, "warning: cannot set permissions on %s: %s\n", path, strerror(errno));
+    }
+#endif
+    ret = 0;
+
+done:
+    cfx_memzero_s(enc_key, sizeof(enc_key));
+    cfx_memzero_s(file_buf, sizeof(file_buf));
+    return ret;
+}
