@@ -20,6 +20,9 @@
 #include <direct.h>
 #include <shlobj.h>
 #define mkdir_p(path) _mkdir(path)
+#ifndef S_ISDIR
+#define S_ISDIR(m) (((m) & _S_IFMT) == _S_IFDIR)
+#endif
 #else
 #include <unistd.h>
 #include <pwd.h>
