@@ -60,10 +60,21 @@ int cfx_key_read_password(const char *prompt, char *buf, size_t bufsz) {
 /* ── decrypt ──────────────────────────────────────────────────────── */
 
 int cfx_key_decrypt(const uint8_t *file_buf, uint8_t *seed_out) {
+    if (memcmp(file_buf, CFX_KEY_MAGIC, 4) != 0) {
+        fprintf(stderr, "error: not an encrypted key file\n");
+        return -1;
+    }
+
     const uint8_t *header = file_buf;
     uint32_t m_cost = cfx_key_load_le32(header + 4);
     uint32_t t_cost = cfx_key_load_le32(header + 8);
     uint32_t p      = cfx_key_load_le32(header + 12);
+
+    if (m_cost > 4194304 || t_cost > 100 || p > 16) {
+        fprintf(stderr, "error: unreasonable argon2 parameters in key file\n");
+        return -1;
+    }
+
     const uint8_t *salt  = header + 16;
     const uint8_t *nonce = header + 32;
     const uint8_t *ct    = file_buf + 56;

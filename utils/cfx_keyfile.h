@@ -26,7 +26,7 @@
 #define CFX_KEY_FILE_LEN   104
 
 /* default argon2id parameters */
-#define CFX_KEY_DEFAULT_M  0x10000  /*  MB */
+#define CFX_KEY_DEFAULT_M  0x10000  /* 64 MB (in KB) */
 #define CFX_KEY_DEFAULT_T  3       /* 3 iterations */
 #define CFX_KEY_DEFAULT_P  4       /* 4 lanes */
 

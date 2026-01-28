@@ -88,8 +88,11 @@ static int read_key_auto(const char* path, uint8_t* out) {
     size_t n = fread(buf, 1, sizeof(buf), f);
     if (f != stdin) fclose(f);
 
-    /* Encrypted key: exactly 104 bytes with CFX\x01 magic */
     if (n == CFX_KEY_FILE_LEN && memcmp(buf, CFX_KEY_MAGIC, 4) == 0) {
+        if (strcmp(path, "-") == 0) {
+            fprintf(stderr, "error: encrypted keys cannot be read from stdin\n");
+            return -1;
+        }
         return cfx_key_decrypt(buf, out);
     }
 
