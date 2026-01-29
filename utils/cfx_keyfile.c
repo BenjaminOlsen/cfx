@@ -18,7 +18,6 @@
 #include <unistd.h>
 #endif
 
-/* ── password prompt ──────────────────────────────────────────────── */
 
 #ifdef _WIN32
 int cfx_key_read_password(const char *prompt, char *buf, size_t bufsz) {
@@ -51,13 +50,13 @@ int cfx_key_read_password(const char *prompt, char *buf, size_t bufsz) {
     fprintf(stderr, "\n");
 
     size_t len = strlen(buf);
-    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r')) {
         buf[--len] = '\0';
+    }
     return (int)len;
 }
 #endif
 
-/* ── decrypt ──────────────────────────────────────────────────────── */
 
 int cfx_key_decrypt(const uint8_t *file_buf, uint8_t *seed_out) {
     if (memcmp(file_buf, CFX_KEY_MAGIC, 4) != 0) {
@@ -66,11 +65,12 @@ int cfx_key_decrypt(const uint8_t *file_buf, uint8_t *seed_out) {
     }
 
     const uint8_t *header = file_buf;
-    uint32_t m_cost = cfx_key_load_le32(header + 4);
-    uint32_t t_cost = cfx_key_load_le32(header + 8);
-    uint32_t p      = cfx_key_load_le32(header + 12);
+    uint32_t m_cost = cfx_load32_le(header + 4);
+    uint32_t t_cost = cfx_load32_le(header + 8);
+    uint32_t p      = cfx_load32_le(header + 12);
 
-    if (m_cost > 4194304 || t_cost > 100 || p > 16) {
+    if (m_cost < 8 || t_cost < 1 || p < 1 ||
+        m_cost > 4194304 || t_cost > 100 || p > 16) {
         fprintf(stderr, "error: unreasonable argon2 parameters in key file\n");
         return -1;
     }
@@ -106,6 +106,7 @@ int cfx_key_decrypt(const uint8_t *file_buf, uint8_t *seed_out) {
         seed_out, ct, 32,
         header, CFX_KEY_HEADER_LEN,
         dec_key, nonce, tag);
+
     cfx_memzero_s(dec_key, sizeof(dec_key));
 
     if (rc != 0) {
@@ -116,10 +117,7 @@ int cfx_key_decrypt(const uint8_t *file_buf, uint8_t *seed_out) {
     return 0;
 }
 
-/* ── encrypt + write ──────────────────────────────────────────────── */
-
-int cfx_key_write_encrypted(const char *path, const uint8_t *seed, size_t seed_len,
-                            const char *pwd, size_t pwd_len) {
+int cfx_key_write_encrypted(const char *path, const uint8_t *seed, size_t seed_len, const char *pwd, size_t pwd_len) {
     uint8_t file_buf[CFX_KEY_FILE_LEN];
     uint8_t enc_key[32];
     uint8_t *header = file_buf;
@@ -130,9 +128,9 @@ int cfx_key_write_encrypted(const char *path, const uint8_t *seed, size_t seed_l
     int ret = -1;
 
     memcpy(header, CFX_KEY_MAGIC, 4);
-    cfx_key_store_le32(header + 4,  CFX_KEY_DEFAULT_M);
-    cfx_key_store_le32(header + 8,  CFX_KEY_DEFAULT_T);
-    cfx_key_store_le32(header + 12, CFX_KEY_DEFAULT_P);
+    cfx_store32_le(header + 4,  CFX_KEY_DEFAULT_M);
+    cfx_store32_le(header + 8,  CFX_KEY_DEFAULT_T);
+    cfx_store32_le(header + 12, CFX_KEY_DEFAULT_P);
 
     cfx_rand_bytes(salt, 16);
     cfx_rand_bytes(nonce, 24);
@@ -147,8 +145,7 @@ int cfx_key_write_encrypted(const char *path, const uint8_t *seed, size_t seed_l
     }
 
     /* encrypt seed, AAD = header (magic + params + salt + nonce) */
-    if (cfx_xchacha20_poly1305_encrypt(ct, tag, seed, seed_len,
-            header, CFX_KEY_HEADER_LEN, enc_key, nonce) != 0) {
+    if (cfx_xchacha20_poly1305_encrypt(ct, tag, seed, seed_len, header, CFX_KEY_HEADER_LEN, enc_key, nonce) != 0) {
         fprintf(stderr, "error: encryption failed\n");
         goto done;
     }

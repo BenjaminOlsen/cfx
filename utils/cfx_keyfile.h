@@ -30,20 +30,6 @@
 #define CFX_KEY_DEFAULT_T  3       /* 3 iterations */
 #define CFX_KEY_DEFAULT_P  4       /* 4 lanes */
 
-static inline void cfx_key_store_le32(uint8_t *dst, uint32_t v) {
-    dst[0] = (uint8_t)(v);
-    dst[1] = (uint8_t)(v >> 8);
-    dst[2] = (uint8_t)(v >> 16);
-    dst[3] = (uint8_t)(v >> 24);
-}
-
-static inline uint32_t cfx_key_load_le32(const uint8_t *p) {
-    return (uint32_t)p[0]
-         | (uint32_t)p[1] << 8
-         | (uint32_t)p[2] << 16
-         | (uint32_t)p[3] << 24;
-}
-
 /* read a passphrase from the terminal with echo disabled.
  * returns length of password, or 0 if empty. */
 int cfx_key_read_password(const char *prompt, char *buf, size_t bufsz);

@@ -71,19 +71,24 @@ static inline uint64_t cfx_load64_le(const void *src) {
 #define CFX_LOAD32_LE_2(DST, SRC) cfx_load32_le_to((DST), (SRC))
 
 static inline void cfx_load32_le_to(uint32_t *dst, const void *src) {
-    #ifdef CFX_LITTLE_ENDIAN
+#if CFX_LITTLE_ENDIAN
     uint32_t v;
     memcpy(&v, src, sizeof v);
     *dst = v;
-    #else
-    #endif
+#else
+    const uint8_t *p = (const uint8_t *)src;
+    *dst = (uint32_t)p[0]       |
+           (uint32_t)p[1] <<  8 |
+           (uint32_t)p[2] << 16 |
+           (uint32_t)p[3] << 24;
+#endif
 }
 
 /* ---------------------------------------------------------------------------------------------- */
 #define CFX_LOAD32_LE(SRC) cfx_load32_le(SRC)
 
 static inline uint32_t cfx_load32_le(const void *src) {
-#ifdef CFX_LITTLE_ENDIAN
+#if CFX_LITTLE_ENDIAN
     uint32_t w;
     memcpy(&w, src, sizeof w);
     return w;
@@ -100,15 +105,40 @@ static inline uint32_t cfx_load32_le(const void *src) {
 /* ---------------------------------------------------------------------------------------------- */
 #define CFX_STORE32_LE(DST, W) cfx_store32_le((DST), (W))
 
-static inline void cfx_store32_le(uint8_t dst[4], uint32_t w) {
-#ifdef CFX_LITTLE_ENDIAN
+static inline void cfx_store32_le(void *dst, uint32_t w) {
+#if CFX_LITTLE_ENDIAN
     memcpy(dst, &w, sizeof w);
 #else
-    dst[0] = (uint8_t) w; w >>= 8;
-    dst[1] = (uint8_t) w; w >>= 8;
-    dst[2] = (uint8_t) w; w >>= 8;
-    dst[3] = (uint8_t) w;
+    uint8_t *p = (uint8_t *)dst;
+    p[0] = (uint8_t)(w      );
+    p[1] = (uint8_t)(w >>  8);
+    p[2] = (uint8_t)(w >> 16);
+    p[3] = (uint8_t)(w >> 24);
 #endif
+}
+
+
+static inline void cfx_store16_le(void *dst, uint16_t v) {
+#if CFX_LITTLE_ENDIAN
+    memcpy(dst, &v, sizeof v);
+#else
+    dst[0] = (uint8_t)(v);
+    dst[1] = (uint8_t)(v >> 8);
+#endif
+}
+
+static inline uint16_t cfx_load16_le(const void *src) {
+#if CFX_LITTLE_ENDIAN
+    uint16_t w;
+    memcpy(&w, src, sizeof w);
+    return w;
+#else
+    const uint8_t *p = (const uint8_t *)src;
+    uint16_t w = (uint16_t)p[0];
+    w |= (uint16_t)p[1] << 8;
+    return w;
+#endif
+
 }
 
 #ifdef __cplusplus

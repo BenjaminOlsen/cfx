@@ -77,12 +77,16 @@ struct offset_struct_32 {char c; uint32_t x;};
 #include <endian.h>
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define CFX_LITTLE_ENDIAN 1
+#else
+#define CFX_LITTLE_ENDIAN 0
 #endif
 
 #elif defined(__APPLE__)
 #include <machine/endian.h>
 #if _BYTE_ORDER == _LITTLE_ENDIAN
 #define CFX_LITTLE_ENDIAN 1
+#else
+#define CFX_LITTLE_ENDIAN 0
 #endif
 
 #else

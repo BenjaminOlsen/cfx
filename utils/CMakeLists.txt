@@ -1,5 +1,6 @@
 # List of utility names (without cfx_ prefix for cleaner iteration)
 set(UTIL_NAMES
+    bge
     choose
     dc
     div
