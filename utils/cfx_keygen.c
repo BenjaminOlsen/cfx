@@ -235,10 +235,10 @@ static int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
 /* prompt for passphrase (twice), return length. 0 = no passphrase. */
 static int prompt_passphrase(char *pwd, size_t pwdsz) {
     char pwd2[256] = {0};
-    int len = cfx_key_read_password("Enter passphrase (empty for no passphrase): ", pwd, pwdsz);
+    int len = cfx_key_read_secret_console("Enter passphrase (empty for no passphrase): ", pwd, pwdsz);
     if (len == 0) return 0;
 
-    int len2 = cfx_key_read_password("Enter same passphrase again: ", pwd2, sizeof(pwd2));
+    int len2 = cfx_key_read_secret_console("Enter same passphrase again: ", pwd2, sizeof(pwd2));
     if (!ct_pwd_match(pwd, len, pwdsz, pwd2, len2, sizeof(pwd2))) {
         fprintf(stderr, "Passphrases do not match.\n");
         cfx_memzero_s(pwd, pwdsz);

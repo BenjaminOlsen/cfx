@@ -32,7 +32,7 @@
 
 /* read a passphrase from the terminal with echo disabled.
  * returns length of password, or 0 if empty. */
-int cfx_key_read_password(const char *prompt, char *buf, size_t bufsz);
+int cfx_key_read_secret_console(const char *prompt, char *buf, size_t bufsz);
 
 /* decrypt a CFX\x01 encrypted key file buffer (104 bytes).
  * prompts for passphrase on the terminal.

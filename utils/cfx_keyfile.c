@@ -20,7 +20,7 @@
 
 
 #ifdef _WIN32
-int cfx_key_read_password(const char *prompt, char *buf, size_t bufsz) {
+int cfx_key_read_secret_console(const char *prompt, char *buf, size_t bufsz) {
     HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
     DWORD mode;
     GetConsoleMode(h, &mode);
@@ -37,7 +37,7 @@ int cfx_key_read_password(const char *prompt, char *buf, size_t bufsz) {
     return (int)len;
 }
 #else
-int cfx_key_read_password(const char *prompt, char *buf, size_t bufsz) {
+int cfx_key_read_secret_console(const char *prompt, char *buf, size_t bufsz) {
     struct termios old, new;
     tcgetattr(fileno(stdin), &old);
     new = old;
@@ -81,7 +81,7 @@ int cfx_key_decrypt(const uint8_t *file_buf, uint8_t *seed_out) {
     const uint8_t *tag   = file_buf + 88;
 
     char pwd[256] = {0};
-    int pwd_len = cfx_key_read_password("Enter passphrase: ", pwd, sizeof(pwd));
+    int pwd_len = cfx_key_read_secret_console("Enter passphrase: ", pwd, sizeof(pwd));
     if (pwd_len <= 0) {
         fprintf(stderr, "error: encrypted key requires a passphrase\n");
         cfx_memzero_s(pwd, sizeof(pwd));

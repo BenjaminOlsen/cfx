@@ -21,18 +21,18 @@
  * This is the "Goldilocks prime" - well-known and tested */
 #define CFX_NTT_P1 UINT64_C(0xFFFFFFFF00000001)
 
-/* p2 = 2^62 + 2^56 + 1 = 0x4000010000000001 (allows 2^56 transform)
- * This prime has p-1 = 2^56 * (2^6 + 1) = 2^56 * 65 */
-#define CFX_NTT_P2 UINT64_C(0x4000010000000001)
+/* p2 = 71 * 2^57 + 1 = 0x8E00000000000001 (allows 2^57 transform)
+ * This prime has p-1 = 2^57 * 71 */
+#define CFX_NTT_P2 UINT64_C(0x8E00000000000001)
 
-/* p3 = 2^61 + 2^60 + 1 = 0x3000000000000001 (allows 2^60 transform)
- * This prime has p-1 = 2^60 * 3 */
-#define CFX_NTT_P3 UINT64_C(0x3000000000000001)
+/* p3 = 75 * 2^57 + 1 = 0x9600000000000001 (allows 2^57 transform)
+ * This prime has p-1 = 2^57 * 75 = 2^57 * 3 * 5^2 */
+#define CFX_NTT_P3 UINT64_C(0x9600000000000001)
 
 /* primitive roots for each prime (g such that g^((p-1)/2) = p-1 mod p) */
 #define CFX_NTT_G1 UINT64_C(7)   /* primitive root of p1 */
 #define CFX_NTT_G2 UINT64_C(3)   /* primitive root of p2 */
-#define CFX_NTT_G3 UINT64_C(5)   /* primitive root of p3 */
+#define CFX_NTT_G3 UINT64_C(7)   /* primitive root of p3 */
 
 /*
  * Modular Arithmetic (mod 64-bit prime)
