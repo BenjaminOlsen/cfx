@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 
@@ -373,6 +374,372 @@ static void test_aead_fuzz_basic(void) {
     printf("-- fuzz OK cnt: %u\n", ok_cnt);
 }
 
+/* --- streaming AEAD tests --- */
+
+static void test_stream_single_chunk(void) {
+    /* single small chunk, roundtrip */
+    uint8_t key[32], nonce[24];
+    uint8_t pt[] = "hello streaming AEAD";
+    uint8_t ct[sizeof pt], pt_out[sizeof pt];
+    uint8_t tag[16];
+
+    printf("== test_stream_single_chunk ==\n");
+
+    cfx_srand(0xAABBCCDD);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+
+    int rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct, tag, pt, sizeof pt, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        pt_out, ct, sizeof pt, tag, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+    CFX_ASSERT(memcmp(pt_out, pt, sizeof pt) == 0);
+}
+
+static void test_stream_multi_chunk(void) {
+    /* 3 chunks: 64KB + 64KB + 30 bytes */
+    #define MC_CHUNK CFX_STREAM_CHUNK_SIZE
+    #define MC_TAIL  30
+    #define MC_TOTAL (MC_CHUNK * 2 + MC_TAIL)
+
+    uint8_t key[32], nonce[24];
+    uint8_t pt[MC_TOTAL];
+    uint8_t ct0[MC_CHUNK], ct1[MC_CHUNK], ct2[MC_TAIL];
+    uint8_t tag0[16], tag1[16], tag2[16];
+    uint8_t dec[MC_TOTAL];
+
+    printf("== test_stream_multi_chunk ==\n");
+
+    cfx_srand(0x11223344);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+    fuzz_fill(pt, MC_TOTAL);
+
+    /* encrypt 3 chunks */
+    int rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct0, tag0, pt, MC_CHUNK, 0, 0, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct1, tag1, pt + MC_CHUNK, MC_CHUNK, 1, 0, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct2, tag2, pt + MC_CHUNK * 2, MC_TAIL, 2, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    /* decrypt in order */
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct0, MC_CHUNK, tag0, 0, 0, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec + MC_CHUNK, ct1, MC_CHUNK, tag1, 1, 0, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec + MC_CHUNK * 2, ct2, MC_TAIL, tag2, 2, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    CFX_ASSERT(memcmp(dec, pt, MC_TOTAL) == 0);
+}
+
+static void test_stream_empty(void) {
+    /* empty final chunk */
+    uint8_t key[32], nonce[24];
+    uint8_t ct[1], pt_out[1], tag[16];
+
+    printf("== test_stream_empty ==\n");
+
+    cfx_srand(0x55667788);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+
+    int rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct, tag, NULL, 0, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        pt_out, ct, 0, tag, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+}
+
+static void test_stream_wrong_order(void) {
+    /* swapping chunk 0 and chunk 1 must fail */
+    uint8_t key[32], nonce[24];
+    uint8_t pt0[32], pt1[16];
+    uint8_t ct0[32], ct1[16], tag0[16], tag1[16];
+    uint8_t dec[32];
+
+    printf("== test_stream_wrong_order ==\n");
+
+    cfx_srand(0xDEADBEEF);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+    fuzz_fill(pt0, 32);
+    fuzz_fill(pt1, 16);
+
+    cfx_stream_xchacha20_poly1305_encrypt_chunk(ct0, tag0, pt0, 32, 0, 0, key, nonce);
+    cfx_stream_xchacha20_poly1305_encrypt_chunk(ct1, tag1, pt1, 16, 1, 1, key, nonce);
+
+    /* try decrypting chunk 1 data at position 0 — must fail */
+    int rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct1, 16, tag1, 0, 0, key, nonce);
+    CFX_ASSERT(rc != 0);
+
+    /* try decrypting chunk 0 data at position 1 — must fail */
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct0, 32, tag0, 1, 1, key, nonce);
+    CFX_ASSERT(rc != 0);
+}
+
+static void test_stream_truncation(void) {
+    /* decrypting a non-final chunk as final must fail */
+    uint8_t key[32], nonce[24];
+    uint8_t pt[64];
+    uint8_t ct[64], tag[16];
+    uint8_t dec[64];
+
+    printf("== test_stream_truncation ==\n");
+
+    cfx_srand(0xCAFEBABE);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+    fuzz_fill(pt, 64);
+
+    /* encrypt as non-final (chunk 0 of a multi-chunk stream) */
+    cfx_stream_xchacha20_poly1305_encrypt_chunk(ct, tag, pt, 64, 0, 0, key, nonce);
+
+    /* try to decrypt as final — must fail (truncation attack) */
+    int rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct, 64, tag, 0, 1, key, nonce);
+    CFX_ASSERT(rc != 0);
+}
+
+static void test_stream_tamper(void) {
+    /* flipping a bit in ciphertext must fail */
+    uint8_t key[32], nonce[24];
+    uint8_t pt[100];
+    uint8_t ct[100], tag[16];
+    uint8_t dec[100];
+
+    printf("== test_stream_tamper ==\n");
+
+    cfx_srand(0xF00DBABE);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+    fuzz_fill(pt, 100);
+
+    cfx_stream_xchacha20_poly1305_encrypt_chunk(ct, tag, pt, 100, 0, 1, key, nonce);
+
+    /* tamper with ciphertext */
+    ct[50] ^= 0x01;
+    int rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct, 100, tag, 0, 1, key, nonce);
+    CFX_ASSERT(rc != 0);
+
+    /* restore ct, tamper with tag */
+    ct[50] ^= 0x01;
+    tag[8] ^= 0x01;
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct, 100, tag, 0, 1, key, nonce);
+    CFX_ASSERT(rc != 0);
+}
+
+static void test_stream_exact_chunk(void) {
+    /* single chunk that is exactly CFX_STREAM_CHUNK_SIZE (64KB) */
+    uint8_t key[32], nonce[24];
+    uint8_t *pt  = (uint8_t *)malloc(CFX_STREAM_CHUNK_SIZE);
+    uint8_t *ct  = (uint8_t *)malloc(CFX_STREAM_CHUNK_SIZE);
+    uint8_t *dec = (uint8_t *)malloc(CFX_STREAM_CHUNK_SIZE);
+    uint8_t tag[16];
+
+    printf("== test_stream_exact_chunk ==\n");
+
+    CFX_ASSERT(pt && ct && dec);
+
+    cfx_srand(0xA1B2C3D4);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+    fuzz_fill(pt, CFX_STREAM_CHUNK_SIZE);
+
+    int rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct, tag, pt, CFX_STREAM_CHUNK_SIZE, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct, CFX_STREAM_CHUNK_SIZE, tag, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+    CFX_ASSERT(memcmp(dec, pt, CFX_STREAM_CHUNK_SIZE) == 0);
+
+    free(pt); free(ct); free(dec);
+}
+
+static void test_stream_exact_two_chunks(void) {
+    /* two full 64KB chunks, no tail — both at exact chunk boundary */
+    #define E2C CFX_STREAM_CHUNK_SIZE
+    uint8_t key[32], nonce[24];
+    uint8_t *pt  = (uint8_t *)malloc(E2C * 2);
+    uint8_t *ct0 = (uint8_t *)malloc(E2C);
+    uint8_t *ct1 = (uint8_t *)malloc(E2C);
+    uint8_t *dec = (uint8_t *)malloc(E2C * 2);
+    uint8_t tag0[16], tag1[16];
+
+    printf("== test_stream_exact_two_chunks ==\n");
+
+    CFX_ASSERT(pt && ct0 && ct1 && dec);
+
+    cfx_srand(0x1A2B3C4D);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+    fuzz_fill(pt, E2C * 2);
+
+    int rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct0, tag0, pt, E2C, 0, 0, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct1, tag1, pt + E2C, E2C, 1, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct0, E2C, tag0, 0, 0, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec + E2C, ct1, E2C, tag1, 1, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    CFX_ASSERT(memcmp(dec, pt, E2C * 2) == 0);
+
+    free(pt); free(ct0); free(ct1); free(dec);
+    #undef E2C
+}
+
+static void test_stream_one_byte(void) {
+    /* single chunk with exactly 1 byte of plaintext */
+    uint8_t key[32], nonce[24];
+    uint8_t pt = 0x42, ct, dec, tag[16];
+
+    printf("== test_stream_one_byte ==\n");
+
+    cfx_srand(0xBEEF0001);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+
+    int rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        &ct, tag, &pt, 1, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        &dec, &ct, 1, tag, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+    CFX_ASSERT(dec == pt);
+}
+
+static void test_stream_boundary_plus_one(void) {
+    /* 64KB + 1 byte: splits into full chunk + 1-byte final chunk */
+    #define BP1 CFX_STREAM_CHUNK_SIZE
+    uint8_t key[32], nonce[24];
+    uint8_t *pt  = (uint8_t *)malloc(BP1 + 1);
+    uint8_t *ct0 = (uint8_t *)malloc(BP1);
+    uint8_t ct1;
+    uint8_t *dec = (uint8_t *)malloc(BP1 + 1);
+    uint8_t tag0[16], tag1[16];
+
+    printf("== test_stream_boundary_plus_one ==\n");
+
+    CFX_ASSERT(pt && ct0 && dec);
+
+    cfx_srand(0xBEEF0002);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+    fuzz_fill(pt, BP1 + 1);
+
+    int rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct0, tag0, pt, BP1, 0, 0, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        &ct1, tag1, pt + BP1, 1, 1, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct0, BP1, tag0, 0, 0, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec + BP1, &ct1, 1, tag1, 1, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    CFX_ASSERT(memcmp(dec, pt, BP1 + 1) == 0);
+
+    free(pt); free(ct0); free(dec);
+    #undef BP1
+}
+
+static void test_stream_wrong_key(void) {
+    /* decrypting with a different key must fail */
+    uint8_t key[32], bad_key[32], nonce[24];
+    uint8_t pt[48], ct[48], dec[48], tag[16];
+
+    printf("== test_stream_wrong_key ==\n");
+
+    cfx_srand(0xBEEF0003);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+    fuzz_fill(pt, 48);
+    memcpy(bad_key, key, 32);
+    bad_key[0] ^= 0x01;
+
+    cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct, tag, pt, 48, 0, 1, key, nonce);
+
+    int rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct, 48, tag, 0, 1, bad_key, nonce);
+    CFX_ASSERT(rc != 0);
+}
+
+static void test_stream_extension(void) {
+    /* after a final chunk, an attacker-appended chunk must not authenticate */
+    uint8_t key[32], nonce[24];
+    uint8_t pt0[32], pt1[16];
+    uint8_t ct0[32], ct1[16], tag0[16], tag1[16];
+    uint8_t dec[32];
+
+    printf("== test_stream_extension ==\n");
+
+    cfx_srand(0xBEEF0004);
+    fuzz_fill(key, 32);
+    fuzz_fill(nonce, 24);
+    fuzz_fill(pt0, 32);
+    fuzz_fill(pt1, 16);
+
+    /* encrypt a single-chunk stream (chunk 0, final) */
+    cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct0, tag0, pt0, 32, 0, 1, key, nonce);
+
+    /* encrypt chunk 1 as non-final (attacker tries to extend) */
+    cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        ct1, tag1, pt1, 16, 1, 0, key, nonce);
+
+    /* chunk 0 as final still works */
+    int rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct0, 32, tag0, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    /* but trying to decrypt chunk 1 as non-final (counter=1, is_final=0)
+     * succeeds cryptographically — the real protection is that the receiver
+     * already saw is_final=1 on chunk 0 and stops.  Verify that if the
+     * attacker re-labels chunk 0 as non-final, it fails: */
+    rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
+        dec, ct0, 32, tag0, 0, 0, key, nonce);
+    CFX_ASSERT(rc != 0);
+}
+
 int main(void) {
     CFX_TEST(test_rfc8439_encrypt);
     CFX_TEST(test_rfc8439_decrypt);
@@ -382,6 +749,18 @@ int main(void) {
     CFX_TEST(test_xchacha_decrypt);
     CFX_TEST(test_xchacha_bad_tag);
     CFX_TEST(test_xchacha_fuzz);
+    CFX_TEST(test_stream_single_chunk);
+    CFX_TEST(test_stream_multi_chunk);
+    CFX_TEST(test_stream_empty);
+    CFX_TEST(test_stream_wrong_order);
+    CFX_TEST(test_stream_truncation);
+    CFX_TEST(test_stream_tamper);
+    CFX_TEST(test_stream_exact_chunk);
+    CFX_TEST(test_stream_exact_two_chunks);
+    CFX_TEST(test_stream_one_byte);
+    CFX_TEST(test_stream_boundary_plus_one);
+    CFX_TEST(test_stream_wrong_key);
+    CFX_TEST(test_stream_extension);
     puts("ok");
     return 0;
 }

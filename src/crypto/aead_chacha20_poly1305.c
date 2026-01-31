@@ -160,3 +160,40 @@ int cfx_xchacha20_poly1305_decrypt(
     CFX_MEMZERO_S(subkey, sizeof subkey);
     return rc;
 }
+
+static void stream_derive_nonce(uint8_t out[24], const uint8_t base[24],
+                                uint64_t counter, int is_final) {
+    memcpy(out, base, 24);
+    out[20] ^= (uint8_t)(counter);
+    out[21] ^= (uint8_t)(counter >> 8);
+    out[22] ^= (uint8_t)(counter >> 16);
+    /* use the top bit for 'is_final', the rest for the counter */
+    out[23] ^= (uint8_t)((counter >> 24) & 0x7F) | (is_final ? 0x80 : 0x00);
+}
+
+int cfx_stream_xchacha20_poly1305_encrypt_chunk(
+    uint8_t *ct, uint8_t tag[16],
+    const uint8_t *pt, size_t pt_len,
+    uint64_t chunk_counter, int is_final,
+    const uint8_t key[32], const uint8_t base_nonce[24]) {
+
+    uint8_t nonce[24];
+    stream_derive_nonce(nonce, base_nonce, chunk_counter, is_final);
+    int rc = cfx_xchacha20_poly1305_encrypt(ct, tag, pt, pt_len, NULL, 0, key, nonce);
+    CFX_MEMZERO_S(nonce, sizeof nonce);
+    return rc;
+}
+
+int cfx_stream_xchacha20_poly1305_decrypt_chunk(
+    uint8_t *pt,
+    const uint8_t *ct, size_t ct_len,
+    const uint8_t tag[16],
+    uint64_t chunk_counter, int is_final,
+    const uint8_t key[32], const uint8_t base_nonce[24]) {
+
+    uint8_t nonce[24];
+    stream_derive_nonce(nonce, base_nonce, chunk_counter, is_final);
+    int rc = cfx_xchacha20_poly1305_decrypt(pt, ct, ct_len, NULL, 0, key, nonce, tag);
+    CFX_MEMZERO_S(nonce, sizeof nonce);
+    return rc;
+}

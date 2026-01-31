@@ -84,6 +84,38 @@ void cfx_chacha20_block8(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[
 }
 
 void cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const uint8_t *pt, size_t pt_len, uint8_t *ct) {
+    /* bulk: 8 blocks (512 bytes) at a time — uses AVX2 SIMD when available */
+    while (pt_len >= 512) {
+        uint8_t ks[8][64];
+        cfx_chacha20_block8(ctx, *counter, ks);
+        *counter += 8;
+        /* TODO: use _mm256 intrinsics if available */
+        for (int blk = 0; blk < 8; ++blk) {
+            for (size_t i = 0; i < 64; ++i) {
+                ct[blk * 64 + i] = pt[blk * 64 + i] ^ ks[blk][i];
+            }
+        }
+        
+        pt += 512;
+        ct += 512;
+        pt_len -= 512;
+    }
+    
+    while (pt_len >= 256) {
+        uint8_t ks[4][64];
+        cfx_chacha20_block4(ctx, *counter, ks);
+        *counter += 4;
+        for (int blk = 0; blk < 4; ++blk) {
+            for (size_t i = 0; i < 64; ++i) {
+                ct[blk * 64 + i] = pt[blk * 64 + i] ^ ks[blk][i];
+            }
+        }
+        pt += 256;
+        ct += 256;
+        pt_len -= 256;
+    }
+
+    /* tail: one block at a time */
     uint8_t ks[64];
     while (pt_len) {
         cfx_chacha20_block(ctx, *counter, ks);
