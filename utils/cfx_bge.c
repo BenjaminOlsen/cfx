@@ -55,7 +55,7 @@
  */
 #define BGE_MAGIC         "BGE"
 #define BGE_VERSION       2       /* file format version (byte [3]) */
-#define BGE_VERSION_STR   "2.1.0"
+#define BGE_VERSION_STR   "2.2.0"
 #define BGE_HEADER_LEN    56
 #define BGE_VERIFIER_LEN  16
 #define BGE_AAD_LEN       (BGE_HEADER_LEN + BGE_VERIFIER_LEN)  /* 72 */
@@ -647,7 +647,8 @@ done:
 }
 
 
-/* find entry by name, return ptr to value + length. NULL if missing. */
+/* find entry by name, return ptr to value + length. NULL if missing.
+    vlen can be null if you don't care about the length */
 static const uint8_t *store_get(const uint8_t *pt, size_t pt_len,
                                 const char *name, size_t *vlen) {
     size_t nlen = strlen(name);
@@ -669,7 +670,7 @@ static const uint8_t *store_get(const uint8_t *pt, size_t pt_len,
         p += val_len;
 
         if (klen == nlen && memcmp(kptr, name, nlen) == 0) {
-            *vlen = val_len;
+            if (vlen) *vlen = val_len;
             return vptr;
         }
     }
@@ -949,7 +950,7 @@ static int bge_get(int argc, char **argv) {
     bge_store_wipe(&store);
     if (rc != 0) return 1;
 
-        char name_buf[256] = {0};
+    char name_buf[256] = {0};
     if (!name) {
         int r = bge_read_visible("Name: ", name_buf, sizeof(name_buf));
         if (r <= 0) {
@@ -1108,8 +1109,7 @@ static int bge_set(int argc, char **argv) {
 
     /* prompt to overwrite unless -y */
     if (!force) {
-        size_t existing_len;
-        if (store_get(pt, pt_len, name, &existing_len) != NULL) {
+        if (store_get(pt, pt_len, name, NULL) != NULL) {
             char ans[8] = {0};
             int r = bge_read_visible("Overwrite existing entry? [y/N] ", ans, sizeof(ans));
             if (r <= 0 || (ans[0] != 'y' && ans[0] != 'Y')) {
@@ -1219,11 +1219,6 @@ static int bge_rm(int argc, char **argv) {
         }
     }
 
-    if (!name) {
-        fprintf(stderr, "Usage: %s rm <name> [-s path]\n", argv[0]);
-        return 1;
-    }
-
     if (!path) {
         if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
         path = path_buf;
@@ -1250,7 +1245,21 @@ static int bge_rm(int argc, char **argv) {
         return 1;
     }
 
-    if (!force) {
+    char name_buf[256] = {0};
+    if (!name) {
+        int r = bge_read_visible("Name: ", name_buf, sizeof(name_buf));
+        if (r <= 0) {
+            fprintf(stderr, "error: name required\n");
+            cfx_memzero_s(pt, pt_len);
+            free(pt);
+            bge_store_wipe(&store);
+            return 1;
+        }
+        name = name_buf;
+    }
+
+
+    if (!force && store_get(pt, pt_len, name, NULL) != NULL) {
         char prompt[300];
         snprintf(prompt, sizeof(prompt), "Remove '%s' - are you sure? [y/N] ", name);
         char ans[8] = {0};
