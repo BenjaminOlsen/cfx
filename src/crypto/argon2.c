@@ -21,7 +21,9 @@
 #define MIN_TIME    1
 #define MIN_LANES   1
 
-typedef struct { uint64_t v[BLOCK_QW]; } block_t;
+typedef struct {
+    uint64_t v[BLOCK_QW];
+} block_t;
 
 typedef struct {
     block_t  *mem;
@@ -105,8 +107,9 @@ static void fill_block(const block_t *prev, const block_t *ref,
     block_t tmp;
     uint64_t r[BLOCK_QW];
 
-    for (int i = 0; i < BLOCK_QW; i++)
+    for (int i = 0; i < BLOCK_QW; i++) {
         r[i] = prev->v[i] ^ ref->v[i];
+    }
     memcpy(&tmp, r, sizeof(tmp));
 
     /* row-wise permutation */
@@ -217,12 +220,18 @@ static void initial_hash(uint8_t *h0,
 
     cfx_blake2b_init(&ctx, 64);
 
-    cfx_store32_le(buf, p);            cfx_blake2b_update(&ctx, buf, 4);
-    cfx_store32_le(buf, (uint32_t)outlen); cfx_blake2b_update(&ctx, buf, 4);
-    cfx_store32_le(buf, m);            cfx_blake2b_update(&ctx, buf, 4);
-    cfx_store32_le(buf, t);            cfx_blake2b_update(&ctx, buf, 4);
-    cfx_store32_le(buf, VERSION);      cfx_blake2b_update(&ctx, buf, 4);
-    cfx_store32_le(buf, (uint32_t)type); cfx_blake2b_update(&ctx, buf, 4);
+    cfx_store32_le(buf, p);            
+    cfx_blake2b_update(&ctx, buf, 4);
+    cfx_store32_le(buf, (uint32_t)outlen);
+    cfx_blake2b_update(&ctx, buf, 4);
+    cfx_store32_le(buf, m);
+    cfx_blake2b_update(&ctx, buf, 4);
+    cfx_store32_le(buf, t);
+    cfx_blake2b_update(&ctx, buf, 4);
+    cfx_store32_le(buf, VERSION);
+    cfx_blake2b_update(&ctx, buf, 4);
+    cfx_store32_le(buf, (uint32_t)type);
+    cfx_blake2b_update(&ctx, buf, 4);
 
     cfx_store32_le(buf, (uint32_t)pwdlen);
     cfx_blake2b_update(&ctx, buf, 4);

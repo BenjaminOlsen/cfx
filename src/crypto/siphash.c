@@ -28,8 +28,7 @@ static inline uint64_t rotl64(uint64_t x, int b) {
             v2 += v1; v1 = rotl64(v1, 17); v1 ^= v2; v2 = rotl64(v2, 32); \
 } while (0)
 
-uint64_t cfx_siphash_cd(const uint8_t *data, size_t len, const uint8_t key[16],
-    int c_rounds, int d_rounds) {
+uint64_t cfx_siphash_cd(const uint8_t *data, size_t len, const uint8_t key[16], int c_rounds, int d_rounds) {
     uint64_t k0 = cfx_load64_le(key);
     uint64_t k1 = cfx_load64_le(key + 8);
 

@@ -33,6 +33,7 @@
 #include "cfx_cmd.h"
 #include "cfx_keyfile.h"
 #include "misc.h"
+#include "cfx/macros.h"
 
 /*
  * BGE v2 file layout:
@@ -62,17 +63,28 @@
 #define BGE_MIN_FILE      (BGE_AAD_LEN + BGE_TAG_LEN)          /* 88: empty store */
 
 typedef struct {
-    uint8_t  key[32];
-    uint8_t  verifier[BGE_VERIFIER_LEN];
-    uint8_t  hdr[BGE_HEADER_LEN];
-    uint8_t *file_buf;
-    size_t   file_len;
+    uint8_t  magic[3];
+    uint8_t  version;
+    uint32_t m_cost;    /* little-endian on disk */
+    uint32_t t_cost;    /* little-endian on disk */
+    uint32_t p_cost;    /* little-endian on disk */
+    uint8_t  salt[16];
+    uint8_t  nonce[24];
+} bge_header;
+CFX_STATIC_ASSERT(sizeof(bge_header) == BGE_HEADER_LEN, bge_header_packing);
+
+typedef struct {
+    bge_header hdr;
+    uint8_t    key[32];
+    uint8_t    verifier[BGE_VERIFIER_LEN];
+    uint8_t   *file_buf;
+    size_t     file_len;
 } bge_store;
 
 static void bge_store_wipe(bge_store *s) {
     cfx_memzero_s(s->key, sizeof(s->key));
     cfx_memzero_s(s->verifier, sizeof(s->verifier));
-    cfx_memzero_s(s->hdr, sizeof(s->hdr));
+    cfx_memzero_s(&s->hdr, sizeof(s->hdr));
     if (s->file_buf) {
         cfx_memzero_s(s->file_buf, s->file_len);
         free(s->file_buf);
@@ -131,7 +143,7 @@ static void usage(const char *prog) {
     printf("  %s passwd                            Change the passphrase\n", prog);
 }
 
-#define SUBDIR "cfx"
+#define SUBDIR ".cfx"
 
 static int get_cfx_dir(char *buf, size_t bufsz) {
 #ifdef _WIN32
@@ -151,7 +163,7 @@ static int get_cfx_dir(char *buf, size_t bufsz) {
         return -1;
     }
 #endif
-    int n = snprintf(buf, bufsz, "%s/.%s", home, SUBDIR);
+    int n = snprintf(buf, bufsz, "%s/%s", home, SUBDIR);
     if (n < 0 || (size_t)n >= bufsz) {
         fprintf(stderr, "error: path too long\n");
         return -1;
@@ -298,7 +310,8 @@ static int bge_read_visible(const char *prompt, char *buf, size_t bufsz) {
     return len;
 }
 
-static int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz, const char *pw2, int pw2_len, size_t pw2_bufsz) {
+static int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
+                        const char *pw2, int pw2_len, size_t pw2_bufsz) {
     size_t n = pw1_bufsz < pw2_bufsz ? pw1_bufsz : pw2_bufsz;
     int diff = pw1_len ^ pw2_len;
     for (size_t i = 0; i < n; ++i) {
@@ -356,10 +369,12 @@ static int bge_authenticate(const char *path, const char *pwd, size_t pwd_len,
         return -1;
     }
 
-    const uint8_t *header = file_buf;
-    uint32_t m_cost = cfx_load32_le(header + 4);
-    uint32_t t_cost = cfx_load32_le(header + 8);
-    uint32_t p      = cfx_load32_le(header + 12);
+    bge_header hdr;
+    memcpy(&hdr, file_buf, sizeof(hdr));
+
+    uint32_t m_cost = cfx_load32_le(&hdr.m_cost);
+    uint32_t t_cost = cfx_load32_le(&hdr.t_cost);
+    uint32_t p      = cfx_load32_le(&hdr.p_cost);
 
     if (m_cost < 8 || t_cost < 1 || p < 1 ||
         m_cost > 4194304 || t_cost > 100 || p > 16) {
@@ -369,12 +384,10 @@ static int bge_authenticate(const char *path, const char *pwd, size_t pwd_len,
         return -1;
     }
 
-    const uint8_t *salt = header + 16;
-
     /* one argon2 call -> 48 bytes: key(32) | verifier(16) */
     uint8_t kdf_out[48];
     int rc = cfx_argon2id(kdf_out, 48,
-        (const uint8_t *)pwd, pwd_len, salt, 16,
+        (const uint8_t *)pwd, pwd_len, hdr.salt, sizeof(hdr.salt),
         m_cost, t_cost, p);
     if (rc != 0) {
         fprintf(stderr, "error: argon2 key derivation failed\n");
@@ -400,7 +413,7 @@ static int bge_authenticate(const char *path, const char *pwd, size_t pwd_len,
 
     memcpy(store->key, kdf_out, 32);
     memcpy(store->verifier, kdf_out + 32, BGE_VERIFIER_LEN);
-    memcpy(store->hdr, header, BGE_HEADER_LEN);
+    store->hdr = hdr;
     store->file_buf = file_buf;
     store->file_len = file_len;
 
@@ -411,7 +424,7 @@ static int bge_authenticate(const char *path, const char *pwd, size_t pwd_len,
 /* AEAD decrypt using already-authenticated store. caller frees *pt_out. */
 static int bge_decrypt_store(const bge_store *store,
                               uint8_t **pt_out, size_t *pt_len) {
-    const uint8_t *nonce = store->file_buf + 32;
+    const uint8_t *nonce = store->hdr.nonce;
     size_t ct_len = store->file_len - BGE_AAD_LEN - BGE_TAG_LEN;
     const uint8_t *ct    = store->file_buf + BGE_AAD_LEN;
     const uint8_t *tag   = store->file_buf + store->file_len - BGE_TAG_LEN;
@@ -444,7 +457,7 @@ static int bge_decrypt_store(const bge_store *store,
 
 /* atomic write: flock -> write .tmp (0600) -> fsync -> rename */
 static int bge_safe_write(const char *path,
-                          const uint8_t *header,
+                          const bge_header *header,
                           const uint8_t verifier[BGE_VERIFIER_LEN],
                           const uint8_t *ct, size_t ct_len,
                           const uint8_t *tag) {
@@ -492,7 +505,7 @@ static int bge_safe_write(const char *path,
 #endif
 
     size_t ok = 1;
-    ok = ok && fwrite(header, 1, BGE_HEADER_LEN, f) == BGE_HEADER_LEN;
+    ok = ok && fwrite(header, 1, sizeof(*header), f) == sizeof(*header);
     ok = ok && fwrite(verifier, 1, BGE_VERIFIER_LEN, f) == BGE_VERIFIER_LEN;
 
     if (ct_len > 0) {
@@ -533,24 +546,25 @@ static int bge_safe_write(const char *path,
 static int bge_encrypt_write(const char *path, const uint8_t *pt, size_t pt_len,
                              const char *pwd, size_t pwd_len,
                              uint32_t m, uint32_t t, uint32_t p) {
-    uint8_t header[BGE_HEADER_LEN];
+    bge_header header;
     uint8_t kdf_out[48];
     uint8_t verifier[BGE_VERIFIER_LEN];
     int ret = -1;
 
-    memcpy(header, BGE_MAGIC, 3);
-    header[3] = BGE_VERSION;
-    cfx_store32_le(header + 4,  m);
-    cfx_store32_le(header + 8,  t);
-    cfx_store32_le(header + 12, p);
+    memcpy(header.magic, BGE_MAGIC, 3);
+    header.version = BGE_VERSION;
+    cfx_store32_le(&header.m_cost, m);
+    cfx_store32_le(&header.t_cost, t);
+    cfx_store32_le(&header.p_cost, p);
 
     cfx_srand_os();
-    cfx_rand_bytes(header + 16, 16);  /* salt */
-    cfx_rand_bytes(header + 32, 24);  /* nonce */
+    cfx_rand_bytes(header.salt,  sizeof(header.salt));
+    cfx_rand_bytes(header.nonce, sizeof(header.nonce));
 
     /* KDF -> 48 bytes: key | verifier */
     int rc = cfx_argon2id(kdf_out, 48,
-        (const uint8_t *)pwd, pwd_len, header + 16, 16, m, t, p);
+        (const uint8_t *)pwd, pwd_len,
+        header.salt, sizeof(header.salt), m, t, p);
     if (rc != 0) {
         fprintf(stderr, "error: argon2 key derivation failed\n");
         goto done;
@@ -559,8 +573,8 @@ static int bge_encrypt_write(const char *path, const uint8_t *pt, size_t pt_len,
 
     /* AAD = hdr(56) + verifier(16) */
     uint8_t aad[BGE_AAD_LEN];
-    memcpy(aad, header, BGE_HEADER_LEN);
-    memcpy(aad + BGE_HEADER_LEN, verifier, BGE_VERIFIER_LEN);
+    memcpy(aad, &header, sizeof(header));
+    memcpy(aad + sizeof(header), verifier, BGE_VERIFIER_LEN);
 
     uint8_t *ct = malloc(pt_len);
     uint8_t tag[BGE_TAG_LEN];
@@ -572,14 +586,14 @@ static int bge_encrypt_write(const char *path, const uint8_t *pt, size_t pt_len,
     rc = cfx_xchacha20_poly1305_encrypt(
         ct, tag, pt, pt_len,
         aad, BGE_AAD_LEN,
-        kdf_out, header + 32);
+        kdf_out, header.nonce);
     if (rc != 0) {
         fprintf(stderr, "error: encryption failed\n");
         free(ct);
         goto done;
     }
 
-    ret = bge_safe_write(path, header, verifier, ct, pt_len, tag);
+    ret = bge_safe_write(path, &header, verifier, ct, pt_len, tag);
 
     cfx_memzero_s(ct, pt_len);
     free(ct);
@@ -587,27 +601,24 @@ static int bge_encrypt_write(const char *path, const uint8_t *pt, size_t pt_len,
 done:
     cfx_memzero_s(kdf_out, sizeof(kdf_out));
     cfx_memzero_s(verifier, sizeof(verifier));
-    cfx_memzero_s(header, sizeof(header));
+    cfx_memzero_s(&header, sizeof(header));
     return ret;
 }
 
 /* re-encrypt with same key, fresh nonce. avoids re-running argon2. */
 static int bge_write_reusing_key(const char *path, const uint8_t *pt, size_t pt_len,
                                  const bge_store *store) {
-    uint8_t header[BGE_HEADER_LEN];
+    bge_header header = store->hdr;
     int ret = -1;
 
-    /* keep magic, params, salt from old header */
-    memcpy(header, store->hdr, BGE_HEADER_LEN);
-
-    /* fresh nonce */
+    /* fresh nonce, keep magic/params/salt from old header */
     cfx_srand_os();
-    cfx_rand_bytes(header + 32, 24);
+    cfx_rand_bytes(header.nonce, sizeof(header.nonce));
 
     /* AAD = hdr(56) + verifier(16) */
     uint8_t aad[BGE_AAD_LEN];
-    memcpy(aad, header, BGE_HEADER_LEN);
-    memcpy(aad + BGE_HEADER_LEN, store->verifier, BGE_VERIFIER_LEN);
+    memcpy(aad, &header, sizeof(header));
+    memcpy(aad + sizeof(header), store->verifier, BGE_VERIFIER_LEN);
 
     uint8_t *ct = malloc(pt_len);
     uint8_t tag[BGE_TAG_LEN];
@@ -619,20 +630,19 @@ static int bge_write_reusing_key(const char *path, const uint8_t *pt, size_t pt_
     int rc = cfx_xchacha20_poly1305_encrypt(
         ct, tag, pt, pt_len,
         aad, BGE_AAD_LEN,
-        store->key, header + 32);
+        store->key, header.nonce);
+
     if (rc != 0) {
         fprintf(stderr, "error: encryption failed\n");
-        free(ct);
         goto done;
     }
 
-    ret = bge_safe_write(path, header, store->verifier, ct, pt_len, tag);
-
-    cfx_memzero_s(ct, pt_len);
-    free(ct);
+    ret = bge_safe_write(path, &header, store->verifier, ct, pt_len, tag);
 
 done:
-    cfx_memzero_s(header, sizeof(header));
+    cfx_memzero_s(ct, pt_len);
+    free(ct);
+    cfx_memzero_s(&header, sizeof(header));
     return ret;
 }
 
@@ -914,10 +924,6 @@ static int bge_get(int argc, char **argv) {
         }
     }
 
-    if (!name) {
-        fprintf(stderr, "Usage: %s get <name> [-s path]\n", argv[0]);
-        return 1;
-    }
 
     if (!path) {
         if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
@@ -942,6 +948,19 @@ static int bge_get(int argc, char **argv) {
     rc = bge_decrypt_store(&store, &pt, &pt_len);
     bge_store_wipe(&store);
     if (rc != 0) return 1;
+
+        char name_buf[256] = {0};
+    if (!name) {
+        int r = bge_read_visible("Name: ", name_buf, sizeof(name_buf));
+        if (r <= 0) {
+            fprintf(stderr, "error: name required\n");
+            cfx_memzero_s(pt, pt_len);
+            free(pt);
+            bge_store_wipe(&store);
+            return 1;
+        }
+        name = name_buf;
+    }
 
     size_t vlen;
     const uint8_t *val = store_get(pt, pt_len, name, &vlen);
@@ -1404,9 +1423,9 @@ static int bge_info(int argc, char **argv) {
     printf("Entries: %u\n", count);
 
     /* argon2 params */
-    uint32_t m_cost = cfx_load32_le(store.hdr + 4);
-    uint32_t t_cost = cfx_load32_le(store.hdr + 8);
-    uint32_t p_cost = cfx_load32_le(store.hdr + 12);
+    uint32_t m_cost = cfx_load32_le(&store.hdr.m_cost);
+    uint32_t t_cost = cfx_load32_le(&store.hdr.t_cost);
+    uint32_t p_cost = cfx_load32_le(&store.hdr.p_cost);
     printf("Argon2:  m=%u KB, t=%u, p=%u\n", m_cost, t_cost, p_cost);
 
     bge_store_wipe(&store);
