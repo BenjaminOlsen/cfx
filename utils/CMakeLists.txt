@@ -25,7 +25,7 @@ set(UTIL_NAMES
     sign
     verify
     aead
-    pwhash
+    argon2
     xgcd
 )
 

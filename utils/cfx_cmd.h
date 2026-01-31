@@ -27,7 +27,7 @@ int cfx_x25519_run(int argc, char** argv);
 int cfx_ed25519_run(int argc, char** argv);
 int cfx_sign_run(int argc, char** argv);
 int cfx_verify_run(int argc, char** argv);
-int cfx_pwhash_run(int argc, char** argv);
+int cfx_argon2_run(int argc, char** argv);
 int cfx_xgcd_run(int argc, char** argv);
 int cfx_bge_run(int argc, char** argv);
 

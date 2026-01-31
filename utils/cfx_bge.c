@@ -233,7 +233,10 @@ static int bge_read_all(FILE *f, uint8_t **out, size_t *out_len) {
         len += r;
         if (r == 0) {
             if (feof(f)) break;
-            if (buf) { cfx_memzero_s(buf, cap); free(buf); }
+            if (buf) {
+                cfx_memzero_s(buf, cap);
+                free(buf);
+            }
             return -1;
         }
     }

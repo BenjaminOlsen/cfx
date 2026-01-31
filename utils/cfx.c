@@ -30,7 +30,7 @@ const cfx_cmd_t cfx_commands[] = {
     {"sign",            "Sign a file with Ed25519",                         cfx_sign_run},
     {"verify",          "Verify an Ed25519 signature",                      cfx_verify_run},
     {"aead",            "ChaCha20-Poly1305 AEAD (RFC 8439)",                cfx_aead_run},
-    {"pwhash",          "Password hashing with Argon2id",                   cfx_pwhash_run},
+    {"argon2",          "Password hashing with Argon2id",                   cfx_argon2_run},
     {"xgcd",            "Extended GCD (Bezout coefficients)",               cfx_xgcd_run}
 };
 

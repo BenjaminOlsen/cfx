@@ -1,4 +1,4 @@
-/* cfx_pwhash.c - Password hashing with Argon2id */
+/* cfx_argon2.c - Password hashing with Argon2id */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +37,7 @@ static char* read_password_stdin(void) {
     return line;
 }
 
-int cfx_pwhash_run(int argc, char** argv) {
+int cfx_argon2_run(int argc, char** argv) {
     uint32_t m_cost = 65536;  /* 64 MB */
     uint32_t t_cost = 3;
     uint32_t p_cost = 4;
