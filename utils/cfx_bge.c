@@ -1729,11 +1729,11 @@ static int bge_encrypt_file(int argc, char **argv) {
     int armor = 0;
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0)
+        if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0) {
             continue;
-        else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--armor") == 0)
+        } else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--armor") == 0) {
             armor = 1;
-        else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
+        } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
             if (i + 1 >= argc) { fprintf(stderr, "error: -o requires a path\n"); return 1; }
             output = argv[++i];
         } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--input") == 0) {
@@ -2337,10 +2337,12 @@ int cfx_bge_run(int argc, char **argv) {
 
     /* scan for -e/-d anywhere in argv (flag-style, not subcommand) */
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0)
+        if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0) {
             return bge_encrypt_file(argc, argv);
-        if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--decrypt") == 0)
+        }
+        if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--decrypt") == 0) {
             return bge_decrypt_file(argc, argv);
+        }
     }
 
     if (strcmp(cmd, "init")   == 0) return bge_init(argc, argv);
