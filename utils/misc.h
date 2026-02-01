@@ -17,6 +17,13 @@ int hexval(int c);
 
 /* parse hex string into exactly outlen bytes. returns 0 on success, -1 on error */
 int cfx_parse_hex(const char* s, uint8_t* out, size_t outlen);
+
+/* parse string into exactly outlen bytes with prefix-based format detection:
+ *   b64:<data>  →  base64
+ *   0x<data>    →  hex
+ *   <hex chars> →  hex (no prefix)
+ * returns 0 on success, -1 on error. */
+int cfx_parse_data(const char* s, uint8_t* out, size_t outlen);
 void cfx_print_hex(const uint8_t *buf, size_t len);
 
 /* read a line from stdin, trim whitespace. caller must free() result. */

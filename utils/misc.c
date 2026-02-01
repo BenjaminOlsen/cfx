@@ -28,6 +28,18 @@ int cfx_parse_hex(const char* s, uint8_t* out, size_t outlen) {
     return 0;
 }
 
+int cfx_parse_data(const char* s, uint8_t* out, size_t outlen) {
+    if (!s) return -1;
+    if (strncmp(s, "b64:", 4) == 0) {
+        size_t dec_len = outlen;
+        if (cfx_base64_decode(out, &dec_len, s + 4, strlen(s + 4)) != 0 ||
+            dec_len != outlen)
+            return -1;
+        return 0;
+    }
+    return cfx_parse_hex(s, out, outlen);
+}
+
 void cfx_print_hex(const uint8_t *buf, size_t len) {
     for (size_t i = 0; i < len; ++i) {
         printf("%02x", (unsigned)buf[i]);

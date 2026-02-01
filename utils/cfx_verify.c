@@ -49,9 +49,9 @@ static void usage(const char* prog) {
         "Options:\n"
         "  -k, --pubkey-file <file>   Read 32-byte public key from file\n"
         "                             Default: ~/.cfx/id_ed25519.pub\n"
-        "  -K, --pubkey <hex>         Provide public key as 64 hex chars\n"
+        "  -K, --pubkey <value>       Public key (hex, 0x hex, or b64:base64)\n"
         "  -s, --sig-file <file>      Read signature from file\n"
-        "  -S, --sig <hex>            Provide signature as 128 hex chars\n"
+        "  -S, --sig <value>          Signature (hex, 0x hex, or b64:base64)\n"
         "  -q                         Quiet mode (exit code only, no output)\n"
         "  -h, --help                 Show this help\n\n"
         "Exit codes: 0 = valid, 1 = invalid or error\n\n"
@@ -261,8 +261,8 @@ int cfx_verify_run(int argc, char** argv) {
     /* read public key */
     uint8_t pk[32];
     if (keyhex) {
-        if (cfx_parse_hex(keyhex, pk, 32) != 0) {
-            fprintf(stderr, "error: public key must be 64 hex characters\n");
+        if (cfx_parse_data(keyhex, pk, 32) != 0) {
+            fprintf(stderr, "error: cannot parse public key (expected hex, 0xhex, or b64:base64)\n");
             return 1;
         }
     } else {
@@ -274,8 +274,8 @@ int cfx_verify_run(int argc, char** argv) {
     /* read signature */
     uint8_t sig[64];
     if (sighex) {
-        if (cfx_parse_hex(sighex, sig, 64) != 0) {
-            fprintf(stderr, "error: signature must be 128 hex characters\n");
+        if (cfx_parse_data(sighex, sig, 64) != 0) {
+            fprintf(stderr, "error: cannot parse signature (expected hex, 0xhex, or b64:base64)\n");
             return 1;
         }
     } else {

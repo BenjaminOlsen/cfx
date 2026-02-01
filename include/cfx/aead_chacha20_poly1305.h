@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-/* implements the RFC8439 chacha20-poly1305 authenticated encryption with additional data algorithm */
+/* RFC8439 chacha20-poly1305 aead */
 int cfx_chacha20_poly1305_encrypt(
     uint8_t *ct,                    /* out: cyphertext, length = pt_len */
     uint8_t tag[16],                /* out */
@@ -72,19 +72,26 @@ int cfx_xchacha20_poly1305_decrypt(
 /* Encrypt one chunk. ct must have room for pt_len bytes, tag for 16 bytes.
  * chunk_counter starts at 0, increments by 1 per chunk. is_final=1 for last chunk. */
 int cfx_stream_xchacha20_poly1305_encrypt_chunk(
-    uint8_t *ct, uint8_t tag[16],
-    const uint8_t *pt, size_t pt_len,
-    uint64_t chunk_counter, int is_final,
-    const uint8_t key[32], const uint8_t base_nonce[24]);
+    uint8_t *ct,
+    uint8_t tag[16],
+    const uint8_t *pt,
+    size_t pt_len,
+    uint64_t chunk_counter,
+    int is_final,
+    const uint8_t key[32],
+    const uint8_t base_nonce[24]);
 
 /* Decrypt one chunk. Returns -1 on authentication failure.
  * chunk_counter and is_final must match what was used during encryption. */
 int cfx_stream_xchacha20_poly1305_decrypt_chunk(
     uint8_t *pt,
-    const uint8_t *ct, size_t ct_len,
+    const uint8_t *ct,
+    size_t ct_len,
     const uint8_t tag[16],
-    uint64_t chunk_counter, int is_final,
-    const uint8_t key[32], const uint8_t base_nonce[24]);
+    uint64_t chunk_counter,
+    int is_final,
+    const uint8_t key[32],
+    const uint8_t base_nonce[24]);
 
 #ifdef __cplusplus
 }

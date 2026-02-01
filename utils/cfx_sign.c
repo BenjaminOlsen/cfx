@@ -50,7 +50,7 @@ static void usage(const char* prog) {
         "Options:\n"
         "  -k, --seed-file <file>   Read 32-byte seed from file (- for stdin)\n"
         "                           Default: ~/.cfx/id_ed25519\n"
-        "  -K, --seed <hex>         Provide seed directly as 64 hex chars\n"
+        "  -K, --seed <value>       Provide seed (hex, 0x hex, or b64:base64)\n"
         "  -o <sigfile>             Write signature to file (default: stdout)\n"
         "  -x                       Output as hex (default)\n"
         "  -b64                     Output as base64\n"
@@ -222,8 +222,8 @@ int cfx_sign_run(int argc, char** argv) {
 
     uint8_t seed[32];
     if (keyhex) {
-        if (cfx_parse_hex(keyhex, seed, 32) != 0) {
-            fprintf(stderr, "error: seed must be 64 hex characters\n");
+        if (cfx_parse_data(keyhex, seed, 32) != 0) {
+            fprintf(stderr, "error: cannot parse seed (expected hex, 0xhex, or b64:base64)\n");
             return 1;
         }
     } else {

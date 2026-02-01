@@ -98,7 +98,7 @@ int cfx_chacha20_poly1271_decrypt(
     cfx_chacha20_ctx_init(&chacha_ctx, key, nonce);
     cfx_chacha20_block(&chacha_ctx, counter, poly_key);
 
-#if 0
+#if CFX_HAVE_AVX2
     cfx_poly1271_avx2_ctx_t poly_ctx;
     cfx_poly1271_avx2_init(&poly_ctx, poly_key);
     CFX_MEMZERO_S(poly_key, sizeof poly_key);
