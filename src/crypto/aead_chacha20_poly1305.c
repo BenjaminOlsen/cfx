@@ -58,17 +58,7 @@ int cfx_chacha20_poly1305_encrypt(
     return 0;
 }
 
-/* returns 0 if the data pointed to by a equals that pointed to by b*/
-static int cfx_memeq_ct(const void *a, const void *b, size_t n) {
-    const volatile uint8_t *pa = a;
-    const volatile uint8_t *pb = b;
-    uint8_t r = 0;
-    size_t i;
-    for (i = 0; i < n; i++) {
-        r |= pa[i] ^ pb[i];
-    }
-    return r;
-}
+
 
 int cfx_chacha20_poly1305_decrypt(
     uint8_t *pt,                    /* plaintext  - out, length = ct_len */
@@ -127,7 +117,8 @@ int cfx_xchacha20_poly1305_encrypt(
     const uint8_t *aad,
     size_t aad_len,
     const uint8_t key[32],
-    const uint8_t nonce[24]){
+    const uint8_t nonce[24]) {
+        
     uint8_t subkey[32];
     uint8_t subnonce[12] = {0};
 

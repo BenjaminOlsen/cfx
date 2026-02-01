@@ -5,6 +5,7 @@
 #include "cfx/rand.h"
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -230,6 +231,174 @@ static void test_xchacha_fuzz(void) {
     printf("   xchacha fuzz %d iterations OK\n", XFUZZ_ITERS);
 }
 
+/* ── streaming AEAD tests ── */
+
+static void test_stream_single_chunk(void) {
+    printf("== test_stream_single_chunk ==\n");
+
+    const uint8_t key[32] = {0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,
+                             0x18,0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f,
+                             0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27,
+                             0x28,0x29,0x2a,0x2b,0x2c,0x2d,0x2e,0x2f};
+    const uint8_t nonce[24] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,
+                               0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10,
+                               0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18};
+    const uint8_t pt[] = "Single chunk streaming test for poly1271";
+    size_t pt_len = strlen((const char *)pt);
+    uint8_t ct[128], tag[16], pt_out[128];
+
+    int rc = cfx_stream_xchacha20_poly1271_encrypt_chunk(
+        ct, tag, pt, pt_len, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1271_decrypt_chunk(
+        pt_out, ct, pt_len, tag, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+    CFX_ASSERT(memcmp(pt_out, pt, pt_len) == 0);
+    printf("   single chunk OK\n");
+}
+
+static void test_stream_multi_chunk(void) {
+    printf("== test_stream_multi_chunk ==\n");
+
+    const uint8_t key[32] = {0xAA};
+    const uint8_t nonce[24] = {0xBB};
+    size_t total = CFX_STREAM_1271_CHUNK_SIZE * 3 + 1000;
+
+    uint8_t *pt = malloc(total);
+    uint8_t *ct = malloc(total);
+    uint8_t *dec = malloc(total);
+    CFX_ASSERT(pt && ct && dec);
+
+    cfx_srand(12345);
+    for (size_t i = 0; i < total; i++) pt[i] = (uint8_t)cfx_rand();
+
+    size_t off = 0;
+    uint64_t counter = 0;
+    uint8_t tags[4][16];
+
+    /* encrypt 4 chunks: 3 full + 1 partial */
+    for (int c = 0; c < 4; c++) {
+        size_t remaining = total - off;
+        size_t chunk_len = remaining < CFX_STREAM_1271_CHUNK_SIZE ? remaining : CFX_STREAM_1271_CHUNK_SIZE;
+        int is_final = (c == 3);
+
+        int rc = cfx_stream_xchacha20_poly1271_encrypt_chunk(
+            ct + off, tags[c], pt + off, chunk_len, counter, is_final, key, nonce);
+        CFX_ASSERT(rc == 0);
+        off += chunk_len;
+        counter++;
+    }
+    CFX_ASSERT(off == total);
+
+    /* decrypt */
+    off = 0;
+    counter = 0;
+    for (int c = 0; c < 4; c++) {
+        size_t remaining = total - off;
+        size_t chunk_len = remaining < CFX_STREAM_1271_CHUNK_SIZE ? remaining : CFX_STREAM_1271_CHUNK_SIZE;
+        int is_final = (c == 3);
+
+        int rc = cfx_stream_xchacha20_poly1271_decrypt_chunk(
+            dec + off, ct + off, chunk_len, tags[c], counter, is_final, key, nonce);
+        CFX_ASSERT(rc == 0);
+        off += chunk_len;
+        counter++;
+    }
+    CFX_ASSERT(memcmp(dec, pt, total) == 0);
+
+    free(pt); free(ct); free(dec);
+    printf("   multi-chunk OK (%zu bytes, 4 chunks)\n", total);
+}
+
+static void test_stream_exact_chunk(void) {
+    printf("== test_stream_exact_chunk ==\n");
+
+    const uint8_t key[32] = {0xCC};
+    const uint8_t nonce[24] = {0xDD};
+
+    uint8_t *pt = malloc(CFX_STREAM_1271_CHUNK_SIZE);
+    uint8_t *ct = malloc(CFX_STREAM_1271_CHUNK_SIZE);
+    uint8_t *dec = malloc(CFX_STREAM_1271_CHUNK_SIZE);
+    CFX_ASSERT(pt && ct && dec);
+
+    memset(pt, 0x42, CFX_STREAM_1271_CHUNK_SIZE);
+    uint8_t tag[16];
+
+    int rc = cfx_stream_xchacha20_poly1271_encrypt_chunk(
+        ct, tag, pt, CFX_STREAM_1271_CHUNK_SIZE, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1271_decrypt_chunk(
+        dec, ct, CFX_STREAM_1271_CHUNK_SIZE, tag, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+    CFX_ASSERT(memcmp(dec, pt, CFX_STREAM_1271_CHUNK_SIZE) == 0);
+
+    free(pt); free(ct); free(dec);
+    printf("   exact chunk OK\n");
+}
+
+static void test_stream_wrong_key(void) {
+    printf("== test_stream_wrong_key ==\n");
+
+    const uint8_t key[32] = {0x01};
+    const uint8_t bad_key[32] = {0x02};
+    const uint8_t nonce[24] = {0x03};
+    const uint8_t pt[] = "test data";
+    size_t pt_len = strlen((const char *)pt);
+    uint8_t ct[64], tag[16], pt_out[64];
+
+    int rc = cfx_stream_xchacha20_poly1271_encrypt_chunk(
+        ct, tag, pt, pt_len, 0, 1, key, nonce);
+    CFX_ASSERT(rc == 0);
+
+    rc = cfx_stream_xchacha20_poly1271_decrypt_chunk(
+        pt_out, ct, pt_len, tag, 0, 1, bad_key, nonce);
+    CFX_ASSERT(rc != 0);
+    printf("   wrong key rejected OK\n");
+}
+
+static void test_stream_chunk_reorder(void) {
+    printf("== test_stream_chunk_reorder ==\n");
+
+    const uint8_t key[32] = {0x50};
+    const uint8_t nonce[24] = {0x60};
+    const uint8_t pt0[] = "chunk zero";
+    const uint8_t pt1[] = "chunk one";
+    uint8_t ct0[64], ct1[64], tag0[16], tag1[16], pt_out[64];
+
+    cfx_stream_xchacha20_poly1271_encrypt_chunk(ct0, tag0, pt0, 10, 0, 0, key, nonce);
+    cfx_stream_xchacha20_poly1271_encrypt_chunk(ct1, tag1, pt1, 9, 1, 1, key, nonce);
+
+    /* try decrypting chunk 1's data with chunk 0's counter → should fail */
+    int rc = cfx_stream_xchacha20_poly1271_decrypt_chunk(
+        pt_out, ct1, 9, tag1, 0, 1, key, nonce);
+    CFX_ASSERT(rc != 0);
+
+    /* try decrypting chunk 0's data with chunk 1's counter → should fail */
+    rc = cfx_stream_xchacha20_poly1271_decrypt_chunk(
+        pt_out, ct0, 10, tag0, 1, 0, key, nonce);
+    CFX_ASSERT(rc != 0);
+    printf("   reorder rejected OK\n");
+}
+
+static void test_stream_extension(void) {
+    printf("== test_stream_extension ==\n");
+
+    const uint8_t key[32] = {0x70};
+    const uint8_t nonce[24] = {0x80};
+    const uint8_t pt[] = "only chunk";
+    uint8_t ct[64], tag[16], pt_out[64];
+
+    cfx_stream_xchacha20_poly1271_encrypt_chunk(ct, tag, pt, 10, 0, 1, key, nonce);
+
+    /* try decrypting as non-final → should fail */
+    int rc = cfx_stream_xchacha20_poly1271_decrypt_chunk(
+        pt_out, ct, 10, tag, 0, 0, key, nonce);
+    CFX_ASSERT(rc != 0);
+    printf("   extension attack rejected OK\n");
+}
+
 int main(void) {
     CFX_TEST(test_basic_roundtrip);
     CFX_TEST(test_bad_tag);
@@ -239,6 +408,12 @@ int main(void) {
     CFX_TEST(test_xchacha_roundtrip);
     CFX_TEST(test_fuzz);
     CFX_TEST(test_xchacha_fuzz);
+    CFX_TEST(test_stream_single_chunk);
+    CFX_TEST(test_stream_multi_chunk);
+    CFX_TEST(test_stream_exact_chunk);
+    CFX_TEST(test_stream_wrong_key);
+    CFX_TEST(test_stream_chunk_reorder);
+    CFX_TEST(test_stream_extension);
     puts("ok");
     return 0;
 }

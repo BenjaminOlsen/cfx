@@ -2,6 +2,7 @@
 
 #include "cfx/argon2.h"
 #include "cfx/aead_chacha20_poly1305.h"
+#include "cfx/aead_chacha20_poly1271.h"
 #include "cfx/rand.h"
 #include "cfx/memory.h"
 #include "cfx/base64.h"
@@ -56,7 +57,8 @@
  */
 #define BGE_MAGIC         "BGE"
 #define BGE_VERSION       2       /* KV store format version */
-#define BGE_STREAM_VERSION 3      /* streaming file encryption version */
+#define BGE_STREAM_VERSION 3      /* streaming file encryption (poly1305) */
+#define BGE_STREAM_VERSION_1271 4 /* streaming file encryption (poly1271) */
 #define BGE_VERSION_STR   "2.2.0"
 #define BGE_HEADER_LEN    56
 #define BGE_VERIFIER_LEN  16
@@ -1744,12 +1746,12 @@ static int bge_encrypt_file(int argc, char **argv) {
         return 1;
     }
 
-    /* build v3 header */
+    /* build v4 header (poly1271) */
     bge_header header;
     uint8_t kdf_out[48], verifier[BGE_VERIFIER_LEN];
 
     memcpy(header.magic, BGE_MAGIC, 3);
-    header.version = BGE_STREAM_VERSION;
+    header.version = BGE_STREAM_VERSION_1271;
     cfx_store32_le(&header.m_cost, BGE_DEFAULT_M);
     cfx_store32_le(&header.t_cost, BGE_DEFAULT_T);
     cfx_store32_le(&header.p_cost, BGE_DEFAULT_P);
@@ -1809,14 +1811,14 @@ static int bge_encrypt_file(int argc, char **argv) {
     EMIT(&header, sizeof(header));
     EMIT(verifier, BGE_VERIFIER_LEN);
 
-    /* streaming encrypt loop */
-    uint8_t pt_buf[CFX_STREAM_CHUNK_SIZE];
-    uint8_t ct_buf[CFX_STREAM_CHUNK_SIZE];
-    uint8_t tag[CFX_STREAM_TAG_SIZE];
+    /* streaming encrypt loop (poly1271) */
+    uint8_t pt_buf[CFX_STREAM_1271_CHUNK_SIZE];
+    uint8_t ct_buf[CFX_STREAM_1271_CHUNK_SIZE];
+    uint8_t tag[CFX_STREAM_1271_TAG_SIZE];
     uint64_t chunk_counter = 0;
 
     for (;;) {
-        size_t nread = fread(pt_buf, 1, CFX_STREAM_CHUNK_SIZE, inf);
+        size_t nread = fread(pt_buf, 1, CFX_STREAM_1271_CHUNK_SIZE, inf);
         if (nread == 0 && ferror(inf)) {
             fprintf(stderr, "error: read failed\n");
             ret = 1; goto done;
@@ -1824,10 +1826,10 @@ static int bge_encrypt_file(int argc, char **argv) {
 
         /* peek ahead to determine if this is the final chunk */
         int is_final = feof(inf);
-        if (!is_final && nread < CFX_STREAM_CHUNK_SIZE)
+        if (!is_final && nread < CFX_STREAM_1271_CHUNK_SIZE)
             is_final = 1;
 
-        rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+        rc = cfx_stream_xchacha20_poly1271_encrypt_chunk(
             ct_buf, tag, pt_buf, nread,
             chunk_counter, is_final, kdf_out, header.nonce);
         cfx_memzero_s(pt_buf, sizeof(pt_buf));
@@ -1838,7 +1840,7 @@ static int bge_encrypt_file(int argc, char **argv) {
         }
 
         EMIT(ct_buf, nread);
-        EMIT(tag, CFX_STREAM_TAG_SIZE);
+        EMIT(tag, CFX_STREAM_1271_TAG_SIZE);
         chunk_counter++;
 
         if (is_final) break;
@@ -1956,7 +1958,7 @@ static int bge_decrypt_v3(const uint8_t *file_buf, size_t file_len,
     return 0;
 }
 
-/* v3 streaming decrypt directly from FILE* (no buffering) */
+/* v3 streaming decrypt directly from FILE* (no buffering) — poly1305 */
 static int bge_decrypt_v3_stream(FILE *inf,
                                   const uint8_t key[32], const uint8_t nonce[24],
                                   FILE *outf) {
@@ -2038,6 +2040,139 @@ static int bge_decrypt_v3_stream(FILE *inf,
     return 0;
 }
 
+/* v4 decrypt from in-memory buffer (used for armored v4 input) — poly1271 */
+static int bge_decrypt_v4(const uint8_t *file_buf, size_t file_len,
+                          const uint8_t key[32], const uint8_t nonce[24],
+                          FILE *outf) {
+    const uint8_t *p = file_buf + BGE_AAD_LEN;
+    const uint8_t *end = file_buf + file_len;
+    uint8_t pt_buf[CFX_STREAM_1271_CHUNK_SIZE];
+    uint64_t chunk_counter = 0;
+
+    while (p < end) {
+        size_t remaining = (size_t)(end - p);
+        if (remaining < CFX_STREAM_1271_TAG_SIZE) {
+            fprintf(stderr, "error: truncated stream (no tag)\n");
+            return -1;
+        }
+
+        size_t chunk_plus_tag;
+        int is_final;
+
+        if (remaining <= CFX_STREAM_1271_CHUNK_SIZE + CFX_STREAM_1271_TAG_SIZE) {
+            chunk_plus_tag = remaining;
+            is_final = 1;
+        } else {
+            chunk_plus_tag = CFX_STREAM_1271_CHUNK_SIZE + CFX_STREAM_1271_TAG_SIZE;
+            is_final = 0;
+        }
+
+        size_t ct_len = chunk_plus_tag - CFX_STREAM_1271_TAG_SIZE;
+        const uint8_t *ct  = p;
+        const uint8_t *tag = p + ct_len;
+
+        int rc = cfx_stream_xchacha20_poly1271_decrypt_chunk(
+            pt_buf, ct, ct_len, tag, chunk_counter, is_final, key, nonce);
+        if (rc != 0) {
+            fprintf(stderr, "error: chunk %llu authentication failed\n",
+                    (unsigned long long)chunk_counter);
+            cfx_memzero_s(pt_buf, sizeof(pt_buf));
+            return -1;
+        }
+
+        if (ct_len > 0 && fwrite(pt_buf, 1, ct_len, outf) != ct_len) {
+            cfx_memzero_s(pt_buf, sizeof(pt_buf));
+            return -1;
+        }
+
+        cfx_memzero_s(pt_buf, ct_len);
+        p += chunk_plus_tag;
+        chunk_counter++;
+    }
+
+    return 0;
+}
+
+/* v4 streaming decrypt directly from FILE* (no buffering) — poly1271 */
+static int bge_decrypt_v4_stream(FILE *inf,
+                                  const uint8_t key[32], const uint8_t nonce[24],
+                                  FILE *outf) {
+    uint8_t chunk_buf[CFX_STREAM_1271_CHUNK_SIZE + CFX_STREAM_1271_TAG_SIZE];
+    uint8_t pt_buf[CFX_STREAM_1271_CHUNK_SIZE];
+    uint64_t chunk_counter = 0;
+    uint8_t lookahead;
+    int have_lookahead = 0;
+
+    for (;;) {
+        size_t off = 0;
+        if (have_lookahead) {
+            chunk_buf[0] = lookahead;
+            off = 1;
+            have_lookahead = 0;
+        }
+
+        size_t nread = fread(chunk_buf + off, 1, sizeof(chunk_buf) - off, inf);
+        size_t total = off + nread;
+
+        if (nread == 0 && off == 0 && ferror(inf)) {
+            fprintf(stderr, "error: read failed\n");
+            cfx_memzero_s(chunk_buf, sizeof(chunk_buf));
+            return -1;
+        }
+
+        if (total == 0) {
+            fprintf(stderr, "error: empty stream (missing final chunk)\n");
+            return -1;
+        }
+
+        if (total < CFX_STREAM_1271_TAG_SIZE) {
+            fprintf(stderr, "error: truncated stream (no tag)\n");
+            cfx_memzero_s(chunk_buf, sizeof(chunk_buf));
+            return -1;
+        }
+
+        int is_final;
+        if (total < sizeof(chunk_buf)) {
+            is_final = 1;
+        } else {
+            size_t peeked = fread(&lookahead, 1, 1, inf);
+            if (peeked == 0) {
+                is_final = 1;
+            } else {
+                is_final = 0;
+                have_lookahead = 1;
+            }
+        }
+
+        size_t ct_len = total - CFX_STREAM_1271_TAG_SIZE;
+        const uint8_t *tag = chunk_buf + ct_len;
+
+        int rc = cfx_stream_xchacha20_poly1271_decrypt_chunk(
+            pt_buf, chunk_buf, ct_len, tag, chunk_counter, is_final, key, nonce);
+        if (rc != 0) {
+            fprintf(stderr, "error: chunk %llu authentication failed\n",
+                    (unsigned long long)chunk_counter);
+            cfx_memzero_s(pt_buf, sizeof(pt_buf));
+            cfx_memzero_s(chunk_buf, sizeof(chunk_buf));
+            return -1;
+        }
+
+        if (ct_len > 0 && fwrite(pt_buf, 1, ct_len, outf) != ct_len) {
+            cfx_memzero_s(pt_buf, sizeof(pt_buf));
+            cfx_memzero_s(chunk_buf, sizeof(chunk_buf));
+            return -1;
+        }
+
+        cfx_memzero_s(pt_buf, ct_len);
+        chunk_counter++;
+
+        if (is_final) break;
+    }
+
+    cfx_memzero_s(chunk_buf, sizeof(chunk_buf));
+    return 0;
+}
+
 static int bge_decrypt_file(int argc, char **argv) {
     const char *output = NULL;
     const char *input = NULL;
@@ -2075,12 +2210,13 @@ static int bge_decrypt_file(int argc, char **argv) {
     uint8_t hdr_peek[BGE_AAD_LEN];
     size_t hdr_n = fread(hdr_peek, 1, BGE_AAD_LEN, inf);
 
-    int is_binary_v3 = (hdr_n == BGE_AAD_LEN &&
-                        memcmp(hdr_peek, BGE_MAGIC, 3) == 0 &&
-                        hdr_peek[3] == BGE_STREAM_VERSION);
+    int is_binary_stream = (hdr_n == BGE_AAD_LEN &&
+                            memcmp(hdr_peek, BGE_MAGIC, 3) == 0 &&
+                            (hdr_peek[3] == BGE_STREAM_VERSION ||
+                             hdr_peek[3] == BGE_STREAM_VERSION_1271));
 
-    if (is_binary_v3) {
-        /* ── non-armored v3: true streaming decrypt from FILE* ── */
+    if (is_binary_stream) {
+        /* ── non-armored v3/v4: true streaming decrypt from FILE* ── */
         bge_header hdr;
         memcpy(&hdr, hdr_peek, sizeof(hdr));
 
@@ -2139,7 +2275,11 @@ static int bge_decrypt_file(int argc, char **argv) {
             }
         }
 
-        int ret = bge_decrypt_v3_stream(inf, kdf_out, hdr.nonce, outf);
+        int ret;
+        if (hdr.version == BGE_STREAM_VERSION_1271)
+            ret = bge_decrypt_v4_stream(inf, kdf_out, hdr.nonce, outf);
+        else
+            ret = bge_decrypt_v3_stream(inf, kdf_out, hdr.nonce, outf);
         cfx_memzero_s(kdf_out, sizeof(kdf_out));
         cfx_memzero_s(hdr_peek, sizeof(hdr_peek));
         if (input) fclose(inf);
@@ -2196,7 +2336,8 @@ static int bge_decrypt_file(int argc, char **argv) {
     }
 
     uint8_t version = file_buf[3];
-    if (version != BGE_VERSION && version != BGE_STREAM_VERSION) {
+    if (version != BGE_VERSION && version != BGE_STREAM_VERSION &&
+        version != BGE_STREAM_VERSION_1271) {
         fprintf(stderr, "error: unsupported BGE version %u\n", version);
         goto fail;
     }
@@ -2259,10 +2400,13 @@ static int bge_decrypt_file(int argc, char **argv) {
 
     /* dispatch by version */
     int ret;
-    if (version == BGE_VERSION)
+    if (version == BGE_VERSION) {
         ret = bge_decrypt_v2(file_buf, file_len, kdf_out, hdr.nonce, outf);
-    else
+    } else if (version == BGE_STREAM_VERSION) {
         ret = bge_decrypt_v3(file_buf, file_len, kdf_out, hdr.nonce, outf);
+    } else {
+        ret = bge_decrypt_v4(file_buf, file_len, kdf_out, hdr.nonce, outf);
+    }
 
     cfx_memzero_s(kdf_out, sizeof(kdf_out));
     if (output) fclose(outf);

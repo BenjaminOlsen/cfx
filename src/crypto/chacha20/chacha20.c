@@ -84,32 +84,48 @@ void cfx_chacha20_block8(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[
 }
 
 void cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const uint8_t *pt, size_t pt_len, uint8_t *ct) {
-    /* bulk: 8 blocks (512 bytes) at a time — uses AVX2 SIMD when available */
+    /* 8 blocks (512 bytes) at a time */
     while (pt_len >= 512) {
         uint8_t ks[8][64];
         cfx_chacha20_block8(ctx, *counter, ks);
         *counter += 8;
-        /* TODO: use _mm256 intrinsics if available */
+#if defined(CFX_CAP_AVX2)
+        for (int j = 0; j < 16; ++j) {
+            __m256i k = _mm256_loadu_si256((const __m256i *)((const uint8_t *)ks + j * 32));
+            __m256i p = _mm256_loadu_si256((const __m256i *)(pt + j * 32));
+            _mm256_storeu_si256((__m256i *)(ct + j * 32), _mm256_xor_si256(p, k));
+        }
+#else
         for (int blk = 0; blk < 8; ++blk) {
             for (size_t i = 0; i < 64; ++i) {
                 ct[blk * 64 + i] = pt[blk * 64 + i] ^ ks[blk][i];
             }
         }
+#endif
         
         pt += 512;
         ct += 512;
         pt_len -= 512;
     }
     
+    /* 4 blocks - 256 bytes at a time */
     while (pt_len >= 256) {
         uint8_t ks[4][64];
         cfx_chacha20_block4(ctx, *counter, ks);
         *counter += 4;
+#if defined(CFX_CAP_AVX2)
+        for (int j = 0; j < 8; ++j) {
+            __m256i k = _mm256_loadu_si256((const __m256i *)((const uint8_t *)ks + j * 32));
+            __m256i p = _mm256_loadu_si256((const __m256i *)(pt + j * 32));
+            _mm256_storeu_si256((__m256i *)(ct + j * 32), _mm256_xor_si256(p, k));
+        }
+#else
         for (int blk = 0; blk < 4; ++blk) {
             for (size_t i = 0; i < 64; ++i) {
                 ct[blk * 64 + i] = pt[blk * 64 + i] ^ ks[blk][i];
             }
         }
+#endif
         pt += 256;
         ct += 256;
         pt_len -= 256;

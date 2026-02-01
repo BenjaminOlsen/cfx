@@ -56,6 +56,28 @@ int cfx_xchacha20_poly1271_decrypt(
     const uint8_t tag[16]
     );
 
+/*
+ * Streaming AEAD (STREAM construction) over XChaCha20-Poly1271.
+ *
+ * Same STREAM design as the Poly1305 variant: per-chunk nonces derived from
+ * base_nonce XOR'd with chunk counter + final flag, 64KB chunks, 16-byte tags.
+ */
+#define CFX_STREAM_1271_CHUNK_SIZE  65536u
+#define CFX_STREAM_1271_TAG_SIZE    16u
+
+int cfx_stream_xchacha20_poly1271_encrypt_chunk(
+    uint8_t *ct, uint8_t tag[16],
+    const uint8_t *pt, size_t pt_len,
+    uint64_t chunk_counter, int is_final,
+    const uint8_t key[32], const uint8_t base_nonce[24]);
+
+int cfx_stream_xchacha20_poly1271_decrypt_chunk(
+    uint8_t *pt,
+    const uint8_t *ct, size_t ct_len,
+    const uint8_t tag[16],
+    uint64_t chunk_counter, int is_final,
+    const uint8_t key[32], const uint8_t base_nonce[24]);
+
 #ifdef __cplusplus
 }
 #endif

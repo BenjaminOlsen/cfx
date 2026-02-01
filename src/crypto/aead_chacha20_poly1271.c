@@ -31,7 +31,7 @@ int cfx_chacha20_poly1271_encrypt(
     const uint8_t *aad,
     size_t aad_len,
     const uint8_t key[32],
-    const uint8_t nonce[12]){
+    const uint8_t nonce[12]) {
     uint8_t poly_key[64] = {0};
     uint8_t len_block[16] = {0};
     const uint8_t zeros[15] = {0};
@@ -98,7 +98,7 @@ int cfx_chacha20_poly1271_decrypt(
     cfx_chacha20_ctx_init(&chacha_ctx, key, nonce);
     cfx_chacha20_block(&chacha_ctx, counter, poly_key);
 
-#if CFX_HAVE_AVX2
+#if 0
     cfx_poly1271_avx2_ctx_t poly_ctx;
     cfx_poly1271_avx2_init(&poly_ctx, poly_key);
     CFX_MEMZERO_S(poly_key, sizeof poly_key);
@@ -183,5 +183,43 @@ int cfx_xchacha20_poly1271_decrypt(
     int rc = cfx_chacha20_poly1271_decrypt(pt, ct, ct_len, aad, aad_len, subkey, subnonce, tag);
 
     CFX_MEMZERO_S(subkey, sizeof subkey);
+    return rc;
+}
+
+/* ── Streaming AEAD (STREAM construction) over XChaCha20-Poly1271 ── */
+
+static void stream_derive_nonce_1271(uint8_t out[24], const uint8_t base[24],
+                                      uint64_t counter, int is_final) {
+    memcpy(out, base, 24);
+    out[20] ^= (uint8_t)(counter);
+    out[21] ^= (uint8_t)(counter >> 8);
+    out[22] ^= (uint8_t)(counter >> 16);
+    out[23] ^= (uint8_t)((counter >> 24) & 0x7F) | (is_final ? 0x80 : 0x00);
+}
+
+int cfx_stream_xchacha20_poly1271_encrypt_chunk(
+    uint8_t *ct, uint8_t tag[16],
+    const uint8_t *pt, size_t pt_len,
+    uint64_t chunk_counter, int is_final,
+    const uint8_t key[32], const uint8_t base_nonce[24]) {
+
+    uint8_t nonce[24];
+    stream_derive_nonce_1271(nonce, base_nonce, chunk_counter, is_final);
+    int rc = cfx_xchacha20_poly1271_encrypt(ct, tag, pt, pt_len, NULL, 0, key, nonce);
+    CFX_MEMZERO_S(nonce, sizeof nonce);
+    return rc;
+}
+
+int cfx_stream_xchacha20_poly1271_decrypt_chunk(
+    uint8_t *pt,
+    const uint8_t *ct, size_t ct_len,
+    const uint8_t tag[16],
+    uint64_t chunk_counter, int is_final,
+    const uint8_t key[32], const uint8_t base_nonce[24]) {
+
+    uint8_t nonce[24];
+    stream_derive_nonce_1271(nonce, base_nonce, chunk_counter, is_final);
+    int rc = cfx_xchacha20_poly1271_decrypt(pt, ct, ct_len, NULL, 0, key, nonce, tag);
+    CFX_MEMZERO_S(nonce, sizeof nonce);
     return rc;
 }

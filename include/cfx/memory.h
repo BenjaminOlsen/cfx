@@ -19,6 +19,19 @@ extern "C" {
  * A: To communicate that they're just like macros - they "inflate" at the call sites.
  **/
 
+
+/* returns 0 if the data pointed to by a equals that pointed to by b*/
+static inline int cfx_memeq_ct(const void *a, const void *b, size_t n) {
+    const volatile uint8_t *pa = a;
+    const volatile uint8_t *pb = b;
+    uint8_t r = 0;
+    size_t i;
+    for (i = 0; i < n; i++) {
+        r |= pa[i] ^ pb[i];
+    }
+    return r;
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 #define CFX_MEMZERO_S(ptr, size) cfx_memzero_s((ptr), (size))
 
