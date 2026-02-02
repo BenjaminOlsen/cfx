@@ -228,6 +228,61 @@ int is_numeric(const char *s) {
     return 1;
 }
 
+int clip_copy(const uint8_t *data, size_t len) {
+    if (!data || len == 0) return -1;
+
+#ifdef _WIN32
+    FILE *p = _popen("clip.exe", "wb");
+    if (!p) {
+        fprintf(stderr, "error: cannot open clip.exe\n");
+        return -1;
+    }
+    fwrite(data, 1, len, p);
+    int rc = _pclose(p);
+    return rc == 0 ? 0 : -1;
+#elif defined(__APPLE__)
+    FILE *p = popen("pbcopy", "w");
+    if (!p) {
+        fprintf(stderr, "error: cannot open pbcopy\n");
+        return -1;
+    }
+    fwrite(data, 1, len, p);
+    int rc = pclose(p);
+    return rc == 0 ? 0 : -1;
+#else
+    /* Linux: try wl-copy, xclip, xsel in order */
+    const char *cmds[] = {
+        "wl-copy",
+        "xclip -selection clipboard",
+        "xsel --clipboard --input",
+    };
+    const char *checks[] = {
+        "command -v wl-copy >/dev/null 2>&1",
+        "command -v xclip >/dev/null 2>&1",
+        "command -v xsel >/dev/null 2>&1",
+    };
+    const char *cmd = NULL;
+    for (int i = 0; i < 3; i++) {
+        if (system(checks[i]) == 0) {
+            cmd = cmds[i];
+            break;
+        }
+    }
+    if (!cmd) {
+        fprintf(stderr, "error: no clipboard tool found (install wl-copy, xclip, or xsel)\n");
+        return -1;
+    }
+    FILE *p = popen(cmd, "w");
+    if (!p) {
+        fprintf(stderr, "error: cannot run %s\n", cmd);
+        return -1;
+    }
+    fwrite(data, 1, len, p);
+    int rc = pclose(p);
+    return rc == 0 ? 0 : -1;
+#endif
+}
+
 void store_print_names(const uint8_t *pt, size_t pt_len) {
     const uint8_t *p = pt;
     const uint8_t *end = pt + pt_len;

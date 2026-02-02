@@ -226,5 +226,6 @@ int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
                  const char *pw2, int pw2_len, size_t pw2_bufsz);
 int is_numeric(const char *s);
 void store_print_names(const uint8_t *pt, size_t pt_len);
+int clip_copy(const uint8_t *data, size_t len);
 
 #endif /* CFX_BGE_INTERNAL_H */
