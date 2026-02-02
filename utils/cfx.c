@@ -5,7 +5,8 @@
 #include "cfx_cmd.h"
 
 const cfx_cmd_t cfx_commands[] = {
-    {"bge",             "Encrypted secrets store (BGE)",                    cfx_bge_run},
+    {"bge",             "File encryption (XChaCha20-Poly1305)",             cfx_bge_run},
+    {"store",           "Passphrase-protected secrets store",               cfx_store_run},
     {"choose",          "Compute binomial coefficients C(n,k)",             cfx_choose_run},
     {"dc",              "Desk calculator for big integers",                 cfx_dc_run},
     {"div",             "Divide two big integers",                          cfx_div_run},

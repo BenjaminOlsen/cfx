@@ -73,7 +73,6 @@ int bge_armor_decode(const uint8_t *text, size_t text_len,
 }
 
 /*  v2 single-shot decrypt from in-memory buffer ─ */
-
 static int bge_decrypt_v2(const uint8_t *file_buf, size_t file_len,
                           const uint8_t key[32], const uint8_t nonce[24],
                           FILE *outf) {
@@ -158,7 +157,6 @@ static int bge_decrypt_v3(const uint8_t *file_buf, size_t file_len,
 }
 
 /*  v3 streaming decrypt directly from FILE* ─ */
-
 static int bge_decrypt_v3_stream(FILE *inf,
                                   const uint8_t key[32], const uint8_t nonce[24],
                                   FILE *outf) {
@@ -407,8 +405,6 @@ done:
     if (output && outf) fclose(outf);
     return ret;
 }
-
-/*  decrypt file ─ */
 
 int bge_decrypt_file(int argc, char **argv) {
     const char *output = NULL;

@@ -64,8 +64,6 @@ void bge_v4_slot_to_buf(uint8_t buf[BGE_V4_SLOT_LEN], const bge_v4_slot *slot) {
     memcpy(p, slot->wrap_tag,    16);
 }
 
-/*  v2 crypto ─ */
-
 int bge_authenticate_buf(const uint8_t *file_buf, size_t file_len,
                          const char *pwd, size_t pwd_len, bge_store *store) {
     if (file_len < BGE_MIN_FILE ||

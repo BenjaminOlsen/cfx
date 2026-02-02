@@ -1,6 +1,7 @@
 # List of utility names (without cfx_ prefix for cleaner iteration)
 set(UTIL_NAMES
     bge
+    store
     choose
     dc
     div
@@ -41,7 +42,7 @@ foreach(util_name IN LISTS UTIL_NAMES)
 
 endforeach()
 
-list(APPEND UTIL_SOURCES cfx_bge_crypto.c cfx_bge_store.c cfx_bge_file.c)
+list(APPEND UTIL_SOURCES cfx_bge_crypto.c cfx_bge_store.c cfx_bge_file.c cfx_bge_common.c)
 
 add_library(cfx_util_lib STATIC ${UTIL_SOURCES})
 target_link_libraries(cfx_util_lib PUBLIC cfx::cfx cfx_misc)

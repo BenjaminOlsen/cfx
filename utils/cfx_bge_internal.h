@@ -187,7 +187,7 @@ int bge_udecrypt(const bge_ustore *us, uint8_t **pt_out, size_t *pt_len);
 int bge_uwrite(const char *path, const uint8_t *pt, size_t pt_len,
                const bge_ustore *us);
 
-/*  cfx_bge_store.c ─ */
+/*  cfx_bge_store.c  */
 
 const uint8_t *store_name_by_index(const uint8_t *pt, size_t pt_len,
                                    unsigned idx, uint16_t *name_len);
@@ -210,12 +210,21 @@ int bge_armor_decode(const uint8_t *text, size_t text_len,
 int bge_encrypt_file(int argc, char **argv);
 int bge_decrypt_file(int argc, char **argv);
 
-/*  cfx_bge.c (I/O helpers used by other files)  */
+/*  cfx_bge_common.c (I/O, path, and utility helpers)  */
 
 int bge_read_all(FILE *f, uint8_t **out, size_t *out_len);
 int bge_read_secret(const char *prompt, char *buf, size_t bufsz);
 int bge_read_passphrase(const char *prompt, char *buf, size_t bufsz);
 int bge_read_visible(const char *prompt, char *buf, size_t bufsz);
 int prompt_passphrase(char *pwd, size_t pwdsz);
+
+int get_cfx_dir(char *buf, size_t bufsz);
+int bge_default_path(char *buf, size_t bufsz);
+int ensure_cfx_dir(void);
+
+int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
+                 const char *pw2, int pw2_len, size_t pw2_bufsz);
+int is_numeric(const char *s);
+void store_print_names(const uint8_t *pt, size_t pt_len);
 
 #endif /* CFX_BGE_INTERNAL_H */
