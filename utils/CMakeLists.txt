@@ -41,6 +41,8 @@ foreach(util_name IN LISTS UTIL_NAMES)
 
 endforeach()
 
+list(APPEND UTIL_SOURCES cfx_bge_crypto.c cfx_bge_store.c cfx_bge_file.c)
+
 add_library(cfx_util_lib STATIC ${UTIL_SOURCES})
 target_link_libraries(cfx_util_lib PUBLIC cfx::cfx cfx_misc)
 target_include_directories(cfx_util_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

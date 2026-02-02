@@ -1,176 +1,12 @@
-/* cfx_bge.c -- passphrase-protected secrets store */
+/* cfx_bge.c -- subcommands, dispatch, I/O helpers for BGE */
 
-#include "cfx/argon2.h"
-#include "cfx/aead_chacha20_poly1305.h"
-#include "cfx/rand.h"
-#include "cfx/memory.h"
-#include "cfx/base64.h"
+#include "cfx_bge_internal.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/stat.h>
+/* ── globals ──────────────────────────────────────────────── */
 
-#ifdef _WIN32
-#include <io.h>
-#include <fcntl.h>
-#include <direct.h>
-#include <shlobj.h>
-#define mkdir_p(path) _mkdir(path)
-#ifndef S_ISDIR
-#define S_ISDIR(m) (((m) & _S_IFMT) == _S_IFDIR)
-#endif
-#else
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/file.h>
-#include <pwd.h>
-#include <termios.h>
-#define mkdir_p(path) mkdir(path, 0700)
-#endif
+const char *g_passphrase_arg;
 
-#include "cfx_cmd.h"
-#include "cfx_keyfile.h"
-#include "misc.h"
-#include "cfx/macros.h"
-
-/*
- * BGE v2 file layout:
- *
- *   [0..2]    BGE_MAGIC "BGE"
- *   [3]       BGE_VERSION
- *   [4..15]   argon2 params (m, t, p) LE32 each
- *   [16..31]  salt
- *   [32..55]  nonce
- *   [56..71]  key verifier
- *   [72..N]   ciphertext
- *   [last 16] Poly1305 tag
- *
- * argon2 output is 48 bytes: key(32) | verifier(16), one KDF call.
- * AAD = bytes 0-71 (hdr + verifier).  min file = 88 bytes.
- *
- * plaintext is length-prefixed KV pairs:
- *   entry = u16le(name_len) | name | u32le(val_len) | val
- */
-#define BGE_MAGIC         "BGE"
-#define BGE_VERSION       2       /* KV store format version */
-#define BGE_STREAM_VERSION 3      /* streaming file encryption */
-#define BGE_VERSION_STR   "2.2.0"
-#define BGE_HEADER_LEN    56
-#define BGE_VERIFIER_LEN  16
-#define BGE_AAD_LEN       (BGE_HEADER_LEN + BGE_VERIFIER_LEN)  /* 72 */
-#define BGE_TAG_LEN       16
-#define BGE_MIN_FILE      (BGE_AAD_LEN + BGE_TAG_LEN)          /* 88: empty store */
-
-typedef struct {
-    uint8_t  magic[3];
-    uint8_t  version;
-    uint32_t m_cost;    /* little-endian on disk */
-    uint32_t t_cost;    /* little-endian on disk */
-    uint32_t p_cost;    /* little-endian on disk */
-    uint8_t  salt[16];
-    uint8_t  nonce[24];
-} bge_header;
-CFX_STATIC_ASSERT(sizeof(bge_header) == BGE_HEADER_LEN, bge_header_packing);
-
-typedef struct {
-    bge_header hdr;
-    uint8_t    key[32];
-    uint8_t    verifier[BGE_VERIFIER_LEN];
-    uint8_t   *file_buf;
-    size_t     file_len;
-} bge_store;
-
-static void bge_store_wipe(bge_store *s) {
-    cfx_memzero_s(s->key, sizeof(s->key));
-    cfx_memzero_s(s->verifier, sizeof(s->verifier));
-    cfx_memzero_s(&s->hdr, sizeof(s->hdr));
-    if (s->file_buf) {
-        cfx_memzero_s(s->file_buf, s->file_len);
-        free(s->file_buf);
-        s->file_buf = NULL;
-    }
-    s->file_len = 0;
-}
-
-#define BGE_DEFAULT_M   0x10000  /* 64 MB (in KB) */
-#define BGE_DEFAULT_T   3
-#define BGE_DEFAULT_P   4
-
-#define BGE_READ_MAX    (128u * 1024u * 1024u)  /* 16 MB */
-
-#define BGE_ARMOR_BEGIN "-----BEGIN BGE MESSAGE-----\n"
-#define BGE_ARMOR_END   "\n-----END BGE MESSAGE-----\n"
-
-static int bge_is_armored(const uint8_t *buf, size_t len) {
-    return len >= 28 && memcmp(buf, "-----BEGIN BGE MESSAGE-----", 27) == 0;
-}
-
-/* wrap binary blob in PEM-style armor with 76-char lines. caller frees *out. */
-static int bge_armor_encode(const uint8_t *bin, size_t bin_len,
-                            uint8_t **out, size_t *out_len) {
-    size_t b64_len = 0;
-    cfx_base64_encode(NULL, &b64_len, bin, bin_len);
-
-    char *b64 = malloc(b64_len);
-    if (!b64) return -1;
-    cfx_base64_encode(b64, &b64_len, bin, bin_len);
-
-    /* header + base64 + newlines every 76 chars + footer */
-    size_t nlines = (b64_len + 75) / 76;
-    size_t total = strlen(BGE_ARMOR_BEGIN) + b64_len + nlines + strlen(BGE_ARMOR_END);
-    uint8_t *buf = malloc(total + 1);
-    if (!buf) { free(b64); return -1; }
-
-    uint8_t *w = buf;
-    size_t hlen = strlen(BGE_ARMOR_BEGIN);
-    memcpy(w, BGE_ARMOR_BEGIN, hlen); w += hlen;
-
-    for (size_t i = 0; i < b64_len; i += 76) {
-        size_t chunk = b64_len - i;
-        if (chunk > 76) chunk = 76;
-        memcpy(w, b64 + i, chunk); w += chunk;
-        *w++ = '\n';
-    }
-
-    size_t flen = strlen(BGE_ARMOR_END);
-    memcpy(w, BGE_ARMOR_END, flen); w += flen;
-
-    free(b64);
-    *out = buf;
-    *out_len = (size_t)(w - buf);
-    return 0;
-}
-
-/* strip PEM header/footer and base64-decode. caller frees *out. */
-static int bge_armor_decode(const uint8_t *text, size_t text_len,
-                            uint8_t **out, size_t *out_len) {
-    /* find start after first newline past header */
-    const char *s = (const char *)text;
-    const char *body = memchr(s, '\n', text_len);
-    if (!body) return -1;
-    body++;
-
-    /* find footer */
-    const char *footer = strstr(body, "-----END BGE MESSAGE-----");
-    if (!footer) return -1;
-
-    size_t b64_len = (size_t)(footer - body);
-
-    /* decode */
-    size_t dec_len = cfx_base64_dec_max_len(b64_len);
-    uint8_t *dec = malloc(dec_len);
-    if (!dec) return -1;
-
-    int rc = cfx_base64_decode(dec, &dec_len, body, b64_len);
-    if (rc != 0) { free(dec); return -1; }
-
-    *out = dec;
-    *out_len = dec_len;
-    return 0;
-}
+/* ── usage ────────────────────────────────────────────────── */
 
 static void usage(const char *prog) {
     printf("Usage:\n");
@@ -186,8 +22,13 @@ static void usage(const char *prog) {
     printf("  rm     <name> [-s path]          Remove a secret\n");
     printf("  ls     [-s path]                 List all secret names\n");
     printf("  info   [-s path]                 Show store location, size, and entry count\n");
-    printf("  passwd [-s path]                 Change passphrase\n");
+    printf("  passwd [-s path]                 Change passphrase (current slot)\n");
     printf("  dump   [-s path]                 Print all secrets to stdout\n");
+    printf("\nMulti-password (slot) commands:\n");
+    printf("  slot ls  [-s path]               List slots and Argon2 params (no passphrase)\n");
+    printf("  slot add [-s path]               Add a passphrase slot (migrates v2 to v4)\n");
+    printf("  slot rm  [N] [-s path]           Remove slot N (1-based, default: matched)\n");
+    printf("  rekey    [-s path]               Generate new DEK, re-wrap all slots\n");
     printf("\nFile encryption:\n");
     printf("  -e, --encrypt    Encrypt input to output\n");
     printf("  -d, --decrypt    Decrypt input to output\n");
@@ -213,7 +54,11 @@ static void usage(const char *prog) {
     printf("  %s set token mytoken                 Set from command line argument\n", prog);
     printf("  %s get token                         Print value (newline on tty)\n", prog);
     printf("  %s ls                                Show all key names\n", prog);
+    printf("  %s slot add                          Add a second passphrase\n", prog);
+    printf("  %s slot ls                           List passphrase slots\n", prog);
 }
+
+/* ── path helpers ─────────────────────────────────────────── */
 
 #define SUBDIR ".cfx"
 
@@ -273,9 +118,9 @@ static int ensure_cfx_dir(void) {
     return 0;
 }
 
+/* ── I/O helpers ──────────────────────────────────────────── */
 
-/* write entire FILE* into malloc'd buf; works for pipes too. capped at BGE_READ_MAX. */
-static int bge_read_all(FILE *f, uint8_t **out, size_t *out_len) {
+int bge_read_all(FILE *f, uint8_t **out, size_t *out_len) {
     uint8_t *buf = NULL;
     size_t cap = 0, len = 0;
 
@@ -318,16 +163,13 @@ static int bge_read_all(FILE *f, uint8_t **out, size_t *out_len) {
     return 0;
 }
 
-/* read password from /dev/tty (keeps stdin free for pipes).
- * falls back to cfx_key_read_secret_console on win32 or if tty unavailable. */
-static int bge_read_secret(const char *prompt, char *buf, size_t bufsz) {
+int bge_read_secret(const char *prompt, char *buf, size_t bufsz) {
 #ifndef _WIN32
     FILE *tty = fopen("/dev/tty", "r+");
     if (tty) {
         fprintf(tty, "%s", prompt);
         fflush(tty);
 
-        /* kill echo */
         int tty_fd = fileno(tty);
         struct termios old, noecho;
         int have_termios = (tcgetattr(tty_fd, &old) == 0);
@@ -356,9 +198,7 @@ static int bge_read_secret(const char *prompt, char *buf, size_t bufsz) {
     return cfx_key_read_secret_console(prompt, buf, bufsz);
 }
 
-static const char *g_passphrase_arg;
-
-static int bge_read_passphrase(const char *prompt, char *buf, size_t bufsz) {
+int bge_read_passphrase(const char *prompt, char *buf, size_t bufsz) {
     if (g_passphrase_arg) {
         size_t len = strlen(g_passphrase_arg);
         if (len >= bufsz) len = bufsz - 1;
@@ -369,8 +209,7 @@ static int bge_read_passphrase(const char *prompt, char *buf, size_t bufsz) {
     return bge_read_secret(prompt, buf, bufsz);
 }
 
-/* like bge_read_secret but with echo on (visible input). */
-static int bge_read_visible(const char *prompt, char *buf, size_t bufsz) {
+int bge_read_visible(const char *prompt, char *buf, size_t bufsz) {
 #ifndef _WIN32
     FILE *tty = fopen("/dev/tty", "r+");
     if (tty) {
@@ -408,8 +247,7 @@ static int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
     return diff == 0;
 }
 
-/* double-prompt passphrase, returns length or -1 */
-static int prompt_passphrase(char *pwd, size_t pwdsz) {
+int prompt_passphrase(char *pwd, size_t pwdsz) {
     if (g_passphrase_arg) {
         size_t len = strlen(g_passphrase_arg);
         if (len >= pwdsz) len = pwdsz - 1;
@@ -436,312 +274,6 @@ static int prompt_passphrase(char *pwd, size_t pwdsz) {
     return len;
 }
 
-
-/* read file, run argon2 -> key+verifier, check verifier matches.
- * fills store with key, verifier, hdr, raw file buf for later decrypt. */
-static int bge_authenticate(const char *path, const char *pwd, size_t pwd_len,
-                             bge_store *store) {
-    FILE *f = fopen(path, "rb");
-    if (!f) {
-        fprintf(stderr, "error: cannot open %s: %s\n", path, strerror(errno));
-        return -1;
-    }
-
-    uint8_t *file_buf = NULL;
-    size_t file_len = 0;
-    if (bge_read_all(f, &file_buf, &file_len) != 0) {
-        fclose(f);
-        fprintf(stderr, "error: cannot read %s\n", path);
-        return -1;
-    }
-    fclose(f);
-
-    if (file_len < BGE_MIN_FILE ||
-        memcmp(file_buf, BGE_MAGIC, 3) != 0 || file_buf[3] != BGE_VERSION) {
-        fprintf(stderr, "error: %s is not a valid BGE store\n", path);
-        cfx_memzero_s(file_buf, file_len);
-        free(file_buf);
-        return -1;
-    }
-
-    bge_header hdr;
-    memcpy(&hdr, file_buf, sizeof(hdr));
-
-    uint32_t m_cost = cfx_load32_le(&hdr.m_cost);
-    uint32_t t_cost = cfx_load32_le(&hdr.t_cost);
-    uint32_t p      = cfx_load32_le(&hdr.p_cost);
-
-    if (m_cost < 8 || t_cost < 1 || p < 1 ||
-        m_cost > 4194304 || t_cost > 100 || p > 16) {
-        fprintf(stderr, "error: unreasonable argon2 parameters in %s\n", path);
-        cfx_memzero_s(file_buf, file_len);
-        free(file_buf);
-        return -1;
-    }
-
-    /* one argon2 call -> 48 bytes: key(32) | verifier(16) */
-    uint8_t kdf_out[48];
-    int rc = cfx_argon2id(kdf_out, 48,
-        (const uint8_t *)pwd, pwd_len, hdr.salt, sizeof(hdr.salt),
-        m_cost, t_cost, p);
-    if (rc != 0) {
-        fprintf(stderr, "error: argon2 key derivation failed\n");
-        cfx_memzero_s(kdf_out, sizeof(kdf_out));
-        cfx_memzero_s(file_buf, file_len);
-        free(file_buf);
-        return -1;
-    }
-
-    /* ct compare derived vs stored verifier (offset 56) */
-    const uint8_t *stored_verifier = file_buf + BGE_HEADER_LEN;
-    uint8_t diff = 0;
-    for (int i = 0; i < BGE_VERIFIER_LEN; i++)
-        diff |= kdf_out[32 + i] ^ stored_verifier[i];
-
-    if (diff != 0) {
-        fprintf(stderr, "error: wrong passphrase\n");
-        cfx_memzero_s(kdf_out, sizeof(kdf_out));
-        cfx_memzero_s(file_buf, file_len);
-        free(file_buf);
-        return -1;
-    }
-
-    memcpy(store->key, kdf_out, 32);
-    memcpy(store->verifier, kdf_out + 32, BGE_VERIFIER_LEN);
-    store->hdr = hdr;
-    store->file_buf = file_buf;
-    store->file_len = file_len;
-
-    cfx_memzero_s(kdf_out, sizeof(kdf_out));
-    return 0;
-}
-
-/* AEAD decrypt using already-authenticated store. caller frees *pt_out. */
-static int bge_decrypt_store(const bge_store *store,
-                              uint8_t **pt_out, size_t *pt_len) {
-    const uint8_t *nonce = store->hdr.nonce;
-    size_t ct_len = store->file_len - BGE_AAD_LEN - BGE_TAG_LEN;
-    const uint8_t *ct    = store->file_buf + BGE_AAD_LEN;
-    const uint8_t *tag   = store->file_buf + store->file_len - BGE_TAG_LEN;
-
-    uint8_t *plaintext = malloc(ct_len + 1); /* +1 for NUL convenience */
-    if (!plaintext) {
-        fprintf(stderr, "error: allocation failed\n");
-        return -1;
-    }
-
-    /* AAD = first 72 bytes (hdr + verifier) */
-    int rc = cfx_xchacha20_poly1305_decrypt(
-        plaintext, ct, ct_len,
-        store->file_buf, BGE_AAD_LEN,
-        store->key, nonce, tag);
-
-    if (rc != 0) {
-        fprintf(stderr, "error: store corrupted or tampered\n");
-        cfx_memzero_s(plaintext, ct_len + 1);
-        free(plaintext);
-        return -1;
-    }
-
-    plaintext[ct_len] = '\0';
-
-    *pt_out = plaintext;
-    *pt_len = ct_len;
-    return 0;
-}
-
-/* atomic write: flock -> write .tmp (0600) -> fsync -> rename */
-static int bge_safe_write(const char *path,
-                          const bge_header *header,
-                          const uint8_t verifier[BGE_VERIFIER_LEN],
-                          const uint8_t *ct, size_t ct_len,
-                          const uint8_t *tag) {
-    char tmppath[1088];
-    int n = snprintf(tmppath, sizeof(tmppath), "%s.tmp", path);
-    if (n < 0 || (size_t)n >= sizeof(tmppath)) {
-        fprintf(stderr, "error: path too long\n");
-        return -1;
-    }
-
-    int lock_fd = -1;
-    int ret = -1;
-
-#ifndef _WIN32
-    /* grab flock if file exists */
-    lock_fd = open(path, O_RDONLY);
-    if (lock_fd >= 0) {
-        if (flock(lock_fd, LOCK_EX) != 0) {
-            fprintf(stderr, "error: cannot lock %s: %s\n", path, strerror(errno));
-            close(lock_fd);
-            return -1;
-        }
-    }
-
-    /* open .tmp with 0600 from the start -- no chmod race */
-    int fd = open(tmppath, O_CREAT | O_WRONLY | O_TRUNC, 0600);
-    if (fd < 0) {
-        fprintf(stderr, "error: cannot create %s: %s\n", tmppath, strerror(errno));
-        if (lock_fd >= 0) close(lock_fd);
-        return -1;
-    }
-    FILE *f = fdopen(fd, "wb");
-    if (!f) {
-        close(fd);
-        unlink(tmppath);
-        if (lock_fd >= 0) close(lock_fd);
-        return -1;
-    }
-#else
-    FILE *f = fopen(tmppath, "wb");
-    if (!f) {
-        fprintf(stderr, "error: cannot create %s: %s\n", tmppath, strerror(errno));
-        return -1;
-    }
-#endif
-
-    size_t ok = 1;
-    ok = ok && fwrite(header, 1, sizeof(*header), f) == sizeof(*header);
-    ok = ok && fwrite(verifier, 1, BGE_VERIFIER_LEN, f) == BGE_VERIFIER_LEN;
-
-    if (ct_len > 0) {
-        ok = ok && fwrite(ct, 1, ct_len, f) == ct_len;
-    }
-
-    ok = ok && fwrite(tag, 1, BGE_TAG_LEN, f) == BGE_TAG_LEN;
-
-    if (!ok) {
-        fprintf(stderr, "error: write failed: %s\n", strerror(errno));
-        fclose(f);
-        unlink(tmppath);
-        if (lock_fd >= 0) close(lock_fd);
-        return -1;
-    }
-
-#ifndef _WIN32
-    fsync(fileno(f));
-#else
-    fflush(f);
-#endif
-    fclose(f);
-
-    if (rename(tmppath, path) != 0) {
-        fprintf(stderr, "error: rename failed: %s\n", strerror(errno));
-        unlink(tmppath);
-        if (lock_fd >= 0) close(lock_fd);
-        return -1;
-    }
-
-    ret = 0;
-
-    if (lock_fd >= 0) close(lock_fd);
-    return ret;
-}
-
-/* fresh salt + nonce, derive key+verifier, encrypt, write */
-static int bge_encrypt_write(const char *path, const uint8_t *pt, size_t pt_len,
-                             const char *pwd, size_t pwd_len,
-                             uint32_t m, uint32_t t, uint32_t p) {
-    bge_header header;
-    uint8_t kdf_out[48];
-    uint8_t verifier[BGE_VERIFIER_LEN];
-    int ret = -1;
-
-    memcpy(header.magic, BGE_MAGIC, 3);
-    header.version = BGE_VERSION;
-    cfx_store32_le(&header.m_cost, m);
-    cfx_store32_le(&header.t_cost, t);
-    cfx_store32_le(&header.p_cost, p);
-
-    cfx_srand_os();
-    cfx_rand_bytes(header.salt,  sizeof(header.salt));
-    cfx_rand_bytes(header.nonce, sizeof(header.nonce));
-
-    /* KDF -> 48 bytes: key | verifier */
-    int rc = cfx_argon2id(kdf_out, 48,
-        (const uint8_t *)pwd, pwd_len,
-        header.salt, sizeof(header.salt), m, t, p);
-    if (rc != 0) {
-        fprintf(stderr, "error: argon2 key derivation failed\n");
-        goto done;
-    }
-    memcpy(verifier, kdf_out + 32, BGE_VERIFIER_LEN);
-
-    /* AAD = hdr(56) + verifier(16) */
-    uint8_t aad[BGE_AAD_LEN];
-    memcpy(aad, &header, sizeof(header));
-    memcpy(aad + sizeof(header), verifier, BGE_VERIFIER_LEN);
-
-    uint8_t *ct = malloc(pt_len);
-    uint8_t tag[BGE_TAG_LEN];
-    if (pt_len > 0 && !ct) {
-        fprintf(stderr, "error: allocation failed\n");
-        goto done;
-    }
-
-    rc = cfx_xchacha20_poly1305_encrypt(
-        ct, tag, pt, pt_len,
-        aad, BGE_AAD_LEN,
-        kdf_out, header.nonce);
-    if (rc != 0) {
-        fprintf(stderr, "error: encryption failed\n");
-        free(ct);
-        goto done;
-    }
-
-    ret = bge_safe_write(path, &header, verifier, ct, pt_len, tag);
-
-    cfx_memzero_s(ct, pt_len);
-    free(ct);
-
-done:
-    cfx_memzero_s(kdf_out, sizeof(kdf_out));
-    cfx_memzero_s(verifier, sizeof(verifier));
-    cfx_memzero_s(&header, sizeof(header));
-    return ret;
-}
-
-/* re-encrypt with same key, fresh nonce. avoids re-running argon2. */
-static int bge_write_reusing_key(const char *path, const uint8_t *pt, size_t pt_len,
-                                 const bge_store *store) {
-    bge_header header = store->hdr;
-    int ret = -1;
-
-    /* fresh nonce, keep magic/params/salt from old header */
-    cfx_srand_os();
-    cfx_rand_bytes(header.nonce, sizeof(header.nonce));
-
-    /* AAD = hdr(56) + verifier(16) */
-    uint8_t aad[BGE_AAD_LEN];
-    memcpy(aad, &header, sizeof(header));
-    memcpy(aad + sizeof(header), store->verifier, BGE_VERIFIER_LEN);
-
-    uint8_t *ct = malloc(pt_len);
-    uint8_t tag[BGE_TAG_LEN];
-    if (pt_len > 0 && !ct) {
-        fprintf(stderr, "error: allocation failed\n");
-        return -1;
-    }
-
-    int rc = cfx_xchacha20_poly1305_encrypt(
-        ct, tag, pt, pt_len,
-        aad, BGE_AAD_LEN,
-        store->key, header.nonce);
-
-    if (rc != 0) {
-        fprintf(stderr, "error: encryption failed\n");
-        goto done;
-    }
-
-    ret = bge_safe_write(path, &header, store->verifier, ct, pt_len, tag);
-
-done:
-    cfx_memzero_s(ct, pt_len);
-    free(ct);
-    cfx_memzero_s(&header, sizeof(header));
-    return ret;
-}
-
-
 /* check if string is a positive integer (for index lookups) */
 static int is_numeric(const char *s) {
     if (!s || !*s) return 0;
@@ -751,237 +283,7 @@ static int is_numeric(const char *s) {
     return 1;
 }
 
-/* resolve 1-based index to entry name. NULL if out of range. */
-static const uint8_t *store_name_by_index(const uint8_t *pt, size_t pt_len,
-                                           unsigned idx, uint16_t *name_len) {
-    const uint8_t *p = pt;
-    const uint8_t *end = pt + pt_len;
-    unsigned cur = 0;
-
-    while (p + 2 <= end) {
-        uint16_t klen = cfx_load16_le(p);
-        p += 2;
-        if (p + klen > end) break;
-        const uint8_t *kptr = p;
-        p += klen;
-        if (p + 4 > end) break;
-        uint32_t vl = cfx_load32_le(p);
-        p += 4;
-        if (p + vl > end) break;
-        p += vl;
-
-        if (++cur == idx) {
-            *name_len = klen;
-            return kptr;
-        }
-    }
-    return NULL;
-}
-
-/* find entry by name, return ptr to value + length. NULL if missing.
-    vlen can be null if you don't care about the length */
-static const uint8_t *store_get(const uint8_t *pt, size_t pt_len,
-                                const char *name, size_t *vlen) {
-    size_t nlen = strlen(name);
-    const uint8_t *p = pt;
-    const uint8_t *end = pt + pt_len;
-
-    while (p + 2 <= end) {
-        uint16_t klen = cfx_load16_le(p);
-        p += 2;
-        if (p + klen > end) break;
-        const uint8_t *kptr = p;
-        p += klen;
-
-        if (p + 4 > end) break;
-        uint32_t val_len = cfx_load32_le(p);
-        p += 4;
-        if (p + val_len > end) break;
-        const uint8_t *vptr = p;
-        p += val_len;
-
-        if (klen == nlen && memcmp(kptr, name, nlen) == 0) {
-            if (vlen) *vlen = val_len;
-            return vptr;
-        }
-    }
-    return NULL;
-}
-
-/* upsert entry. returns new malloc'd store buf, sets *new_len. */
-static uint8_t *store_set(const uint8_t *pt, size_t pt_len, const char *name, const uint8_t *val, size_t val_len,
-                          size_t *new_len) {
-
-    size_t nlen = strlen(name);
-
-    /* size of new entry: 2 + nlen + 4 + val_len */
-    size_t entry_len = 2 + nlen + 4 + val_len;
-
-    /* scan for existing entry */
-    const uint8_t *p = pt;
-    const uint8_t *end = pt + pt_len;
-    const uint8_t *found_start = NULL;
-    size_t found_entry_len = 0;
-
-    while (p + 2 <= end) {
-        const uint8_t *entry_start = p;
-        uint16_t klen = cfx_load16_le(p);
-        p += 2;
-        if (p + klen > end) break;
-        const uint8_t *kptr = p;
-        p += klen;
-
-        if (p + 4 > end) break;
-        uint32_t vl = cfx_load32_le(p);
-        p += 4;
-        if (p + vl > end) break;
-        p += vl;
-
-        if (klen == nlen && memcmp(kptr, name, nlen) == 0) {
-            found_start = entry_start;
-            found_entry_len = (size_t)(p - entry_start);
-            break;
-        }
-    }
-
-    size_t out_len;
-    uint8_t *out;
-
-    if (found_start) {
-        /* replace in-place */
-        size_t prefix = (size_t)(found_start - pt);
-        size_t suffix_off = prefix + found_entry_len;
-        size_t suffix_len = pt_len - suffix_off;
-        out_len = prefix + entry_len + suffix_len;
-        out = malloc(out_len);
-        if (!out) return NULL;
-
-        memcpy(out, pt, prefix);
-        uint8_t *w = out + prefix;
-        cfx_store16_le(w, (uint16_t)nlen); w += 2;
-        memcpy(w, name, nlen); w += nlen;
-        cfx_store32_le(w, (uint32_t)val_len); w += 4;
-        memcpy(w, val, val_len); w += val_len;
-        memcpy(w, pt + suffix_off, suffix_len);
-    } else {
-        /* append */
-        out_len = pt_len + entry_len;
-        out = malloc(out_len);
-        if (!out) return NULL;
-
-        memcpy(out, pt, pt_len);
-        uint8_t *w = out + pt_len;
-        cfx_store16_le(w, (uint16_t)nlen); w += 2;
-        memcpy(w, name, nlen); w += nlen;
-        cfx_store32_le(w, (uint32_t)val_len); w += 4;
-        memcpy(w, val, val_len);
-    }
-
-    *new_len = out_len;
-    return out;
-}
-
-/* remove entry by name. returns new malloc'd buf or NULL if not found. */
-static uint8_t *store_rm(const uint8_t *pt, size_t pt_len, const char *name, size_t *new_len) {
-    size_t nlen = strlen(name);
-    const uint8_t *p = pt;
-    const uint8_t *end = pt + pt_len;
-    const uint8_t *found_start = NULL;
-    size_t found_entry_len = 0;
-
-    while (p + 2 <= end) {
-        const uint8_t *entry_start = p;
-        uint16_t klen = cfx_load16_le(p);
-        p += 2;
-        if (p + klen > end) break;
-        const uint8_t *kptr = p;
-        p += klen;
-
-        if (p + 4 > end) break;
-        uint32_t vl = cfx_load32_le(p);
-        p += 4;
-        if (p + vl > end) break;
-        p += vl;
-
-        if (klen == nlen && memcmp(kptr, name, nlen) == 0) {
-            found_start = entry_start;
-            found_entry_len = (size_t)(p - entry_start);
-            break;
-        }
-    }
-
-    if (!found_start) {
-        fprintf(stderr, "error: '%s' not found\n", name);
-        return NULL;
-    }
-
-    size_t prefix = (size_t)(found_start - pt);
-    size_t suffix_off = prefix + found_entry_len;
-    size_t suffix_len = pt_len - suffix_off;
-    size_t out_len = prefix + suffix_len;
-
-    uint8_t *out = malloc(out_len + 1);
-    if (!out) return NULL;
-
-    memcpy(out, pt, prefix);
-    memcpy(out + prefix, pt + suffix_off, suffix_len);
-    *new_len = out_len;
-    return out;
-}
-
-/* for dump - render as "[name]\nvalue\n" pairs. malloc'd, caller frees. */
-static uint8_t *store_to_text(const uint8_t *pt, size_t pt_len, size_t *text_len) {
-    /* pass 1: size */
-    size_t total = 0;
-    const uint8_t *p = pt;
-    const uint8_t *end = pt + pt_len;
-
-    while (p + 2 <= end) {
-        uint16_t klen = cfx_load16_le(p);
-        p += 2;
-        if (p + klen > end) break;
-        p += klen;
-        if (p + 4 > end) break;
-        uint32_t vl = cfx_load32_le(p);
-        p += 4;
-        if (p + vl > end) break;
-        p += vl;
-
-        /* [name]\n + value + \n */
-        total += 1 + klen + 2 + vl + 1;
-    }
-
-    uint8_t *out = malloc(total + 1);
-    if (!out) return NULL;
-
-    /* pass 2: write */
-    uint8_t *w = out;
-    p = pt;
-    while (p + 2 <= end) {
-        uint16_t klen = cfx_load16_le(p);
-        p += 2;
-        if (p + klen > end) break;
-        const uint8_t *kptr = p;
-        p += klen;
-        if (p + 4 > end) break;
-        uint32_t vl = cfx_load32_le(p);
-        p += 4;
-        if (p + vl > end) break;
-        const uint8_t *vptr = p;
-        p += vl;
-
-        *w++ = '[';
-        memcpy(w, kptr, klen); w += klen;
-        *w++ = ']';
-        *w++ = '\n';
-        memcpy(w, vptr, vl); w += vl;
-        *w++ = '\n';
-    }
-
-    *w = '\0';
-    *text_len = (size_t)(w - out);
-    return out;
-}
+/* ── subcommands ──────────────────────────────────────────── */
 
 static int bge_init(int argc, char **argv) {
     char path_buf[1024];
@@ -1005,14 +307,12 @@ static int bge_init(int argc, char **argv) {
         path = path_buf;
     }
 
-    /* mkdir if default path */
     char cfx_dir[1024];
     if (get_cfx_dir(cfx_dir, sizeof(cfx_dir)) == 0 &&
         strncmp(path, cfx_dir, strlen(cfx_dir)) == 0) {
         if (ensure_cfx_dir() != 0) return 1;
     }
 
-    /* bail if already exists */
     struct stat st;
     if (stat(path, &st) == 0) {
         fprintf(stderr, "error: %s already exists\n", path);
@@ -1056,7 +356,6 @@ static int bge_get(int argc, char **argv) {
         }
     }
 
-
     if (!path) {
         if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
         path = path_buf;
@@ -1070,15 +369,15 @@ static int bge_get(int argc, char **argv) {
         return 1;
     }
 
-    bge_store store = {0};
-    int rc = bge_authenticate(path, pwd, (size_t)pwd_len, &store);
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
     cfx_memzero_s(pwd, sizeof(pwd));
     if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
-    rc = bge_decrypt_store(&store, &pt, &pt_len);
-    bge_store_wipe(&store);
+    rc = bge_udecrypt(&us, &pt, &pt_len);
+    bge_ustore_wipe(&us);
     if (rc != 0) return 1;
 
     char name_buf[256] = {0};
@@ -1088,7 +387,6 @@ static int bge_get(int argc, char **argv) {
             fprintf(stderr, "error: name required\n");
             cfx_memzero_s(pt, pt_len);
             free(pt);
-            bge_store_wipe(&store);
             return 1;
         }
         name = name_buf;
@@ -1197,7 +495,6 @@ static int bge_set(int argc, char **argv) {
         val_needs_free = 1;
     }
 
-    /* auth before any interactive prompts */
     char pwd[256] = {0};
     int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
     if (pwd_len <= 0) {
@@ -1210,8 +507,8 @@ static int bge_set(int argc, char **argv) {
         return 1;
     }
 
-    bge_store store = {0};
-    int rc = bge_authenticate(path, pwd, (size_t)pwd_len, &store);
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
     cfx_memzero_s(pwd, sizeof(pwd));
     if (rc != 0) {
         if (val_needs_free) {
@@ -1223,9 +520,9 @@ static int bge_set(int argc, char **argv) {
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
-    rc = bge_decrypt_store(&store, &pt, &pt_len);
+    rc = bge_udecrypt(&us, &pt, &pt_len);
     if (rc != 0) {
-        bge_store_wipe(&store);
+        bge_ustore_wipe(&us);
         if (val_needs_free) {
             cfx_memzero_s(val_buf, val_len);
             free(val_buf);
@@ -1241,7 +538,7 @@ static int bge_set(int argc, char **argv) {
             fprintf(stderr, "error: name required\n");
             cfx_memzero_s(pt, pt_len);
             free(pt);
-            bge_store_wipe(&store);
+            bge_ustore_wipe(&us);
             if (val_needs_free) {
                 cfx_memzero_s(val_buf, val_len);
                 free(val_buf);
@@ -1273,7 +570,7 @@ static int bge_set(int argc, char **argv) {
                 fprintf(stderr, "Aborted.\n");
                 cfx_memzero_s(pt, pt_len);
                 free(pt);
-                bge_store_wipe(&store);
+                bge_ustore_wipe(&us);
                 if (val_needs_free) {
                     cfx_memzero_s(val_buf, val_len);
                     free(val_buf);
@@ -1291,7 +588,6 @@ static int bge_set(int argc, char **argv) {
         } else {
 #ifndef _WIN32
             if (isatty(STDIN_FILENO)) {
-                /* tty: read with echo off */
                 char secret_buf[4096] = {0};
                 int slen = bge_read_secret("Value: ", secret_buf, sizeof(secret_buf));
                 if (slen <= 0) {
@@ -1299,7 +595,7 @@ static int bge_set(int argc, char **argv) {
                     cfx_memzero_s(secret_buf, sizeof(secret_buf));
                     cfx_memzero_s(pt, pt_len);
                     free(pt);
-                    bge_store_wipe(&store);
+                    bge_ustore_wipe(&us);
                     return 1;
                 }
                 val_buf = malloc((size_t)slen);
@@ -1307,7 +603,7 @@ static int bge_set(int argc, char **argv) {
                     cfx_memzero_s(secret_buf, sizeof(secret_buf));
                     cfx_memzero_s(pt, pt_len);
                     free(pt);
-                    bge_store_wipe(&store);
+                    bge_ustore_wipe(&us);
                     return 1;
                 }
                 memcpy(val_buf, secret_buf, (size_t)slen);
@@ -1317,12 +613,11 @@ static int bge_set(int argc, char **argv) {
             } else
 #endif
             {
-                /* pipe/redirect: slurp stdin */
                 if (bge_read_all(stdin, &val_buf, &val_len) != 0) {
                     fprintf(stderr, "error: cannot read from stdin\n");
                     cfx_memzero_s(pt, pt_len);
                     free(pt);
-                    bge_store_wipe(&store);
+                    bge_ustore_wipe(&us);
                     return 1;
                 }
                 val_needs_free = 1;
@@ -1341,14 +636,14 @@ static int bge_set(int argc, char **argv) {
 
     if (!new_pt) {
         fprintf(stderr, "error: allocation failed\n");
-        bge_store_wipe(&store);
+        bge_ustore_wipe(&us);
         return 1;
     }
 
-    rc = bge_write_reusing_key(path, new_pt, new_len, &store);
+    rc = bge_uwrite(path, new_pt, new_len, &us);
     cfx_memzero_s(new_pt, new_len);
     free(new_pt);
-    bge_store_wipe(&store);
+    bge_ustore_wipe(&us);
     if (rc == 0) printf("Ok.\n");
     return rc != 0;
 }
@@ -1389,16 +684,16 @@ static int bge_rm(int argc, char **argv) {
         return 1;
     }
 
-    bge_store store = {0};
-    int rc = bge_authenticate(path, pwd, (size_t)pwd_len, &store);
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
     cfx_memzero_s(pwd, sizeof(pwd));
     if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
-    rc = bge_decrypt_store(&store, &pt, &pt_len);
+    rc = bge_udecrypt(&us, &pt, &pt_len);
     if (rc != 0) {
-        bge_store_wipe(&store);
+        bge_ustore_wipe(&us);
         return 1;
     }
 
@@ -1409,12 +704,11 @@ static int bge_rm(int argc, char **argv) {
             fprintf(stderr, "error: name required\n");
             cfx_memzero_s(pt, pt_len);
             free(pt);
-            bge_store_wipe(&store);
+            bge_ustore_wipe(&us);
             return 1;
         }
         name = name_buf;
     }
-
 
     if (!force && store_get(pt, pt_len, name, NULL) != NULL) {
         char prompt[300];
@@ -1425,7 +719,7 @@ static int bge_rm(int argc, char **argv) {
             fprintf(stderr, "Aborted.\n");
             cfx_memzero_s(pt, pt_len);
             free(pt);
-            bge_store_wipe(&store);
+            bge_ustore_wipe(&us);
             return 1;
         }
     }
@@ -1436,14 +730,14 @@ static int bge_rm(int argc, char **argv) {
     free(pt);
 
     if (!new_pt) {
-        bge_store_wipe(&store);
+        bge_ustore_wipe(&us);
         return 1;
     }
 
-    rc = bge_write_reusing_key(path, new_pt, new_len, &store);
+    rc = bge_uwrite(path, new_pt, new_len, &us);
     cfx_memzero_s(new_pt, new_len);
     free(new_pt);
-    bge_store_wipe(&store);
+    bge_ustore_wipe(&us);
     if (rc == 0) printf("Ok.\n");
     return rc != 0;
 }
@@ -1478,18 +772,17 @@ static int bge_ls(int argc, char **argv) {
         return 1;
     }
 
-    bge_store store = {0};
-    int rc = bge_authenticate(path, pwd, (size_t)pwd_len, &store);
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
     cfx_memzero_s(pwd, sizeof(pwd));
     if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
-    rc = bge_decrypt_store(&store, &pt, &pt_len);
-    bge_store_wipe(&store);
+    rc = bge_udecrypt(&us, &pt, &pt_len);
+    bge_ustore_wipe(&us);
     if (rc != 0) return 1;
 
-    /* print entry names */
     const uint8_t *p = pt;
     const uint8_t *end = pt + pt_len;
     unsigned idx = 0;
@@ -1536,7 +829,6 @@ static int bge_info(int argc, char **argv) {
         path = path_buf;
     }
 
-    /* stat doesn't need passphrase */
     struct stat st;
     if (stat(path, &st) != 0) {
         fprintf(stderr, "error: cannot stat %s: %s\n", path, strerror(errno));
@@ -1546,7 +838,6 @@ static int bge_info(int argc, char **argv) {
     printf("Store:   %s\n", path);
     printf("Size:    %lld bytes\n", (long long)st.st_size);
 
-    /* need to decrypt to count entries */
     char pwd[256] = {0};
     int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
     if (pwd_len <= 0) {
@@ -1555,16 +846,16 @@ static int bge_info(int argc, char **argv) {
         return 1;
     }
 
-    bge_store store = {0};
-    int rc = bge_authenticate(path, pwd, (size_t)pwd_len, &store);
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
     cfx_memzero_s(pwd, sizeof(pwd));
     if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
-    rc = bge_decrypt_store(&store, &pt, &pt_len);
+    rc = bge_udecrypt(&us, &pt, &pt_len);
     if (rc != 0) {
-        bge_store_wipe(&store);
+        bge_ustore_wipe(&us);
         return 1;
     }
 
@@ -1590,13 +881,25 @@ static int bge_info(int argc, char **argv) {
 
     printf("Entries: %u\n", count);
 
-    /* argon2 params */
-    uint32_t m_cost = cfx_load32_le(&store.hdr.m_cost);
-    uint32_t t_cost = cfx_load32_le(&store.hdr.t_cost);
-    uint32_t p_cost = cfx_load32_le(&store.hdr.p_cost);
-    printf("Argon2:  m=%u KB, t=%u, p=%u\n", m_cost, t_cost, p_cost);
+    if (us.version == BGE_V4_VERSION) {
+        printf("Version: 4 (multi-password)\n");
+        int sc = us.u.v4.hdr.slot_count;
+        printf("Slots:   %d\n", sc);
+        for (int i = 0; i < sc; i++) {
+            const bge_v4_slot *s = &us.u.v4.slots[i];
+            printf("  [%d] m=%u KB, t=%u, p=%u%s\n",
+                   i + 1, s->m_cost, s->t_cost, s->p_cost,
+                   (i == us.u.v4.matched_slot) ? " (authenticated)" : "");
+        }
+    } else {
+        printf("Version: 2\n");
+        uint32_t m_cost = cfx_load32_le(&us.u.v2.hdr.m_cost);
+        uint32_t t_cost = cfx_load32_le(&us.u.v2.hdr.t_cost);
+        uint32_t p_cost = cfx_load32_le(&us.u.v2.hdr.p_cost);
+        printf("Argon2:  m=%u KB, t=%u, p=%u\n", m_cost, t_cost, p_cost);
+    }
 
-    bge_store_wipe(&store);
+    bge_ustore_wipe(&us);
     return 0;
 }
 
@@ -1622,7 +925,6 @@ static int bge_passwd(int argc, char **argv) {
         path = path_buf;
     }
 
-    /* old passphrase */
     char old_pwd[256] = {0};
     int old_len = bge_read_passphrase("Enter current passphrase: ", old_pwd, sizeof(old_pwd));
     if (old_len <= 0) {
@@ -1631,32 +933,57 @@ static int bge_passwd(int argc, char **argv) {
         return 1;
     }
 
-    bge_store store = {0};
-    int rc = bge_authenticate(path, old_pwd, (size_t)old_len, &store);
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, old_pwd, (size_t)old_len, &us);
     cfx_memzero_s(old_pwd, sizeof(old_pwd));
     if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
-    rc = bge_decrypt_store(&store, &pt, &pt_len);
-    bge_store_wipe(&store);
-    if (rc != 0) return 1;
+    rc = bge_udecrypt(&us, &pt, &pt_len);
+    if (rc != 0) {
+        bge_ustore_wipe(&us);
+        return 1;
+    }
 
-    /* new passphrase (double prompt) */
     printf("Enter new passphrase.\n");
     char new_pwd[256] = {0};
     int new_len = prompt_passphrase(new_pwd, sizeof(new_pwd));
     if (new_len < 0) {
         cfx_memzero_s(pt, pt_len);
         free(pt);
+        bge_ustore_wipe(&us);
         return 1;
     }
 
-    rc = bge_encrypt_write(path, pt, pt_len, new_pwd, (size_t)new_len,
-                           BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P);
+    if (us.version == BGE_V4_VERSION) {
+        /* v4: re-wrap DEK for matched slot, keep other slots as-is */
+        bge_v4_store *s4 = &us.u.v4;
+        int mi = s4->matched_slot;
+
+        rc = bge_v4_wrap_dek(new_pwd, (size_t)new_len,
+                             BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P,
+                             s4->dek, &s4->slots[mi]);
+        cfx_memzero_s(new_pwd, sizeof(new_pwd));
+        if (rc != 0) {
+            cfx_memzero_s(pt, pt_len);
+            free(pt);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+
+        rc = bge_v4_encrypt_write(path, pt, pt_len,
+                                  &s4->hdr, s4->slots, s4->hdr.slot_count, s4->dek);
+    } else {
+        /* v2: full re-encrypt with new password */
+        rc = bge_encrypt_write(path, pt, pt_len, new_pwd, (size_t)new_len,
+                               BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P);
+        cfx_memzero_s(new_pwd, sizeof(new_pwd));
+    }
+
     cfx_memzero_s(pt, pt_len);
     free(pt);
-    cfx_memzero_s(new_pwd, sizeof(new_pwd));
+    bge_ustore_wipe(&us);
 
     if (rc == 0)
         printf("Passphrase changed.\n");
@@ -1693,18 +1020,17 @@ static int bge_dump(int argc, char **argv) {
         return 1;
     }
 
-    bge_store store = {0};
-    int rc = bge_authenticate(path, pwd, (size_t)pwd_len, &store);
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
     cfx_memzero_s(pwd, sizeof(pwd));
     if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
-    rc = bge_decrypt_store(&store, &pt, &pt_len);
-    bge_store_wipe(&store);
+    rc = bge_udecrypt(&us, &pt, &pt_len);
+    bge_ustore_wipe(&us);
     if (rc != 0) return 1;
 
-    /* render + print */
     size_t text_len = 0;
     uint8_t *text = store_to_text(pt, pt_len, &text_len);
     cfx_memzero_s(pt, pt_len);
@@ -1723,504 +1049,279 @@ static int bge_dump(int argc, char **argv) {
     return 0;
 }
 
-static int bge_encrypt_file(int argc, char **argv) {
-    const char *output = NULL;
-    const char *input = NULL;
-    int armor = 0;
+/* ── slot subcommands ─────────────────────────────────────── */
 
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0) {
-            continue;
-        } else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--armor") == 0) {
-            armor = 1;
-        } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
-            if (i + 1 >= argc) { fprintf(stderr, "error: -o requires a path\n"); return 1; }
-            output = argv[++i];
-        } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--input") == 0) {
-            if (i + 1 >= argc) { fprintf(stderr, "error: -i requires a path\n"); return 1; }
-            input = argv[++i];
-        } else if (argv[i][0] == '-') {
-            fprintf(stderr, "error: unknown option: %s\n", argv[i]);
-            return 1;
-        } else if (!input) {
-            input = argv[i];
+static int bge_slot_ls(int argc, char **argv) {
+    const char *path = NULL;
+    char path_buf[1024];
+
+    for (int i = 3; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: %s slot ls [-s path]\n", argv[0]);
+            return 0;
+        } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--store") == 0) {
+            if (i + 1 >= argc) { fprintf(stderr, "error: -s requires a path\n"); return 1; }
+            path = argv[++i];
         } else {
-            fprintf(stderr, "error: unexpected argument: %s\n", argv[i]);
+            fprintf(stderr, "error: unknown argument: %s\n", argv[i]);
             return 1;
         }
     }
 
-    FILE *inf = stdin;
-    if (input) {
-        inf = fopen(input, "rb");
-        if (!inf) {
-            fprintf(stderr, "error: cannot open %s: %s\n", input, strerror(errno));
-            return 1;
-        }
+    if (!path) {
+        if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
+        path = path_buf;
     }
 
-    char pwd[256] = {0};
-    int pwd_len = prompt_passphrase(pwd, sizeof(pwd));
-    if (pwd_len < 0) {
-        if (input) fclose(inf);
+    /* read file without passphrase -- just parse header */
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        fprintf(stderr, "error: cannot open %s: %s\n", path, strerror(errno));
         return 1;
     }
 
-    /* build v3 header */
-    bge_header header;
-    uint8_t kdf_out[48], verifier[BGE_VERIFIER_LEN];
-
-    memcpy(header.magic, BGE_MAGIC, 3);
-    header.version = BGE_STREAM_VERSION;
-    cfx_store32_le(&header.m_cost, BGE_DEFAULT_M);
-    cfx_store32_le(&header.t_cost, BGE_DEFAULT_T);
-    cfx_store32_le(&header.p_cost, BGE_DEFAULT_P);
-
-    cfx_srand_os();
-    cfx_rand_bytes(header.salt,  sizeof(header.salt));
-    cfx_rand_bytes(header.nonce, sizeof(header.nonce));
-
-    int rc = cfx_argon2id(kdf_out, 48,
-        (const uint8_t *)pwd, (size_t)pwd_len,
-        header.salt, sizeof(header.salt),
-        BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P);
-    cfx_memzero_s(pwd, sizeof(pwd));
-    if (rc != 0) {
-        fprintf(stderr, "error: argon2 key derivation failed\n");
-        cfx_memzero_s(kdf_out, sizeof(kdf_out));
-        if (input) fclose(inf);
+    uint8_t *file_buf = NULL;
+    size_t file_len = 0;
+    if (bge_read_all(f, &file_buf, &file_len) != 0) {
+        fclose(f);
+        fprintf(stderr, "error: cannot read %s\n", path);
         return 1;
     }
-    memcpy(verifier, kdf_out + 32, BGE_VERIFIER_LEN);
+    fclose(f);
 
-    /* open output */
-    FILE *outf = stdout;
-    if (output) {
-        outf = fopen(output, "wb");
-        if (!outf) {
-            fprintf(stderr, "error: cannot open %s: %s\n", output, strerror(errno));
-            cfx_memzero_s(kdf_out, sizeof(kdf_out));
-            if (input) fclose(inf);
-            return 1;
-        }
-    }
-
-    /* for armor: accumulate all output in memory, then encode at the end */
-    uint8_t *armor_buf = NULL;
-    size_t armor_cap = 0, armor_len = 0;
-    int ret = 0;
-
-    #define EMIT(data, len) do { \
-        if (armor) { \
-            size_t _n = (len); \
-            if (armor_len + _n > armor_cap) { \
-                size_t _nc = armor_cap ? armor_cap * 2 : 4096; \
-                while (_nc < armor_len + _n) _nc *= 2; \
-                uint8_t *_t = realloc(armor_buf, _nc); \
-                if (!_t) { ret = 1; goto done; } \
-                armor_buf = _t; armor_cap = _nc; \
-            } \
-            memcpy(armor_buf + armor_len, (data), _n); \
-            armor_len += _n; \
-        } else { \
-            if (fwrite((data), 1, (len), outf) != (len)) { ret = 1; goto done; } \
-        } \
-    } while(0)
-
-    /* write header + verifier */
-    EMIT(&header, sizeof(header));
-    EMIT(verifier, BGE_VERIFIER_LEN);
-
-    /* streaming encrypt loop */
-    uint8_t pt_buf[CFX_STREAM_CHUNK_SIZE];
-    uint8_t ct_buf[CFX_STREAM_CHUNK_SIZE];
-    uint8_t tag[CFX_STREAM_TAG_SIZE];
-    uint64_t chunk_counter = 0;
-
-    for (;;) {
-        size_t nread = fread(pt_buf, 1, CFX_STREAM_CHUNK_SIZE, inf);
-        if (nread == 0 && ferror(inf)) {
-            fprintf(stderr, "error: read failed\n");
-            ret = 1; goto done;
-        }
-
-        /* peek ahead to determine if this is the final chunk */
-        int is_final = feof(inf);
-        if (!is_final && nread < CFX_STREAM_CHUNK_SIZE)
-            is_final = 1;
-
-        rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
-            ct_buf, tag, pt_buf, nread,
-            chunk_counter, is_final, kdf_out, header.nonce);
-        cfx_memzero_s(pt_buf, sizeof(pt_buf));
-        if (rc != 0) {
-            fprintf(stderr, "error: encryption failed at chunk %llu\n",
-                    (unsigned long long)chunk_counter);
-            ret = 1; goto done;
-        }
-
-        EMIT(ct_buf, nread);
-        EMIT(tag, CFX_STREAM_TAG_SIZE);
-        chunk_counter++;
-
-        if (is_final) break;
-    }
-
-    #undef EMIT
-
-    /* finalize armor if needed */
-    if (armor && ret == 0) {
-        uint8_t *armored = NULL;
-        size_t armored_len = 0;
-        if (bge_armor_encode(armor_buf, armor_len, &armored, &armored_len) != 0) {
-            fprintf(stderr, "error: armor encoding failed\n");
-            ret = 1;
-        } else {
-            if (fwrite(armored, 1, armored_len, outf) != armored_len) ret = 1;
-            free(armored);
-        }
-    }
-
-done:
-    cfx_memzero_s(kdf_out, sizeof(kdf_out));
-    cfx_memzero_s(verifier, sizeof(verifier));
-    cfx_memzero_s(pt_buf, sizeof(pt_buf));
-    cfx_memzero_s(ct_buf, sizeof(ct_buf));
-    if (armor_buf) { free(armor_buf); }
-    if (input) fclose(inf);
-    if (output && outf) fclose(outf);
-    return ret;
-}
-
-/* v2 single-shot decrypt from in-memory buffer */
-static int bge_decrypt_v2(const uint8_t *file_buf, size_t file_len,
-                          const uint8_t key[32], const uint8_t nonce[24],
-                          FILE *outf) {
-    size_t ct_len = file_len - BGE_AAD_LEN - BGE_TAG_LEN;
-    const uint8_t *ct  = file_buf + BGE_AAD_LEN;
-    const uint8_t *tag = file_buf + file_len - BGE_TAG_LEN;
-
-    uint8_t *pt = malloc(ct_len + 1);
-    if (!pt) {
-        fprintf(stderr, "error: allocation failed\n");
-        return -1;
-    }
-
-    int rc = cfx_xchacha20_poly1305_decrypt(
-        pt, ct, ct_len, file_buf, BGE_AAD_LEN, key, nonce, tag);
-    if (rc != 0) {
-        fprintf(stderr, "error: decryption failed (corrupted or tampered)\n");
-        cfx_memzero_s(pt, ct_len + 1); free(pt);
-        return -1;
-    }
-
-    int ret = 0;
-    if (ct_len > 0 && fwrite(pt, 1, ct_len, outf) != ct_len)
-        ret = -1;
-
-    cfx_memzero_s(pt, ct_len + 1); free(pt);
-    return ret;
-}
-
-/* v3 decrypt from in-memory buffer (used for armored v3 input) */
-static int bge_decrypt_v3(const uint8_t *file_buf, size_t file_len,
-                          const uint8_t key[32], const uint8_t nonce[24],
-                          FILE *outf) {
-    const uint8_t *p = file_buf + BGE_AAD_LEN;
-    const uint8_t *end = file_buf + file_len;
-    uint8_t pt_buf[CFX_STREAM_CHUNK_SIZE];
-    uint64_t chunk_counter = 0;
-
-    while (p < end) {
-        size_t remaining = (size_t)(end - p);
-        if (remaining < CFX_STREAM_TAG_SIZE) {
-            fprintf(stderr, "error: truncated stream (no tag)\n");
-            return -1;
-        }
-
-        /* determine chunk data size: remaining minus tag, capped at chunk size */
-        size_t chunk_plus_tag;
-        int is_final;
-
-        if (remaining <= CFX_STREAM_CHUNK_SIZE + CFX_STREAM_TAG_SIZE) {
-            /* this is the last chunk */
-            chunk_plus_tag = remaining;
-            is_final = 1;
-        } else {
-            /* full chunk */
-            chunk_plus_tag = CFX_STREAM_CHUNK_SIZE + CFX_STREAM_TAG_SIZE;
-            is_final = 0;
-        }
-
-        size_t ct_len = chunk_plus_tag - CFX_STREAM_TAG_SIZE;
-        const uint8_t *ct  = p;
-        const uint8_t *tag = p + ct_len;
-
-        int rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
-            pt_buf, ct, ct_len, tag, chunk_counter, is_final, key, nonce);
-        if (rc != 0) {
-            fprintf(stderr, "error: chunk %llu authentication failed\n",
-                    (unsigned long long)chunk_counter);
-            cfx_memzero_s(pt_buf, sizeof(pt_buf));
-            return -1;
-        }
-
-        if (ct_len > 0 && fwrite(pt_buf, 1, ct_len, outf) != ct_len) {
-            cfx_memzero_s(pt_buf, sizeof(pt_buf));
-            return -1;
-        }
-
-        cfx_memzero_s(pt_buf, ct_len);
-        p += chunk_plus_tag;
-        chunk_counter++;
-    }
-
-    return 0;
-}
-
-/* v3 streaming decrypt directly from FILE* (no buffering) — poly1305 */
-static int bge_decrypt_v3_stream(FILE *inf,
-                                  const uint8_t key[32], const uint8_t nonce[24],
-                                  FILE *outf) {
-    uint8_t chunk_buf[CFX_STREAM_CHUNK_SIZE + CFX_STREAM_TAG_SIZE];
-    uint8_t pt_buf[CFX_STREAM_CHUNK_SIZE];
-    uint64_t chunk_counter = 0;
-    uint8_t lookahead;
-    int have_lookahead = 0;
-
-    for (;;) {
-        size_t off = 0;
-        if (have_lookahead) {
-            chunk_buf[0] = lookahead;
-            off = 1;
-            have_lookahead = 0;
-        }
-
-        size_t nread = fread(chunk_buf + off, 1, sizeof(chunk_buf) - off, inf);
-        size_t total = off + nread;
-
-        if (nread == 0 && off == 0 && ferror(inf)) {
-            fprintf(stderr, "error: read failed\n");
-            cfx_memzero_s(chunk_buf, sizeof(chunk_buf));
-            return -1;
-        }
-
-        if (total == 0) {
-            fprintf(stderr, "error: empty stream (missing final chunk)\n");
-            return -1;
-        }
-
-        if (total < CFX_STREAM_TAG_SIZE) {
-            fprintf(stderr, "error: truncated stream (no tag)\n");
-            cfx_memzero_s(chunk_buf, sizeof(chunk_buf));
-            return -1;
-        }
-
-        int is_final;
-        if (total < sizeof(chunk_buf)) {
-            /* got less than a full chunk+tag: must be final */
-            is_final = 1;
-        } else {
-            /* full chunk+tag: peek one byte to check for more data */
-            size_t peeked = fread(&lookahead, 1, 1, inf);
-            if (peeked == 0) {
-                is_final = 1;   /* exact-size final chunk */
-            } else {
-                is_final = 0;
-                have_lookahead = 1;
-            }
-        }
-
-        size_t ct_len = total - CFX_STREAM_TAG_SIZE;
-        const uint8_t *tag = chunk_buf + ct_len;
-
-        int rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
-            pt_buf, chunk_buf, ct_len, tag, chunk_counter, is_final, key, nonce);
-        if (rc != 0) {
-            fprintf(stderr, "error: chunk %llu authentication failed\n",
-                    (unsigned long long)chunk_counter);
-            cfx_memzero_s(pt_buf, sizeof(pt_buf));
-            cfx_memzero_s(chunk_buf, sizeof(chunk_buf));
-            return -1;
-        }
-
-        if (ct_len > 0 && fwrite(pt_buf, 1, ct_len, outf) != ct_len) {
-            cfx_memzero_s(pt_buf, sizeof(pt_buf));
-            cfx_memzero_s(chunk_buf, sizeof(chunk_buf));
-            return -1;
-        }
-
-        cfx_memzero_s(pt_buf, ct_len);
-        chunk_counter++;
-
-        if (is_final) break;
-    }
-
-    cfx_memzero_s(chunk_buf, sizeof(chunk_buf));
-    return 0;
-}
-
-static int bge_decrypt_file(int argc, char **argv) {
-    const char *output = NULL;
-    const char *input = NULL;
-
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--decrypt") == 0)
-            continue;
-        else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
-            if (i + 1 >= argc) { fprintf(stderr, "error: -o requires a path\n"); return 1; }
-            output = argv[++i];
-        } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--input") == 0) {
-            if (i + 1 >= argc) { fprintf(stderr, "error: -i requires a path\n"); return 1; }
-            input = argv[++i];
-        } else if (argv[i][0] == '-') {
-            fprintf(stderr, "error: unknown option: %s\n", argv[i]);
-            return 1;
-        } else if (!input) {
-            input = argv[i];
-        } else {
-            fprintf(stderr, "error: unexpected argument: %s\n", argv[i]);
-            return 1;
-        }
-    }
-
-    FILE *inf = stdin;
-    if (input) {
-        inf = fopen(input, "rb");
-        if (!inf) {
-            fprintf(stderr, "error: cannot open %s: %s\n", input, strerror(errno));
-            return 1;
-        }
-    }
-
-    /* peek at the header to decide between streaming and buffered paths */
-    uint8_t hdr_peek[BGE_AAD_LEN];
-    size_t hdr_n = fread(hdr_peek, 1, BGE_AAD_LEN, inf);
-
-    int is_binary_v3 = (hdr_n == BGE_AAD_LEN &&
-                        memcmp(hdr_peek, BGE_MAGIC, 3) == 0 &&
-                        hdr_peek[3] == BGE_STREAM_VERSION);
-
-    if (is_binary_v3) {
-        /* ── non-armored v3: true streaming decrypt from FILE* ── */
-        bge_header hdr;
-        memcpy(&hdr, hdr_peek, sizeof(hdr));
-
-        uint32_t m_cost = cfx_load32_le(&hdr.m_cost);
-        uint32_t t_cost = cfx_load32_le(&hdr.t_cost);
-        uint32_t p      = cfx_load32_le(&hdr.p_cost);
-
-        if (m_cost < 8 || t_cost < 1 || p < 1 ||
-            m_cost > 4194304 || t_cost > 100 || p > 16) {
-            fprintf(stderr, "error: unreasonable argon2 parameters\n");
-            if (input) fclose(inf);
-            return 1;
-        }
-
-        char pwd[256] = {0};
-        int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
-        if (pwd_len <= 0) {
-            fprintf(stderr, "error: passphrase required\n");
-            cfx_memzero_s(pwd, sizeof(pwd));
-            if (input) fclose(inf);
-            return 1;
-        }
-
-        uint8_t kdf_out[48];
-        int rc = cfx_argon2id(kdf_out, 48,
-            (const uint8_t *)pwd, (size_t)pwd_len,
-            hdr.salt, sizeof(hdr.salt), m_cost, t_cost, p);
-        cfx_memzero_s(pwd, sizeof(pwd));
-        if (rc != 0) {
-            fprintf(stderr, "error: argon2 key derivation failed\n");
-            cfx_memzero_s(kdf_out, sizeof(kdf_out));
-            if (input) fclose(inf);
-            return 1;
-        }
-
-        const uint8_t *stored_verifier = hdr_peek + BGE_HEADER_LEN;
-        uint8_t diff = 0;
-        for (int i = 0; i < BGE_VERIFIER_LEN; i++)
-            diff |= kdf_out[32 + i] ^ stored_verifier[i];
-
-        if (diff != 0) {
-            fprintf(stderr, "error: wrong passphrase\n");
-            cfx_memzero_s(kdf_out, sizeof(kdf_out));
-            if (input) fclose(inf);
-            return 1;
-        }
-
-        FILE *outf = stdout;
-        if (output) {
-            outf = fopen(output, "wb");
-            if (!outf) {
-                fprintf(stderr, "error: cannot open %s: %s\n", output, strerror(errno));
-                cfx_memzero_s(kdf_out, sizeof(kdf_out));
-                if (input) fclose(inf);
-                return 1;
-            }
-        }
-
-        int ret = bge_decrypt_v3_stream(inf, kdf_out, hdr.nonce, outf);
-        cfx_memzero_s(kdf_out, sizeof(kdf_out));
-        cfx_memzero_s(hdr_peek, sizeof(hdr_peek));
-        if (input) fclose(inf);
-        if (output) fclose(outf);
-        return ret != 0 ? 1 : 0;
-    }
-
-    /* ── armored or v2: read everything into memory ── */
-    uint8_t *rest = NULL;
-    size_t rest_len = 0;
-    int rc = bge_read_all(inf, &rest, &rest_len);
-    if (input) fclose(inf);
-    if (rc != 0) {
-        fprintf(stderr, "error: cannot read input\n");
+    if (file_len < 4 || memcmp(file_buf, BGE_MAGIC, 3) != 0) {
+        fprintf(stderr, "error: %s is not a valid BGE store\n", path);
+        free(file_buf);
         return 1;
-    }
-
-    /* prepend the bytes we already peeked */
-    size_t raw_len = hdr_n + rest_len;
-    uint8_t *raw = malloc(raw_len);
-    if (!raw) {
-        fprintf(stderr, "error: allocation failed\n");
-        if (rest) { cfx_memzero_s(rest, rest_len); free(rest); }
-        return 1;
-    }
-    memcpy(raw, hdr_peek, hdr_n);
-    if (rest_len > 0) memcpy(raw + hdr_n, rest, rest_len);
-    if (rest) { cfx_memzero_s(rest, rest_len); free(rest); }
-    cfx_memzero_s(hdr_peek, sizeof(hdr_peek));
-
-    /* auto-detect and strip armor */
-    uint8_t *file_buf = raw;
-    size_t file_len = raw_len;
-    int decoded_armor = 0;
-
-    if (bge_is_armored(raw, raw_len)) {
-        uint8_t *dec = NULL;
-        size_t dec_len = 0;
-        if (bge_armor_decode(raw, raw_len, &dec, &dec_len) != 0) {
-            fprintf(stderr, "error: invalid armored input\n");
-            cfx_memzero_s(raw, raw_len); free(raw);
-            return 1;
-        }
-        file_buf = dec;
-        file_len = dec_len;
-        decoded_armor = 1;
-    }
-
-    /* validate header */
-    if (file_len < BGE_AAD_LEN + BGE_TAG_LEN ||
-        memcmp(file_buf, BGE_MAGIC, 3) != 0) {
-        fprintf(stderr, "error: not a valid BGE file\n");
-        goto fail;
     }
 
     uint8_t version = file_buf[3];
-    if (version != BGE_VERSION && version != BGE_STREAM_VERSION) {
-        fprintf(stderr, "error: unsupported BGE version %u\n", version);
-        goto fail;
+
+    if (version == BGE_V4_VERSION) {
+        if (file_len < BGE_V4_FIXED_HDR_LEN) {
+            fprintf(stderr, "error: truncated v4 header\n");
+            free(file_buf);
+            return 1;
+        }
+        bge_v4_fixed_header hdr;
+        memcpy(&hdr, file_buf, BGE_V4_FIXED_HDR_LEN);
+        int sc = hdr.slot_count;
+        if (sc < 1 || sc > BGE_V4_MAX_SLOTS) {
+            fprintf(stderr, "error: invalid slot count %d\n", sc);
+            free(file_buf);
+            return 1;
+        }
+
+        printf("Version: 4 (multi-password)\n");
+        printf("Slots:   %d\n", sc);
+
+        const uint8_t *sp = file_buf + BGE_V4_FIXED_HDR_LEN;
+        for (int i = 0; i < sc; i++) {
+            if ((size_t)(sp - file_buf) + BGE_V4_SLOT_LEN > file_len) {
+                fprintf(stderr, "error: truncated slot %d\n", i);
+                break;
+            }
+            bge_v4_slot slot;
+            bge_v4_slot_from_buf(&slot, sp);
+            printf("  [%d] m=%u KB, t=%u, p=%u\n",
+                   i + 1, slot.m_cost, slot.t_cost, slot.p_cost);
+            sp += BGE_V4_SLOT_LEN;
+        }
+    } else if (version == BGE_VERSION) {
+        printf("Version: 2 (single password)\n");
+        printf("Slots:   1\n");
+        if (file_len >= BGE_HEADER_LEN) {
+            bge_header hdr;
+            memcpy(&hdr, file_buf, sizeof(hdr));
+            uint32_t m = cfx_load32_le(&hdr.m_cost);
+            uint32_t t = cfx_load32_le(&hdr.t_cost);
+            uint32_t p = cfx_load32_le(&hdr.p_cost);
+            printf("  [1] m=%u KB, t=%u, p=%u\n", m, t, p);
+        }
+    } else {
+        printf("Version: %u (unknown)\n", version);
+    }
+
+    free(file_buf);
+    return 0;
+}
+
+static int bge_slot_add(int argc, char **argv) {
+    const char *path = NULL;
+    char path_buf[1024];
+
+    for (int i = 3; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: %s slot add [-s path]\n", argv[0]);
+            return 0;
+        } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--store") == 0) {
+            if (i + 1 >= argc) { fprintf(stderr, "error: -s requires a path\n"); return 1; }
+            path = argv[++i];
+        } else {
+            fprintf(stderr, "error: unknown argument: %s\n", argv[i]);
+            return 1;
+        }
+    }
+
+    if (!path) {
+        if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
+        path = path_buf;
+    }
+
+    /* authenticate with existing password */
+    char pwd[256] = {0};
+    int pwd_len = bge_read_passphrase("Enter existing passphrase: ", pwd, sizeof(pwd));
+    if (pwd_len <= 0) {
+        fprintf(stderr, "error: passphrase required\n");
+        cfx_memzero_s(pwd, sizeof(pwd));
+        return 1;
+    }
+
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    if (rc != 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        return 1;
+    }
+
+    /* check max slots before doing any more work */
+    if (us.version == BGE_V4_VERSION &&
+        us.u.v4.hdr.slot_count >= BGE_V4_MAX_SLOTS) {
+        fprintf(stderr, "error: maximum %d slots reached\n", BGE_V4_MAX_SLOTS);
+        cfx_memzero_s(pwd, sizeof(pwd));
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    /* decrypt store data */
+    uint8_t *pt = NULL;
+    size_t pt_len = 0;
+    rc = bge_udecrypt(&us, &pt, &pt_len);
+    if (rc != 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    /* prompt for new passphrase */
+    printf("Enter new passphrase for additional slot.\n");
+    char new_pwd[256] = {0};
+    int new_len = prompt_passphrase(new_pwd, sizeof(new_pwd));
+    if (new_len < 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    if (us.version == BGE_V4_VERSION) {
+        /* already v4: append a slot */
+        bge_v4_store *s4 = &us.u.v4;
+        int sc = s4->hdr.slot_count;
+
+        /* wrap DEK with new password */
+        rc = bge_v4_wrap_dek(new_pwd, (size_t)new_len,
+                             BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P,
+                             s4->dek, &s4->slots[sc]);
+        cfx_memzero_s(new_pwd, sizeof(new_pwd));
+        cfx_memzero_s(pwd, sizeof(pwd));
+        if (rc != 0) {
+            cfx_memzero_s(pt, pt_len);
+            free(pt);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+
+        s4->hdr.slot_count = (uint8_t)(sc + 1);
+        rc = bge_v4_encrypt_write(path, pt, pt_len,
+                                  &s4->hdr, s4->slots, sc + 1, s4->dek);
+    } else {
+        /* v2 -> v4 migration */
+        bge_v4_fixed_header hdr;
+        memcpy(hdr.magic, BGE_MAGIC, 3);
+        hdr.version = BGE_V4_VERSION;
+        hdr.slot_count = 2;
+        memset(hdr.reserved, 0, sizeof(hdr.reserved));
+
+        /* generate random DEK */
+        uint8_t dek[BGE_V4_DEK_LEN];
+        cfx_srand_os();
+        cfx_rand_bytes(dek, sizeof(dek));
+
+        bge_v4_slot slots[2];
+        memset(slots, 0, sizeof(slots));
+
+        /* slot 0: wrap DEK under existing password */
+        rc = bge_v4_wrap_dek(pwd, (size_t)pwd_len,
+                             BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P,
+                             dek, &slots[0]);
+        cfx_memzero_s(pwd, sizeof(pwd));
+        if (rc != 0) {
+            cfx_memzero_s(new_pwd, sizeof(new_pwd));
+            cfx_memzero_s(dek, sizeof(dek));
+            cfx_memzero_s(pt, pt_len);
+            free(pt);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+
+        /* slot 1: wrap DEK under new password */
+        rc = bge_v4_wrap_dek(new_pwd, (size_t)new_len,
+                             BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P,
+                             dek, &slots[1]);
+        cfx_memzero_s(new_pwd, sizeof(new_pwd));
+        if (rc != 0) {
+            cfx_memzero_s(dek, sizeof(dek));
+            cfx_memzero_s(pt, pt_len);
+            free(pt);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+
+        rc = bge_v4_encrypt_write(path, pt, pt_len, &hdr, slots, 2, dek);
+        cfx_memzero_s(dek, sizeof(dek));
+        cfx_memzero_s(slots, sizeof(slots));
+    }
+
+    int was_v4 = (us.version == BGE_V4_VERSION);
+
+    cfx_memzero_s(pt, pt_len);
+    free(pt);
+    bge_ustore_wipe(&us);
+
+    if (rc == 0) {
+        printf("Slot added.\n");
+        if (!was_v4)
+            printf("Store migrated from v2 to v4.\n");
+    }
+    return rc != 0;
+}
+
+static int bge_slot_rm(int argc, char **argv) {
+    const char *path = NULL;
+    char path_buf[1024];
+    int target_slot = -1;  /* -1 means: use matched slot */
+
+    for (int i = 3; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: %s slot rm [N] [-s path]\n", argv[0]);
+            printf("  N is 1-based slot index (default: authenticated slot)\n");
+            return 0;
+        } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--store") == 0) {
+            if (i + 1 >= argc) { fprintf(stderr, "error: -s requires a path\n"); return 1; }
+            path = argv[++i];
+        } else if (target_slot < 0 && is_numeric(argv[i])) {
+            target_slot = atoi(argv[i]);
+        } else {
+            fprintf(stderr, "error: unknown argument: %s\n", argv[i]);
+            return 1;
+        }
+    }
+
+    if (!path) {
+        if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
+        path = path_buf;
     }
 
     char pwd[256] = {0};
@@ -2228,78 +1329,241 @@ static int bge_decrypt_file(int argc, char **argv) {
     if (pwd_len <= 0) {
         fprintf(stderr, "error: passphrase required\n");
         cfx_memzero_s(pwd, sizeof(pwd));
-        goto fail;
+        return 1;
     }
 
-    /* authenticate via argon2 + verifier */
-    bge_header hdr;
-    memcpy(&hdr, file_buf, sizeof(hdr));
-
-    uint32_t m_cost = cfx_load32_le(&hdr.m_cost);
-    uint32_t t_cost = cfx_load32_le(&hdr.t_cost);
-    uint32_t p      = cfx_load32_le(&hdr.p_cost);
-
-    if (m_cost < 8 || t_cost < 1 || p < 1 ||
-        m_cost > 4194304 || t_cost > 100 || p > 16) {
-        fprintf(stderr, "error: unreasonable argon2 parameters\n");
-        cfx_memzero_s(pwd, sizeof(pwd));
-        goto fail;
-    }
-
-    uint8_t kdf_out[48];
-    rc = cfx_argon2id(kdf_out, 48,
-        (const uint8_t *)pwd, (size_t)pwd_len,
-        hdr.salt, sizeof(hdr.salt), m_cost, t_cost, p);
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
     cfx_memzero_s(pwd, sizeof(pwd));
+    if (rc != 0) return 1;
+
+    if (us.version != BGE_V4_VERSION) {
+        fprintf(stderr, "error: slot rm requires a v4 store (use 'slot add' first)\n");
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    bge_v4_store *s4 = &us.u.v4;
+    int sc = s4->hdr.slot_count;
+
+    if (sc <= 1) {
+        fprintf(stderr, "error: cannot remove the only slot\n");
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    /* resolve target slot (convert 1-based to 0-based) */
+    int rm_idx;
+    if (target_slot > 0) {
+        rm_idx = target_slot - 1;
+        if (rm_idx >= sc) {
+            fprintf(stderr, "error: slot %d does not exist (store has %d slots)\n",
+                    target_slot, sc);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+    } else {
+        rm_idx = s4->matched_slot;
+    }
+
+    /* confirm */
+    char prompt[128];
+    snprintf(prompt, sizeof(prompt), "Remove slot %d? [y/N] ", rm_idx + 1);
+    char ans[8] = {0};
+    int r = bge_read_visible(prompt, ans, sizeof(ans));
+    if (r <= 0 || (ans[0] != 'y' && ans[0] != 'Y')) {
+        fprintf(stderr, "Aborted.\n");
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    /* decrypt store data */
+    uint8_t *pt = NULL;
+    size_t pt_len = 0;
+    rc = bge_udecrypt(&us, &pt, &pt_len);
     if (rc != 0) {
-        fprintf(stderr, "error: argon2 key derivation failed\n");
-        cfx_memzero_s(kdf_out, sizeof(kdf_out));
-        goto fail;
+        bge_ustore_wipe(&us);
+        return 1;
     }
 
-    const uint8_t *stored_verifier = file_buf + BGE_HEADER_LEN;
-    uint8_t diff = 0;
-    for (int i = 0; i < BGE_VERIFIER_LEN; i++)
-        diff |= kdf_out[32 + i] ^ stored_verifier[i];
+    /* remove slot from array */
+    for (int i = rm_idx; i < sc - 1; i++) {
+        s4->slots[i] = s4->slots[i + 1];
+    }
+    memset(&s4->slots[sc - 1], 0, sizeof(bge_v4_slot));
+    s4->hdr.slot_count = (uint8_t)(sc - 1);
 
-    if (diff != 0) {
-        fprintf(stderr, "error: wrong passphrase\n");
-        cfx_memzero_s(kdf_out, sizeof(kdf_out));
-        goto fail;
+    /* re-encrypt */
+    rc = bge_v4_encrypt_write(path, pt, pt_len,
+                              &s4->hdr, s4->slots, sc - 1, s4->dek);
+    cfx_memzero_s(pt, pt_len);
+    free(pt);
+    bge_ustore_wipe(&us);
+
+    if (rc == 0)
+        printf("Slot %d removed.\n", rm_idx + 1);
+    return rc != 0;
+}
+
+static int bge_slot(int argc, char **argv) {
+    if (argc < 3) {
+        printf("Usage: %s slot <add|rm|ls> [-s path]\n", argv[0]);
+        return 1;
     }
 
-    /* open output */
-    FILE *outf = stdout;
-    if (output) {
-        outf = fopen(output, "wb");
-        if (!outf) {
-            fprintf(stderr, "error: cannot open %s: %s\n", output, strerror(errno));
-            cfx_memzero_s(kdf_out, sizeof(kdf_out));
-            goto fail;
+    const char *sub = argv[2];
+    if (strcmp(sub, "ls")   == 0 || strcmp(sub, "list") == 0) return bge_slot_ls(argc, argv);
+    if (strcmp(sub, "add")  == 0) return bge_slot_add(argc, argv);
+    if (strcmp(sub, "rm")   == 0 || strcmp(sub, "remove") == 0) return bge_slot_rm(argc, argv);
+
+    fprintf(stderr, "Unknown slot subcommand: %s\n", sub);
+    printf("Usage: %s slot <add|rm|ls> [-s path]\n", argv[0]);
+    return 1;
+}
+
+static int bge_rekey(int argc, char **argv) {
+    const char *path = NULL;
+    char path_buf[1024];
+
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: %s rekey [-s path]\n", argv[0]);
+            printf("Generate a new DEK and re-wrap all slots. V4 only.\n");
+            printf("You will be prompted for each slot's passphrase.\n");
+            return 0;
+        } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--store") == 0) {
+            if (i + 1 >= argc) { fprintf(stderr, "error: -s requires a path\n"); return 1; }
+            path = argv[++i];
+        } else {
+            fprintf(stderr, "error: unknown argument: %s\n", argv[i]);
+            return 1;
         }
     }
 
-    /* dispatch by version */
-    int ret;
-    if (version == BGE_VERSION) {
-        ret = bge_decrypt_v2(file_buf, file_len, kdf_out, hdr.nonce, outf);
-    } else {
-        ret = bge_decrypt_v3(file_buf, file_len, kdf_out, hdr.nonce, outf);
+    if (!path) {
+        if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
+        path = path_buf;
     }
 
-    cfx_memzero_s(kdf_out, sizeof(kdf_out));
-    if (output) fclose(outf);
-    cfx_memzero_s(file_buf, file_len);
-    if (decoded_armor) free(file_buf);
-    cfx_memzero_s(raw, raw_len); free(raw);
-    return ret != 0 ? 1 : 0;
+    /* first, authenticate to decrypt the store */
+    char pwd[256] = {0};
+    int pwd_len = bge_read_passphrase("Enter any passphrase to unlock: ", pwd, sizeof(pwd));
+    if (pwd_len <= 0) {
+        fprintf(stderr, "error: passphrase required\n");
+        cfx_memzero_s(pwd, sizeof(pwd));
+        return 1;
+    }
 
-fail:
-    cfx_memzero_s(file_buf, file_len);
-    if (decoded_armor) free(file_buf);
-    cfx_memzero_s(raw, raw_len); free(raw);
-    return 1;
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    cfx_memzero_s(pwd, sizeof(pwd));
+    if (rc != 0) return 1;
+
+    if (us.version != BGE_V4_VERSION) {
+        fprintf(stderr, "error: rekey requires a v4 store (use 'slot add' first)\n");
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    uint8_t *pt = NULL;
+    size_t pt_len = 0;
+    rc = bge_udecrypt(&us, &pt, &pt_len);
+    if (rc != 0) {
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    bge_v4_store *s4 = &us.u.v4;
+    int sc = s4->hdr.slot_count;
+
+    /* generate new DEK */
+    uint8_t new_dek[BGE_V4_DEK_LEN];
+    cfx_srand_os();
+    cfx_rand_bytes(new_dek, sizeof(new_dek));
+
+    /* for each slot, prompt for that slot's passphrase, verify, re-wrap */
+    bge_v4_slot new_slots[BGE_V4_MAX_SLOTS];
+    memset(new_slots, 0, sizeof(new_slots));
+
+    for (int i = 0; i < sc; i++) {
+        char prompt[128];
+        snprintf(prompt, sizeof(prompt), "Enter passphrase for slot %d: ", i + 1);
+        char slot_pwd[256] = {0};
+        int slot_pwd_len = bge_read_secret(prompt, slot_pwd, sizeof(slot_pwd));
+        if (slot_pwd_len <= 0) {
+            fprintf(stderr, "error: passphrase required for slot %d\n", i + 1);
+            cfx_memzero_s(slot_pwd, sizeof(slot_pwd));
+            cfx_memzero_s(new_dek, sizeof(new_dek));
+            cfx_memzero_s(pt, pt_len);
+            free(pt);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+
+        /* verify against slot's existing verifier */
+        uint8_t kdf_out[48];
+        rc = cfx_argon2id(kdf_out, 48,
+            (const uint8_t *)slot_pwd, (size_t)slot_pwd_len,
+            s4->slots[i].salt, sizeof(s4->slots[i].salt),
+            s4->slots[i].m_cost, s4->slots[i].t_cost, s4->slots[i].p_cost);
+        if (rc != 0) {
+            fprintf(stderr, "error: argon2 failed for slot %d\n", i + 1);
+            cfx_memzero_s(kdf_out, sizeof(kdf_out));
+            cfx_memzero_s(slot_pwd, sizeof(slot_pwd));
+            cfx_memzero_s(new_dek, sizeof(new_dek));
+            cfx_memzero_s(pt, pt_len);
+            free(pt);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+
+        uint8_t diff = 0;
+        for (int j = 0; j < 16; j++)
+            diff |= kdf_out[32 + j] ^ s4->slots[i].verifier[j];
+
+        cfx_memzero_s(kdf_out, sizeof(kdf_out));
+
+        if (diff != 0) {
+            fprintf(stderr, "error: wrong passphrase for slot %d\n", i + 1);
+            cfx_memzero_s(slot_pwd, sizeof(slot_pwd));
+            cfx_memzero_s(new_dek, sizeof(new_dek));
+            cfx_memzero_s(pt, pt_len);
+            free(pt);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+
+        /* wrap new DEK with this slot's password */
+        rc = bge_v4_wrap_dek(slot_pwd, (size_t)slot_pwd_len,
+                             s4->slots[i].m_cost,
+                             s4->slots[i].t_cost,
+                             s4->slots[i].p_cost,
+                             new_dek, &new_slots[i]);
+        cfx_memzero_s(slot_pwd, sizeof(slot_pwd));
+        if (rc != 0) {
+            cfx_memzero_s(new_dek, sizeof(new_dek));
+            cfx_memzero_s(pt, pt_len);
+            free(pt);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+    }
+
+    /* re-encrypt store with new DEK */
+    rc = bge_v4_encrypt_write(path, pt, pt_len, &s4->hdr, new_slots, sc, new_dek);
+
+    cfx_memzero_s(new_dek, sizeof(new_dek));
+    cfx_memzero_s(new_slots, sizeof(new_slots));
+    cfx_memzero_s(pt, pt_len);
+    free(pt);
+    bge_ustore_wipe(&us);
+
+    if (rc == 0)
+        printf("Rekey complete. All %d slots re-wrapped with new data key.\n", sc);
+    return rc != 0;
 }
+
+/* ── main dispatch ────────────────────────────────────────── */
 
 int cfx_bge_run(int argc, char **argv) {
     g_passphrase_arg = NULL;
@@ -2335,7 +1599,7 @@ int cfx_bge_run(int argc, char **argv) {
         return 0;
     }
 
-    /* scan for -e/-d anywhere in argv (flag-style, not subcommand) */
+    /* scan for -e/-d anywhere in argv */
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0) {
             return bge_encrypt_file(argc, argv);
@@ -2354,6 +1618,8 @@ int cfx_bge_run(int argc, char **argv) {
     if (strcmp(cmd, "info")   == 0) return bge_info(argc, argv);
     if (strcmp(cmd, "passwd") == 0) return bge_passwd(argc, argv);
     if (strcmp(cmd, "dump")   == 0) return bge_dump(argc, argv);
+    if (strcmp(cmd, "slot")   == 0) return bge_slot(argc, argv);
+    if (strcmp(cmd, "rekey")  == 0) return bge_rekey(argc, argv);
 
     fprintf(stderr, "Unknown command: %s\n", cmd);
     usage(argv[0]);
