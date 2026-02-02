@@ -586,8 +586,13 @@ static int bge_set(int argc, char **argv) {
             val_buf = (uint8_t *)value_str;
             val_len = strlen(value_str);
         } else {
+            int stdin_is_tty = 0;
 #ifndef _WIN32
-            if (isatty(STDIN_FILENO)) {
+            stdin_is_tty = isatty(STDIN_FILENO);
+#else
+            stdin_is_tty = _isatty(_fileno(stdin));
+#endif
+            if (stdin_is_tty) {
                 char secret_buf[4096] = {0};
                 int slen = bge_read_secret("Value: ", secret_buf, sizeof(secret_buf));
                 if (slen <= 0) {
@@ -610,9 +615,7 @@ static int bge_set(int argc, char **argv) {
                 val_len = (size_t)slen;
                 cfx_memzero_s(secret_buf, sizeof(secret_buf));
                 val_needs_free = 1;
-            } else
-#endif
-            {
+            } else {
                 if (bge_read_all(stdin, &val_buf, &val_len) != 0) {
                     fprintf(stderr, "error: cannot read from stdin\n");
                     cfx_memzero_s(pt, pt_len);

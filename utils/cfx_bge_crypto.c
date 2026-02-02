@@ -229,8 +229,13 @@ int bge_safe_write(const char *path,
 #endif
     fclose(f);
 
+#ifdef _WIN32
+    if (!MoveFileExA(tmppath, path, MOVEFILE_REPLACE_EXISTING)) {
+        fprintf(stderr, "error: rename failed: %lu\n", GetLastError());
+#else
     if (rename(tmppath, path) != 0) {
         fprintf(stderr, "error: rename failed: %s\n", strerror(errno));
+#endif
         unlink(tmppath);
         if (lock_fd >= 0) close(lock_fd);
         return -1;
@@ -489,8 +494,13 @@ int bge_v4_safe_write(const char *path,
 #endif
     fclose(f);
 
+#ifdef _WIN32
+    if (!MoveFileExA(tmppath, path, MOVEFILE_REPLACE_EXISTING)) {
+        fprintf(stderr, "error: rename failed: %lu\n", GetLastError());
+#else
     if (rename(tmppath, path) != 0) {
         fprintf(stderr, "error: rename failed: %s\n", strerror(errno));
+#endif
         unlink(tmppath);
         if (lock_fd >= 0) close(lock_fd);
         return -1;
