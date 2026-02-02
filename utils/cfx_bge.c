@@ -283,6 +283,27 @@ static int is_numeric(const char *s) {
     return 1;
 }
 
+/* print "[1] name\n..." for each entry in the decrypted store */
+static void store_print_names(const uint8_t *pt, size_t pt_len) {
+    const uint8_t *p = pt;
+    const uint8_t *end = pt + pt_len;
+    unsigned idx = 0;
+    while (p + 2 <= end) {
+        uint16_t klen = cfx_load16_le(p);
+        p += 2;
+        if (p + klen > end) break;
+        printf("[%u] ", ++idx);
+        fwrite(p, 1, klen, stdout);
+        printf("\n");
+        p += klen;
+        if (p + 4 > end) break;
+        uint32_t vl = cfx_load32_le(p);
+        p += 4;
+        if (p + vl > end) break;
+        p += vl;
+    }
+}
+
 /* ── subcommands ──────────────────────────────────────────── */
 
 static int bge_init(int argc, char **argv) {
@@ -382,6 +403,7 @@ static int bge_get(int argc, char **argv) {
 
     char name_buf[256] = {0};
     if (!name) {
+        store_print_names(pt, pt_len);
         int r = bge_read_visible("Name: ", name_buf, sizeof(name_buf));
         if (r <= 0) {
             fprintf(stderr, "error: name required\n");
@@ -786,24 +808,7 @@ static int bge_ls(int argc, char **argv) {
     bge_ustore_wipe(&us);
     if (rc != 0) return 1;
 
-    const uint8_t *p = pt;
-    const uint8_t *end = pt + pt_len;
-    unsigned idx = 0;
-    while (p + 2 <= end) {
-        uint16_t klen = cfx_load16_le(p);
-        p += 2;
-        if (p + klen > end) break;
-        printf("[%u] ", ++idx);
-        fwrite(p, 1, klen, stdout);
-        printf("\n");
-        p += klen;
-
-        if (p + 4 > end) break;
-        uint32_t vl = cfx_load32_le(p);
-        p += 4;
-        if (p + vl > end) break;
-        p += vl;
-    }
+    store_print_names(pt, pt_len);
 
     cfx_memzero_s(pt, pt_len);
     free(pt);
