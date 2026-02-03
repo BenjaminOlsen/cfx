@@ -125,11 +125,13 @@ static void fill_block(const block_t *prev, const block_t *ref,
     }
 
     if (xor) {
-        for (int i = 0; i < BLOCK_QW; i++)
+        for (int i = 0; i < BLOCK_QW; i++) {
             next->v[i] ^= r[i] ^ tmp.v[i];
+        }
     } else {
-        for (int i = 0; i < BLOCK_QW; i++)
+        for (int i = 0; i < BLOCK_QW; i++) {
             next->v[i] = r[i] ^ tmp.v[i];
+        }
     }
 }
 
@@ -294,18 +296,22 @@ int cfx_argon2(uint8_t *out, size_t outlen,
     }
 
     /* fill remaining blocks */
-    for (uint32_t pass = 0; pass < t; pass++)
-        for (uint32_t slice = 0; slice < SYNC_POINTS; slice++)
-            for (uint32_t lane = 0; lane < p; lane++)
+    for (uint32_t pass = 0; pass < t; pass++) {
+        for (uint32_t slice = 0; slice < SYNC_POINTS; slice++) {
+            for (uint32_t lane = 0; lane < p; lane++) {
                 fill_segment(&c, pass, lane, slice);
+            }
+        }
+    }
 
     /* XOR last block of each lane → final block → H' → output */
     block_t fin;
     memcpy(&fin, &c.mem[c.lane_len - 1], sizeof(block_t));
     for (uint32_t lane = 1; lane < p; lane++) {
         uint32_t last = lane * c.lane_len + c.lane_len - 1;
-        for (int i = 0; i < BLOCK_QW; i++)
+        for (int i = 0; i < BLOCK_QW; i++) {
             fin.v[i] ^= c.mem[last].v[i];
+        }
     }
 
     hash_long(out, outlen, (uint8_t *)fin.v, BLOCK_SZ);
@@ -333,7 +339,7 @@ int cfx_argon2i(uint8_t *out, size_t outlen, const uint8_t *pwd, size_t pwdlen,
     return cfx_argon2(out, outlen, pwd, pwdlen, salt, saltlen, m, t, p, CFX_ARGON2I);
 }
 
-/* ── PHC string encoding ─────────────────────────────────────────── */
+/*  PHC string encoding  */
 
 static const char *type_str(int type) {
     switch (type) {
