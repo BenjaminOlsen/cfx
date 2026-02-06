@@ -908,11 +908,6 @@ static int store_cmd_swap(int argc, char **argv) {
         }
     }
 
-    if (!arg_a || !arg_b) {
-        fprintf(stderr, "error: swap requires two arguments (names or indices)\n");
-        return 1;
-    }
-
     if (!path) {
         if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
         path = path_buf;
@@ -937,6 +932,34 @@ static int store_cmd_swap(int argc, char **argv) {
     if (rc != 0) {
         bge_ustore_wipe(&us);
         return 1;
+    }
+
+    /* interactive prompt if arguments not provided */
+    char buf_a[256] = {0}, buf_b[256] = {0};
+    if (!arg_a || !arg_b) {
+        store_print_names(pt, pt_len);
+        if (!arg_a) {
+            int r = bge_read_visible("First entry (name or index): ", buf_a, sizeof(buf_a));
+            if (r <= 0) {
+                fprintf(stderr, "error: entry required\n");
+                cfx_memzero_s(pt, pt_len);
+                free(pt);
+                bge_ustore_wipe(&us);
+                return 1;
+            }
+            arg_a = buf_a;
+        }
+        if (!arg_b) {
+            int r = bge_read_visible("Second entry (name or index): ", buf_b, sizeof(buf_b));
+            if (r <= 0) {
+                fprintf(stderr, "error: entry required\n");
+                cfx_memzero_s(pt, pt_len);
+                free(pt);
+                bge_ustore_wipe(&us);
+                return 1;
+            }
+            arg_b = buf_b;
+        }
     }
 
     /* resolve names or indices to 1-based indices */
