@@ -2,6 +2,27 @@
 
 #include "cfx_bge_internal.h"
 
+/*  If name is purely numeric, resolve it as a 1-based entry index.   
+    on success: writes resolved name into buf, sets *name to buf, returns 0
+    if not numeric: no-op, returns 0
+    if numeric but index out of range: prints error, returns -1
+*/
+static int resolve_numeric(const char **name, char *buf, size_t bufsz,
+                           const uint8_t *pt, size_t pt_len) {
+    if (!is_numeric(*name)) return 0;
+    unsigned idx = (unsigned)atoi(*name);
+    uint16_t nlen;
+    const uint8_t *nptr = store_name_by_index(pt, pt_len, idx, &nlen);
+    if (!nptr || nlen >= bufsz) {
+        fprintf(stderr, "error: numeric names are not allowed (index %u not found)\n", idx);
+        return -1;
+    }
+    memcpy(buf, nptr, nlen);
+    buf[nlen] = '\0';
+    *name = buf;
+    return 0;
+}
+
 static void usage(const char *prog) {
     printf("Usage: %s <command> [args...]\n\n", prog);
     printf("Passphrase-protected secrets store using\n");
@@ -157,17 +178,11 @@ static int store_cmd_get(int argc, char **argv) {
         name = name_buf;
     }
 
-    /* resolve numeric index to entry name */
     char resolved[256];
-    if (is_numeric(name)) {
-        unsigned idx = (unsigned)atoi(name);
-        uint16_t nlen;
-        const uint8_t *nptr = store_name_by_index(pt, pt_len, idx, &nlen);
-        if (nptr && nlen < sizeof(resolved)) {
-            memcpy(resolved, nptr, nlen);
-            resolved[nlen] = '\0';
-            name = resolved;
-        }
+    if (resolve_numeric(&name, resolved, sizeof(resolved), pt, pt_len) != 0) {
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        return 1;
     }
 
     size_t vlen;
@@ -323,17 +338,16 @@ static int store_cmd_set(int argc, char **argv) {
         name = name_buf;
     }
 
-    /* resolve numeric index to entry name */
     char resolved[256];
-    if (is_numeric(name)) {
-        unsigned idx = (unsigned)atoi(name);
-        uint16_t nlen;
-        const uint8_t *nptr = store_name_by_index(pt, pt_len, idx, &nlen);
-        if (nptr && nlen < sizeof(resolved)) {
-            memcpy(resolved, nptr, nlen);
-            resolved[nlen] = '\0';
-            name = resolved;
+    if (resolve_numeric(&name, resolved, sizeof(resolved), pt, pt_len) != 0) {
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        if (val_needs_free) {
+            cfx_memzero_s(val_buf, val_len);
+            free(val_buf);
         }
+        return 1;
     }
 
     /* prompt to overwrite unless -f */
@@ -538,17 +552,12 @@ static int store_cmd_edit(int argc, char **argv) {
         name = name_buf;
     }
 
-    /* resolve numeric index */
     char resolved[256];
-    if (is_numeric(name)) {
-        unsigned idx = (unsigned)atoi(name);
-        uint16_t nlen;
-        const uint8_t *nptr = store_name_by_index(pt, pt_len, idx, &nlen);
-        if (nptr && nlen < sizeof(resolved)) {
-            memcpy(resolved, nptr, nlen);
-            resolved[nlen] = '\0';
-            name = resolved;
-        }
+    if (resolve_numeric(&name, resolved, sizeof(resolved), pt, pt_len) != 0) {
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        return 1;
     }
 
     /* get current value (NULL means new entry) */
@@ -797,17 +806,20 @@ static int store_cmd_rename(int argc, char **argv) {
         return 1;
     }
 
-    /* resolve numeric index for old_name only */
     char resolved[256];
-    if (is_numeric(old_name)) {
-        unsigned idx = (unsigned)atoi(old_name);
-        uint16_t nlen;
-        const uint8_t *nptr = store_name_by_index(pt, pt_len, idx, &nlen);
-        if (nptr && nlen < sizeof(resolved)) {
-            memcpy(resolved, nptr, nlen);
-            resolved[nlen] = '\0';
-            old_name = resolved;
-        }
+    if (resolve_numeric(&old_name, resolved, sizeof(resolved), pt, pt_len) != 0) {
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    if (is_numeric(new_name)) {
+        fprintf(stderr, "error: numeric names are not allowed\n");
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        return 1;
     }
 
     if (strcmp(old_name, new_name) == 0) {
@@ -962,57 +974,33 @@ static int store_cmd_swap(int argc, char **argv) {
         }
     }
 
-    /* resolve names or indices to 1-based indices */
+    /* resolve to 1-based indices: numeric args are indices directly,
+       name args are scanned */
     unsigned idx_a = 0, idx_b = 0;
-
     if (is_numeric(arg_a)) {
         idx_a = (unsigned)atoi(arg_a);
-    } else {
-        /* scan for name */
-        const uint8_t *p = pt;
-        const uint8_t *end = pt + pt_len;
-        unsigned cur = 0;
-        while (p + 2 <= end) {
-            uint16_t klen = cfx_load16_le(p);
-            p += 2;
-            if (p + klen > end) break;
-            const uint8_t *kptr = p;
-            p += klen;
-            if (p + 4 > end) break;
-            uint32_t vl = cfx_load32_le(p);
-            p += 4;
-            if (p + vl > end) break;
-            p += vl;
-            ++cur;
-            if (klen == strlen(arg_a) && memcmp(kptr, arg_a, klen) == 0) {
-                idx_a = cur;
-                break;
-            }
-        }
     }
-
     if (is_numeric(arg_b)) {
         idx_b = (unsigned)atoi(arg_b);
-    } else {
+    }
+    if (!idx_a || !idx_b) {
         const uint8_t *p = pt;
         const uint8_t *end = pt + pt_len;
         unsigned cur = 0;
         while (p + 2 <= end) {
-            uint16_t klen = cfx_load16_le(p);
-            p += 2;
+            uint16_t klen = cfx_load16_le(p); p += 2;
             if (p + klen > end) break;
-            const uint8_t *kptr = p;
-            p += klen;
+            const uint8_t *kptr = p; p += klen;
             if (p + 4 > end) break;
-            uint32_t vl = cfx_load32_le(p);
-            p += 4;
+            uint32_t vl = cfx_load32_le(p); p += 4;
             if (p + vl > end) break;
             p += vl;
             ++cur;
-            if (klen == strlen(arg_b) && memcmp(kptr, arg_b, klen) == 0) {
+            if (!idx_a && klen == strlen(arg_a) && memcmp(kptr, arg_a, klen) == 0)
+                idx_a = cur;
+            if (!idx_b && klen == strlen(arg_b) && memcmp(kptr, arg_b, klen) == 0)
                 idx_b = cur;
-                break;
-            }
+            if (idx_a && idx_b) break;
         }
     }
 

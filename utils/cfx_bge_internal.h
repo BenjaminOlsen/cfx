@@ -44,7 +44,7 @@
 #define BGE_MAGIC         "BGE"
 #define BGE_VERSION       2       /* KV store format version */
 #define BGE_STREAM_VERSION 3      /* streaming file encryption */
-#define BGE_VERSION_STR   "2.4.1"
+#define BGE_VERSION_STR   "2.4.2"
 #define BGE_HEADER_LEN    56
 #define BGE_VERIFIER_LEN  16
 #define BGE_AAD_LEN       (BGE_HEADER_LEN + BGE_VERIFIER_LEN)  /* 72 */
