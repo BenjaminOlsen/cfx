@@ -179,6 +179,68 @@ uint8_t *store_rm(const uint8_t *pt, size_t pt_len, const char *name, size_t *ne
     return out;
 }
 
+/* swap two entries by 1-based index. returns new malloc'd buf, or NULL on error. */
+uint8_t *store_swap(const uint8_t *pt, size_t pt_len,
+                    unsigned idx_a, unsigned idx_b, size_t *new_len) {
+    if (idx_a == idx_b || idx_a == 0 || idx_b == 0) {
+        fprintf(stderr, "error: swap requires two distinct positive indices\n");
+        return NULL;
+    }
+
+    /* ensure idx_a < idx_b for simpler reconstruction */
+    if (idx_a > idx_b) { unsigned t = idx_a; idx_a = idx_b; idx_b = t; }
+
+    /* scan to locate both entries */
+    const uint8_t *p = pt;
+    const uint8_t *end = pt + pt_len;
+    unsigned cur = 0;
+
+    const uint8_t *a_start = NULL, *a_end = NULL;
+    const uint8_t *b_start = NULL, *b_end = NULL;
+
+    while (p + 2 <= end) {
+        const uint8_t *entry_start = p;
+        uint16_t klen = cfx_load16_le(p);
+        p += 2;
+        if (p + klen > end) break;
+        p += klen;
+        if (p + 4 > end) break;
+        uint32_t vl = cfx_load32_le(p);
+        p += 4;
+        if (p + vl > end) break;
+        p += vl;
+
+        ++cur;
+        if (cur == idx_a) { a_start = entry_start; a_end = p; }
+        if (cur == idx_b) { b_start = entry_start; b_end = p; break; }
+    }
+
+    if (!a_start || !b_start) {
+        fprintf(stderr, "error: index out of range\n");
+        return NULL;
+    }
+
+    /* rebuild: [prefix][B][middle][A][suffix] */
+    size_t a_len = (size_t)(a_end - a_start);
+    size_t b_len = (size_t)(b_end - b_start);
+    size_t prefix_len = (size_t)(a_start - pt);
+    size_t middle_len = (size_t)(b_start - a_end);
+    size_t suffix_len = pt_len - (size_t)(b_end - pt);
+
+    uint8_t *out = malloc(pt_len);
+    if (!out) return NULL;
+
+    uint8_t *w = out;
+    memcpy(w, pt, prefix_len);               w += prefix_len;
+    memcpy(w, b_start, b_len);               w += b_len;
+    memcpy(w, a_end, middle_len);             w += middle_len;
+    memcpy(w, a_start, a_len);               w += a_len;
+    memcpy(w, b_end, suffix_len);             w += suffix_len;
+
+    *new_len = pt_len;
+    return out;
+}
+
 /* for dump - render as "[name]\nvalue\n" pairs. malloc'd, caller frees. */
 uint8_t *store_to_text(const uint8_t *pt, size_t pt_len, size_t *text_len) {
     /* pass 1: size */

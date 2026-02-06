@@ -13,6 +13,7 @@ static void usage(const char *prog) {
     printf("  edit   <name> [-s path]          Edit secret in $EDITOR (creates if new)\n");
     printf("  rm     <name> [-s path]          Remove a secret\n");
     printf("  rename <old> <new> [-s path]     Rename a secret entry\n");
+    printf("  swap   <a> <b> [-s path]         Swap positions of two entries\n");
     printf("  ls     [-s path]                 List all secret names\n");
     printf("  info   [-s path]                 Show store location, size, and entry count\n");
     printf("  passwd [-s path]                 Change passphrase (current slot)\n");
@@ -883,6 +884,155 @@ static int store_cmd_rename(int argc, char **argv) {
     return rc != 0;
 }
 
+static int store_cmd_swap(int argc, char **argv) {
+    const char *arg_a = NULL;
+    const char *arg_b = NULL;
+    const char *path = NULL;
+    char path_buf[1024];
+
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: %s swap <a> <b> [-s path]\n", argv[0]);
+            printf("\nSwap positions of two entries (by name or index).\n");
+            return 0;
+        } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--store") == 0) {
+            if (i + 1 >= argc) { fprintf(stderr, "error: -s requires a path\n"); return 1; }
+            path = argv[++i];
+        } else if (!arg_a) {
+            arg_a = argv[i];
+        } else if (!arg_b) {
+            arg_b = argv[i];
+        } else {
+            fprintf(stderr, "error: unknown argument: %s\n", argv[i]);
+            return 1;
+        }
+    }
+
+    if (!arg_a || !arg_b) {
+        fprintf(stderr, "error: swap requires two arguments (names or indices)\n");
+        return 1;
+    }
+
+    if (!path) {
+        if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
+        path = path_buf;
+    }
+
+    char pwd[256] = {0};
+    int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+    if (pwd_len <= 0) {
+        fprintf(stderr, "error: passphrase required\n");
+        cfx_memzero_s(pwd, sizeof(pwd));
+        return 1;
+    }
+
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    cfx_memzero_s(pwd, sizeof(pwd));
+    if (rc != 0) return 1;
+
+    uint8_t *pt = NULL;
+    size_t pt_len = 0;
+    rc = bge_udecrypt(&us, &pt, &pt_len);
+    if (rc != 0) {
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    /* resolve names or indices to 1-based indices */
+    unsigned idx_a = 0, idx_b = 0;
+
+    if (is_numeric(arg_a)) {
+        idx_a = (unsigned)atoi(arg_a);
+    } else {
+        /* scan for name */
+        const uint8_t *p = pt;
+        const uint8_t *end = pt + pt_len;
+        unsigned cur = 0;
+        while (p + 2 <= end) {
+            uint16_t klen = cfx_load16_le(p);
+            p += 2;
+            if (p + klen > end) break;
+            const uint8_t *kptr = p;
+            p += klen;
+            if (p + 4 > end) break;
+            uint32_t vl = cfx_load32_le(p);
+            p += 4;
+            if (p + vl > end) break;
+            p += vl;
+            ++cur;
+            if (klen == strlen(arg_a) && memcmp(kptr, arg_a, klen) == 0) {
+                idx_a = cur;
+                break;
+            }
+        }
+    }
+
+    if (is_numeric(arg_b)) {
+        idx_b = (unsigned)atoi(arg_b);
+    } else {
+        const uint8_t *p = pt;
+        const uint8_t *end = pt + pt_len;
+        unsigned cur = 0;
+        while (p + 2 <= end) {
+            uint16_t klen = cfx_load16_le(p);
+            p += 2;
+            if (p + klen > end) break;
+            const uint8_t *kptr = p;
+            p += klen;
+            if (p + 4 > end) break;
+            uint32_t vl = cfx_load32_le(p);
+            p += 4;
+            if (p + vl > end) break;
+            p += vl;
+            ++cur;
+            if (klen == strlen(arg_b) && memcmp(kptr, arg_b, klen) == 0) {
+                idx_b = cur;
+                break;
+            }
+        }
+    }
+
+    if (idx_a == 0) {
+        fprintf(stderr, "error: '%s' not found\n", arg_a);
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+    if (idx_b == 0) {
+        fprintf(stderr, "error: '%s' not found\n", arg_b);
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+    if (idx_a == idx_b) {
+        fprintf(stderr, "error: both arguments resolve to the same entry\n");
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    size_t new_len;
+    uint8_t *new_pt = store_swap(pt, pt_len, idx_a, idx_b, &new_len);
+    cfx_memzero_s(pt, pt_len);
+    free(pt);
+
+    if (!new_pt) {
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    rc = bge_uwrite(path, new_pt, new_len, &us);
+    cfx_memzero_s(new_pt, new_len);
+    free(new_pt);
+    bge_ustore_wipe(&us);
+    if (rc == 0) printf("Ok.\n");
+    return rc != 0;
+}
+
 static int store_cmd_ls(int argc, char **argv) {
     const char *path = NULL;
     char path_buf[1024];
@@ -1726,6 +1876,7 @@ int cfx_store_run(int argc, char **argv) {
     if (strcmp(cmd, "rm")     == 0) return store_cmd_rm(argc, argv);
     if (strcmp(cmd, "rename") == 0 ||
         strcmp(cmd, "mv")    == 0) return store_cmd_rename(argc, argv);
+    if (strcmp(cmd, "swap")   == 0) return store_cmd_swap(argc, argv);
     if (strcmp(cmd, "ls")     == 0 ||
         strcmp(cmd, "list")   == 0) return store_cmd_ls(argc, argv);
     if (strcmp(cmd, "info")   == 0) return store_cmd_info(argc, argv);
