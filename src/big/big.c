@@ -9,6 +9,7 @@
 #include "cfx/primes.h"
 #include "cfx/base64.h"
 #include "cfx/ntt.h"
+#include "cfx/ecm.h"
 #include "cfx/compat.h"
 
 #include "big_backend.h"
@@ -2022,17 +2023,21 @@ int cfx_big_to_fac(cfx_fac_t *f, const cfx_big_t *b, cfx_big_t *remainder) {
         cfx_big_init(&factor);
         cfx_big_pollard_rho(&factor, cur);
 
-        /* If Pollard-Rho failed (returned n), try a different approach */
+        /* If Pollard-Rho failed (returned n), try ECM */
         if (cfx_big_cmp(&factor, cur) == 0) {
-            /* Last resort: the number might be a prime we couldn't detect */
-            if (remainder) {
-                /* Multiply remainder by this composite */
-                cfx_big_mul_eq(remainder, cur);
+            cfx_big_from_limb(&factor, 0);
+            if (cfx_ecm_factor_auto(&factor, cur)) {
+                /* ECM found a factor - fall through to push it */
+            } else {
+                /* ECM also failed - give up on this composite */
+                if (remainder) {
+                    cfx_big_mul_eq(remainder, cur);
+                }
+                result = 1;  /* incomplete */
+                cfx_big_free(&factor);
+                cfx_big_free(cur);
+                continue;
             }
-            result = 1;  /* incomplete */
-            cfx_big_free(&factor);
-            cfx_big_free(cur);
-            continue;
         }
 
         /* Push both factors onto the stack */
