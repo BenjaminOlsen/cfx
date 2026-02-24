@@ -150,15 +150,12 @@ int cfx_argon2_run(int argc, char** argv) {
                 result = 0;
             }
 
-            /* clear sensitive data */
             cfx_memzero_s(hash, sizeof(hash));
         }
 
-        /* clear salt */
         cfx_memzero_s(salt, sizeof(salt));
     }
 
-    /* clear password if read from stdin */
     if (stdin_password) {
         cfx_memzero_s(stdin_password, strlen(stdin_password));
         free(stdin_password);

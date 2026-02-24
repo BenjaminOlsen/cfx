@@ -241,6 +241,102 @@ uint8_t *store_swap(const uint8_t *pt, size_t pt_len,
     return out;
 }
 
+/* --- sort support --- */
+
+typedef struct {
+    const uint8_t *start;    /* pointer to entry start */
+    size_t         len;      /* total entry length */
+    const uint8_t *key;      /* pointer to key bytes */
+    size_t         klen;     /* key length */
+} store_entry_ref;
+
+/* comparator of keys, case insensitive */
+static int entry_cmp(const void *a, const void *b) {
+    const store_entry_ref *ea = a;
+    const store_entry_ref *eb = b;
+    size_t minlen = ea->klen < eb->klen ? ea->klen : eb->klen;
+    for (size_t i = 0; i < minlen; i++) {
+        unsigned char ca = ea->key[i];
+        unsigned char cb = eb->key[i];
+        /* to lowercase */
+        if (ca >= 'A' && ca <= 'Z') ca += 32;
+        if (cb >= 'A' && cb <= 'Z') cb += 32;
+        if (ca != cb) return (int)ca - (int)cb;
+    }
+    return (int)ea->klen - (int)eb->klen;
+}
+
+/* sort entries alphabetically returns new malloc'd buf. */
+uint8_t *store_sort(const uint8_t *pt, size_t pt_len, size_t *new_len) {
+    if (pt_len == 0) {
+        *new_len = 0;
+        return malloc(1);
+    }
+
+    /* count entries */
+    unsigned count = 0;
+    const uint8_t *p = pt;
+    const uint8_t *end = pt + pt_len;
+    while (p + 2 <= end) {
+        size_t klen = cfx_load16_le(p); p += 2;
+        if (p + klen > end) break;
+        p += klen;
+        if (p + 4 > end) break;
+        uint32_t vl = cfx_load32_le(p); p += 4;
+        if (p + vl > end) break;
+        p += vl;
+        count++;
+    }
+
+    if (count <= 1) {
+        uint8_t *out = malloc(pt_len);
+        if (!out) return NULL;
+        memcpy(out, pt, pt_len);
+        *new_len = pt_len;
+        return out;
+    }
+
+    /* collect entry pointers */
+    store_entry_ref *entries = malloc(count * sizeof(store_entry_ref));
+    if (!entries) return NULL;
+
+    p = pt;
+    unsigned idx = 0;
+    while (p + 2 <= end && idx < count) {
+        const uint8_t *entry_start = p;
+        size_t klen = cfx_load16_le(p); p += 2;
+        if (p + klen > end) break;
+        const uint8_t *kptr = p;
+        p += klen;
+        if (p + 4 > end) break;
+        uint32_t vl = cfx_load32_le(p); p += 4;
+        if (p + vl > end) break;
+        p += vl;
+
+        entries[idx].start = entry_start;
+        entries[idx].len   = (size_t)(p - entry_start);
+        entries[idx].key   = kptr;
+        entries[idx].klen  = klen;
+        idx++;
+    }
+
+    qsort(entries, idx, sizeof(store_entry_ref), entry_cmp);
+
+    /* rebuild buffer in sorted order */
+    uint8_t *out = malloc(pt_len);
+    if (!out) { free(entries); return NULL; }
+
+    uint8_t *w = out;
+    for (unsigned i = 0; i < idx; i++) {
+        memcpy(w, entries[i].start, entries[i].len);
+        w += entries[i].len;
+    }
+
+    free(entries);
+    *new_len = pt_len;
+    return out;
+}
+
 /* for dump - render as "[name]\nvalue\n" pairs. malloc'd, caller frees. */
 uint8_t *store_to_text(const uint8_t *pt, size_t pt_len, size_t *text_len) {
     /* pass 1: size */

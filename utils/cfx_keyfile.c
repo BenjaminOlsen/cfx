@@ -23,12 +23,16 @@
 int cfx_key_read_secret_console(const char *prompt, char *buf, size_t bufsz) {
     HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
     DWORD mode;
-    GetConsoleMode(h, &mode);
-    SetConsoleMode(h, mode & ~ENABLE_ECHO_INPUT);
+    BOOL have_console = GetConsoleMode(h, &mode);
+    if (have_console) {
+        SetConsoleMode(h, mode & ~ENABLE_ECHO_INPUT);
+    }
 
     fprintf(stderr, "%s", prompt);
     if (!fgets(buf, (int)bufsz, stdin)) buf[0] = '\0';
-    SetConsoleMode(h, mode);
+    if (have_console) {
+        SetConsoleMode(h, mode);
+    }
     fprintf(stderr, "\n");
 
     size_t len = strlen(buf);

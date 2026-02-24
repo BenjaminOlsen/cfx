@@ -35,6 +35,7 @@ static void usage(const char *prog) {
     printf("  rm     <name> [-s path]          Remove a secret\n");
     printf("  rename <old> <new> [-s path]     Rename a secret entry\n");
     printf("  swap   <a> <b> [-s path]         Swap positions of two entries\n");
+    printf("  sort   [-s path]                 Sort entries alphabetically\n");
     printf("  ls     [-s path]                 List all secret names\n");
     printf("  info   [-s path]                 Show store location, size, and entry count\n");
     printf("  passwd [-s path]                 Change passphrase (current slot)\n");
@@ -1044,6 +1045,69 @@ static int store_cmd_swap(int argc, char **argv) {
     return rc != 0;
 }
 
+static int store_cmd_sort(int argc, char **argv) {
+    const char *path = NULL;
+    char path_buf[1024];
+
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: %s sort [-s path]\n", argv[0]);
+            printf("\nSort entries alphabetically (case-insensitive).\n");
+            return 0;
+        } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--store") == 0) {
+            if (i + 1 >= argc) { fprintf(stderr, "error: -s requires a path\n"); return 1; }
+            path = argv[++i];
+        } else {
+            fprintf(stderr, "error: unknown argument: %s\n", argv[i]);
+            return 1;
+        }
+    }
+
+    if (!path) {
+        if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
+        path = path_buf;
+    }
+
+    char pwd[256] = {0};
+    int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+    if (pwd_len <= 0) {
+        fprintf(stderr, "error: passphrase required\n");
+        cfx_memzero_s(pwd, sizeof(pwd));
+        return 1;
+    }
+
+    bge_ustore us = {0};
+    int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    cfx_memzero_s(pwd, sizeof(pwd));
+    if (rc != 0) return 1;
+
+    uint8_t *pt = NULL;
+    size_t pt_len = 0;
+    rc = bge_udecrypt(&us, &pt, &pt_len);
+    if (rc != 0) {
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    size_t new_len;
+    uint8_t *new_pt = store_sort(pt, pt_len, &new_len);
+    cfx_memzero_s(pt, pt_len);
+    free(pt);
+
+    if (!new_pt) {
+        fprintf(stderr, "error: allocation failed\n");
+        bge_ustore_wipe(&us);
+        return 1;
+    }
+
+    rc = bge_uwrite(path, new_pt, new_len, &us);
+    cfx_memzero_s(new_pt, new_len);
+    free(new_pt);
+    bge_ustore_wipe(&us);
+    if (rc == 0) printf("Ok.\n");
+    return rc != 0;
+}
+
 static int store_cmd_ls(int argc, char **argv) {
     const char *path = NULL;
     char path_buf[1024];
@@ -1888,6 +1952,7 @@ int cfx_store_run(int argc, char **argv) {
     if (strcmp(cmd, "rename") == 0 ||
         strcmp(cmd, "mv")    == 0) return store_cmd_rename(argc, argv);
     if (strcmp(cmd, "swap")   == 0) return store_cmd_swap(argc, argv);
+    if (strcmp(cmd, "sort")   == 0) return store_cmd_sort(argc, argv);
     if (strcmp(cmd, "ls")     == 0 ||
         strcmp(cmd, "list")   == 0) return store_cmd_ls(argc, argv);
     if (strcmp(cmd, "info")   == 0) return store_cmd_info(argc, argv);

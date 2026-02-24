@@ -154,7 +154,13 @@ int bge_read_passphrase(const char *prompt, char *buf, size_t bufsz) {
 }
 
 int bge_read_visible(const char *prompt, char *buf, size_t bufsz) {
-#ifndef _WIN32
+#ifdef _WIN32
+    /* ensure echo is on (may have been left off by a prior secret read) */
+    HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode;
+    if (GetConsoleMode(h, &mode))
+        SetConsoleMode(h, mode | ENABLE_ECHO_INPUT);
+#else
     FILE *tty = fopen("/dev/tty", "r+");
     if (tty) {
         fprintf(tty, "%s", prompt);
