@@ -12,17 +12,8 @@
 
 set -e
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_section() { echo -e "\n${BLUE}=== $1 ===${NC}\n"; }
+# Source common test runner
+source /cfx/docker/common/test-runner.sh
 
 # Build for ARMv7 with NEON (32-bit)
 # Note: 32-bit ARM cannot use 128-bit types, so curve25519/ed25519 are excluded
@@ -36,10 +27,7 @@ build_armv7() {
     cmake -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCFX_TARGET=arm_neon \
-        -DCMAKE_C_COMPILER=arm-linux-gnueabihf-gcc \
-        -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++ \
-        -DCMAKE_SYSTEM_NAME=Linux \
-        -DCMAKE_SYSTEM_PROCESSOR=arm \
+        -DCMAKE_TOOLCHAIN_FILE=/cfx/cmake/toolchain-arm-linux-gnueabihf.cmake \
         -DCFX_LIMB_BITS=32 \
         -DCFX_BUILD_TESTS=ON \
         -DCFX_BUILD_UTILS=OFF \
@@ -63,10 +51,7 @@ build_aarch64() {
     cmake -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCFX_TARGET=aarch64_neon \
-        -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_SYSTEM_NAME=Linux \
-        -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+        -DCMAKE_TOOLCHAIN_FILE=/cfx/cmake/toolchain-aarch64-linux-gnu.cmake \
         -DCFX_BUILD_TESTS=ON \
         -DCFX_BUILD_UTILS=OFF \
         ..
@@ -77,54 +62,18 @@ build_aarch64() {
     file "${BUILD_DIR}/libcfx.a"
 }
 
-# Run tests for a given build directory and QEMU command
-run_tests() {
-    local BUILD_DIR=$1
-    local QEMU_CMD=$2
-    local ARCH_NAME=$3
-
-    log_section "Testing ${ARCH_NAME}"
-
-    cd "${BUILD_DIR}"
-
-    local TEST_COUNT=0
-    local PASS_COUNT=0
-    local FAIL_COUNT=0
-
-    for test_bin in test/unit/test_*; do
-        if [ -x "$test_bin" ]; then
-            test_name=$(basename "$test_bin")
-            TEST_COUNT=$((TEST_COUNT + 1))
-
-            echo -n "  $test_name: "
-
-            if $QEMU_CMD "./$test_bin" >/dev/null 2>&1; then
-                PASS_COUNT=$((PASS_COUNT + 1))
-                echo -e "${GREEN}PASS${NC}"
-            else
-                FAIL_COUNT=$((FAIL_COUNT + 1))
-                echo -e "${RED}FAIL${NC}"
-            fi
-        fi
-    done
-
-    echo ""
-    echo "  Results: $PASS_COUNT/$TEST_COUNT passed"
-
-    if [ $FAIL_COUNT -gt 0 ]; then
-        return 1
-    fi
-    return 0
-}
-
 test_armv7() {
     build_armv7
-    run_tests "/cfx/build-armv7-neon" "qemu-arm -L /usr/arm-linux-gnueabihf" "ARMv7 NEON"
+    run_all_tests "/cfx/build-armv7-neon" \
+        "qemu-arm -cpu cortex-a15 -L /usr/arm-linux-gnueabihf" \
+        "ARMv7 NEON"
 }
 
 test_aarch64() {
     build_aarch64
-    run_tests "/cfx/build-aarch64-neon" "qemu-aarch64 -L /usr/aarch64-linux-gnu" "AArch64 NEON"
+    run_all_tests "/cfx/build-aarch64-neon" \
+        "qemu-aarch64 -cpu cortex-a72 -L /usr/aarch64-linux-gnu" \
+        "AArch64 NEON"
 }
 
 do_build() {
@@ -155,10 +104,10 @@ do_shell() {
     echo "  aarch64-linux-gnu-gcc ..."
     echo ""
     echo "  # Run ARMv7 binary:"
-    echo "  qemu-arm -L /usr/arm-linux-gnueabihf ./binary"
+    echo "  qemu-arm -cpu cortex-a15 -L /usr/arm-linux-gnueabihf ./binary"
     echo ""
     echo "  # Run AArch64 binary:"
-    echo "  qemu-aarch64 -L /usr/aarch64-linux-gnu ./binary"
+    echo "  qemu-aarch64 -cpu cortex-a72 -L /usr/aarch64-linux-gnu ./binary"
     exec /bin/bash
 }
 

@@ -17,9 +17,8 @@ RUN apt-get update && apt-get install -y \
     # Cross-compiler for bare-metal ARM
     gcc-arm-none-eabi \
     libnewlib-arm-none-eabi \
-    # QEMU user-mode for ARM
-    qemu-user \
-    qemu-user-static \
+    # QEMU system emulation (bare-metal + semihosting)
+    qemu-system-arm \
     # Build tools
     cmake \
     ninja-build \
@@ -29,9 +28,6 @@ RUN apt-get update && apt-get install -y \
     file \
     binutils-arm-none-eabi \
     && rm -rf /var/lib/apt/lists/*
-
-# Set up QEMU for ARM semihosting
-ENV QEMU_ARM="qemu-arm -semihosting -cpu cortex-m4"
 
 # Working directory (will be mounted from host)
 WORKDIR /cfx

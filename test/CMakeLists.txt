@@ -1,4 +1,9 @@
 if(CFX_BUILD_TESTS)
+  # Bare-metal support library for Cortex-M4 (must come before unit tests)
+  if(CFX_TARGET STREQUAL "arm_cortex_m4")
+    add_subdirectory(support/cortex-m4)
+  endif()
+
   add_subdirectory(unit)
   add_subdirectory(utils)
   add_subdirectory(stats)

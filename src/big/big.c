@@ -917,8 +917,7 @@ static void powmod_u64_base(cfx_big_t *out, cfx_limb_t a, const cfx_big_t *e, co
  * n must be odd > 2.  n-1 = d * 2^s, with d odd.
  * a is a small base (2,3,5,7,...) < 2^64.
  */
-static int miller_rabin_once(const cfx_big_t *n, cfx_limb_t a,
-    const cfx_big_t *d, cfx_limb_t s) {
+static int miller_rabin_once(const cfx_big_t *n, cfx_limb_t a, const cfx_big_t *d, cfx_limb_t s) {
     cfx_big_t x, nm1;
     int rc = 0;
 
@@ -941,6 +940,7 @@ static int miller_rabin_once(const cfx_big_t *n, cfx_limb_t a,
         goto cleanup;
     }
 
+    /* TODO: use montgomery modular exponentiation here */
     for (cfx_limb_t r = 1; r < s; ++r) {
         cfx_big_mulmod(&x, &x, &x, n);
         if (cfx_big_cmp(&x, &nm1) == 0) {

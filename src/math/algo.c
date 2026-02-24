@@ -12,6 +12,7 @@
 #include <string.h>   /* memset */
 #include <assert.h>
 #include <math.h>     /* sqrt, floor */
+#include <inttypes.h>
 
 /* alloca - stack allocation */
 #if defined(_WIN32) || defined(_WIN64)
@@ -144,10 +145,11 @@ int cfx_is_prime_u64(uint64_t n) {
 
     for (size_t i = 0; i < sizeof(bases)/sizeof(bases[0]); ++i) {
         uint64_t a = bases[i];
-        if (a % n == 0) continue;             /* skip if a == n */
+        uint64_t a_mod_n = a % n;
+        if (a_mod_n == 0) continue;             /* skip if a == n */
 
         /* Compute a^d mod n using Montgomery */
-        uint64_t aR = cfx_mont64_to(&mont, a % n);
+        uint64_t aR = cfx_mont64_to(&mont, a_mod_n);
         uint64_t x = cfx_mont64_pow(&mont, aR, d);
 
         if (x == one_mont || x == nm1_mont) continue;   /* this base passes */

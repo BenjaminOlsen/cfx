@@ -43,6 +43,32 @@ jobs:
             build/Testing/Temporary/*
             build/Testing/**/LastTest.log
 
+  arm-cortex-m4:
+    name: ARM Cortex-M4 (QEMU)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t cfx-cortex-m4 docker/cortex-m4/
+
+      - name: Run tests
+        run: docker run --rm -v ${{ github.workspace }}:/cfx cfx-cortex-m4 test
+
+  arm-neon:
+    name: ARM NEON (QEMU)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t cfx-arm-neon docker/arm-neon/
+
+      - name: Run tests
+        run: docker run --rm -v ${{ github.workspace }}:/cfx cfx-arm-neon test
+
   # TODO: UBSAN & ASAN:
 
   # sanitizers:

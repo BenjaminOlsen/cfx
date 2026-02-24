@@ -75,10 +75,9 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         )
         list(APPEND CFX_ARCH_DEFINES CFX_ARCH_ARMV7M=1)
 
-    # todo::
-    # elseif(CFX_ARCH STREQUAL "aarch64")
-    #     list(APPEND CFX_ARCH_FLAGS -march=armv8-a)
-    #     list(APPEND CFX_ARCH_DEFINES CFX_ARCH_AARCH64=1)
+    elseif(CFX_ARCH STREQUAL "aarch64")
+        list(APPEND CFX_ARCH_FLAGS -march=armv8-a)
+        list(APPEND CFX_ARCH_DEFINES CFX_ARCH_AARCH64=1)
 
     else()
         message(FATAL_ERROR "Unknown CFX_ARCH='${CFX_ARCH}'")

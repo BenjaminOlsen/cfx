@@ -28,16 +28,14 @@ do_build() {
     mkdir -p "${BUILD_DIR}"
     cd "${BUILD_DIR}"
 
-    # Configure
-    # Note: Tests disabled for bare-metal (qemu-arm user mode can't run arm-none-eabi binaries)
-    # Use docker/arm-neon for testing ARM-optimized code paths
+    # Configure with tests enabled (semihosting support allows QEMU execution)
     log_info "Configuring with CMake..."
     cmake -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCFX_TARGET=arm_cortex_m4 \
         -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" \
-        -DCFX_MEMORY_MODE=static \
-        -DCFX_BUILD_TESTS=OFF \
+        -DCFX_MEMORY_MODE=dynamic \
+        -DCFX_BUILD_TESTS=ON \
         -DCFX_BUILD_UTILS=OFF \
         ..
 
@@ -54,25 +52,54 @@ do_build() {
 }
 
 do_test() {
-    log_warn "Tests not available for bare-metal Cortex-M4 target."
-    log_info "The arm-none-eabi toolchain produces bare-metal binaries that"
-    log_info "cannot run under qemu-arm user-mode emulation (which expects Linux binaries)."
-    log_info ""
-    log_info "To test ARM-optimized code paths, use the ARM NEON docker instead:"
-    log_info "  docker build -t cfx-arm-neon docker/arm-neon/"
-    log_info "  docker run --rm -v \$(pwd):/cfx cfx-arm-neon"
-    log_info ""
-    log_info "The Cortex-M4 docker validates that the library compiles correctly"
-    log_info "for bare-metal embedded targets."
-
     do_build
-    log_info "Library built successfully for Cortex-M4!"
+
+    log_info "Running tests with QEMU system emulation..."
+
+    local TEST_COUNT=0
+    local PASS_COUNT=0
+    local FAIL_COUNT=0
+
+    for test_bin in ${BUILD_DIR}/test/unit/test_*; do
+        if [ ! -x "$test_bin" ]; then
+            continue
+        fi
+
+        test_name=$(basename "$test_bin")
+        TEST_COUNT=$((TEST_COUNT + 1))
+
+        printf "  %-40s" "$test_name"
+
+        if timeout 30 qemu-system-arm \
+            -M lm3s6965evb \
+            -cpu cortex-m4 \
+            -nographic \
+            -semihosting \
+            -kernel "$test_bin" >/dev/null 2>&1; then
+            PASS_COUNT=$((PASS_COUNT + 1))
+            echo -e "${GREEN}PASS${NC}"
+        else
+            EXIT_CODE=$?
+            FAIL_COUNT=$((FAIL_COUNT + 1))
+            echo -e "${RED}FAIL${NC} (exit: $EXIT_CODE)"
+        fi
+    done
+
+    echo ""
+    echo "  Results: ${PASS_COUNT}/${TEST_COUNT} passed"
+
+    if [ $FAIL_COUNT -gt 0 ]; then
+        log_error "Some tests failed!"
+        exit 1
+    fi
+
+    log_info "All Cortex-M4 tests passed!"
 }
 
 do_shell() {
     log_info "Dropping into interactive shell..."
     log_info "Build with: cmake -DCFX_TARGET=arm_cortex_m4 ..."
-    log_info "Test with:  qemu-arm -semihosting -cpu cortex-m4 ./test_binary"
+    log_info "Test with:  qemu-system-arm -M lm3s6965evb -cpu cortex-m4 -nographic -semihosting -kernel ./test_binary"
     exec /bin/bash
 }
 

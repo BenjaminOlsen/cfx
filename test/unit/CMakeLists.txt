@@ -18,12 +18,8 @@ set(CFX_UNIT_TESTS
     test_fac
     test_algo
     test_pollard_rho
-    test_mul_rows
     test_poly1305
     test_chacha20
-    test_chacha_avx2_transpose
-    test_mul_csa_pthreads
-    test_rand
     test_base64
     test_aead_chacha20_poly1305
     test_sha256
@@ -36,6 +32,20 @@ set(CFX_UNIT_TESTS
     test_ntt
     test_sbig
 )
+
+# x86-only tests
+if(NOT CMAKE_CROSSCOMPILING OR CFX_ARCH STREQUAL "x86_64")
+    list(APPEND CFX_UNIT_TESTS test_chacha_avx2_transpose)
+endif()
+
+# Tests that need an OS (pthreads, /dev/urandom, mmap)
+if(NOT CFX_TARGET STREQUAL "arm_cortex_m4")
+    list(APPEND CFX_UNIT_TESTS
+        test_mul_csa_pthreads
+        test_mul_rows
+        test_rand
+    )
+endif()
 
 # Tests that require 128-bit types (64-bit platforms only)
 if(NOT CFX_TARGET STREQUAL "arm_cortex_m4" AND NOT CFX_LIMB_BITS STREQUAL "32")
@@ -61,5 +71,10 @@ foreach(test_name IN LISTS CFX_UNIT_TESTS)
     )
     if(NOT MSVC)
         target_compile_options(${test_name} PRIVATE -Wno-missing-prototypes)
+    endif()
+
+    # Link bare-metal support for Cortex-M4
+    if(CFX_TARGET STREQUAL "arm_cortex_m4")
+        target_link_libraries(${test_name} PRIVATE cfx_m4_support)
     endif()
 endforeach()

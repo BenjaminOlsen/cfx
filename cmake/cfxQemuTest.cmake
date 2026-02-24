@@ -27,13 +27,21 @@ function(cfx_setup_qemu_emulation)
 
     # Determine which QEMU to use based on target
     if(CFX_TARGET STREQUAL "arm_cortex_m4")
-        set(_qemu_binary "qemu-arm")
+        # Bare-metal: needs qemu-system-arm with semihosting
+        set(_qemu_binary "qemu-system-arm")
         set(_qemu_cpu "cortex-m4")
-        set(_qemu_args "-cpu" "${_qemu_cpu}")
+        set(_qemu_args "-M" "lm3s6965evb" "-cpu" "${_qemu_cpu}"
+                        "-nographic" "-semihosting" "-kernel")
+    elseif(CFX_TARGET STREQUAL "arm_neon")
+        # ARM Linux 32-bit user-mode
+        set(_qemu_binary "qemu-arm")
+        set(_qemu_cpu "cortex-a15")
+        set(_qemu_args "-cpu" "${_qemu_cpu}" "-L" "/usr/arm-linux-gnueabihf")
     elseif(CFX_TARGET MATCHES "aarch64")
+        # AArch64 Linux user-mode
         set(_qemu_binary "qemu-aarch64")
         set(_qemu_cpu "cortex-a72")
-        set(_qemu_args "-cpu" "${_qemu_cpu}")
+        set(_qemu_args "-cpu" "${_qemu_cpu}" "-L" "/usr/aarch64-linux-gnu")
     elseif(CFX_TARGET MATCHES "riscv64")
         set(_qemu_binary "qemu-riscv64")
         set(_qemu_args "")
