@@ -31,78 +31,8 @@
 
 #include "cfx_cmd.h"
 #include "cfx_keyfile.h"
+#include "cfx_randomart.h"
 #include "misc.h"
-
-/*
- * Drunken Bishop randomart - https://www.dirk-loss.de/sshvis/drunken_bishop.pdf
- */
-#define RA_WIDTH 17
-#define RA_HEIGHT 9
-
-static void randomart(char out[RA_HEIGHT][RA_WIDTH + 1], const uint8_t *hash, size_t hash_len) {
-    static const char glyphs[] = " .o+=*BOX@%&#/^SE";
-    uint8_t grid[RA_HEIGHT][RA_WIDTH] = {0};
-
-    int x = RA_WIDTH / 2;
-    int y = RA_HEIGHT / 2;
-    int start_x = x, start_y = y;
-
-    /* walk the bishop */
-    for (size_t i = 0; i < hash_len; i++) {
-        uint8_t b = hash[i];
-        for (int j = 0; j < 4; j++) {
-            int dx = (b & 1) ? 1 : -1;
-            int dy = (b & 2) ? 1 : -1;
-            b >>= 2;
-
-            x += dx;
-            y += dy;
-            if (x < 0) x = 0;
-            if (x >= RA_WIDTH) x = RA_WIDTH - 1;
-            if (y < 0) y = 0;
-            if (y >= RA_HEIGHT) y = RA_HEIGHT - 1;
-
-            if (grid[y][x] < 14) grid[y][x]++;
-        }
-    }
-
-    /* render */
-    for (int row = 0; row < RA_HEIGHT; row++) {
-        for (int col = 0; col < RA_WIDTH; col++) {
-            if (row == start_y && col == start_x) {
-                out[row][col] = 'S';
-            } else if (row == y && col == x) {
-                out[row][col] = 'E';
-            } else {
-                out[row][col] = glyphs[grid[row][col]];
-            }
-        }
-        out[row][RA_WIDTH] = '\0';
-    }
-}
-
-
-
-static void print_randomart(const uint8_t *pubkey, size_t len, const char *label) {
-    uint8_t hash[32];
-    cfx_sha256(hash, pubkey, len);
-
-    char art[RA_HEIGHT][RA_WIDTH + 1];
-    randomart(art, hash, 32);
-
-    printf("+---[%s]", label);
-    int pad = RA_WIDTH - 5 - (int)strlen(label);
-    for (int i = 0; i < pad; i++) printf("-");
-    printf("+\n");
-
-    for (int row = 0; row < RA_HEIGHT; row++) {
-        printf("|%s|\n", art[row]);
-    }
-
-    printf("+");
-    for (int i = 0; i < RA_WIDTH; i++) printf("-");
-    printf("+\n");
-}
 
 typedef enum {
     KEY_RAW,        /* random bytes */
@@ -327,7 +257,7 @@ static int keygen_ed25519(const char *basename, int interactive) {
     for (int i = 0; i < 32; i++) printf("%02x", fp[i]);
     printf("\n");
 
-    print_randomart(pk, 32, "ED25519");
+    cfx_print_randomart(pk, 32, "ED25519");
     ret = 0;
 
 cleanup:
@@ -412,7 +342,7 @@ static int keygen_x25519(const char *basename, int interactive) {
     for (int i = 0; i < 32; i++) printf("%02x", fp[i]);
     printf("\n");
 
-    print_randomart(pub, 32, "X25519");
+    cfx_print_randomart(pub, 32, "X25519");
     ret = 0;
 
 cleanup:

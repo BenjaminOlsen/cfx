@@ -19,6 +19,7 @@ set(UTIL_NAMES
     primes
     primes_near_pow2
     rand
+    randart
     ulam_spiral
     pi
     x25519
@@ -31,7 +32,7 @@ set(UTIL_NAMES
 )
 
 # Helper library with misc utilities (hex parsing, etc.)
-add_library(cfx_misc misc.h misc.c cfx_keyfile.h cfx_keyfile.c)
+add_library(cfx_misc misc.h misc.c cfx_keyfile.h cfx_keyfile.c cfx_randomart.h cfx_randomart.c)
 target_link_libraries(cfx_misc PUBLIC cfx::cfx)
 
 # Library containing all utility logic (without main functions)

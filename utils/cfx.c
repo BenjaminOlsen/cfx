@@ -24,6 +24,7 @@ const cfx_cmd_t cfx_commands[] = {
     {"primes",          "List primes up to n (sieve)",                      cfx_primes_run},
     {"primes_near_pow2","Find primes near powers of 2",                     cfx_primes_near_pow2_run},
     {"rand",            "Generate random bytes",                            cfx_rand_run},
+    {"randart",         "Drunken bishop randomart",                         cfx_randart_run},
     {"ulam_spiral",     "Generate Ulam spiral image",                       cfx_ulam_spiral_run},
     {"pi",              "Compute digits of pi",                             cfx_pi_run},
     {"x25519",          "X25519 key exchange (RFC 7748)",                   cfx_x25519_run},
