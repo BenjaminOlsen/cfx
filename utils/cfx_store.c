@@ -710,6 +710,7 @@ static int store_cmd_rm(int argc, char **argv) {
 
     char name_buf[256] = {0};
     if (!name) {
+        store_print_names(pt, pt_len);
         int r = bge_read_visible("Name: ", name_buf, sizeof(name_buf));
         if (r <= 0) {
             fprintf(stderr, "error: name required\n");
@@ -719,6 +720,14 @@ static int store_cmd_rm(int argc, char **argv) {
             return 1;
         }
         name = name_buf;
+    }
+
+    char resolved_rm[256];
+    if (resolve_numeric(&name, resolved_rm, sizeof(resolved_rm), pt, pt_len) != 0) {
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        return 1;
     }
 
     if (!force && store_get(pt, pt_len, name, NULL) != NULL) {
@@ -776,11 +785,6 @@ static int store_cmd_rename(int argc, char **argv) {
         }
     }
 
-    if (!old_name || !new_name) {
-        fprintf(stderr, "error: rename requires <old> and <new> arguments\n");
-        return 1;
-    }
-
     if (!path) {
         if (bge_default_path(path_buf, sizeof(path_buf)) != 0) return 1;
         path = path_buf;
@@ -805,6 +809,29 @@ static int store_cmd_rename(int argc, char **argv) {
     if (rc != 0) {
         bge_ustore_wipe(&us);
         return 1;
+    }
+
+    char old_buf[256] = {0}, new_buf[256] = {0};
+    if (!old_name) {
+        store_print_names(pt, pt_len);
+        int r = bge_read_visible("Old name: ", old_buf, sizeof(old_buf));
+        if (r <= 0) {
+            fprintf(stderr, "error: name required\n");
+            cfx_memzero_s(pt, pt_len); free(pt);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+        old_name = old_buf;
+    }
+    if (!new_name) {
+        int r = bge_read_visible("New name: ", new_buf, sizeof(new_buf));
+        if (r <= 0) {
+            fprintf(stderr, "error: name required\n");
+            cfx_memzero_s(pt, pt_len); free(pt);
+            bge_ustore_wipe(&us);
+            return 1;
+        }
+        new_name = new_buf;
     }
 
     char resolved[256];
