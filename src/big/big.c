@@ -2378,12 +2378,16 @@ char * cfx_big_dec_alloc(const cfx_big_t *src, size_t *sz_out) {
     }
     char *s = (char *)malloc(len+1);
     char *p = s;
+    size_t rem = len + 1;
 
     /* write first */
-    p += snprintf(p, len+1, "%" PRIu32, chunks[k-1]);
+    int w = snprintf(p, rem, "%" PRIu32, chunks[k-1]);
+    p += w;
+    rem -= (size_t)w;
     /* write rest padded (indices k-2 -> 0) */
     for (size_t i = k-1; i--;) {
-        p += snprintf(p, len+1, "%09" PRIu32, chunks[i]);
+        w = snprintf(p, rem, "%09" PRIu32, chunks[i]);
+        p += w; rem -= (size_t)w;
     }
     s[len] = '\0';
     if (sz_out) *sz_out = len;
