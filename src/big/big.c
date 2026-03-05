@@ -2221,9 +2221,11 @@ char * cfx_big_b64_alloc(const cfx_big_t *src, size_t *sz_out) {
     cfx_big_to_bytes_be(bytes, &bytecnt, src);
     size_t charcnt = 0;
     cfx_base64_encode(NULL, &charcnt, bytes, bytecnt);
-    char *s = (char *)malloc(charcnt);
+    char *s = (char *)malloc(charcnt + 1);
     cfx_base64_encode(s, &charcnt, bytes, bytecnt);
+    s[charcnt] = '\0';
     free(bytes);
+    if (sz_out) *sz_out = charcnt;
     return s;
 }
 
