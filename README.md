@@ -10,7 +10,7 @@ cfx used to mean one thing, something around 'Factorization into prime eXponents
 ## Configure
 Simplest default example : `cmake -S . -B build` 
 
-choose your compiler, enable testu01, build benchmarks, release build, with 4096 primes in the static list: `CC=/usr/local/bin/clang cmake -B build -S . -DCFX_ENABLE_TESTU01=ON -DTESTU01_ROOT=$HOME/libs/TestU01 -DCFX_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=4096`
+choose your compiler, enable testu01, build benchmarks, release build, with 4096 primes in the static list: `CC=/usr/local/bin/clang cmake -B build -S . -DCFX_ENABLE_TESTU01=ON-DCFX_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=4096`
 
 force 32 bit limbs: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCFX_BUILD_UTILS=ON -DCFX_BUILD_TESTS=ON -DCFX_FORCE_LIMB_32=ON`
 
@@ -65,9 +65,11 @@ or for verbose output: `ctest --test-dir build -V`. Individual tests can be run 
 To run statistical tests on the RNGs and hash functions in cfx using TestU01, install it following the instructions at https://github.com/umontreal-simul/TestU01-2009, then configure with:
 
 ```bash
-cmake -B build -S . -DCFX_ENABLE_TESTU01=ON -DTESTU01_ROOT=/path/to/TestU01
+cmake -B build -S . -DCFX_ENABLE_TESTU01=ON
 cmake --build build
 ```
+
+If TestU01 is installed in a non-standard location, specify the root: `-DTESTU01_ROOT=/path/to/TestU01`
 
 Example commands:
 

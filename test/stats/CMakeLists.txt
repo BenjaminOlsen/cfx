@@ -1,13 +1,36 @@
 # Constant-time test (no external dependencies)
-add_executable(test_ct test_ct.c)
-target_link_libraries(test_ct PRIVATE cfx::cfx)
-target_compile_options(test_ct PRIVATE ${CFX_CFLAGS})
-message(STATUS "added stats test 'test_ct'")
+# test_ct uses ed25519/x25519 which require 128-bit types (64-bit only)
+if(NOT CFX_TARGET MATCHES "arm_cortex_m4|arm_neon" AND NOT CFX_LIMB_BITS STREQUAL "32")
+    add_executable(test_ct test_ct.c)
+    target_link_libraries(test_ct PRIVATE cfx::cfx)
+    target_compile_options(test_ct PRIVATE ${CFX_CFLAGS})
+    message(STATUS "added stats test 'test_ct'")
+else()
+    message(STATUS "skipping stats test 'test_ct' (requires 64-bit)")
+endif()
 
 # TestU01 tests (optional)
-if(TESTU01_ROOT)
+option(CFX_ENABLE_TESTU01 "Build statistical tests using TestU01" OFF)
+
+if(CFX_ENABLE_TESTU01)
+    if(NOT TESTU01_ROOT)
+        # check common install locations
+        find_path(_testu01_inc NAMES unif01.h
+            PATHS "$ENV{HOME}/libs/TestU01/include"
+                  "/usr/local/include"
+                  "/usr/include"
+        )
+        if(_testu01_inc)
+            get_filename_component(TESTU01_ROOT "${_testu01_inc}" DIRECTORY)
+        else()
+            message(FATAL_ERROR
+                "CFX_ENABLE_TESTU01=ON but TestU01 not found. "
+                "Set -DTESTU01_ROOT=/path/to/TestU01")
+        endif()
+    endif()
+
     include_directories(${TESTU01_ROOT}/include)
-    message(STATUS "added testu01 root ${TESTU01_ROOT}")
+    message(STATUS "TestU01 enabled: ${TESTU01_ROOT}")
 
     set(CFX_STATS_TESTS
         test_testu01
@@ -40,5 +63,5 @@ if(TESTU01_ROOT)
         endif()
     endforeach()
 else()
-    message(STATUS "TestU01 not configured (set TESTU01_ROOT to enable)")
+    message(STATUS "TestU01 not enabled (set -DCFX_ENABLE_TESTU01=ON to enable)")
 endif()
