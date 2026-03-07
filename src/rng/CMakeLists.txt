@@ -1,4 +1,10 @@
 set(CFX_RNG_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/rand.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rng_chacha20.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rng_splitmix.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rng_xorshift.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rng_xoroshiro.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rng_pcg.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rng_lcg.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rng_registry.c
     PARENT_SCOPE
 )
