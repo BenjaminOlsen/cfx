@@ -72,18 +72,23 @@ do_test() {
 
         printf "  %-40s" "$test_name"
 
-        if timeout 30 qemu-system-arm \
+        QEMU_OUT=$(timeout 30 qemu-system-arm \
             -M lm3s6965evb \
             -cpu cortex-m4 \
             -nographic \
             -semihosting \
-            -kernel "$test_bin" >/dev/null 2>&1; then
+            -kernel "$test_bin" 2>&1) && true
+        EXIT_CODE=$?
+
+        if [ $EXIT_CODE -eq 0 ]; then
             PASS_COUNT=$((PASS_COUNT + 1))
             echo -e "${GREEN}PASS${NC}"
         else
-            EXIT_CODE=$?
             FAIL_COUNT=$((FAIL_COUNT + 1))
             echo -e "${RED}FAIL${NC} (exit: $EXIT_CODE)"
+            if [ -n "$QEMU_OUT" ]; then
+                echo "$QEMU_OUT" | sed 's/^/    /'
+            fi
         fi
     done
 
