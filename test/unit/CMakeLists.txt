@@ -47,8 +47,28 @@ if(NOT CFX_TARGET STREQUAL "arm_cortex_m4")
     )
 endif()
 
+# Tests incompatible with Cortex-M4 bare-metal (RAM limits, no OS, 32-bit perf)
+if(CFX_TARGET STREQUAL "arm_cortex_m4")
+    list(REMOVE_ITEM CFX_UNIT_TESTS
+        test_compat           # requires pthreads
+        test_ntt              # large malloc(n * sizeof(uint64_t))
+        test_ecm              # many simultaneous big integers
+        test_big_exp          # huge intermediate results
+        test_big_pollard_rho  # big integer working set
+        test_big_arith        # heap exhaustion (large intermediate mul/add)
+        test_big_div          # heap exhaustion (division scratch)
+        test_big_gcd          # heap exhaustion (uses division internally)
+        test_big_mul          # heap exhaustion (large multiplications)
+        test_big_str          # heap exhaustion (decimal conversion scratch)
+        test_sbig             # heap exhaustion (wraps cfx_big_t)
+        test_sha512           # 64-bit ops on 32-bit CPU, too slow under QEMU
+        test_algo             # too slow under QEMU emulation
+        test_fac              # factorization too slow on 32-bit under QEMU
+    )
+endif()
+
 # Tests that require 128-bit types (64-bit platforms only)
-if(NOT CFX_TARGET STREQUAL "arm_cortex_m4" AND NOT CFX_LIMB_BITS STREQUAL "32")
+if(NOT CFX_TARGET MATCHES "arm_cortex_m4|arm_neon" AND NOT CFX_LIMB_BITS STREQUAL "32")
     list(APPEND CFX_UNIT_TESTS
         test_fe25519
         test_x25519
@@ -74,7 +94,9 @@ foreach(test_name IN LISTS CFX_UNIT_TESTS)
     endif()
 
     # Link bare-metal support for Cortex-M4
+    # --whole-archive ensures syscall stubs are available to libc_nano
     if(CFX_TARGET STREQUAL "arm_cortex_m4")
-        target_link_libraries(${test_name} PRIVATE cfx_m4_support)
+        target_link_libraries(${test_name} PRIVATE
+            -Wl,--whole-archive cfx_m4_support -Wl,--no-whole-archive)
     endif()
 endforeach()

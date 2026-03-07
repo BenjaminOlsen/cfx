@@ -24,8 +24,9 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 do_build() {
     log_info "Building cfx for ARM Cortex-M4..."
 
-    # Create build directory
+    # Create build directory (clean stale test binaries from prior runs)
     mkdir -p "${BUILD_DIR}"
+    rm -f "${BUILD_DIR}"/test/unit/test_* 2>/dev/null || true
     cd "${BUILD_DIR}"
 
     # Configure with tests enabled (semihosting support allows QEMU execution)
@@ -37,6 +38,7 @@ do_build() {
         -DCFX_MEMORY_MODE=dynamic \
         -DCFX_BUILD_TESTS=ON \
         -DCFX_BUILD_UTILS=OFF \
+        -DCFX_PRIMES_COUNT=1000 \
         ..
 
     # Build

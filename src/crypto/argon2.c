@@ -6,6 +6,7 @@
 #include "cfx/blake2.h"
 #include "cfx/base64.h"
 #include "cfx/memory.h"
+#include "cfx/bits.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -32,9 +33,7 @@ typedef struct {
     int       type;
 } ctx_t;
 
-static inline uint64_t rotr64(uint64_t x, unsigned n) {
-    return (x >> n) | (x << (64 - n));
-}
+#define rotr64 cfx_rotr64
 
 /* H' variable-length hash (RFC 9106 §3.2) */
 static void hash_long(uint8_t *out, size_t n, const uint8_t *in, size_t inlen) {

@@ -1,5 +1,6 @@
 #include "cfx/sha256.h"
 #include "cfx/macros.h"
+#include "cfx/bits.h"
 
 #include <string.h>
 
@@ -15,11 +16,7 @@ CFX_STATIC_ASSERT(
     CFX_SHA256_CTX_SIZE_too_small_for_cfx_sha256_state
     );
 
-/* todo - move these helpers to common header vvvvvvvvvvvvv ?*/
-
-static inline uint32_t rotr32(uint32_t x, unsigned n) {
-    return (x >> n) | (x << (32u - n));
-}
+#define rotr32 cfx_rotr32
 
 static inline uint32_t Sigma0(uint32_t x) {
     return rotr32(x, 2) ^ rotr32(x, 13) ^ rotr32(x, 22);

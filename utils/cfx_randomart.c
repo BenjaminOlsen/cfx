@@ -58,10 +58,10 @@ void cfx_print_randomart_frame(const char *art, int w, int h,
                                const char *label) {
     /* top border: +---[label]---+ */
     int llen = label ? (int)strlen(label) : 0;
-    int pad = w - 2 - llen;  /* space for dashes around label */
-    int left = 2;  /* at least "+-" before "[" */
+    int pad = w - 2 - llen;  /* space for dashes around [label] brackets */
+    if (pad < 2) pad = 2;
+    int left = pad / 2;
     int right = pad - left;
-    if (right < 1) { left = pad - 1; right = 1; }
 
     printf("+");
     for (int i = 0; i < left; i++) printf("-");

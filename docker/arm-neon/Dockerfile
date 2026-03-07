@@ -44,10 +44,7 @@ RUN update-binfmts --enable qemu-aarch64 || true
 # Working directory
 WORKDIR /cfx
 
-# Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Default: run build and tests
-ENTRYPOINT ["/entrypoint.sh"]
+# Entrypoint runs from the mounted volume so changes take effect
+# without rebuilding the image
+ENTRYPOINT ["/cfx/docker/arm-neon/entrypoint.sh"]
 CMD ["test"]

@@ -16,26 +16,15 @@
 #include "cfx/memory.h"
 #include <string.h>
 
+#define load64_le cfx_load64_le
+#define store64_le cfx_store64_le
+
 /*============================================================================
  * CONSTANTS
  *============================================================================*/
 
 #define M127_HI 0x7FFFFFFFFFFFFFFFULL
 #define M127_LO 0xFFFFFFFFFFFFFFFFULL
-
-/*============================================================================
- * BYTE I/O (Little-Endian)
- *============================================================================*/
-
-static inline uint64_t load64_le(const uint8_t *p) {
-    return (uint64_t)p[0] | ((uint64_t)p[1] << 8) | ((uint64_t)p[2] << 16) |
-           ((uint64_t)p[3] << 24) | ((uint64_t)p[4] << 32) | ((uint64_t)p[5] << 40) |
-           ((uint64_t)p[6] << 48) | ((uint64_t)p[7] << 56);
-}
-
-static inline void store64_le(uint8_t *p, uint64_t v) {
-    for (int i = 0; i < 8; i++) p[i] = (uint8_t)(v >> (i * 8));
-}
 
 /*============================================================================
  * 64x64 -> 128 BIT MULTIPLICATION

@@ -134,6 +134,7 @@ static void test_nist_vectors(void) {
         "248d6a61d20638b8e5c026930c3e6039"
         "a33ce45964ff2167f6ecedd419db06c1");
 
+#ifndef CFX_BAREMETAL  /* 1MB malloc — skip on bare-metal */
     // 4. 1,000,000 × 'a'
     size_t N = 1000000;
     uint8_t *million = malloc(N);
@@ -144,6 +145,7 @@ static void test_nist_vectors(void) {
         "f1809a48a497200e046d39ccc7112cd0");
 
     free(million);
+#endif
 
     // 5. single 0x00  (generic SHA-256 test)
     uint8_t m00[1] = { 0x00 };
@@ -201,6 +203,7 @@ static void abc(void) {
     check_incremental("SHA256(\"abc\")", msg, sizeof(msg));
 }
 
+#ifndef CFX_BAREMETAL  /* 1MB malloc — skip on bare-metal */
 static void test_million_a(void) {
     const size_t N = 1000000;
     uint8_t *msg = (uint8_t *)malloc(N);
@@ -216,13 +219,16 @@ static void test_million_a(void) {
 
     free(msg);
 }
+#endif
 
 int main(void) {
     CFX_TEST(test_nist_vectors);
     CFX_TEST(abc);
     CFX_TEST(empty_string);
     CFX_TEST(test_long_fips_msg);
+#ifndef CFX_BAREMETAL
     CFX_TEST(test_million_a);
+#endif
     printf("All SHA-256 tests passed.\n");
     return 0;
 }

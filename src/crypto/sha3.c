@@ -7,6 +7,7 @@
 #include "cfx/sha3.h"
 #include "cfx/macros.h"
 #include "cfx/memory.h"
+#include "cfx/bits.h"
 #include <string.h>
 
 /* internal state */
@@ -55,17 +56,8 @@ static const int PI[25] = {
     2, 8, 14, 15, 21
 };
 
-static inline uint64_t rotl64(uint64_t x, int n) {
-    return (x << n) | (x >> (64 - n));
-}
-
-static inline uint64_t load64_le(const void *src) {
-    const uint8_t *p = (const uint8_t *)src;
-    return ((uint64_t)p[0])       | ((uint64_t)p[1] << 8)  |
-           ((uint64_t)p[2] << 16) | ((uint64_t)p[3] << 24) |
-           ((uint64_t)p[4] << 32) | ((uint64_t)p[5] << 40) |
-           ((uint64_t)p[6] << 48) | ((uint64_t)p[7] << 56);
-}
+#define rotl64 cfx_rotl64
+#define load64_le cfx_load64_le
 
 /*
  * Keccak-f[1600] permutation - 24 rounds

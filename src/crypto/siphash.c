@@ -1,6 +1,7 @@
 #include "cfx/siphash.h"
 #include "cfx/macros.h"
 #include "cfx/memory.h"
+#include "cfx/bits.h"
 #include <string.h>
 
 typedef struct {
@@ -17,9 +18,7 @@ CFX_STATIC_ASSERT(
     CFX_SIPHASH_CTX_SIZE_too_small
     );
 
-static inline uint64_t rotl64(uint64_t x, int b) {
-    return (x << b) | (x >> (64 - b));
-}
+#define rotl64 cfx_rotl64
 
 #define SIPROUND(v0, v1, v2, v3) do { \
             v0 += v1; v1 = rotl64(v1, 13); v1 ^= v0; v0 = rotl64(v0, 32); \

@@ -399,6 +399,7 @@ static void test_stream_single_chunk(void) {
     CFX_ASSERT(memcmp(pt_out, pt, sizeof pt) == 0);
 }
 
+#ifndef CFX_BAREMETAL  /* 192KB+ RAM needed — skip on bare-metal */
 static void test_stream_multi_chunk(void) {
     /* 3 chunks: 64KB + 64KB + 30 bytes */
     #define MC_CHUNK CFX_STREAM_CHUNK_SIZE
@@ -446,6 +447,7 @@ static void test_stream_multi_chunk(void) {
 
     CFX_ASSERT(memcmp(dec, pt, MC_TOTAL) == 0);
 }
+#endif /* CFX_BAREMETAL */
 
 static void test_stream_empty(void) {
     /* empty final chunk */
@@ -549,6 +551,7 @@ static void test_stream_tamper(void) {
     CFX_ASSERT(rc != 0);
 }
 
+#ifndef CFX_BAREMETAL  /* 3 × 64KB malloc — skip on bare-metal */
 static void test_stream_exact_chunk(void) {
     /* single chunk that is exactly CFX_STREAM_CHUNK_SIZE (64KB) */
     uint8_t key[32], nonce[24];
@@ -577,7 +580,9 @@ static void test_stream_exact_chunk(void) {
 
     free(pt); free(ct); free(dec);
 }
+#endif /* CFX_BAREMETAL */
 
+#ifndef CFX_BAREMETAL  /* 4 × 64KB malloc — skip on bare-metal */
 static void test_stream_exact_two_chunks(void) {
     /* two full 64KB chunks, no tail — both at exact chunk boundary */
     #define E2C CFX_STREAM_CHUNK_SIZE
@@ -618,6 +623,7 @@ static void test_stream_exact_two_chunks(void) {
     free(pt); free(ct0); free(ct1); free(dec);
     #undef E2C
 }
+#endif /* CFX_BAREMETAL */
 
 static void test_stream_one_byte(void) {
     /* single chunk with exactly 1 byte of plaintext */
@@ -640,6 +646,7 @@ static void test_stream_one_byte(void) {
     CFX_ASSERT(dec == pt);
 }
 
+#ifndef CFX_BAREMETAL  /* 2 × 64KB malloc — skip on bare-metal */
 static void test_stream_boundary_plus_one(void) {
     /* 64KB + 1 byte: splits into full chunk + 1-byte final chunk */
     #define BP1 CFX_STREAM_CHUNK_SIZE
@@ -680,6 +687,7 @@ static void test_stream_boundary_plus_one(void) {
     free(pt); free(ct0); free(dec);
     #undef BP1
 }
+#endif /* CFX_BAREMETAL */
 
 static void test_stream_wrong_key(void) {
     /* decrypting with a different key must fail */
@@ -750,15 +758,21 @@ int main(void) {
     CFX_TEST(test_xchacha_bad_tag);
     CFX_TEST(test_xchacha_fuzz);
     CFX_TEST(test_stream_single_chunk);
+#ifndef CFX_BAREMETAL
     CFX_TEST(test_stream_multi_chunk);
+#endif
     CFX_TEST(test_stream_empty);
     CFX_TEST(test_stream_wrong_order);
     CFX_TEST(test_stream_truncation);
     CFX_TEST(test_stream_tamper);
+#ifndef CFX_BAREMETAL
     CFX_TEST(test_stream_exact_chunk);
     CFX_TEST(test_stream_exact_two_chunks);
+#endif
     CFX_TEST(test_stream_one_byte);
+#ifndef CFX_BAREMETAL
     CFX_TEST(test_stream_boundary_plus_one);
+#endif
     CFX_TEST(test_stream_wrong_key);
     CFX_TEST(test_stream_extension);
     puts("ok");

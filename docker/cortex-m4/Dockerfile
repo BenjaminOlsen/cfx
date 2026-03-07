@@ -32,10 +32,7 @@ RUN apt-get update && apt-get install -y \
 # Working directory (will be mounted from host)
 WORKDIR /cfx
 
-# Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Default: run build and tests
-ENTRYPOINT ["/entrypoint.sh"]
+# Entrypoint runs from the mounted volume so changes take effect
+# without rebuilding the image
+ENTRYPOINT ["/cfx/docker/cortex-m4/entrypoint.sh"]
 CMD ["test"]

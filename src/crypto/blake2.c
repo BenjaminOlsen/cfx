@@ -7,6 +7,8 @@
 #include "cfx/blake2.h"
 #include "cfx/macros.h"
 #include "cfx/arch.h"
+#include "cfx/bits.h"
+#include "cfx/memory.h"
 #include <string.h>
 
 #if CFX_HAVE_AVX2
@@ -65,41 +67,12 @@ static const uint8_t sigma[12][16] = {
     { 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 }
 };
 
-static inline uint64_t rotr64(uint64_t x, int n) {
-    return (x >> n) | (x << (64 - n));
-}
-
-static inline uint32_t rotr32(uint32_t x, int n) {
-    return (x >> n) | (x << (32 - n));
-}
-
-static inline uint64_t load64_le(const void *src) {
-    const uint8_t *p = (const uint8_t *)src;
-    return ((uint64_t)p[0])       | ((uint64_t)p[1] << 8)  |
-           ((uint64_t)p[2] << 16) | ((uint64_t)p[3] << 24) |
-           ((uint64_t)p[4] << 32) | ((uint64_t)p[5] << 40) |
-           ((uint64_t)p[6] << 48) | ((uint64_t)p[7] << 56);
-}
-
-static inline uint32_t load32_le(const void *src) {
-    const uint8_t *p = (const uint8_t *)src;
-    return ((uint32_t)p[0])       | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-
-static inline void store64_le(void *dst, uint64_t x) {
-    uint8_t *p = (uint8_t *)dst;
-    p[0] = (uint8_t)x; p[1] = (uint8_t)(x >> 8);
-    p[2] = (uint8_t)(x >> 16); p[3] = (uint8_t)(x >> 24);
-    p[4] = (uint8_t)(x >> 32); p[5] = (uint8_t)(x >> 40);
-    p[6] = (uint8_t)(x >> 48); p[7] = (uint8_t)(x >> 56);
-}
-
-static inline void store32_le(void *dst, uint32_t x) {
-    uint8_t *p = (uint8_t *)dst;
-    p[0] = (uint8_t)x; p[1] = (uint8_t)(x >> 8);
-    p[2] = (uint8_t)(x >> 16); p[3] = (uint8_t)(x >> 24);
-}
+#define rotr64 cfx_rotr64
+#define rotr32 cfx_rotr32
+#define load64_le cfx_load64_le
+#define load32_le cfx_load32_le
+#define store64_le cfx_store64_le
+#define store32_le cfx_store32_le
 
 /* ========================================================================== */
 /* BLAKE2b */

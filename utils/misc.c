@@ -144,7 +144,7 @@ void cfx_printf_output(const uint8_t* data, size_t len, enum cfx_str_format fmt)
     }
 }
 
-#define CFX_FILE_READ_MAX 4096
+#define CFX_FILE_READ_MAX (256 * 1024)
 
 int cfx_read_file_text(const char* path, uint8_t* out, size_t outlen, enum cfx_str_format mode) {
     FILE* f = fopen(path, "rb");

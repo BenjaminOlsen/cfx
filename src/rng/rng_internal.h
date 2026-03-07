@@ -5,15 +5,7 @@
 #include <stddef.h>
 #include "cfx/macros.h"
 #include "cfx/arch.h"
-
-/* rotate helpers */
-static inline uint64_t cfx_rotl64(uint64_t x, int k) {
-    return (x << k) | (x >> (64 - k));
-}
-
-static inline uint32_t cfx_rotl32(uint32_t x, int k) {
-    return (x << k) | (x >> (32 - k));
-}
+#include "cfx/bits.h"
 
 /* seeding helpers (implemented in rng_splitmix.c) */
 void cfx_rng_seed2_32(uint32_t s[2], uint32_t seed);

@@ -15,8 +15,8 @@ set(CRYPTO_COMMON_SOURCES
 )
 
 # Curve25519/Ed25519 requires 128-bit arithmetic (64-bit platforms only)
-# For 32-bit embedded targets, this would need a 32-bit radix implementation
-if(NOT CFX_TARGET STREQUAL "arm_cortex_m4")
+# For 32-bit targets, this would need a 32-bit radix implementation
+if(NOT CFX_TARGET MATCHES "arm_cortex_m4|arm_neon")
     list(APPEND CRYPTO_COMMON_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/fe25519.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ge25519.c
