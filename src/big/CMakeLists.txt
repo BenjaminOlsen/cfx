@@ -15,8 +15,16 @@
 #
 
 set(CFX_BIG_SOURCES
-    # Facade and core logic
-    ${CMAKE_CURRENT_SOURCE_DIR}/big.c
+    # Core logic (split from big.c)
+    ${CMAKE_CURRENT_SOURCE_DIR}/big_core.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/big_bitops.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/big_arith.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/big_mul.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/big_div.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/big_mont.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/big_algos.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/big_fmt.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/big_fac.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ntt.c
     ${CMAKE_CURRENT_SOURCE_DIR}/sbig.c
 

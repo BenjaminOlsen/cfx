@@ -223,6 +223,9 @@ docker run --rm -v $(pwd):/cfx cfx-cortex-m4
 
 # Interactive debugging
 docker run --rm -it -v $(pwd):/cfx cfx-cortex-m4 shell
+
+# Inside the container, run individual tests with QEMU:
+qemu-system-arm -M lm3s6965evb -cpu cortex-m4 -nographic -semihosting -kernel build-cortex-m4/test/unit/test_sha256
 ```
 
 **Performance vs portable C:**
