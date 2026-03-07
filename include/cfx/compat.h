@@ -311,18 +311,36 @@ static inline int cfx_clz64(uint64_t x) {
 }
 
 /* ============================================================
- * 128-bit Arithmetic (for MSVC x64 without __uint128_t)
+ * 128-bit Arithmetic (for platforms without __uint128_t)
  * ============================================================ */
+
+#if !defined(__SIZEOF_INT128__)
+
+typedef struct { uint64_t lo, hi; } cfx_uint128_t;
 
 #if defined(_MSC_VER) && defined(_M_X64)
 #  include <intrin.h>
-typedef struct { uint64_t lo, hi; } cfx_uint128_t;
-
 static inline cfx_uint128_t cfx_mul64(uint64_t a, uint64_t b) {
     cfx_uint128_t r;
     r.lo = _umul128(a, b, &r.hi);
     return r;
 }
+#else
+/* Portable 64x64->128 for 32-bit targets */
+static inline cfx_uint128_t cfx_mul64(uint64_t a, uint64_t b) {
+    uint32_t a_lo = (uint32_t)a, a_hi = (uint32_t)(a >> 32);
+    uint32_t b_lo = (uint32_t)b, b_hi = (uint32_t)(b >> 32);
+    uint64_t ll = (uint64_t)a_lo * b_lo;
+    uint64_t lh = (uint64_t)a_lo * b_hi;
+    uint64_t hl = (uint64_t)a_hi * b_lo;
+    uint64_t hh = (uint64_t)a_hi * b_hi;
+    uint64_t mid = (ll >> 32) + (uint32_t)lh + (uint32_t)hl;
+    cfx_uint128_t r;
+    r.lo = ((uint64_t)(uint32_t)ll) | (mid << 32);
+    r.hi = hh + (lh >> 32) + (hl >> 32) + (mid >> 32);
+    return r;
+}
+#endif
 
 static inline cfx_uint128_t cfx_add128(cfx_uint128_t a, cfx_uint128_t b) {
     cfx_uint128_t r;
@@ -345,7 +363,8 @@ static inline cfx_uint128_t cfx_u128_from_u64(uint64_t x) {
     r.hi = 0;
     return r;
 }
-#endif
+
+#endif /* !__SIZEOF_INT128__ */
 
 #ifdef __cplusplus
 }

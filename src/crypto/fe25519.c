@@ -11,7 +11,7 @@
 
 #define MASK51 0x7FFFFFFFFFFFFULL  /* 2^51 - 1 */
 
-#ifdef _MSC_VER
+#if !defined(__SIZEOF_INT128__)
 #define uint128_t      cfx_uint128_t
 #define mul64          cfx_mul64
 #define add128         cfx_add128
