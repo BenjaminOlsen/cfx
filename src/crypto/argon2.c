@@ -35,7 +35,7 @@ typedef struct {
 
 #define rotr64 cfx_rotr64
 
-/* H' variable-length hash (RFC 9106 §3.2) */
+/* H' variable length hash (RFC 9106 3.2) */
 static void hash_long(uint8_t *out, size_t n, const uint8_t *in, size_t inlen) {
     uint8_t nb[4];
     cfx_store32_le(nb, (uint32_t)n);
@@ -73,6 +73,8 @@ static void hash_long(uint8_t *out, size_t n, const uint8_t *in, size_t inlen) {
     cfx_blake2b_init(&ctx, n);
     cfx_blake2b_update(&ctx, v, 64);
     cfx_blake2b_final(&ctx, out);
+    
+    cfx_memzero_s(v, sizeof(v));
 }
 
 /* GB: argon2 mixing function (modified blake2b G with mul) */
@@ -88,21 +90,29 @@ static void hash_long(uint8_t *out, size_t n, const uint8_t *in, size_t inlen) {
 } while (0)
 
 static void permute(uint64_t *v) {
-    /* two rounds of blake2b mixing */
-    for (int r = 0; r < 2; r++) {
-        GB(v[0], v[4], v[8],  v[12]);
-        GB(v[1], v[5], v[9],  v[13]);
-        GB(v[2], v[6], v[10], v[14]);
-        GB(v[3], v[7], v[11], v[15]);
-        GB(v[0], v[5], v[10], v[15]);
-        GB(v[1], v[6], v[11], v[12]);
-        GB(v[2], v[7], v[8],  v[13]);
-        GB(v[3], v[4], v[9],  v[14]);
-    }
+    /* round 1: columns then diagonals */
+    GB(v[0], v[4], v[8],  v[12]);
+    GB(v[1], v[5], v[9],  v[13]);
+    GB(v[2], v[6], v[10], v[14]);
+    GB(v[3], v[7], v[11], v[15]);
+    GB(v[0], v[5], v[10], v[15]);
+    GB(v[1], v[6], v[11], v[12]);
+    GB(v[2], v[7], v[8],  v[13]);
+    GB(v[3], v[4], v[9],  v[14]);
+
+    /* round 2 */
+    GB(v[0], v[4], v[8],  v[12]);
+    GB(v[1], v[5], v[9],  v[13]);
+    GB(v[2], v[6], v[10], v[14]);
+    GB(v[3], v[7], v[11], v[15]);
+    GB(v[0], v[5], v[10], v[15]);
+    GB(v[1], v[6], v[11], v[12]);
+    GB(v[2], v[7], v[8],  v[13]);
+    GB(v[3], v[4], v[9],  v[14]);
 }
 
 static void fill_block(const block_t *prev, const block_t *ref,
-                        block_t *next, int xor) {
+                        block_t *next, int do_xor) {
     block_t tmp;
     uint64_t r[BLOCK_QW];
 
@@ -112,18 +122,23 @@ static void fill_block(const block_t *prev, const block_t *ref,
     memcpy(&tmp, r, sizeof(tmp));
 
     /* row-wise permutation */
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 8; i++) {
         permute(&tmp.v[i * 16]);
+    }
 
     /* column-wise permutation */
     for (int i = 0; i < 8; i++) {
         uint64_t col[16];
-        for (int j = 0; j < 16; j++) col[j] = tmp.v[j * 8 + i];
+        for (int j = 0; j < 16; j++) {
+            col[j] = tmp.v[j * 8 + i];
+        }
         permute(col);
-        for (int j = 0; j < 16; j++) tmp.v[j * 8 + i] = col[j];
+        for (int j = 0; j < 16; j++) {
+            tmp.v[j * 8 + i] = col[j];
+        }
     }
 
-    if (xor) {
+    if (do_xor) {
         for (int i = 0; i < BLOCK_QW; i++) {
             next->v[i] ^= r[i] ^ tmp.v[i];
         }
@@ -132,6 +147,9 @@ static void fill_block(const block_t *prev, const block_t *ref,
             next->v[i] = r[i] ^ tmp.v[i];
         }
     }
+
+    cfx_memzero_s(r, sizeof(r));
+    cfx_memzero_s(&tmp, sizeof(tmp));
 }
 
 static uint32_t index_alpha(const ctx_t *c, uint32_t pass, uint32_t slice,
@@ -162,8 +180,9 @@ static void fill_segment(ctx_t *c, uint32_t pass, uint32_t lane, uint32_t slice)
     uint32_t cur = lane * c->lane_len + slice * c->seg_len + si;
     uint32_t prv = cur - 1;
 
-    if (cur % c->lane_len == 0)
+    if (cur % c->lane_len == 0) {
         prv += c->lane_len;
+    }
 
     int di = (c->type == CFX_ARGON2I) ||
              (c->type == CFX_ARGON2ID && pass == 0 && slice < SYNC_POINTS / 2);
@@ -294,7 +313,8 @@ int cfx_argon2(uint8_t *out, size_t outlen,
         hash_long((uint8_t *)c.mem[lane * c.lane_len + 1].v, BLOCK_SZ, bhi, 72);
     }
 
-    /* fill remaining blocks */
+    /* fill remaining blocks (lanes are processed sequentially; RFC 9106
+       allows parallel lane processing but we keep it single-threaded) */
     for (uint32_t pass = 0; pass < t; pass++) {
         for (uint32_t slice = 0; slice < SYNC_POINTS; slice++) {
             for (uint32_t lane = 0; lane < p; lane++) {
@@ -356,9 +376,16 @@ int cfx_argon2_encode(char *out, size_t outlen,
 
     size_t sb64 = cfx_base64_enc_len(saltlen);
     size_t hb64 = cfx_base64_enc_len(hashlen);
-    size_t need = 1 + strlen(type_str(type)) + 1 + 5 + 3
-                + 2 + 10 + 1 + 2 + 10 + 1 + 2 + 10 + 1
-                + sb64 + 1 + hb64 + 1;
+    /* worst-case length of "$argon2id$v=19$m=NNN,t=NNN,p=NNN$salt$hash" */
+    size_t need = 1                          /* "$"                       */
+                + strlen(type_str(type))      /* "argon2id"               */
+                + 1 + 5 + 3                  /* "$" "v=19" "$"           */
+                + 2 + 10                      /* "m=" uint32_max          */
+                + 1 + 2 + 10                 /* "," "t=" uint32_max      */
+                + 1 + 2 + 10                 /* "," "p=" uint32_max      */
+                + 1 + sb64                   /* "$" base64(salt)          */
+                + 1 + hb64                   /* "$" base64(hash)          */
+                + 1;                          /* NUL                      */
 
     if (outlen < need) return -1;
 
@@ -377,69 +404,92 @@ int cfx_argon2_encode(char *out, size_t outlen,
                     type_str(type), VERSION, m, t, p, sb, hb);
 }
 
-static int b64_decode_unpadded(uint8_t *out, size_t *outlen,
-                               const char *in, size_t inlen) {
+static int b64_decode_unpadded(uint8_t *out, size_t *outlen, const char *in, size_t inlen) {
     char padded[512];
     if (inlen >= sizeof(padded) - 4) return -1;
 
     memcpy(padded, in, inlen);
     size_t pad = (4 - (inlen % 4)) % 4;
-    for (size_t i = 0; i < pad; i++) padded[inlen + i] = '=';
+    for (size_t i = 0; i < pad; i++) {
+        padded[inlen + i] = '=';
+    }
     padded[inlen + pad] = '\0';
 
     return cfx_base64_decode(out, outlen, padded, inlen + pad);
 }
 
 int cfx_argon2_verify(const char *enc, const uint8_t *pwd, size_t pwdlen) {
-    if (!enc || enc[0] != '$') return -1;
+    if (!enc || enc[0] != '$'){
+        return -1;
+    }
 
     int type;
-    if      (strncmp(enc + 1, "argon2id$", 9) == 0) { type = CFX_ARGON2ID; enc += 10; }
-    else if (strncmp(enc + 1, "argon2i$",  8) == 0) { type = CFX_ARGON2I;  enc += 9;  }
-    else if (strncmp(enc + 1, "argon2d$",  8) == 0) { type = CFX_ARGON2D;  enc += 9;  }
-    else return -1;
+
+    if (strncmp(enc + 1, "argon2id$", 9) == 0) {
+        type = CFX_ARGON2ID;
+        enc += 10;
+    } else if (strncmp(enc + 1, "argon2i$",  8) == 0) {
+        type = CFX_ARGON2I;
+        enc += 9;
+    } else if (strncmp(enc + 1, "argon2d$",  8) == 0) {
+        type = CFX_ARGON2D;
+        enc += 9;
+    } else {
+        return -1;
+    }
 
     int ver;
-    if (sscanf(enc, "v=%d$", &ver) != 1) return -1;
+    if (sscanf(enc, "v=%d$", &ver) != 1) {
+        return -1;
+    }
     enc = strchr(enc, '$');
-    if (!enc) return -1;
+    if (!enc) {
+        return -1;
+    }
     enc++;
 
     uint32_t m, t, p;
-    if (sscanf(enc, "m=%u,t=%u,p=%u$", &m, &t, &p) != 3) return -1;
+    if (sscanf(enc, "m=%u,t=%u,p=%u$", &m, &t, &p) != 3) {
+        return -1;
+    }
     enc = strchr(enc, '$');
-    if (!enc) return -1;
+    if (!enc) {
+        return -1;
+    }
     enc++;
 
     /* decode salt */
     const char *sep = strchr(enc, '$');
-    if (!sep) return -1;
+    if (!sep) {
+        return -1;
+    }
     size_t sb64len = sep - enc;
 
     uint8_t salt[256];
     size_t saltlen = sizeof(salt);
-    if (b64_decode_unpadded(salt, &saltlen, enc, sb64len) != 0)
+    if (b64_decode_unpadded(salt, &saltlen, enc, sb64len) != 0) {
         return -1;
+    }
 
     enc = sep + 1;
 
     /* decode stored hash */
     uint8_t stored[256];
     size_t hashlen = sizeof(stored);
-    if (b64_decode_unpadded(stored, &hashlen, enc, strlen(enc)) != 0)
+    if (b64_decode_unpadded(stored, &hashlen, enc, strlen(enc)) != 0) {
         return -1;
+    }
 
     /* recompute */
     uint8_t computed[256];
-    if (cfx_argon2(computed, hashlen, pwd, pwdlen, salt, saltlen, m, t, p, type) != 0)
+    if (cfx_argon2(computed, hashlen, pwd, pwdlen, salt, saltlen, m, t, p, type) != 0) {
         return -1;
+    }
 
-    /* constant-time compare */
-    uint8_t diff = 0;
-    for (size_t i = 0; i < hashlen; i++)
-        diff |= stored[i] ^ computed[i];
+    int diff = cfx_memeq_ct(stored, computed, hashlen);
 
     cfx_memzero_s(computed, sizeof(computed));
+    cfx_memzero_s(stored, sizeof(stored));
 
-    return diff != 0;   /* 0 = match, 1 = mismatch */
+    return diff != 0;
 }

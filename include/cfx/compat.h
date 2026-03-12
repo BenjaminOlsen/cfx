@@ -10,11 +10,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* Include inttypes.h for PRIu64/PRIu32 format specifiers */
 #include <inttypes.h>
 
-/* Fallback definitions for bare-metal toolchains that don't define these */
+/* Fallback definitions for bare-metal without inttypes */
 #ifndef PRIu64
 #  define PRIu64 "llu"
 #endif
@@ -33,7 +31,7 @@
 #  include <windows.h>
 #  include <intrin.h>
 #elif defined(__arm__) && !defined(__linux__) && !defined(__APPLE__)
-/* Bare-metal ARM (Cortex-M, etc.) - no OS, no pthread */
+/* Bare-metal ARM */
 #  define CFX_NO_THREADS 1
 #  define CFX_NO_CLOCK 1
 #else
@@ -90,16 +88,19 @@ static inline int cfx_thread_join(cfx_thread_t thread, void **retval) {
 
 #elif defined(CFX_NO_THREADS)
 
-/* Bare-metal / freestanding - no threading support */
+/* Bare-metal / freestanding */
 typedef int cfx_thread_t;
 
 static inline int cfx_thread_create(cfx_thread_t *thread, void * (*func)(void *), void *arg) {
-    (void)thread; (void)func; (void)arg;
+    (void)thread;
+    (void)func;
+    (void)arg;
     return -1; /* Threading not supported */
 }
 
 static inline int cfx_thread_join(cfx_thread_t thread, void **retval) {
-    (void)thread; (void)retval;
+    (void)thread;
+    (void)retval;
     return -1;
 }
 
@@ -144,7 +145,7 @@ static inline void cfx_mutex_destroy(cfx_mutex_t *mtx) {
 
 #elif defined(CFX_NO_THREADS)
 
-/* Bare-metal / freestanding - no mutex support (single-threaded) */
+/* Baremetal / freestanding - no mutex support */
 typedef int cfx_mutex_t;
 #define CFX_MUTEX_INITIALIZER 0
 
@@ -217,9 +218,6 @@ typedef volatile long cfx_atomic_int;
 typedef volatile int cfx_atomic_int;
 #endif
 
-/* ============================================================
- * CPU Count
- * ============================================================ */
 
 static inline int cfx_cpu_count(void) {
 #ifdef _WIN32
@@ -234,9 +232,6 @@ static inline int cfx_cpu_count(void) {
 #endif
 }
 
-/* ============================================================
- * High-Resolution Time (nanoseconds)
- * ============================================================ */
 
 static inline uint64_t cfx_time_ns(void) {
 #ifdef _WIN32
@@ -271,11 +266,7 @@ static inline char * cfx_strndup(const char *s, size_t n) {
     return dup;
 }
 
-/* ============================================================
- * Bit Operations
- * ============================================================ */
 
-/* Count leading zeros for 32-bit unsigned integer */
 static inline int cfx_clz32(uint32_t x) {
     if (x == 0) return 32;
 #ifdef _WIN32
@@ -287,7 +278,6 @@ static inline int cfx_clz32(uint32_t x) {
 #endif
 }
 
-/* Count leading zeros for 64-bit unsigned integer */
 static inline int cfx_clz64(uint64_t x) {
     if (x == 0) return 64;
 #ifdef _WIN32
@@ -326,7 +316,7 @@ static inline cfx_uint128_t cfx_mul64(uint64_t a, uint64_t b) {
     return r;
 }
 #else
-/* Portable 64x64->128 for 32-bit targets */
+/* 64x64->128 for 32-bit targets */
 static inline cfx_uint128_t cfx_mul64(uint64_t a, uint64_t b) {
     uint32_t a_lo = (uint32_t)a, a_hi = (uint32_t)(a >> 32);
     uint32_t b_lo = (uint32_t)b, b_hi = (uint32_t)(b >> 32);

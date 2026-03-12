@@ -27,7 +27,7 @@ extern "C" {
 
 /*
  * Point on Montgomery curve in projective coordinates.
- * Represents the x-coordinate as X/Z.
+ * Represents the x coordinate as X/Z.
  * The y-coordinate is not stored (Montgomery ladder doesn't need it).
  */
 typedef struct {
@@ -35,10 +35,10 @@ typedef struct {
     cfx_big_t Z;
 } cfx_ecm_point_t;
 
-/* Initialize a point (must call before use) */
+/* must call before use - allocates */
 void cfx_ecm_point_init(cfx_ecm_point_t *P);
 
-/* Free a point's resources */
+/* frees allocated resources */
 void cfx_ecm_point_free(cfx_ecm_point_t *P);
 
 /* Copy point: dst = src */
