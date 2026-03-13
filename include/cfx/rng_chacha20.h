@@ -11,15 +11,18 @@ extern "C" {
 #endif
 
 #if CFX_HAVE_AVX2
-#define CFX_CHACHA_RNG_CTX_SIZE 1152  /* buf(512) + ctx(512) + fields */
+#define CFX_CHACHA_RNG_CTX_SIZE  1152  /* buf(512) + ctx(512) + fields */
+#define CFX_CHACHA_RNG_CTX_ALIGN 32
 #elif CFX_SIMD
-#define CFX_CHACHA_RNG_CTX_SIZE 480
+#define CFX_CHACHA_RNG_CTX_SIZE  480
+#define CFX_CHACHA_RNG_CTX_ALIGN CFX_CTX_ALIGN
 #else
-#define CFX_CHACHA_RNG_CTX_SIZE 224
+#define CFX_CHACHA_RNG_CTX_SIZE  224
+#define CFX_CHACHA_RNG_CTX_ALIGN CFX_CTX_ALIGN
 #endif
 
 typedef union {
-    CFX_ALIGNAS(CFX_CTX_ALIGN) uint8_t opaque[CFX_CHACHA_RNG_CTX_SIZE];
+    CFX_ALIGNAS(CFX_CHACHA_RNG_CTX_ALIGN) uint8_t opaque[CFX_CHACHA_RNG_CTX_SIZE];
 } cfx_rng_ctx_t;
 
 void        cfx_chacha20_rng_init(cfx_rng_ctx_t *st, uint32_t seed);
