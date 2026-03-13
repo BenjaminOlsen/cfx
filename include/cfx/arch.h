@@ -46,20 +46,33 @@
 #  endif
 #endif
 
+/* -------------------------------------------------------- */
+/* Alignment -  every compiler does this differently in C99, so
+  if you ever need to add some unlisted compiler, add it... */
+
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
     #include <stdalign.h>
     #define CFX_ALIGNOF(T) alignof(T)
     #define CFX_ALIGNAS(N) alignas(N)
 #elif defined(_MSC_VER)
-    #include <stddef.h>
-struct offset_struct_32 {char c; uint32_t x;};
     #define CFX_ALIGNOF(T) __alignof(T)
     #define CFX_ALIGNAS(N) __declspec(align(N))
-#else
-    #include <stddef.h>
-struct offset_struct_32 {char c; uint32_t x;};
-    #define CFX_ALIGNOF(T) offsetof(struct offset_struct_32, x)
+#elif defined(__GNUC__) || defined(__clang__)
+    #define CFX_ALIGNOF(T) __alignof__(T)
     #define CFX_ALIGNAS(N) __attribute__((aligned(N)))
+#else
+    /* best-effort fallback
+       ALIGNAS is a no-op — natural alignment must suffice */
+    #include <stddef.h>
+    #define CFX_ALIGNOF(T) offsetof(struct { char c; T x; }, x)
+    #define CFX_ALIGNAS(N)
+#endif
+
+/* baseline alignment for opaque context unions  */
+#if defined(__LP64__) || defined(_WIN64) || defined(__x86_64__) || defined(__aarch64__)
+#  define CFX_CTX_ALIGN 16
+#else
+#  define CFX_CTX_ALIGN 8
 #endif
 
 
@@ -230,4 +243,4 @@ CFX_INLINE uint64_t cfx_powmod64(uint64_t base, uint64_t exp, uint64_t m) {
 #endif
 
 
-#endif /* CFX_ARCH_H */
+#endif  /* CFX_ARCH_H */

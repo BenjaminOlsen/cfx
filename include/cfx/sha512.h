@@ -10,6 +10,7 @@
 #ifndef CFX_SHA512_H
 #define CFX_SHA512_H
 
+#include "cfx/arch.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -22,8 +23,7 @@ extern "C" {
 #define CFX_SHA512_CTX_SIZE    224u
 
 typedef union {
-    uint8_t opaque[CFX_SHA512_CTX_SIZE];
-    uint64_t aligner;
+    CFX_ALIGNAS(CFX_CTX_ALIGN) uint8_t opaque[CFX_SHA512_CTX_SIZE];
 } cfx_sha512_ctx_t;
 
 void cfx_sha512_init(cfx_sha512_ctx_t *ctx);

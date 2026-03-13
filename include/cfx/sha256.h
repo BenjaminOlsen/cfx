@@ -3,6 +3,7 @@
 #ifndef CFX_SHA256_H
 #define CFX_SHA256_H
 
+#include "cfx/arch.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -13,8 +14,7 @@ extern "C" {
 #define CFX_SHA256_CTX_SIZE 128u
 
 typedef union {
-    uint8_t opaque[CFX_SHA256_CTX_SIZE];
-    uint64_t aligner;
+    CFX_ALIGNAS(CFX_CTX_ALIGN) uint8_t opaque[CFX_SHA256_CTX_SIZE];
 } cfx_sha256_ctx;
 
 void cfx_sha256_init(cfx_sha256_ctx *ctx);

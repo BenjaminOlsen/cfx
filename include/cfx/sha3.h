@@ -13,6 +13,7 @@
 #ifndef CFX_SHA3_H
 #define CFX_SHA3_H
 
+#include "cfx/arch.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -25,8 +26,7 @@ extern "C" {
 #define CFX_SHA3_CTX_SIZE    400u
 
 typedef union {
-    uint8_t opaque[CFX_SHA3_CTX_SIZE];
-    uint64_t aligner;
+    CFX_ALIGNAS(CFX_CTX_ALIGN) uint8_t opaque[CFX_SHA3_CTX_SIZE];
 } cfx_sha3_ctx_t;
 
 /* SHA3-224 (r=1152, c=448, output=28 bytes) */

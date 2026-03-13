@@ -19,8 +19,7 @@ extern "C" {
 #endif
 
 typedef union {
-    uint8_t opaque[CFX_CHACHA_RNG_CTX_SIZE];
-    CFX_ALIGNAS(32) uint64_t _force_align;
+    CFX_ALIGNAS(CFX_CTX_ALIGN) uint8_t opaque[CFX_CHACHA_RNG_CTX_SIZE];
 } cfx_rng_ctx_t;
 
 void        cfx_chacha20_rng_init(cfx_rng_ctx_t *st, uint32_t seed);

@@ -1,6 +1,7 @@
 #ifndef CFX_POLY1305_H
 #define CFX_POLY1305_H
 
+#include "cfx/arch.h"
 #include "cfx/arith.h"
 #include <stddef.h>
 
@@ -18,8 +19,7 @@ extern "C" {
 #define CFX_POLY1305_CTX_MAX_SIZE 288u
 
 typedef union {
-    uint8_t opaque[CFX_POLY1305_CTX_MAX_SIZE];
-    uint64_t aligner;
+    CFX_ALIGNAS(CFX_CTX_ALIGN) uint8_t opaque[CFX_POLY1305_CTX_MAX_SIZE];
 } cfx_poly1305_ctx_t;
 
 

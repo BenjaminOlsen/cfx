@@ -1,6 +1,7 @@
 #ifndef CFX_SIPHASH_H
 #define CFX_SIPHASH_H
 
+#include "cfx/arch.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -29,8 +30,7 @@ void cfx_siphash128(uint8_t out[16], const uint8_t *data, size_t len,
 #define CFX_SIPHASH_CTX_SIZE 64u
 
 typedef union {
-    uint8_t opaque[CFX_SIPHASH_CTX_SIZE];
-    uint64_t aligner;
+    CFX_ALIGNAS(CFX_CTX_ALIGN) uint8_t opaque[CFX_SIPHASH_CTX_SIZE];
 } cfx_siphash_ctx_t;
 
 void cfx_siphash_init(cfx_siphash_ctx_t *ctx, const uint8_t key[16]);

@@ -16,6 +16,7 @@
 #ifndef CFX_BLAKE2_H
 #define CFX_BLAKE2_H
 
+#include "cfx/arch.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -34,13 +35,11 @@ extern "C" {
 #define CFX_BLAKE2S_CTX_SIZE    128u
 
 typedef union {
-    uint8_t opaque[CFX_BLAKE2B_CTX_SIZE];
-    size_t aligner;
+    CFX_ALIGNAS(CFX_CTX_ALIGN) uint8_t opaque[CFX_BLAKE2B_CTX_SIZE];
 } cfx_blake2b_ctx_t;
 
 typedef union {
-    uint8_t opaque[CFX_BLAKE2S_CTX_SIZE];
-    size_t aligner;
+    CFX_ALIGNAS(CFX_CTX_ALIGN) uint8_t opaque[CFX_BLAKE2S_CTX_SIZE];
 } cfx_blake2s_ctx_t;
 
 /* BLAKE2b - 64-bit optimized */

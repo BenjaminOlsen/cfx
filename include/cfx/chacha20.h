@@ -17,11 +17,11 @@ extern "C" {
  *   - Others: 64 bytes (scalar layout)
  */
 #if defined(CFX_CAP_AVX2)
-#define CFX_CHACHA20_CTX_SIZE 512
+#define CFX_CHACHA20_CTX_SIZE  512
 #define CFX_CHACHA20_CTX_ALIGN 32
 #else
-#define CFX_CHACHA20_CTX_SIZE 64
-#define CFX_CHACHA20_CTX_ALIGN 8
+#define CFX_CHACHA20_CTX_SIZE  64
+#define CFX_CHACHA20_CTX_ALIGN CFX_CTX_ALIGN
 #endif
 
 typedef union {
