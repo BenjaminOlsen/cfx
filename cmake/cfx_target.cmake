@@ -19,10 +19,6 @@ set(CFX_TARGETS
     arm_cortex_m4   # ARM Cortex-M4 (32-bit, DSP, no NEON)
     arm_neon        # ARMv7 + NEON
     aarch64_neon    # AArch64 (NEON is portableline)
-    riscv64         # RISC-V 64-bit portableline
-    riscv64_v       # RISC-V + Vector extension
-    wasm32          # WebAssembly MVP
-    wasm_simd128    # WebAssembly + SIMD
 )
 
 # Target option with auto-detection default
@@ -35,8 +31,6 @@ set(CFX_CAP_AVX2 OFF CACHE INTERNAL "")
 set(CFX_CAP_AVX512 OFF CACHE INTERNAL "")
 set(CFX_CAP_NEON OFF CACHE INTERNAL "")
 set(CFX_CAP_DSP OFF CACHE INTERNAL "")
-set(CFX_CAP_RVV OFF CACHE INTERNAL "")
-set(CFX_CAP_WASM_SIMD OFF CACHE INTERNAL "")
 
 # Target parent relationships (for inheritance / fallback resolution)
 # portable has no parent (it's the root)
@@ -47,10 +41,6 @@ set(CFX_TARGET_PARENT_x86_64_avx512 "x86_64_avx2")
 set(CFX_TARGET_PARENT_arm_cortex_m4 "portable")
 set(CFX_TARGET_PARENT_arm_neon "portable")
 set(CFX_TARGET_PARENT_aarch64_neon "arm_neon")
-set(CFX_TARGET_PARENT_riscv64 "portable")
-set(CFX_TARGET_PARENT_riscv64_v "riscv64")
-set(CFX_TARGET_PARENT_wasm32 "portable")
-set(CFX_TARGET_PARENT_wasm_simd128 "wasm32")
 
 #
 # Auto-detection function
@@ -96,12 +86,6 @@ function(cfx_detect_target OUT_VAR)
         else()
             set(${OUT_VAR} "portable" PARENT_SCOPE)
         endif()
-
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
-        set(${OUT_VAR} "riscv64" PARENT_SCOPE)
-
-    elseif(EMSCRIPTEN)
-        set(${OUT_VAR} "wasm32" PARENT_SCOPE)
 
     else()
         set(${OUT_VAR} "portable" PARENT_SCOPE)
@@ -220,18 +204,6 @@ function(cfx_apply_target target_name)
         endif()
     endif()
 
-    if(CFX_TARGET STREQUAL "riscv64_v")
-        set(CFX_CAP_RVV ON CACHE INTERNAL "" FORCE)
-        target_compile_definitions(${target_name} PRIVATE CFX_CAP_RVV=1)
-    endif()
-
-    if(CFX_TARGET STREQUAL "wasm_simd128")
-        set(CFX_CAP_WASM_SIMD ON CACHE INTERNAL "" FORCE)
-        target_compile_definitions(${target_name} PRIVATE CFX_CAP_WASM_SIMD=1)
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-            target_compile_options(${target_name} PRIVATE -msimd128)
-        endif()
-    endif()
 endfunction()
 
 #

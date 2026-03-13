@@ -27,24 +27,18 @@
  *   CFX_CAP_AVX512    - x86 AVX-512 SIMD
  *   CFX_CAP_NEON      - ARM NEON SIMD
  *   CFX_CAP_DSP       - ARM DSP instructions (Cortex-M4 UMULL/UMLAL)
- *   CFX_CAP_RVV       - RISC-V Vector extension
- *   CFX_CAP_WASM_SIMD - WebAssembly SIMD128
  */
 
 /* Target hierarchy (compile-time only, for reference):
  *
- * base                         <- root: implements EVERYTHING
- * ├── x86_64                      <- inherits from base
- * │   └── x86_64_bmi2             <- inherits from x86_64
- * │       └── x86_64_avx2         <- inherits from x86_64_bmi2
- * │           └── x86_64_avx512   <- inherits from x86_64_avx2
- * ├── arm_cortex_m4               <- inherits from base (no NEON)
- * ├── arm_neon                    <- inherits from base
- * │   └── aarch64_neon            <- inherits from arm_neon
- * ├── riscv64                     <- inherits from base
- * │   └── riscv64_v               <- inherits from riscv64
- * └── wasm32                      <- inherits from base
- *     └── wasm_simd128            <- inherits from wasm32
+ * portable                         <- root: implements EVERYTHING
+ * ├── x86_64                       <- inherits from portable
+ * │   └── x86_64_bmi2              <- inherits from x86_64
+ * │       └── x86_64_avx2          <- inherits from x86_64_bmi2
+ * │           └── x86_64_avx512    <- inherits from x86_64_avx2
+ * ├── arm_cortex_m4                <- inherits from portable (no NEON)
+ * ├── arm_neon                     <- inherits from portable
+ * │   └── aarch64_neon             <- inherits from arm_neon
  */
 
 #ifdef __cplusplus

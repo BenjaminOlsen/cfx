@@ -10,13 +10,11 @@ cfx used to mean one thing, something around 'Factorization into prime eXponents
 ## Configure
 Simplest default example : `cmake -S . -B build` 
 
-choose your compiler, enable testu01, build benchmarks, release build, with 4096 primes in the static list: `CC=/usr/local/bin/clang cmake -B build -S . -DCFX_ENABLE_TESTU01=ON-DCFX_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=4096`
+choose your compiler, enable testu01, build benchmarks, release build, with 4096 primes in the static list: `CC=/usr/local/bin/clang cmake -B build -S . -DCFX_ENABLE_TESTU01=ON -DCFX_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=4096`
 
 force 32 bit limbs: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCFX_BUILD_UTILS=ON -DCFX_BUILD_TESTS=ON -DCFX_FORCE_LIMB_32=ON`
 
-build for armv7m: `cmake -B build-armv7m -S . -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_ARCH=armv7m -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=128 -DCFX_BUILD_UTILS=OFF -DCFX_BUILD_TESTS=ON`
-
-build for ARM Cortex-M4 (optimized): `cmake -B build-m4 -DCFX_TARGET=arm_cortex_m4 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_MEMORY_MODE=static`
+build for ARM Cortex-M4 (optimized): `cmake -B build-m4 -DCFX_TARGET=arm_cortex_m4 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_MEMORY_MODE=dynamic`
 
 ### Security Options
 
@@ -26,22 +24,15 @@ build for ARM Cortex-M4 (optimized): `cmake -B build-m4 -DCFX_TARGET=arm_cortex_
 cmake -S . -B build -DCFX_ED25519_PARANOID=ON
 ```
 
-This enables extra checks beyond RFC 8032 requirements: Small subgroup rejection; cofactored verification
-
-If you accept Ed25519 public keys from untrusted sources. Without these checks, an attacker can provide a malicious "public key" (one of 8 special torsion points) and forge signatures for arbitrary messages.
-
-**Cost:** ~6 extra point doublings per verification (~1% overhead; standard verification already does ~510 doublings).
+This enables extra checks beyond RFC 8032 requirements: small subgroup rejection and cofactored verification. Recommended if you accept Ed25519 public keys from untrusted sources.
 ## Compile
 
 `cmake --build build -j` or `cd build && make` or `make VERBOSE=1`
 
-other helpful commands: 
-
-`cmake -L build `
+list all cache variables: `cmake -L build`
 
 ### Windows (MSVC)
 
-with 
 
 ```powershell
 cmake -S . -B build
@@ -77,17 +68,8 @@ Example commands:
 # See available RNGs and options
 ./build/test/stats/test_testu01 --help
 
-# Run SmallCrush on ChaCha20 (fast, ~10 seconds)
+# Run SmallCrush on ChaCha20
 ./build/test/stats/test_testu01 --rng=cfx_chacha20 --smallcrush
-
-# Run SmallCrush on SHA-256 in counter mode
-./build/test/stats/test_testu01 --rng=cfx_sha256_ctr --smallcrush
-
-# Run Crush on BLAKE2b (~30 minutes)
-./build/test/stats/test_testu01 --rng=cfx_blake2b_ctr --crush
-
-# Run BigCrush with custom seed (several hours)
-./build/test/stats/test_testu01 --rng=cfx_xoshiro256starstar --bigcrush --seed=0x12345
 ```
 
 ### Code Coverage
@@ -117,37 +99,11 @@ Coverage is also run automatically on CI via GitHub Actions.
 Enable benchmarks with `-DCFX_BUILD_BENCHMARKS=ON`. Requires [Google Benchmark](https://github.com/google/benchmark).
 
 ```bash
-# Configure with benchmarks enabled
 cmake -S . -B build -DCFX_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release
-
-# Build
 cmake --build build --config Release
-
-# Run a specific benchmark
-./build/benchmark/Release/bench_ntt.exe      # Windows
-./build/benchmark/bench_ntt                   # Linux/Mac
 ```
 
-### Filtering Benchmarks
-
-Use `--benchmark_filter` with a regex pattern to run specific benchmarks:
-
-```bash
-# Filter by argument size
-./build/benchmark/bench_ntt --benchmark_filter=".*/(4096|8192)"
-
-# Filter by name pattern
-./build/benchmark/bench_poly1305 --benchmark_filter="BM_Poly1305.*"
-```
-
-### Other Useful Flags
-
-```bash
---benchmark_format=json          # JSON output
---benchmark_out=results.json     # Save results to file
---benchmark_repetitions=5        # Run multiple times for statistics
---benchmark_list_tests           # List available benchmarks without running
-```
+Benchmark binaries are in `build/benchmark/`. Use `--benchmark_filter=<regex>` to run specific benchmarks, `--benchmark_list_tests` to list them.
 
 ## Examples
 
@@ -228,13 +184,6 @@ docker run --rm -it -v $(pwd):/cfx cfx-cortex-m4 shell
 qemu-system-arm -M lm3s6965evb -cpu cortex-m4 -nographic -semihosting -kernel build-cortex-m4/test/unit/test_sha256
 ```
 
-**Performance vs portable C:**
-| Component | Speedup |
-|-----------|---------|
-| Big integer multiply | 3-4x |
-| ChaCha20 | 1.5-2x |
-| Poly1305 | 2-3x |
-
 See `doc/CORTEX_M4.md` for design details and `doc/arm/` for optimization documentation.
 
 ### ARM NEON (ARMv7/AArch64)
@@ -246,34 +195,7 @@ docker run --rm -v $(pwd):/cfx cfx-arm-neon
 
 ### Available Targets
 
-| Target | Backend | Key Optimizations |
-|--------|---------|-------------------|
-| `x86_64_avx2` | x86-64 with AVX2 | 8-lane SIMD for ChaCha20, BMI2 for bignum |
-| `x86_64_bmi2` | x86-64 with BMI2 | MULX, ADCX, ADOX |
-| `arm_cortex_m4` | ARM Cortex-M4 | UMULL/UMLAL, barrel shifter |
-| `arm_neon` | ARMv7/v8 NEON | SIMD lanes |
-| `portable` | Any | Standard C |
-
-See `doc/EMULATION.md` for full cross-platform testing documentation.
-
-### ChaCha20 Target-Specific Optimization
-
-The ChaCha20 context size and implementation vary by target to eliminate per-call overhead:
-
-| Target | ctx size | block8 implementation |
-|--------|----------|----------------------|
-| `x86_64_avx2` | 512 bytes | AVX2 8-lane SIMD, pre-broadcast state |
-| others | 64 bytes | Scalar (portable) or target-optimized |
-
-On AVX2, the context stores state in Structure-of-Arrays (SoA) layout with all values pre-broadcast to 8 lanes at init time. This eliminates ~20-25% overhead that would otherwise be spent broadcasting on every `block8` call.
-
-```c
-cfx_chacha20_ctx_t ctx;  // 512 bytes on AVX2, 64 bytes otherwise
-cfx_chacha20_ctx_init(&ctx, key, nonce);
-cfx_chacha20_block8(&ctx, counter, out);  // no broadcast overhead
-```
-
-The backend selection uses inheritance: if `x86_64_avx2/block4.c` doesn't exist, it falls back to `x86_64_bmi2`, then `x86_64`, then `portable`.
+Set with `-DCFX_TARGET=<target>`. See `cmake/cfx_target.cmake` for the full list and `doc/EMULATION.md` for cross-platform testing documentation. Targets include `portable`, `x86_64_avx2`, `x86_64_bmi2`, `arm_cortex_m4`, `arm_neon`, and `aarch64_neon`. Backend selection uses inheritance — missing files fall back through the target's parent chain to `portable`.
 
 ## License
 The cfx library is dual-licensed.
