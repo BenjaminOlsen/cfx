@@ -1,6 +1,6 @@
 # cfx
 
-cfx is a C library for performing a host of arithmetic computations with arbitrary precision integers. It's a work in progress for exploring algorithms in number theory, random number generators, cryptography, and algebra.
+cfx is a C library for performing arithmetic computations with arbitrary precision integers. It's a work in progress for exploring algorithms in number theory, random number generators, cryptography, and algebra.
 
 cfx used to mean one thing, something around 'Factorization into prime eXponents in C', but then the c started standing for 'cryptographic' and then the fx meant something else... for now it's just cfx.
 
@@ -10,21 +10,13 @@ cfx used to mean one thing, something around 'Factorization into prime eXponents
 ## Configure
 Simplest default example : `cmake -S . -B build` 
 
-choose your compiler, enable testu01, build benchmarks, release build, with 4096 primes in the static list: `CC=/usr/local/bin/clang cmake -B build -S . -DCFX_ENABLE_TESTU01=ON -DCFX_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=4096`
+example: choose your compiler, enable testu01, build benchmarks, release build, with 4096 primes in the static list: `CC=/usr/local/bin/clang cmake -B build -S . -DCFX_ENABLE_TESTU01=ON -DCFX_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=4096`
 
-force 32 bit limbs: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCFX_BUILD_UTILS=ON -DCFX_BUILD_TESTS=ON -DCFX_FORCE_LIMB_32=ON`
+example: force 32 bit limbs: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCFX_BUILD_UTILS=ON -DCFX_BUILD_TESTS=ON -DCFX_FORCE_LIMB_32=ON`
 
-build for ARM Cortex-M4 (optimized): `cmake -B build-m4 -DCFX_TARGET=arm_cortex_m4 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_MEMORY_MODE=dynamic`
+example: build for ARM Cortex-M4 (optimized): `cmake -B build-m4 -DCFX_TARGET=arm_cortex_m4 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_MEMORY_MODE=dynamic`
 
-### Security Options
 
-**Paranoid Ed25519 verification:**
-
-```bash
-cmake -S . -B build -DCFX_ED25519_PARANOID=ON
-```
-
-This enables extra checks beyond RFC 8032 requirements: small subgroup rejection and cofactored verification. Recommended if you accept Ed25519 public keys from untrusted sources.
 ## Compile
 
 `cmake --build build -j` or `cd build && make` or `make VERBOSE=1`
@@ -32,7 +24,6 @@ This enables extra checks beyond RFC 8032 requirements: small subgroup rejection
 list all cache variables: `cmake -L build`
 
 ### Windows (MSVC)
-
 
 ```powershell
 cmake -S . -B build
@@ -153,7 +144,7 @@ To update after making changes, just re-run the build and install commands.
 
 ## Rust Bindings
 
-cfx includes Rust bindings in `rust/cfx/`. The bindings provide a safe wrapper around the C library.
+cfx includes Rust bindings in `rust/cfx/`. The bindings provide a wrapper around the C library.
 
 ### Build and Test
 
@@ -162,15 +153,14 @@ cd rust/cfx
 cargo test
 ```
 
-The build script (`build.rs`) compiles the C library automatically using the `cc` crate.
+The build script (`build.rs`) compiles the C library  using the `cc` crate.
 
 ## Cross-Platform / Embedded Targets
 
-cfx includes optimized backends for ARM microcontrollers with Docker-based testing.
+cfx includes backends for ARM microcontrollers with Docker-based testing.
 
 ### ARM Cortex-M4
 
-Optimized for embedded crypto using UMULL/UMLAL multiply-accumulate and barrel shifter rotations:
 
 ```bash
 # Build and test with Docker (recommended - works on macOS/Linux/Windows)
@@ -184,8 +174,6 @@ docker run --rm -it -v $(pwd):/cfx cfx-cortex-m4 shell
 qemu-system-arm -M lm3s6965evb -cpu cortex-m4 -nographic -semihosting -kernel build-cortex-m4/test/unit/test_sha256
 ```
 
-See `doc/CORTEX_M4.md` for design details and `doc/arm/` for optimization documentation.
-
 ### ARM NEON (ARMv7/AArch64)
 
 ```bash
@@ -195,14 +183,14 @@ docker run --rm -v $(pwd):/cfx cfx-arm-neon
 
 ### Available Targets
 
-Set with `-DCFX_TARGET=<target>`. See `cmake/cfx_target.cmake` for the full list and `doc/EMULATION.md` for cross-platform testing documentation. Targets include `portable`, `x86_64_avx2`, `x86_64_bmi2`, `arm_cortex_m4`, `arm_neon`, and `aarch64_neon`. Backend selection uses inheritance — missing files fall back through the target's parent chain to `portable`.
+Set with `-DCFX_TARGET=<target>`. See `cmake/cfx_target.cmake` for the full list. Targets include `portable`, `x86_64_avx2`, `x86_64_bmi2`, `arm_cortex_m4`, `arm_neon`, and `aarch64_neon`.
 
 ## License
 The cfx library is dual-licensed.
 
 You may choose to use it under either of the following licenses:
 
-LGPL v3 (or later) — the GNU Lesser General Public License.
+**LGPL v3 (or later) — the GNU Lesser General Public License.**
 
 You can use cfx in proprietary or open-source projects.
 
@@ -210,7 +198,7 @@ If you modify cfx itself and distribute it, you must publish your changes under 
 
 Dynamic linking is always fine; static linking is permitted if you provide a way for users to relink with a modified cfx.
 
-GPL v2 (or later) — the GNU General Public License.
+**GPL v2 (or later) — the GNU General Public License.**
 
 You can use cfx in GPL-licensed software, including GPLv2-only projects.
 

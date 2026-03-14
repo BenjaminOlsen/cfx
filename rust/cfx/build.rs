@@ -41,20 +41,35 @@ fn main() {
     build
         .include(&include_dir)
         .files(&[
-            // big/ - facade and backends (self-guarding)
-            src_dir.join("big/big.c"),
+            // big/
+            src_dir.join("big/big_core.c"),
+            src_dir.join("big/big_bitops.c"),
+            src_dir.join("big/big_arith.c"),
+            src_dir.join("big/big_mul.c"),
+            src_dir.join("big/big_div.c"),
+            src_dir.join("big/big_mont.c"),
+            src_dir.join("big/big_algos.c"),
+            src_dir.join("big/big_fmt.c"),
+            src_dir.join("big/big_fac.c"),
+            src_dir.join("big/ntt.c"),
+            src_dir.join("big/sbig.c"),
             src_dir.join("big/big_portable.c"),
             src_dir.join("big/big_x86_64_bmi2.c"),
             src_dir.join("big/big_mem_dynamic.c"),
             src_dir.join("big/big_mem_static.c"),
-            src_dir.join("big/ntt.c"),
             // math/
             src_dir.join("math/algo.c"),
             src_dir.join("math/fac.c"),
             // core/
             src_dir.join("core/vec.c"),
             // rng/
-            src_dir.join("rng/rand.c"),
+            src_dir.join("rng/rng_chacha20.c"),
+            src_dir.join("rng/rng_splitmix.c"),
+            src_dir.join("rng/rng_xorshift.c"),
+            src_dir.join("rng/rng_xoroshiro.c"),
+            src_dir.join("rng/rng_pcg.c"),
+            src_dir.join("rng/rng_lcg.c"),
+            src_dir.join("rng/rng_registry.c"),
             // crypto/
             src_dir.join("crypto/chacha20/chacha20.c"),
             src_dir.join("crypto/chacha20/portable/block.c"),
@@ -62,7 +77,11 @@ fn main() {
             src_dir.join("crypto/chacha20/portable/block8.c"),
             src_dir.join("crypto/poly1305/poly1305.c"),
             src_dir.join("crypto/poly1305/portable/blocks.c"),
+            src_dir.join("crypto/poly1271/poly1271.c"),
+            src_dir.join("crypto/poly1271/poly1271_avx2.c"),
             src_dir.join("crypto/aead_chacha20_poly1305.c"),
+            src_dir.join("crypto/aead_chacha20_poly1271.c"),
+            src_dir.join("crypto/argon2.c"),
             src_dir.join("crypto/sha256.c"),
             src_dir.join("crypto/sha512.c"),
             src_dir.join("crypto/sha3.c"),
