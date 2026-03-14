@@ -96,11 +96,16 @@ fn main() {
             // generated
             primes_c,
         ])
-        .flag_if_supported("-std=c99")
+        .flag_if_supported("-std=gnu99")
         .flag_if_supported("-O2")
-        // Silence some warnings in C code when compiling as part of Rust build
         .flag_if_supported("-Wno-unused-parameter")
         .flag_if_supported("-Wno-sign-compare");
+
+    // Feature test macros: _GNU_SOURCE on Linux for clock_gettime, sysconf, etc.
+    // macOS exposes everything by default. See commits ecd7529, 9199033.
+    if cfg!(target_os = "linux") {
+        build.define("_GNU_SOURCE", None);
+    }
 
     build.compile("cfx");
 
