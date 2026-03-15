@@ -31,6 +31,8 @@ set(CFX_UNIT_TESTS
     test_compat
     test_ntt
     test_sbig
+    test_lcg
+    test_big_fmt
 )
 
 # x86-only tests

@@ -752,7 +752,7 @@ int cfx_big_from_file(cfx_big_t *out, FILE *fp, int base) {
 
 done_reading:
     /* Flush any pending chunk */
-    flush_chunk(out, base, &chunk_val, &chunk_len);
+    flush_chunk(out, detected_base, &chunk_val, &chunk_len);
 
     if (!saw_digit) {
         CFX_PRINT_ERR("didn't find any digit!");
