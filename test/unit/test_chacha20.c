@@ -317,6 +317,69 @@ static void test_xchacha20_multiblock(void) {
     CFX_ASSERT(memcmp(pt, ct, 200) != 0);
 }
 
+/*
+ * Test that cfx_chacha20_ctx_inc_nonce correctly propagates carries
+ * through the 96-bit little-endian nonce (s[13], s[14], s[15]).
+ *
+ * We verify by incrementing the nonce on a context, then comparing
+ * a generated block against a fresh context initialized with the
+ * expected post-increment nonce.
+ */
+static void test_inc_nonce_carry_chain(void) {
+    static const uint8_t key[32] = {
+        0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,
+        0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10,
+        0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,
+        0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f,0x20
+    };
+
+    struct {
+        const char *name;
+        uint8_t nonce_before[12];
+        uint8_t nonce_after[12];
+    } cases[] = {
+        {
+            /* no carry: s[13] increments, no wrap */
+            "no_carry",
+            {0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00},
+            {0x01,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00},
+        },
+        {
+            /* one carry: s[13] wraps to 0, s[14] increments */
+            "one_carry",
+            {0xff,0xff,0xff,0xff, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00},
+            {0x00,0x00,0x00,0x00, 0x01,0x00,0x00,0x00, 0x00,0x00,0x00,0x00},
+        },
+        {
+            /* full carry: s[13] wraps, s[14] wraps, s[15] increments */
+            "full_carry",
+            {0xff,0xff,0xff,0xff, 0xff,0xff,0xff,0xff, 0x05,0x00,0x00,0x00},
+            {0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x06,0x00,0x00,0x00},
+        },
+    };
+
+    for (int i = 0; i < 3; ++i) {
+        /* ctx with nonce_before, then increment */
+        cfx_chacha20_ctx_t ctx_inc;
+        cfx_chacha20_ctx_init(&ctx_inc, key, cases[i].nonce_before);
+        cfx_chacha20_ctx_inc_nonce(&ctx_inc);
+
+        /* ctx with nonce_after (what we expect) */
+        cfx_chacha20_ctx_t ctx_ref;
+        cfx_chacha20_ctx_init(&ctx_ref, key, cases[i].nonce_after);
+
+        /* generate a block from each and compare */
+        uint8_t blk_inc[64], blk_ref[64];
+        cfx_chacha20_block(&ctx_inc, 0, blk_inc);
+        cfx_chacha20_block(&ctx_ref, 0, blk_ref);
+
+        if (memcmp(blk_inc, blk_ref, 64) != 0) {
+            printf("  FAIL: %s\n", cases[i].name);
+            CFX_ASSERT(0);
+        }
+    }
+}
+
 int main(void) {
     CFX_TEST(test_block_kat);
     CFX_TEST(test_encrypt_kat);
@@ -335,6 +398,7 @@ int main(void) {
     CFX_TEST(test_xchacha20_various_lengths);
     CFX_TEST(test_xchacha20_counter_increments);
     CFX_TEST(test_xchacha20_multiblock);
+    CFX_TEST(test_inc_nonce_carry_chain);
     puts("OK");
     return 0;
 }
