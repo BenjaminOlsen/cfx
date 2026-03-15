@@ -8,6 +8,7 @@
 extern "C" {
 #endif
 
+/* NOT THREAD-SAFE: seed/gen32 use global state. Use cfx_pcg32() with own state. */
 void        cfx_pcg32_seed(uint32_t seed);
 uint32_t    cfx_pcg32_gen32(void);
 uint32_t    cfx_pcg32(uint64_t *s);

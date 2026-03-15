@@ -1,5 +1,6 @@
 #include "cfx/poly1305.h"
 #include "cfx/memory.h"
+#include "cfx/macros.h"
 #include "cfx/arch.h"
 
 #ifdef S
@@ -372,7 +373,8 @@ CFX_INLINE void cfx_poly1305_4blocks(
 void cfx_poly1305_update(cfx_poly1305_ctx_t *ctx, const uint8_t *msg, size_t mlen) {
     cfx_poly1305_state_t *s = (cfx_poly1305_state_t *)ctx->opaque;
 
-    if (s->done || mlen == 0) {
+    CFX_ASSERT(!s->done && "poly1305: update after finish (key reuse)");
+    if (mlen == 0) {
         return;
     }
     uint8_t buflen = s->buflen;
@@ -453,7 +455,7 @@ void cfx_poly1305_update(cfx_poly1305_ctx_t *ctx, const uint8_t *msg, size_t mle
 void cfx_poly1305_finish(cfx_poly1305_ctx_t *ctx, uint8_t tag[16]) {
     cfx_poly1305_state_t *s = (cfx_poly1305_state_t *)ctx->opaque;
 
-    if (s->done) return;
+    CFX_ASSERT(!s->done && "poly1305: finish called twice (key reuse)");
 
     uint32_t r0 = s->r0, r1 = s->r1, r2 = s->r2, r3 = s->r3, r4 = s->r4;
     uint64_t s1 = s->s1, s2 = s->s2, s3 = s->s3, s4 = s->s4;

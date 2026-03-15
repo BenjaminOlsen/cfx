@@ -28,6 +28,8 @@ CFX_STATIC_ASSERT(
 } while (0)
 
 uint64_t cfx_siphash_cd(const uint8_t *data, size_t len, const uint8_t key[16], int c_rounds, int d_rounds) {
+    if (c_rounds < 1 || d_rounds < 1) return 0;
+
     uint64_t k0 = cfx_load64_le(key);
     uint64_t k1 = cfx_load64_le(key + 8);
 
@@ -140,6 +142,8 @@ void cfx_siphash128(uint8_t out[16], const uint8_t *data, size_t len,
 /* streaming interface */
 
 void cfx_siphash_init_cd(cfx_siphash_ctx_t *ctx, const uint8_t key[16], int c_rounds, int d_rounds) {
+    if (c_rounds < 1 || d_rounds < 1) return;
+
     cfx_siphash_state_t *s = (cfx_siphash_state_t *)ctx;
     uint64_t k0 = cfx_load64_le(key);
     uint64_t k1 = cfx_load64_le(key + 8);

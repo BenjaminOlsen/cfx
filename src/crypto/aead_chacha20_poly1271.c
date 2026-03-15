@@ -13,16 +13,6 @@ static inline size_t pad15(size_t len) {
     return rem ? (15 - rem) : 0;
 }
 
-static int memeq_ct(const void *a, const void *b, size_t n) {
-    const volatile uint8_t *pa = a;
-    const volatile uint8_t *pb = b;
-    uint8_t diff = 0;
-    for (size_t i = 0; i < n; i++) {
-        diff |= pa[i] ^ pb[i];
-    }
-    return diff;
-}
-
 int cfx_chacha20_poly1271_encrypt(
     uint8_t *ct,
     uint8_t tag[16],
@@ -131,7 +121,7 @@ int cfx_chacha20_poly1271_decrypt(
     cfx_poly1271_finish(&poly_ctx, computed_tag);
 #endif
 
-    if (memeq_ct(tag, computed_tag, 16) != 0) {
+    if (cfx_memeq_ct(tag, computed_tag, 16) != 0) {
         CFX_MEMZERO_S(computed_tag, sizeof computed_tag);
         CFX_MEMZERO_S(&chacha_ctx, sizeof chacha_ctx);
         return -1;

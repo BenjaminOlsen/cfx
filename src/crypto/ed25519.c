@@ -165,20 +165,23 @@ int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t *msg, size_t msg_len
     uint8_t check_bytes[32];
     uint8_t expected_bytes[32];
     cfx_sha512_ctx_t ctx;
+    int reject = 0;
 
-    /* unpack public key */
+    /* unpack public key - set flag instead of early return to avoid timing leak */
     if (cfx_ge25519_unpack(&A, pk) != 0) {
-        return -1;
+        reject = 1;
+        memset(&A, 0, sizeof(A));
     }
 
     /* unpack R from signature */
     if (cfx_ge25519_unpack(&R, sig) != 0) {
-        return -1;
+        reject = 1;
+        memset(&R, 0, sizeof(R));
     }
 
     /* check s < L (group order) - reject non-canonical signatures */
     if (!sc25519_is_canonical(sig + 32)) {
-        return -1;
+        reject = 1;
     }
 
 #ifdef CFX_ED25519_PARANOID
@@ -189,7 +192,7 @@ int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t *msg, size_t msg_len
         ge25519_t A8;
         ge25519_mul_cofactor(&A8, &A);
         if (cfx_ge25519_is_identity(&A8)) {
-            return -1;
+            reject = 1;
         }
     }
 #endif
@@ -230,7 +233,7 @@ int cfx_ed25519_verify(const uint8_t sig[64], const uint8_t *msg, size_t msg_len
         diff |= check_bytes[i] ^ expected_bytes[i];
     }
 
-    return diff == 0 ? 0 : -1;
+    return (diff == 0 && !reject) ? 0 : -1;
 }
 
 /*
@@ -309,20 +312,23 @@ int cfx_ed25519ph_verify(const uint8_t sig[64], const uint8_t prehash[64], const
     uint8_t check_bytes[32];
     uint8_t expected_bytes[32];
     cfx_sha512_ctx_t ctx;
+    int reject = 0;
 
-    /* unpack public key */
+    /* unpack public key - set flag instead of early return to avoid timing leak */
     if (cfx_ge25519_unpack(&A, pk) != 0) {
-        return -1;
+        reject = 1;
+        memset(&A, 0, sizeof(A));
     }
 
     /* unpack R from signature */
     if (cfx_ge25519_unpack(&R, sig) != 0) {
-        return -1;
+        reject = 1;
+        memset(&R, 0, sizeof(R));
     }
 
     /* check s < L (group order) - reject non-canonical signatures */
     if (!sc25519_is_canonical(sig + 32)) {
-        return -1;
+        reject = 1;
     }
 
 #ifdef CFX_ED25519_PARANOID
@@ -331,7 +337,7 @@ int cfx_ed25519ph_verify(const uint8_t sig[64], const uint8_t prehash[64], const
         ge25519_t A8;
         ge25519_mul_cofactor(&A8, &A);
         if (cfx_ge25519_is_identity(&A8)) {
-            return -1;
+            reject = 1;
         }
     }
 #endif
@@ -366,5 +372,5 @@ int cfx_ed25519ph_verify(const uint8_t sig[64], const uint8_t prehash[64], const
         diff |= check_bytes[i] ^ expected_bytes[i];
     }
 
-    return diff == 0 ? 0 : -1;
+    return (diff == 0 && !reject) ? 0 : -1;
 }

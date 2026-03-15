@@ -28,11 +28,12 @@ typedef union {
 void        cfx_chacha20_rng_init(cfx_rng_ctx_t *st, uint32_t seed);
 int         cfx_chacha20_rng(void *ctx, uint8_t *out, size_t len);
 
+/* NOT THREAD-SAFE: these use global state. Use cfx_chacha20_rng_init/_rng for thread safety. */
 void        cfx_chacha20_seed(uint32_t seed);
 uint32_t    cfx_chacha20_gen32(void);
 void        cfx_chacha20_bytes(void *buf, size_t len);
 
-/* cfx's chosen rand - wraps chacha20 */
+/* NOT THREAD-SAFE: these use global state. Use _ctx variants for thread safety. */
 void        cfx_srand(uint32_t seed);
 int         cfx_rand(void);
 uint32_t    cfx_urand(void);

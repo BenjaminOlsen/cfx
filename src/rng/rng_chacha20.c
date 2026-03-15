@@ -57,7 +57,7 @@ static inline void chacha20_advance_counter(cfx_chacha20_rng_t *st, uint32_t blo
 }
 
 
-static cfx_chacha20_rng_t G = {0};
+static cfx_chacha20_rng_t G = {0};  /* NOT THREAD-SAFE */
 
 CFX_INLINE void cfx_chacha20_refill(cfx_chacha20_rng_t *st) {
     if (!st->seeded) return;

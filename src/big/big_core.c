@@ -108,10 +108,12 @@ int cfx_big_eq_u64(const cfx_big_t *b, cfx_limb_t n) {
 }
 
 int cfx_big_eq(const cfx_big_t *a, const cfx_big_t *b) {
-    if (a->n != b->n) return 0;
+    size_t max_n = (a->n > b->n) ? a->n : b->n;
     cfx_limb_t diff = 0;
-    for (size_t i = 0; i < a->n; ++i) {
-        diff |= (a->limb[i] ^ b->limb[i]);
+    for (size_t i = 0; i < max_n; ++i) {
+        cfx_limb_t ai = (i < a->n) ? a->limb[i] : 0;
+        cfx_limb_t bi = (i < b->n) ? b->limb[i] : 0;
+        diff |= (ai ^ bi);
     }
     return diff == 0;
 }

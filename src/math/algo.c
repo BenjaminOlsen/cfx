@@ -493,9 +493,14 @@ void cfx_mul_csa_portable(const cfx_limb_t *A, size_t na,
 
     assert(na > 0 && nb > 0);
     const size_t nout = na + nb;              /* result limbs */
-    csa128_t *acc = (csa128_t *)alloca(nout * sizeof(csa128_t));
-    for (size_t k = 0; k < nout; ++k) {
-        acc[k].lo = 0; acc[k].hi = 0;
+    const size_t alloc_sz = nout * sizeof(csa128_t);
+    int heap = (alloc_sz > 4096);
+    csa128_t *acc = heap ? (csa128_t *)calloc(nout, sizeof(csa128_t))
+                         : (csa128_t *)alloca(alloc_sz);
+    if (!heap) {
+        for (size_t k = 0; k < nout; ++k) {
+            acc[k].lo = 0; acc[k].hi = 0;
+        }
     }
 
     /* Accumulate all partial products per diagonal, carry-save style */
@@ -542,6 +547,8 @@ void cfx_mul_csa_portable(const cfx_limb_t *A, size_t na,
 
     /* By construction, carry should be 0 here for na+nb limbs. */
     assert(carry == 0);
+
+    if (heap) free(acc);
 
     /* CFX_PRINT_DBG("A:\t"); */
     /* PRINT_ARR(A, na); */

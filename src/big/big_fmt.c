@@ -184,6 +184,11 @@ char * cfx_big_dec_alloc(const cfx_big_t *src, size_t *sz_out) {
 
     enum { CHUNK_BASE = 1000000000u, CHUNK_DIGS = 9 };
     size_t maxdig = src->n * 20; /* log10(2^64) == 19.2659... */
+    if (maxdig / 20 != src->n) {
+        /* overflow in src->n * 20 */
+        if (sz_out) *sz_out = 0;
+        return NULL;
+    }
     uint32_t *chunks = (uint32_t *)malloc(maxdig);
     size_t k = 0;
 

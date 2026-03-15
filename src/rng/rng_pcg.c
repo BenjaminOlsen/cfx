@@ -7,7 +7,7 @@
 /** PCG "permuted congruential generator"
  *  ref: https://www.pcg-random.org/index.html
  **/
-static uint64_t g_pcg_state = UINT64_C(0x853c49e6748fea9b);
+static uint64_t g_pcg_state = UINT64_C(0x853c49e6748fea9b);  /* NOT THREAD-SAFE */
 
 void cfx_pcg32_seed(uint32_t seed) {
     const uint64_t pcg_inc = UINT64_C(0xda3e39cb94b95bdb);

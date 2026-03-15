@@ -4,7 +4,7 @@
 #include <string.h>
 
 /* ---------------------------------------------------------------------------------------------- */
-uint32_t g_lcg_seed = 0x126;
+uint32_t g_lcg_seed = 0x126;  /* NOT THREAD-SAFE */
 
 void cfx_lcg_seed(uint32_t seed) {
     g_lcg_seed = seed;
@@ -35,7 +35,7 @@ void cfx_lcg_bytes(uint32_t seed, uint8_t *data, size_t len) {
 
 
 /* ---------------------------------------------------------------------------------------------- */
-static uint64_t g_drand_state = UINT64_C(0x123456789ABCDEF);
+static uint64_t g_drand_state = UINT64_C(0x123456789ABCDEF);  /* NOT THREAD-SAFE */
 
 void cfx_drand48_seed(uint32_t seed) {
     g_drand_state = (uint64_t)seed;
@@ -51,7 +51,7 @@ uint32_t cfx_drand48(uint64_t *s) {
 }
 
 /* ---------------------------------------------------------------------------------------------- */
-static uint64_t g_minstd_state = 1;
+static uint64_t g_minstd_state = 1;  /* NOT THREAD-SAFE */
 
 void cfx_minstd_seed(uint32_t seed) {
     g_minstd_state = seed ? (uint64_t)seed : 1;
