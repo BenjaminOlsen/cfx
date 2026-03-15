@@ -38,7 +38,7 @@
 
 #include "cfx_cmd.h"
 #include "cfx_keyfile.h"
-#include "misc.h"
+#include "common.h"
 
 /*  v2 constants  */
 

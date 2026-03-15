@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 
 #include "cfx_cmd.h"
-#include "misc.h"
+#include "common.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -261,7 +261,7 @@ int cfx_verify_run(int argc, char** argv) {
     /* read public key */
     uint8_t pk[32];
     if (keyhex) {
-        if (cfx_parse_data(keyhex, pk, 32) != 0) {
+        if (cfx_parse_str_exact(keyhex, pk, 32) != 0) {
             fprintf(stderr, "error: cannot parse public key (expected hex, 0xhex, or b64:base64)\n");
             return 1;
         }
@@ -274,7 +274,7 @@ int cfx_verify_run(int argc, char** argv) {
     /* read signature */
     uint8_t sig[64];
     if (sighex) {
-        if (cfx_parse_data(sighex, sig, 64) != 0) {
+        if (cfx_parse_str_exact(sighex, sig, 64) != 0) {
             fprintf(stderr, "error: cannot parse signature (expected hex, 0xhex, or b64:base64)\n");
             return 1;
         }

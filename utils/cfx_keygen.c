@@ -32,7 +32,7 @@
 #include "cfx_cmd.h"
 #include "cfx_keyfile.h"
 #include "cfx_randomart.h"
-#include "misc.h"
+#include "common.h"
 
 typedef enum {
     KEY_RAW,        /* random bytes */

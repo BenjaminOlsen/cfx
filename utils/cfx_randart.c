@@ -6,7 +6,7 @@
 #include "cfx/sha3.h"
 #include "cfx/blake2.h"
 #include "cfx/base64.h"
-#include "misc.h"
+#include "common.h"
 #include "cfx_cmd.h"
 
 #include <stdio.h>

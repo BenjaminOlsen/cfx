@@ -6,7 +6,7 @@
 #include "cfx/argon2.h"
 #include "cfx/rand.h"
 #include "cfx/memory.h"
-#include "misc.h"
+#include "common.h"
 
 static void print_help(const char* prog) {
     printf("Usage: %s [options] [password]\n", prog);

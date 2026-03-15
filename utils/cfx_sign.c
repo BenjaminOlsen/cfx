@@ -12,7 +12,7 @@
 
 #include "cfx_cmd.h"
 #include "cfx_keyfile.h"
-#include "misc.h"
+#include "common.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -222,7 +222,7 @@ int cfx_sign_run(int argc, char** argv) {
 
     uint8_t seed[32];
     if (keyhex) {
-        if (cfx_parse_data(keyhex, seed, 32) != 0) {
+        if (cfx_parse_str_exact(keyhex, seed, 32) != 0) {
             fprintf(stderr, "error: cannot parse seed (expected hex, 0xhex, or b64:base64)\n");
             return 1;
         }

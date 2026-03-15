@@ -10,7 +10,7 @@
 #include <string.h>
 
 #include "cfx_cmd.h"
-#include "misc.h"
+#include "common.h"
 
 /* Read exactly 'len' bytes from file, return 0 on success */
 static int read_key_file(const char* path, uint8_t* out, size_t len) {

@@ -1,5 +1,5 @@
-#ifndef CFX_MISC_H
-#define CFX_MISC_H
+#ifndef CFX_UTILS_COMMON_H
+#define CFX_UTILS_COMMON_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -23,7 +23,8 @@ int cfx_parse_hex(const char* s, uint8_t* out, size_t outlen);
  *   0x<data>    →  hex
  *   <hex chars> →  hex (no prefix)
  * returns 0 on success, -1 on error. */
-int cfx_parse_data(const char* s, uint8_t* out, size_t outlen);
+int cfx_parse_str_exact(const char* s, uint8_t* out, size_t outlen);
+
 void cfx_print_hex(const uint8_t *buf, size_t len);
 
 /* read a line from stdin, trim whitespace. caller must free() result. */
@@ -61,4 +62,4 @@ enum cfx_str_format cfx_detect_file_format(const char* path, size_t* out_len);
  */
 int cfx_read_all_file(FILE *f, uint8_t **out, size_t *out_len);
 
-#endif  /* CFX_MISC_H */
+#endif  /* CFX_UTILS_COMMON_H */

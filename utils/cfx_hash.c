@@ -5,7 +5,7 @@
 #include "cfx/blake2.h"
 #include "cfx/siphash.h"
 #include "cfx/base64.h"
-#include "misc.h"
+#include "common.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -13,7 +13,7 @@
 #endif
 
 #include "cfx_cmd.h"
-#include "misc.h"
+#include "common.h"
 
 
 static void usage(const char* prog) {

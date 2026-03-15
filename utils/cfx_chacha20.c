@@ -1,6 +1,6 @@
 #include "cfx/chacha20.h"
 #include "cfx/base64.h"
-#include "misc.h"
+#include "common.h"
 #include "cfx_cmd.h"
 
 #include <stdio.h>

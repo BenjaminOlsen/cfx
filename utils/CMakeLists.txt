@@ -30,7 +30,7 @@ set(UTIL_NAMES
 )
 
 # Helper library with misc utilities (hex parsing, etc.)
-add_library(cfx_misc misc.h misc.c cfx_keyfile.h cfx_keyfile.c cfx_randomart.h cfx_randomart.c)
+add_library(cfx_misc common.h common.c cfx_keyfile.h cfx_keyfile.c cfx_randomart.h cfx_randomart.c)
 target_link_libraries(cfx_misc PUBLIC cfx::cfx)
 
 # Multi-file utilities in subdirectories

@@ -4,14 +4,14 @@
 #include "cfx/rand.h"
 #include "cfx/base64.h"
 #include "cfx/memory.h"
-#include "misc.h"
+#include "common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "cfx_cmd.h"
-#include "misc.h"
+#include "common.h"
 
 
 static void usage(const char* prog) {

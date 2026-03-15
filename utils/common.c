@@ -1,4 +1,4 @@
-#include "misc.h"
+#include "common.h"
 #include "cfx/base64.h"
 #include "cfx/memory.h"
 
@@ -28,7 +28,7 @@ int cfx_parse_hex(const char* s, uint8_t* out, size_t outlen) {
     return 0;
 }
 
-int cfx_parse_data(const char* s, uint8_t* out, size_t outlen) {
+int cfx_parse_str_exact(const char* s, uint8_t* out, size_t outlen) {
     if (!s) return -1;
     if (strncmp(s, "b64:", 4) == 0) {
         size_t dec_len = outlen;
