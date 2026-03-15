@@ -301,8 +301,17 @@ static void test_xchacha20_multiblock(void) {
 
     for (size_t i = 0; i < 200; ++i) pt[i] = (uint8_t)i;
 
-    cfx_xchacha20_encrypt(key, 0, nonce, pt, 200, ct);
-    cfx_xchacha20_encrypt(key, 0, nonce, ct, 200, dec);
+    /* encrypt */
+    cfx_chacha20_ctx_t ctx1;
+    uint32_t counter1 = 0;
+    cfx_xchacha20_ctx_init(&ctx1, key, nonce);
+    cfx_xchacha20_encrypt_ctx(&ctx1, &counter1, pt, sizeof(pt), ct);
+
+    /* decrypt */
+    cfx_chacha20_ctx_t ctx2;
+    uint32_t counter2 = 0;
+    cfx_xchacha20_ctx_init(&ctx2, key, nonce);
+    cfx_xchacha20_encrypt_ctx(&ctx2, &counter2, ct, sizeof(ct), dec);
 
     CFX_ASSERT(memcmp(pt, dec, 200) == 0);
     CFX_ASSERT(memcmp(pt, ct, 200) != 0);
