@@ -269,6 +269,70 @@ static void test_srand_os_various_sizes(void) {
     }
 }
 
+/*
+ * Test that the chacha20 RNG correctly increments the nonce when the
+ * 32-bit block counter wraps around.  We mirror the internal struct
+ * layout just enough to poke at `counter` and `idx`.
+ */
+
+#include "cfx/chacha20.h"
+
+#if CFX_HAVE_AVX2
+#define TEST_CHACHA_LANE_CNT 8
+#elif CFX_SIMD
+#define TEST_CHACHA_LANE_CNT 4
+#else
+#define TEST_CHACHA_LANE_CNT 1
+#endif
+#define TEST_CHACHA_BUF_BYTES (64 * TEST_CHACHA_LANE_CNT)
+
+typedef struct {
+    CFX_ALIGNAS(CFX_CHACHA20_CTX_ALIGN) uint8_t _UNUSED[TEST_CHACHA_BUF_BYTES];
+    cfx_chacha20_ctx_t _UNUSED2;
+    uint32_t counter;
+    size_t idx;
+    int _UNUSED3;
+} test_chacha20_rng_t;
+
+static void test_chacha20_rng_counter_wrap(void) {
+    /*
+     * After the counter wraps, the RNG should increment the nonce so
+     * the post-wrap keystream differs from counter-0-with-original-nonce.
+     *
+     * 1. Init ctx, set counter just before wrap, skip one buffer
+     *    (consumes the wrapping block, counter lands at 0 with new nonce)
+     * 2. Generate BUF_BYTES — this is the post-wrap output
+     * 3. Init fresh_ctx (same seed), counter already 0, original nonce
+     * 4. Generate BUF_BYTES — same counter, but original nonce
+     * 5. If nonce was incremented: outputs differ  (pass)
+     *    If nonce was NOT incremented: same key+nonce+counter → match (fail)
+     */
+    cfx_rng_ctx_t ctx;
+    cfx_chacha20_rng_init(&ctx, 42);
+    test_chacha20_rng_t *st = (test_chacha20_rng_t *)&ctx;
+
+    /* set counter just before wrap, force refill */
+    st->counter = UINT32_MAX - (TEST_CHACHA_LANE_CNT - 1);
+    st->idx     = TEST_CHACHA_BUF_BYTES;
+
+    /* skip past the wrapping block — counter lands at 0, nonce bumped */
+    uint8_t skip[TEST_CHACHA_BUF_BYTES];
+    cfx_chacha20_rng(&ctx, skip, sizeof skip);
+
+    /* generate post-wrap output (counter 0, incremented nonce) */
+    uint8_t buf_wrap[TEST_CHACHA_BUF_BYTES];
+    cfx_chacha20_rng(&ctx, buf_wrap, sizeof buf_wrap);
+
+    /* fresh context: counter 0, original nonce */
+    cfx_rng_ctx_t fresh;
+    cfx_chacha20_rng_init(&fresh, 42);
+    uint8_t buf_fresh[TEST_CHACHA_BUF_BYTES];
+    cfx_chacha20_rng(&fresh, buf_fresh, sizeof buf_fresh);
+
+    /* if nonce incremented, these must differ */
+    CFX_ASSERT(memcmp(buf_wrap, buf_fresh, sizeof buf_wrap) != 0);
+}
+
 int main(void) {
     CFX_TEST(run_all_table_rng_tests);
     CFX_TEST(test_explicit_state_independence);
@@ -279,6 +343,7 @@ int main(void) {
     CFX_TEST(test_srand_os_standalone);
     CFX_TEST(test_rand_bytes_os);
     CFX_TEST(test_srand_os_various_sizes);
+    CFX_TEST(test_chacha20_rng_counter_wrap);
     puts("OK");
     return 0;
 }
