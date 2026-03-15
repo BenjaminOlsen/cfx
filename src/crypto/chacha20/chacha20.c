@@ -83,7 +83,12 @@ void cfx_chacha20_block8(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[
     cfx_chacha20_block8_impl((cfx_chacha20_state_t *)ctx->opaque, counter, out);
 }
 
-void cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const uint8_t *pt, size_t pt_len, uint8_t *ct) {
+int cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const uint8_t *pt, size_t pt_len, uint8_t *ct) {
+    /* check that pt_len won't wrap the 32-bit block counter */
+    uint64_t blocks_needed = (pt_len + 63) / 64;
+    if (blocks_needed > (uint64_t)UINT32_MAX - *counter + 1)
+        return -1;
+
     /* 8 blocks (512 bytes) at a time */
     while (pt_len >= 512) {
         uint8_t ks[8][64];
@@ -143,14 +148,16 @@ void cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const 
         pt_len -= take;
     }
     CFX_MEMZERO_S(ks, sizeof(ks));
+    return 0;
 }
 
-void cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
+int cfx_chacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t nonce[12],
     const uint8_t *pt, size_t pt_len, uint8_t *ct) {
     cfx_chacha20_ctx_t ctx;
     cfx_chacha20_ctx_init(&ctx, key, nonce);
-    cfx_chacha20_encrypt_ctx(&ctx, &counter, pt, pt_len, ct);
+    int rc = cfx_chacha20_encrypt_ctx(&ctx, &counter, pt, pt_len, ct);
     CFX_MEMZERO_S(&ctx, sizeof(ctx));
+    return rc;
 }
 
 #define ROTL32(x, n) ((uint32_t)(((x) << (n)) | ((x) >> (32 - (n)))))
@@ -213,16 +220,17 @@ void cfx_xchacha20_ctx_init(cfx_chacha20_ctx_t *ctx, const uint8_t key[32], cons
     CFX_MEMZERO_S(subkey, sizeof(subkey));
 }
 
-void cfx_xchacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const uint8_t *pt, size_t pt_len, uint8_t *ct) {
-    cfx_chacha20_encrypt_ctx(ctx, counter, pt, pt_len, ct);
+int cfx_xchacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const uint8_t *pt, size_t pt_len, uint8_t *ct) {
+    return cfx_chacha20_encrypt_ctx(ctx, counter, pt, pt_len, ct);
 }
 
-void cfx_xchacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t nonce[24],
+int cfx_xchacha20_encrypt(const uint8_t key[32], uint32_t counter, const uint8_t nonce[24],
     const uint8_t *pt, size_t pt_len, uint8_t *ct) {
     uint8_t subkey[32];
     uint8_t subnonce[12] = {0};
     cfx_hchacha20(subkey, key, nonce);
     memcpy(subnonce + 4, nonce + 16, 8);
-    cfx_chacha20_encrypt(subkey, counter, subnonce, pt, pt_len, ct);
+    int rc = cfx_chacha20_encrypt(subkey, counter, subnonce, pt, pt_len, ct);
     CFX_MEMZERO_S(subkey, sizeof(subkey));
+    return rc;
 }

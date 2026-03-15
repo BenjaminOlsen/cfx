@@ -39,7 +39,8 @@ int cfx_chacha20_poly1305_encrypt(
 
     /* ciphertext = ChaCha20(key, nonce, counter=1)[pt_len] XOR plaintext */
     counter = 1;
-    cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, pt, pt_len, ct);
+    if (cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, pt, pt_len, ct) != 0)
+        return -1;
 
     /* make the poly1305 tag out of the message: */
     /* AAD || padding1 || ciphertext || padding2 || len(AAD) (uint64, little-endian) || len(ciphertext) (uint64, little-endian) */
@@ -104,9 +105,9 @@ int cfx_chacha20_poly1305_decrypt(
     }
 
     counter = 1;
-    cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, ct, ct_len, pt);
+    int rc = cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, ct, ct_len, pt);
     CFX_MEMZERO_S(&chacha_ctx, sizeof chacha_ctx);
-    return 0;
+    return rc;
 }
 
 int cfx_xchacha20_poly1305_encrypt(

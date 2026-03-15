@@ -42,7 +42,8 @@ int cfx_chacha20_poly1271_encrypt(
     cfx_chacha20_block(&chacha_ctx, counter, poly_key);
 
     counter = 1;
-    cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, pt, pt_len, ct);
+    if (cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, pt, pt_len, ct) != 0)
+        return -1;
 
 #if CFX_HAVE_AVX2
     cfx_poly1271_avx2_ctx_t poly_ctx;
@@ -137,11 +138,11 @@ int cfx_chacha20_poly1271_decrypt(
     }
 
     counter = 1;
-    cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, ct, ct_len, pt);
+    int rc = cfx_chacha20_encrypt_ctx(&chacha_ctx, &counter, ct, ct_len, pt);
 
     CFX_MEMZERO_S(&chacha_ctx, sizeof chacha_ctx);
     CFX_MEMZERO_S(computed_tag, sizeof computed_tag);
-    return 0;
+    return rc;
 }
 
 int cfx_xchacha20_poly1271_encrypt(
