@@ -380,6 +380,28 @@ static void test_inc_nonce_carry_chain(void) {
     }
 }
 
+static void test_too_many_blocks_rejected(void) {
+    uint8_t key[32] = {0};
+    uint8_t nonce[12] = {0};
+    cfx_chacha20_ctx_t ctx;
+    cfx_chacha20_ctx_init(&ctx, key, nonce);
+
+    /* pt_len that needs UINT32_MAX+2 blocks from counter 0 must be rejected */
+    uint32_t counter = 0;
+    size_t pt_len = ((size_t)UINT32_MAX + 1) * 64 + 1;
+    CFX_ASSERT(cfx_chacha20_encrypt_ctx(&ctx, &counter, NULL, pt_len, NULL) == -1);
+
+    /* exactly-fitting size: (UINT32_MAX - counter + 1) blocks should succeed */
+    counter = UINT32_MAX - 1;
+    uint8_t pt[128] = {0};
+    uint8_t ct[128] = {0};
+    CFX_ASSERT(cfx_chacha20_encrypt_ctx(&ctx, &counter, pt, 128, ct) == 0);
+
+    /* one more byte would require 3 blocks from counter UINT32_MAX-1, which overflows */
+    counter = UINT32_MAX - 1;
+    CFX_ASSERT(cfx_chacha20_encrypt_ctx(&ctx, &counter, NULL, 129, NULL) == -1);
+}
+
 int main(void) {
     CFX_TEST(test_block_kat);
     CFX_TEST(test_encrypt_kat);
@@ -399,6 +421,7 @@ int main(void) {
     CFX_TEST(test_xchacha20_counter_increments);
     CFX_TEST(test_xchacha20_multiblock);
     CFX_TEST(test_inc_nonce_carry_chain);
+    CFX_TEST(test_too_many_blocks_rejected);
     puts("OK");
     return 0;
 }
