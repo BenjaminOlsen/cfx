@@ -12,24 +12,22 @@
 #include "cfx_cmd.h"
 #include "common.h"
 
-/* Read exactly 'len' bytes from file, return 0 on success */
+/* Read a key from file (auto-detects hex/base64/raw binary) */
 static int read_key_file(const char* path, uint8_t* out, size_t len) {
-    FILE* f = fopen(path, "rb");
-    if (!f) {
-        perror(path);
-        return -1;
-    }
-    size_t n = fread(out, 1, len, f);
-    fclose(f);
-    if (n != len) {
-        fprintf(stderr, "error: expected %zu bytes, got %zu\n", len, n);
+    enum cfx_str_format fmt = cfx_detect_file_format(path, NULL);
+    if (fmt == CFX_STR_FMT_BINARY)
+        return cfx_read_file_bin(path, out, len);
+    int n = cfx_read_file_text(path, out, len, fmt);
+    if (n < 0 || (size_t)n != len) {
+        fprintf(stderr, "error: could not read %zu-byte key from %s\n", len, path);
         return -1;
     }
     return 0;
 }
 
-/* Load a 32-byte key from either hex string or file */
-static int load_key32(const char* hex_or_null, const char* file_or_null, uint8_t out[32]) {
+/* Load a 32-byte key from hex string, file, or stdin */
+static int load_key32(const char* hex_or_null, const char* file_or_null,
+                      uint8_t out[32], int try_stdin) {
     if (file_or_null) {
         return read_key_file(file_or_null, out, 32);
     } else if (hex_or_null) {
@@ -39,7 +37,19 @@ static int load_key32(const char* hex_or_null, const char* file_or_null, uint8_t
         }
         return 0;
     }
-    fprintf(stderr, "error: no key provided\n");
+    if (try_stdin) {
+        char* line = cfx_read_line_stdin();
+        if (line && *line) {
+            int ret = cfx_parse_str_exact(line, out, 32);
+            if (ret != 0)
+                fprintf(stderr, "error: could not parse key from stdin\n");
+            cfx_memzero_s(line, strlen(line));
+            free(line);
+            return ret;
+        }
+        free(line);
+    }
+    fprintf(stderr, "error: no key provided (hex arg, -k <file>, or pipe via stdin)\n");
     return -1;
 }
 
@@ -71,8 +81,8 @@ static int load_message(const char* hex_or_null, const char* file_or_null,
         *out_len = len;
         return 0;
     }
-    fprintf(stderr, "error: no message provided\n");
-    return -1;
+    /* fallback: read from stdin */
+    return cfx_read_all_file(stdin, out, out_len);
 }
 
 
@@ -95,17 +105,24 @@ static void usage(const char* prog) {
         "  -bin        Output as raw binary (for -o/-p files)\n"
         "  -q          Quiet mode (output only, no labels)\n"
         "  -h, --help  Show this help\n\n"
+        "Keys can be provided as hex arguments, read from files (-k),\n"
+        "or piped via stdin (one line, hex or b64:... format).\n"
+        "Messages can be provided as hex, read from files (-m), or\n"
+        "piped via stdin (raw bytes).\n\n"
         "Examples:\n"
         "  %s keygen                                Generate new keypair\n"
         "  %s keygen -o secret.key -p public.key    Save keys to files (hex)\n"
         "  %s keygen -o sec.bin -p pub.bin -bin     Save keys as raw binary\n"
         "  %s public <64-char-hex-seed>             Derive public key from hex\n"
         "  %s public -k seed.bin                    Derive public key from file\n"
+        "  echo <hex> | %s public                   Derive public key from stdin\n"
         "  %s sign <seed-hex> <msg-hex>             Sign hex message with hex seed\n"
         "  %s sign -k seed.bin -m message.txt       Sign file with key file\n"
+        "  cat msg.txt | %s sign -k seed.bin        Sign stdin with key file\n"
         "  %s verify <pk> <sig> <hex-msg>           Verify signature\n"
-        "  %s verify -k pub.bin <sig> -m msg.txt    Verify with key/msg files\n",
-        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
+        "  %s verify -k pub.bin <sig> -m msg.txt    Verify with key/msg files\n"
+        "  cat msg.txt | %s verify -k pk.bin <sig>  Verify message from stdin\n",
+        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
 }
 
 static int write_key_file(const char* path, const uint8_t* data, size_t len, enum cfx_str_format fmt) {
@@ -205,7 +222,7 @@ static int cmd_public(const char* seed_hex, const char* seed_file,
                       enum cfx_str_format fmt, int quiet) {
     uint8_t seed[32], pk[32], sk[64];
 
-    if (load_key32(seed_hex, seed_file, seed) != 0) {
+    if (load_key32(seed_hex, seed_file, seed, 1) != 0) {
         return 1;
     }
 
@@ -227,7 +244,7 @@ static int cmd_sign(const char* seed_hex, const char* seed_file,
     size_t msg_len;
     uint8_t* msg = NULL;
 
-    if (load_key32(seed_hex, seed_file, seed) != 0) {
+    if (load_key32(seed_hex, seed_file, seed, 0) != 0) {
         return 1;
     }
 
@@ -256,7 +273,7 @@ static int cmd_verify(const char* pk_hex, const char* pk_file,
     size_t msg_len;
     uint8_t* msg = NULL;
 
-    if (load_key32(pk_hex, pk_file, pk) != 0) {
+    if (load_key32(pk_hex, pk_file, pk, 0) != 0) {
         return 1;
     }
 
@@ -363,32 +380,29 @@ int cfx_ed25519_run(int argc, char** argv) {
     if (strcmp(subcmd, "keygen") == 0) {
         return cmd_keygen(fmt, quiet, out_seed, out_pub);
     } else if (strcmp(subcmd, "public") == 0) {
-        if (arg1 == NULL && key_file == NULL) {
-            fprintf(stderr, "error: 'public' requires seed (hex arg or -k file)\n");
-            usage(prog);
-            return 1;
-        }
+        /* key from hex arg, -k file, or stdin */
         return cmd_public(arg1, key_file, fmt, quiet);
     } else if (strcmp(subcmd, "sign") == 0) {
-        if ((arg1 == NULL && key_file == NULL) || (arg2 == NULL && msg_file == NULL)) {
-            fprintf(stderr, "error: 'sign' requires seed and message (hex args or -k/-m files)\n");
+        if (arg1 == NULL && key_file == NULL) {
+            fprintf(stderr, "error: 'sign' requires seed (hex arg or -k file)\n");
             usage(prog);
             return 1;
         }
-        /* arg1 is seed hex if no -k, arg2 is msg hex if no -m */
+        /* arg1 is seed hex if no -k, arg2 is msg hex if no -m
+         * message falls back to stdin if neither provided */
         const char* seed_hex = key_file ? NULL : arg1;
         const char* msg_hex = msg_file ? NULL : (key_file ? arg1 : arg2);
         return cmd_sign(seed_hex, key_file, msg_hex, msg_file, fmt, quiet);
     } else if (strcmp(subcmd, "verify") == 0) {
-        /* verify needs: pk, sig, msg - sig is always hex for now */
+        /* verify needs: pk, sig, msg - sig is always hex for now
+         * message falls back to stdin if neither hex arg nor -m file */
         const char* pk_hex = key_file ? NULL : arg1;
         const char* sig_hex = key_file ? arg1 : arg2;
         const char* msg_hex_arg = key_file ? arg2 : arg3;
         const char* msg_hex = msg_file ? NULL : msg_hex_arg;
 
-        if ((pk_hex == NULL && key_file == NULL) || sig_hex == NULL ||
-            (msg_hex == NULL && msg_file == NULL)) {
-            fprintf(stderr, "error: 'verify' requires public key, signature, and message\n");
+        if ((pk_hex == NULL && key_file == NULL) || sig_hex == NULL) {
+            fprintf(stderr, "error: 'verify' requires public key and signature\n");
             usage(prog);
             return 1;
         }

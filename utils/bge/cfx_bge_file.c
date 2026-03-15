@@ -360,8 +360,9 @@ int bge_encrypt_file(int argc, char **argv) {
         }
 
         int is_final = feof(inf);
-        if (!is_final && nread < CFX_STREAM_CHUNK_SIZE)
+        if (!is_final && nread < CFX_STREAM_CHUNK_SIZE) {
             is_final = 1;
+        }
 
         rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
             ct_buf, tag, pt_buf, nread,
@@ -370,7 +371,8 @@ int bge_encrypt_file(int argc, char **argv) {
         if (rc != 0) {
             fprintf(stderr, "error: encryption failed at chunk %llu\n",
                     (unsigned long long)chunk_counter);
-            ret = 1; goto done;
+            ret = 1;
+            goto done;
         }
 
         EMIT(ct_buf, nread);
