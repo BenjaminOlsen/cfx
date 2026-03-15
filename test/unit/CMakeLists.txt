@@ -62,6 +62,8 @@ if(CFX_TARGET STREQUAL "arm_cortex_m4")
         test_big_gcd          # heap exhaustion (uses division internally)
         test_big_mul          # heap exhaustion (large multiplications)
         test_big_str          # heap exhaustion (decimal conversion scratch)
+        test_big_fmt          # uses tmpfile() which requires _unlink
+        test_lcg              # global-state functions broken on bare-metal
         test_sbig             # heap exhaustion (wraps cfx_big_t)
         test_sha512           # 64-bit ops on 32-bit CPU, too slow under QEMU
         test_algo             # too slow under QEMU emulation

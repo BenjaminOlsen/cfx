@@ -85,10 +85,17 @@ void cfx_chacha20_block8(cfx_chacha20_ctx_t *ctx, uint32_t counter, uint8_t out[
 
 int cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const uint8_t *pt, size_t pt_len, uint8_t *ct) {
     /* check that pt_len won't wrap the 32-bit block counter */
-    uint64_t blocks_needed = (pt_len + 63) / 64;
-    if (blocks_needed > (uint64_t)UINT32_MAX - *counter + 1) {
+#if SIZE_MAX > UINT32_MAX
+    uint64_t blocks_needed = ((uint64_t)pt_len + 63) / 64;
+    if (blocks_needed > (uint64_t)UINT32_MAX - *counter + 1)
         return -1;
-    }
+#else
+    /* 32-bit size_t can't exceed ~4GB, so blocks_needed <= 2^26.
+     * Only need to check when counter is near the end. */
+    uint32_t blocks_needed = (pt_len / 64) + (pt_len % 64 ? 1 : 0);
+    if (*counter != 0 && blocks_needed > UINT32_MAX - *counter + 1)
+        return -1;
+#endif
 
     /* 8 blocks (512 bytes) at a time */
     while (pt_len >= 512) {

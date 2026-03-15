@@ -386,20 +386,23 @@ static void test_too_many_blocks_rejected(void) {
     cfx_chacha20_ctx_t ctx;
     cfx_chacha20_ctx_init(&ctx, key, nonce);
 
-    /* pt_len that needs UINT32_MAX+2 blocks from counter 0 must be rejected */
+#if SIZE_MAX > UINT32_MAX
+    /* pt_len that needs UINT32_MAX+2 blocks from counter 0 must be rejected
+     * (only testable on 64-bit where size_t can hold the value) */
     uint32_t counter = 0;
     size_t pt_len = ((size_t)UINT32_MAX + 1) * 64 + 1;
     CFX_ASSERT(cfx_chacha20_encrypt_ctx(&ctx, &counter, NULL, pt_len, NULL) == -1);
+#endif
 
     /* exactly-fitting size: (UINT32_MAX - counter + 1) blocks should succeed */
-    counter = UINT32_MAX - 1;
+    uint32_t counter2 = UINT32_MAX - 1;
     uint8_t pt[128] = {0};
     uint8_t ct[128] = {0};
-    CFX_ASSERT(cfx_chacha20_encrypt_ctx(&ctx, &counter, pt, 128, ct) == 0);
+    CFX_ASSERT(cfx_chacha20_encrypt_ctx(&ctx, &counter2, pt, 128, ct) == 0);
 
     /* one more byte would require 3 blocks from counter UINT32_MAX-1, which overflows */
-    counter = UINT32_MAX - 1;
-    CFX_ASSERT(cfx_chacha20_encrypt_ctx(&ctx, &counter, NULL, 129, NULL) == -1);
+    counter2 = UINT32_MAX - 1;
+    CFX_ASSERT(cfx_chacha20_encrypt_ctx(&ctx, &counter2, NULL, 129, NULL) == -1);
 }
 
 int main(void) {
