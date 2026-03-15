@@ -16,13 +16,15 @@ void Reset_Handler(void)
     /* Copy .data from flash to RAM */
     uint32_t *src = &_sidata;
     uint32_t *dst = &_sdata;
-    while (dst < &_edata)
+    while (dst < &_edata) {
         *dst++ = *src++;
+    }
 
     /* Zero .bss */
     dst = &_sbss;
-    while (dst < &_ebss)
+    while (dst < &_ebss) {
         *dst++ = 0;
+    }
 
     int ret = main();
 

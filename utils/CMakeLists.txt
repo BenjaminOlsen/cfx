@@ -1,7 +1,5 @@
-# List of utility names (without cfx_ prefix for cleaner iteration)
+# List of simple (single-file) utility names
 set(UTIL_NAMES
-    bge
-    store
     choose
     dc
     div
@@ -35,18 +33,18 @@ set(UTIL_NAMES
 add_library(cfx_misc misc.h misc.c cfx_keyfile.h cfx_keyfile.c cfx_randomart.h cfx_randomart.c)
 target_link_libraries(cfx_misc PUBLIC cfx::cfx)
 
+# Multi-file utilities in subdirectories
+add_subdirectory(bge)
+
 # Library containing all utility logic (without main functions)
 set(UTIL_SOURCES)
 foreach(util_name IN LISTS UTIL_NAMES)
     list(APPEND UTIL_SOURCES cfx_${util_name}.c)
-        message(STATUS "added utility '${util_name}'")
-
+    message(STATUS "added utility '${util_name}'")
 endforeach()
 
-list(APPEND UTIL_SOURCES cfx_bge_crypto.c cfx_bge_store.c cfx_bge_file.c cfx_bge_common.c cfx_bge_grace.c)
-
 add_library(cfx_util_lib STATIC ${UTIL_SOURCES})
-target_link_libraries(cfx_util_lib PUBLIC cfx::cfx cfx_misc)
+target_link_libraries(cfx_util_lib PUBLIC cfx::cfx cfx_misc cfx_bge_lib)
 target_include_directories(cfx_util_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Build individual standalone binaries (cfx_factor, cfx_dc, etc.)

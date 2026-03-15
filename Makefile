@@ -1,4 +1,4 @@
-# convenience Makefile - wraps CMake (C) and Cargo (Rust)
+# convenience Makefile - wraps CMake (C) and Cargo (Rust) and docker/QEMU (ARM) things
 
 BUILD_DIR = build
 BUILD_DIR_COV = build-cov
