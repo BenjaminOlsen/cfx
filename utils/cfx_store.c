@@ -148,17 +148,25 @@ static int store_cmd_get(int argc, char **argv) {
     }
 
     char pwd[256] = {0};
-    int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+    int pwd_len = grace_check(path, pwd, sizeof(pwd));
     if (pwd_len <= 0) {
-        fprintf(stderr, "error: passphrase required\n");
-        cfx_memzero_s(pwd, sizeof(pwd));
-        return 1;
+        pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+        if (pwd_len <= 0) {
+            fprintf(stderr, "error: passphrase required\n");
+            cfx_memzero_s(pwd, sizeof(pwd));
+            return 1;
+        }
     }
 
     bge_ustore us = {0};
     int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    if (rc != 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        grace_delete();
+        return 1;
+    }
+    grace_stamp(path, pwd, (size_t)pwd_len);
     cfx_memzero_s(pwd, sizeof(pwd));
-    if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
@@ -287,27 +295,33 @@ static int store_cmd_set(int argc, char **argv) {
     }
 
     char pwd[256] = {0};
-    int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+    int pwd_len = grace_check(path, pwd, sizeof(pwd));
     if (pwd_len <= 0) {
-        fprintf(stderr, "error: passphrase required\n");
-        cfx_memzero_s(pwd, sizeof(pwd));
-        if (val_needs_free) {
-            cfx_memzero_s(val_buf, val_len);
-            free(val_buf);
+        pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+        if (pwd_len <= 0) {
+            fprintf(stderr, "error: passphrase required\n");
+            cfx_memzero_s(pwd, sizeof(pwd));
+            if (val_needs_free) {
+                cfx_memzero_s(val_buf, val_len);
+                free(val_buf);
+            }
+            return 1;
         }
-        return 1;
     }
 
     bge_ustore us = {0};
     int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
-    cfx_memzero_s(pwd, sizeof(pwd));
     if (rc != 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        grace_delete();
         if (val_needs_free) {
             cfx_memzero_s(val_buf, val_len);
             free(val_buf);
         }
         return 1;
     }
+    grace_stamp(path, pwd, (size_t)pwd_len);
+    cfx_memzero_s(pwd, sizeof(pwd));
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
@@ -518,17 +532,25 @@ static int store_cmd_edit(int argc, char **argv) {
     }
 
     char pwd[256] = {0};
-    int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+    int pwd_len = grace_check(path, pwd, sizeof(pwd));
     if (pwd_len <= 0) {
-        fprintf(stderr, "error: passphrase required\n");
-        cfx_memzero_s(pwd, sizeof(pwd));
-        return 1;
+        pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+        if (pwd_len <= 0) {
+            fprintf(stderr, "error: passphrase required\n");
+            cfx_memzero_s(pwd, sizeof(pwd));
+            return 1;
+        }
     }
 
     bge_ustore us = {0};
     int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    if (rc != 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        grace_delete();
+        return 1;
+    }
+    grace_stamp(path, pwd, (size_t)pwd_len);
     cfx_memzero_s(pwd, sizeof(pwd));
-    if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
@@ -791,17 +813,25 @@ static int store_cmd_rename(int argc, char **argv) {
     }
 
     char pwd[256] = {0};
-    int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+    int pwd_len = grace_check(path, pwd, sizeof(pwd));
     if (pwd_len <= 0) {
-        fprintf(stderr, "error: passphrase required\n");
-        cfx_memzero_s(pwd, sizeof(pwd));
-        return 1;
+        pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+        if (pwd_len <= 0) {
+            fprintf(stderr, "error: passphrase required\n");
+            cfx_memzero_s(pwd, sizeof(pwd));
+            return 1;
+        }
     }
 
     bge_ustore us = {0};
     int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    if (rc != 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        grace_delete();
+        return 1;
+    }
+    grace_stamp(path, pwd, (size_t)pwd_len);
     cfx_memzero_s(pwd, sizeof(pwd));
-    if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
@@ -954,17 +984,25 @@ static int store_cmd_swap(int argc, char **argv) {
     }
 
     char pwd[256] = {0};
-    int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+    int pwd_len = grace_check(path, pwd, sizeof(pwd));
     if (pwd_len <= 0) {
-        fprintf(stderr, "error: passphrase required\n");
-        cfx_memzero_s(pwd, sizeof(pwd));
-        return 1;
+        pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+        if (pwd_len <= 0) {
+            fprintf(stderr, "error: passphrase required\n");
+            cfx_memzero_s(pwd, sizeof(pwd));
+            return 1;
+        }
     }
 
     bge_ustore us = {0};
     int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    if (rc != 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        grace_delete();
+        return 1;
+    }
+    grace_stamp(path, pwd, (size_t)pwd_len);
     cfx_memzero_s(pwd, sizeof(pwd));
-    if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
@@ -1096,17 +1134,25 @@ static int store_cmd_sort(int argc, char **argv) {
     }
 
     char pwd[256] = {0};
-    int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+    int pwd_len = grace_check(path, pwd, sizeof(pwd));
     if (pwd_len <= 0) {
-        fprintf(stderr, "error: passphrase required\n");
-        cfx_memzero_s(pwd, sizeof(pwd));
-        return 1;
+        pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+        if (pwd_len <= 0) {
+            fprintf(stderr, "error: passphrase required\n");
+            cfx_memzero_s(pwd, sizeof(pwd));
+            return 1;
+        }
     }
 
     bge_ustore us = {0};
     int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    if (rc != 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        grace_delete();
+        return 1;
+    }
+    grace_stamp(path, pwd, (size_t)pwd_len);
     cfx_memzero_s(pwd, sizeof(pwd));
-    if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
@@ -1158,17 +1204,25 @@ static int store_cmd_ls(int argc, char **argv) {
     }
 
     char pwd[256] = {0};
-    int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+    int pwd_len = grace_check(path, pwd, sizeof(pwd));
     if (pwd_len <= 0) {
-        fprintf(stderr, "error: passphrase required\n");
-        cfx_memzero_s(pwd, sizeof(pwd));
-        return 1;
+        pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+        if (pwd_len <= 0) {
+            fprintf(stderr, "error: passphrase required\n");
+            cfx_memzero_s(pwd, sizeof(pwd));
+            return 1;
+        }
     }
 
     bge_ustore us = {0};
     int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    if (rc != 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        grace_delete();
+        return 1;
+    }
+    grace_stamp(path, pwd, (size_t)pwd_len);
     cfx_memzero_s(pwd, sizeof(pwd));
-    if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
@@ -1215,17 +1269,25 @@ static int store_cmd_info(int argc, char **argv) {
     printf("Size:    %lld bytes\n", (long long)st.st_size);
 
     char pwd[256] = {0};
-    int pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+    int pwd_len = grace_check(path, pwd, sizeof(pwd));
     if (pwd_len <= 0) {
-        fprintf(stderr, "error: passphrase required\n");
-        cfx_memzero_s(pwd, sizeof(pwd));
-        return 1;
+        pwd_len = bge_read_passphrase("Enter passphrase: ", pwd, sizeof(pwd));
+        if (pwd_len <= 0) {
+            fprintf(stderr, "error: passphrase required\n");
+            cfx_memzero_s(pwd, sizeof(pwd));
+            return 1;
+        }
     }
 
     bge_ustore us = {0};
     int rc = bge_uauthenticate(path, pwd, (size_t)pwd_len, &us);
+    if (rc != 0) {
+        cfx_memzero_s(pwd, sizeof(pwd));
+        grace_delete();
+        return 1;
+    }
+    grace_stamp(path, pwd, (size_t)pwd_len);
     cfx_memzero_s(pwd, sizeof(pwd));
-    if (rc != 0) return 1;
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
@@ -1361,8 +1423,10 @@ static int store_cmd_passwd(int argc, char **argv) {
     free(pt);
     bge_ustore_wipe(&us);
 
-    if (rc == 0)
+    if (rc == 0) {
+        grace_delete();
         printf("Passphrase changed.\n");
+    }
     return rc != 0;
 }
 
@@ -1932,8 +1996,10 @@ static int store_cmd_rekey(int argc, char **argv) {
     free(pt);
     bge_ustore_wipe(&us);
 
-    if (rc == 0)
+    if (rc == 0) {
+        grace_delete();
         printf("Rekey complete. All %d slots re-wrapped with new data key.\n", sc);
+    }
     return rc != 0;
 }
 

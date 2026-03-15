@@ -5,6 +5,7 @@
 
 #include "cfx/argon2.h"
 #include "cfx/aead_chacha20_poly1305.h"
+#include "cfx/sha256.h"
 #include "cfx/rand.h"
 #include "cfx/memory.h"
 #include "cfx/base64.h"
@@ -44,7 +45,7 @@
 #define BGE_MAGIC         "BGE"
 #define BGE_VERSION       2       /* KV store format version */
 #define BGE_STREAM_VERSION 3      /* streaming file encryption */
-#define BGE_VERSION_STR   "2.5.0"
+#define BGE_VERSION_STR   "2.6.0"
 #define BGE_HEADER_LEN    56
 #define BGE_VERIFIER_LEN  16
 #define BGE_AAD_LEN       (BGE_HEADER_LEN + BGE_VERIFIER_LEN)  /* 72 */
@@ -212,6 +213,12 @@ int bge_armor_decode(const uint8_t *text, size_t text_len,
                      uint8_t **out, size_t *out_len);
 int bge_encrypt_file(int argc, char **argv);
 int bge_decrypt_file(int argc, char **argv);
+
+/*  cfx_bge_grace.c  */
+
+int  grace_check(const char *store_path, char *pwd_out, size_t pwd_bufsz);
+void grace_stamp(const char *store_path, const char *pwd, size_t pwd_len);
+void grace_delete(void);
 
 /*  cfx_bge_common.c (I/O, path, and utility helpers)  */
 
