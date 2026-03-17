@@ -775,7 +775,7 @@ double cfx_big_log(const cfx_big_t *b, double base) {
     cfx_limb_t hi = b->limb[l-1];
     double ln_base = log(base);
     double ln_hi = log(hi);
-    double ln_B = 64 * log(2.0);
+    double ln_B = CFX_LIMB_BITS * log(2.0);
     return ((l - 1) * ln_B + ln_hi) / ln_base;
 }
 
