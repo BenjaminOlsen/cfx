@@ -32,29 +32,19 @@ void cfx_big_sq_eq(cfx_big_t *b) {
     memset(ret.limb, 0, 2*n * sizeof(cfx_limb_t));
     ret.n = 2*n;
 
-    /* 1) Cross terms: for i < j, add 2*b[i]*b[j] into ret[i+j] */
+    /* 1) Cross terms: for i < j, add b[i]*b[j] into ret[i+j] (single) */
     for (size_t i = 0; i < n; ++i) {
         cfx_acc_t carry = 0;
         for (size_t j = i + 1; j < n; ++j) {
             cfx_acc_t p = (cfx_acc_t)b->limb[i] * b->limb[j];
-
-            /* add p once */
             cfx_acc_t t = (cfx_acc_t)ret.limb[i + j]
                           + (cfx_limb_t)p
                           + (cfx_limb_t)carry;
             ret.limb[i + j] = (cfx_limb_t)t;
             carry = (carry >> CFX_LIMB_BITS) + (t >> CFX_LIMB_BITS) + (p >> CFX_LIMB_BITS);
-
-            /* add p again (to double) -- same carry rule */
-            t = (cfx_acc_t)ret.limb[i + j]
-                + (cfx_limb_t)p
-                + (cfx_limb_t)carry;
-            ret.limb[i + j] = (cfx_limb_t)t;
-            carry = (carry >> CFX_LIMB_BITS) + (t >> CFX_LIMB_BITS) + (p >> CFX_LIMB_BITS);
         }
 
-        /* propagate whatever is left in 'carry' */
-        size_t k = i + n; /* next column after the last updated (i + (n-1)) */
+        size_t k = i + n;
         while (carry) {
             cfx_acc_t t = (cfx_acc_t)ret.limb[k] + (cfx_limb_t)carry;
             ret.limb[k] = (cfx_limb_t)t;
@@ -63,7 +53,15 @@ void cfx_big_sq_eq(cfx_big_t *b) {
         }
     }
 
-    /* 2) diagonals: add b[i]^2 once at ret[2*i] */
+    /* 2) Double cross terms: left-shift ret by 1 bit */
+    cfx_limb_t shl_carry = 0;
+    for (size_t i = 0; i < 2*n; ++i) {
+        cfx_limb_t new_carry = ret.limb[i] >> (CFX_LIMB_BITS - 1);
+        ret.limb[i] = (ret.limb[i] << 1) | shl_carry;
+        shl_carry = new_carry;
+    }
+
+    /* 3) Diagonals: add b[i]^2 at ret[2*i] */
     for (size_t i = 0; i < n; ++i) {
         cfx_acc_t sq = (cfx_acc_t)b->limb[i] * b->limb[i];
 

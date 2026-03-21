@@ -1,20 +1,11 @@
 /*
  * cfx_pi.c - Compute digits of pi
  *
- * Implements two algorithms:
+ * Chudnovsky algorithm (1989):
+ *   1/π = 12 · Σ ((-1)^k · (6k)! · (13591409 + 545140134k))
+ *               / ((3k)! · (k!)^3 · 640320^(3k+3/2))
  *
- * 1. MACHIN'S FORMULA (1706):
- *    π/4 = 4·arctan(1/5) - arctan(1/239)
- *
- *    Uses Taylor series: arctan(x) = x - x³/3 + x⁵/5 - x⁷/7 + ...
- *    Converges ~1.4 digits per term for 1/5, very fast for 1/239.
- *
- * 2. CHUDNOVSKY ALGORITHM (1989):
- *    1/π = 12 · Σ ((-1)^k · (6k)! · (13591409 + 545140134k))
- *                / ((3k)! · (k!)³ · 640320^(3k+3/2))
- *
- *    The fastest known algorithm for π - about 14 digits per term!
- *    Uses binary splitting for efficiency with large numbers.
+ * About 14 digits per term. Uses binary splitting for efficiency.
  */
 
 #include "cfx/big.h"
@@ -27,10 +18,7 @@
 
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s <digits>\n\n", prog);
-    fprintf(stderr, "Compute digits of pi\n\n");
-    fprintf(stderr, "Algorithm options:\n");
-    fprintf(stderr, "  --chudnovsky      Chudnovsky algorithm (default, fastest)\n");
-    fprintf(stderr, "  --machin          Machin's formula (simpler, educational)\n\n");
+    fprintf(stderr, "Compute digits of pi (Chudnovsky algorithm)\n\n");
     fprintf(stderr, "Output options:\n");
     fprintf(stderr, "  -w <cols>         Wrap at <cols> columns (default: 80)\n");
     fprintf(stderr, "  -w 0              No wrapping\n");
@@ -40,14 +28,22 @@ static void usage(const char* prog) {
     fprintf(stderr, "  %s 100                       # first 100 decimal digits\n", prog);
     fprintf(stderr, "  %s 1000                      # ~0.01 sec\n", prog);
     fprintf(stderr, "  %s 10000                     # ~0.5 sec\n", prog);
-    fprintf(stderr, "  %s --machin 1000             # educational algorithm\n", prog);
 }
 
 
 static void big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_limb_t p, int verbose) {
-    if (p == 0)              { cfx_big_from_limb(out, 1); return; }
-    if (cfx_big_is_zero(n))  { cfx_big_from_limb(out, 0); return; }
-    if (cfx_big_eq_u64(n, 1)) { cfx_big_from_limb(out, 1); return; }
+    if (p == 0) {
+        cfx_big_from_limb(out, 1);
+        return;
+    }
+    if (cfx_big_is_zero(n)) {
+        cfx_big_from_limb(out, 0);
+        return;
+    }
+    if (cfx_big_eq_u64(n, 1)) {
+        cfx_big_from_limb(out, 1);
+        return;
+    }
 
     cfx_big_t acc, np; /* accumulator, p copy, n^p*/
     cfx_big_init(&acc);
@@ -60,131 +56,18 @@ static void big_exp_u64(cfx_big_t* out, const cfx_big_t* n, cfx_limb_t p, int ve
             cfx_big_mul_auto(&np, &acc);
         }
         p >>= 1;
-        if (p) cfx_big_mul_auto(&acc, &acc);
+        if (p) cfx_big_sq_eq(&acc);
         if (verbose) { printf("pow " CFX_PRIuLIMB " / " CFX_PRIuLIMB "\n", p, p_orig); }
     }
     cfx_big_move(out, &np);
-    cfx_big_free(&np);
     cfx_big_free(&acc);
-}
-
-/*
- * Compute arctan(1/d) * 10^precision using Taylor series
- *
- * arctan(1/d) = 1/d - 1/(3d³) + 1/(5d⁵) - 1/(7d⁷) + ...
- *
- * We maintain a "current term" and divide by d² each iteration.
- * The series converges when term < 1 (in scaled integer arithmetic).
- */
-static void arctan_inv(cfx_big_t* result, long d, size_t precision, int verbose) {
-    cfx_big_t power;
-    cfx_big_t term;
-    cfx_big_t d_sq;
-    cfx_big_t tmp, rem;
-
-    cfx_big_init(&power);
-    cfx_big_init(&term);
-    cfx_big_init(&d_sq);
-    cfx_big_init(&tmp);
-    cfx_big_init(&rem);
-
-    /* Initialize: 10^precision / d */
-    cfx_big_from_u64(&tmp, 10);
-    big_exp_u64(&power, &tmp, (cfx_limb_t)precision, verbose);
-    cfx_big_from_u64(&d_sq, (uint64_t)d);
-    cfx_big_divrem(&term, &rem, &power, &d_sq);
-
-    cfx_big_assign(result, &term);
-
-    /* d² for iteration */
-    cfx_big_from_u64(&d_sq, (uint64_t)(d * d));
-
-    long divisor = 3;
-    int sign = -1;
-
-    while (1) {
-        /* term = term / d² */
-        cfx_big_divrem(&term, &rem, &term, &d_sq);
-
-        /* check if term / divisor would be zero */
-        cfx_big_t div_check;
-        cfx_big_init(&div_check);
-        cfx_big_from_u64(&div_check, (uint64_t)divisor);
-
-        if (cfx_big_cmp(&term, &div_check) < 0) {
-            cfx_big_free(&div_check);
-            break;
-        }
-
-        /* contribution = term / divisor */
-        cfx_big_t contrib;
-        cfx_big_init(&contrib);
-        cfx_big_divrem(&contrib, &rem, &term, &div_check);
-
-        if (sign > 0) {
-            cfx_big_add_eq(result, &contrib);
-        } else {
-            cfx_big_sub_eq(result, &contrib);
-        }
-
-        cfx_big_free(&contrib);
-        cfx_big_free(&div_check);
-
-        sign = -sign;
-        divisor += 2;
-    }
-
-    cfx_big_free(&power);
-    cfx_big_free(&term);
-    cfx_big_free(&d_sq);
-    cfx_big_free(&tmp);
-    cfx_big_free(&rem);
-}
-
-/*
- * Machin's formula: π/4 = 4·arctan(1/5) - arctan(1/239)
- */
-static void compute_pi_machin(cfx_big_t* pi, size_t digits, int verbose) {
-    size_t precision = digits + 20;
-
-    cfx_big_t atan5, atan239;
-    cfx_big_init(&atan5);
-    cfx_big_init(&atan239);
-
-    fprintf(stderr, "Computing arctan(1/5)...\n");
-    arctan_inv(&atan5, 5, precision, verbose);
-
-    fprintf(stderr, "Computing arctan(1/239)...\n");
-    arctan_inv(&atan239, 239, precision, verbose);
-
-    /* π/4 = 4·arctan(1/5) - arctan(1/239) */
-    cfx_big_mul_sm_eq(&atan5, 4);
-    cfx_big_sub_eq(&atan5, &atan239);
-
-    /* π = 4 * (π/4) */
-    cfx_big_mul_sm_eq(&atan5, 4);
-
-    /* Truncate to requested precision */
-    cfx_big_t scale, ten, rem;
-    cfx_big_init(&scale);
-    cfx_big_init(&ten);
-    cfx_big_init(&rem);
-    cfx_big_from_u64(&ten, 10);
-    big_exp_u64(&scale, &ten, 20, verbose);
-    cfx_big_divrem(pi, &rem, &atan5, &scale);
-
-    cfx_big_free(&scale);
-    cfx_big_free(&ten);
-    cfx_big_free(&rem);
-    cfx_big_free(&atan5);
-    cfx_big_free(&atan239);
 }
 
 /*
  * Chudnovsky algorithm using binary splitting
  *
  * 1/π = 12 · Σ ((-1)^k · (6k)! · (13591409 + 545140134k))
- *            / ((3k)! · (k!)³ · 640320^(3k+3/2))
+ *            / ((3k)! · (k!)^3 · 640320^(3k+3/2))
  *
  * We compute P(0,n), Q(0,n), T(0,n) where:
  *   P(a,b) = product of numerator factors (always positive)
@@ -204,10 +87,9 @@ static void compute_pi_machin(cfx_big_t* pi, size_t digits, int verbose) {
  * P, Q are unsigned (always positive)
  * T is signed (alternates based on (-1)^k)
  */
-static void bs(size_t a, size_t b,
-               cfx_big_t* P, cfx_big_t* Q, cfx_sbig_t* T, int verbose) {
+static void bs(size_t a, size_t b, cfx_big_t* P, cfx_big_t* Q, cfx_sbig_t* T, int verbose) {
 
-    printf("bs(%zu, %zu)\n", a, b);
+    if (verbose) printf("bs(%zu, %zu)\n", a, b);
     if (b - a == 1) {
         /* Base case: compute for single term k = a */
         cfx_big_t tmp1;
@@ -226,11 +108,11 @@ static void bs(size_t a, size_t b,
             cfx_big_from_u64(&tmp1, 6*k - 1);
             cfx_big_mul_eq(P, &tmp1);
 
-            /* Q_k = k³ * C³/24 */
+            /* Q_k = k^3 * C^3/24 */
             cfx_big_from_u64(Q, k);
             cfx_big_from_u64(&tmp1, k);
             cfx_big_mul_eq(Q, &tmp1);
-            cfx_big_mul_eq(Q, &tmp1);  /* k³ */
+            cfx_big_mul_eq(Q, &tmp1);  /* k^3 */
 
             cfx_big_from_u64(&tmp1, (uint64_t)C3_OVER_24);
             cfx_big_mul_eq(Q, &tmp1);
@@ -450,18 +332,13 @@ int cfx_pi_run(int argc, char* argv[]) {
         return argc < 2 ? 1 : 0;
     }
 
-    int use_chudnovsky = 1;
     int wrap_cols = 80;
     int raw = 0;
     int verbose = 0;
     size_t digits = 0;
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--chudnovsky") == 0) {
-            use_chudnovsky = 1;
-        } else if (strcmp(argv[i], "--machin") == 0) {
-            use_chudnovsky = 0;
-        } else if (strcmp(argv[i], "-w") == 0 && i + 1 < argc) {
+        if (strcmp(argv[i], "-w") == 0 && i + 1 < argc) {
             wrap_cols = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-v") == 0) {
             verbose = 1;
@@ -477,7 +354,7 @@ int cfx_pi_run(int argc, char* argv[]) {
     }
 
     if (digits == 0) {
-        fprintf(stderr, "Error: must specify number of digits\n");
+        fprintf(stderr, "Error: specify number of digits\n");
         usage(argv[0]);
         return 1;
     }
@@ -489,13 +366,8 @@ int cfx_pi_run(int argc, char* argv[]) {
     cfx_big_t pi;
     cfx_big_init(&pi);
 
-    if (use_chudnovsky) {
-        fprintf(stderr, "Using Chudnovsky algorithm for %zu digits\n", digits);
-        compute_pi_chudnovsky(&pi, digits, verbose);
-    } else {
-        fprintf(stderr, "Using Machin's formula for %zu digits\n", digits);
-        compute_pi_machin(&pi, digits, verbose);
-    }
+    fprintf(stderr, "Computing %zu digits of pi...\n", digits);
+    compute_pi_chudnovsky(&pi, digits, verbose);
 
     fprintf(stderr, "Converting to decimal...\n");
 

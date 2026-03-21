@@ -279,6 +279,33 @@ static void test_sq_small(void) {
     cfx_big_free(&a);
 }
 
+/* Regression: sq_eq must match mul_eq for multi-limb all-ones values.
+ * The old inline-doubling carry logic corrupted cross terms. */
+static void test_sq_vs_mul_multilimb(void) {
+    size_t sizes[] = {2, 3, 4, 8, 16, 64};
+    for (size_t s = 0; s < sizeof(sizes)/sizeof(sizes[0]); ++s) {
+        size_t n = sizes[s];
+        cfx_limb_t *limbs = (cfx_limb_t *)malloc(n * sizeof(cfx_limb_t));
+        for (size_t i = 0; i < n; ++i)
+            limbs[i] = ~(cfx_limb_t)0;
+
+        cfx_big_t a, b;
+        cfx_big_init(&a);
+        cfx_big_init(&b);
+        cfx_big_from_limbs(&a, limbs, n);
+        cfx_big_from_limbs(&b, limbs, n);
+
+        cfx_big_sq_eq(&a);
+        cfx_big_mul_eq(&b, &b);
+        CFX_ASSERT(cfx_big_eq(&a, &b));
+
+        cfx_big_free(&a);
+        cfx_big_free(&b);
+        free(limbs);
+    }
+    PRINT_TEST(1);
+}
+
 int main(void) {
     CFX_TEST(test_mul1);
     CFX_TEST(test_mul_adduiv);
@@ -291,6 +318,7 @@ int main(void) {
     CFX_TEST(test_sq_zero);
     CFX_TEST(test_sq_one);
     CFX_TEST(test_sq_small);
+    CFX_TEST(test_sq_vs_mul_multilimb);
     puts("OK");
     return 0;
 }
