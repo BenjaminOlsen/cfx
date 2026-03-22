@@ -99,7 +99,13 @@ int cfx_aead_run(int argc, char** argv) {
     size_t pt_in_len = 0;
     algo_type_t algo_type = CHACHA20_POLY1305;
 
-    #define CHECK_NEXT_ARG() do { if (argi + 1 >= argc) { usage(argv[0]); return EXIT_FAILURE; } } while(0)
+    #define CHECK_NEXT_ARG() \
+    do { \
+        if (argi + 1 >= argc) { \
+            usage(argv[0]); \
+            return EXIT_FAILURE; \
+        } \
+    } while(0)
 
     for (int argi = 1; argi < argc; ++argi) {
         const char* arg = argv[argi];

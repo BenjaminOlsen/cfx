@@ -11,8 +11,10 @@
 #include <stdint.h>
 #include <string.h>   /* memset */
 #include <assert.h>
-#include <math.h>     /* sqrt, floor */
 #include <inttypes.h>
+#if !defined(CFX_NO_FLOAT)
+#include <math.h>
+#endif
 
 /* alloca - stack allocation */
 #if defined(_WIN32) || defined(_WIN64)
@@ -26,10 +28,24 @@
 #define BIT_GET(A,i)  (((A)[(i)>>3] >> ((i)&7)) & 1u)
 #define BIT_SET(A,i)  ((A)[(i)>>3] |= (uint8_t)(1u << ((i)&7)))
 
-static inline cfx_limb_t isqrt_u64(cfx_limb_t n) {
-    /* Integer sqrt via double for speed, then correct by adjustment. */
+static inline cfx_limb_t isqrt_limb(cfx_limb_t n) {
+#if !defined(CFX_NO_FLOAT)
+    /* FP seed + Newton correction */
     double d = (double)n;
     cfx_limb_t x = (cfx_limb_t)(d > 0 ? floor(sqrt(d)) : 0);
+#else
+    /* Pure-integer Newton: seed from half the bit-length */
+    if (n == 0) return 0;
+    unsigned bits = 0;
+    cfx_limb_t tmp = n;
+    while (tmp) { ++bits; tmp >>= 1; }
+    cfx_limb_t x = (cfx_limb_t)1 << ((bits + 1) / 2);
+    for (;;) {
+        cfx_limb_t nx = (x + n / x) >> 1;
+        if (nx >= x) break;
+        x = nx;
+    }
+#endif
     while ((x + 1) > 0 && (x + 1) <= n / (x+1)) ++x;
     while (x > 0 && x > n / x) --x;
     return x;
@@ -46,7 +62,7 @@ cfx_vec_t cfx_sieve_primes(cfx_limb_t n) {
     uint8_t *mark = (uint8_t *)calloc(bytes ? bytes : 1, 1);
     if (!mark) return primes;
 
-    cfx_limb_t r = isqrt_u64(n);
+    cfx_limb_t r = isqrt_limb(n);
 
     /* Sieve: i runs over odd primes; index ki maps i = 2*ki+3 */
     for (cfx_limb_t i = 3; i <= r; i += 2) {

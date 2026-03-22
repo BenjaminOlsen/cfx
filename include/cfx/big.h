@@ -213,13 +213,19 @@ char * cfx_big_dec_alloc(const cfx_big_t *b, size_t *len_out);
 char * cfx_big_hex_alloc(const cfx_big_t *b, size_t *len_out);
 char * cfx_big_bin_alloc(const cfx_big_t *b, size_t *len_out);
 char * cfx_big_b64_alloc(const cfx_big_t *b, size_t *len_out);
-int cfx_big_to_sci(const cfx_big_t *x, unsigned base, int sig_digits, char *out, size_t outsz);
 
 /* snprintf-style: write to out[0..outlen-1], always NUL-terminate,
-   return number of chars that would be written (excluding NUL). if out==NULL, just return size. */
+   return number of chars that would be written (excluding NUL). 
+   if out==NULL, just return size. */
 size_t cfx_big_snprint_dec(const cfx_big_t *b, char *out, size_t outlen);
 size_t cfx_big_snprint_hex(const cfx_big_t *b, char *out, size_t outlen);
 size_t cfx_big_snprint_bin(const cfx_big_t *b, char *out, size_t outlen);
+
+#if !defined(CFX_NO_FLOAT)
+double cfx_big_log(const cfx_big_t *b, double base);
+int cfx_big_to_sci(const cfx_big_t *x, unsigned base, int sig_digits,
+                   char *out, size_t outsz);
+#endif 
 
 int cfx_big_from_str(cfx_big_t *out, const char *s);
 
@@ -238,7 +244,7 @@ int cfx_big_from_oct_n(cfx_big_t *out, const uint8_t *in, size_t in_len, size_t 
 
 
 /* ================== Montgomery ================== */
-/**
+/** cfx_big_mont_ctx_t
  * Montgomery arithmetic context for a fixed odd modulus n.
  *
  * Let b = 2^64 and k = number of 64-bit limbs of n. Define R = b^k.
@@ -268,7 +274,7 @@ int cfx_big_from_oct_n(cfx_big_t *out, const uint8_t *in, size_t in_len, size_t 
 typedef struct {
     cfx_big_t n;        /* modulus (odd), normalized */
     size_t k;           /* limb count of n (R = 2^(64*k)) */
-    cfx_limb_t n0inv;     /* -n^{-1} mod 2^64 (requires n.limb[0] odd) */
+    cfx_limb_t n0inv;   /* -n^{-1} mod 2^64 (requires n.limb[0] odd) */
     cfx_big_t rr;       /* R^2 mod n */
     cfx_big_t R1;       /* R mod n -- (Montgomery "1") */
 } cfx_big_mont_ctx_t;
@@ -325,7 +331,6 @@ int cfx_big_mul_mod(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *b, cons
 int cfx_big_sqr_mod(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *n);
 int cfx_big_modexp(cfx_big_t *out, const cfx_big_t *base, const cfx_big_t *exp, const cfx_big_t *n);
 
-double cfx_big_log(const cfx_big_t *b, double base);
 
 /**
  *  args: cfx_big_t * b : ptr to big

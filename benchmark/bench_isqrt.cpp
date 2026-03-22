@@ -29,7 +29,7 @@ static void BM_##func(benchmark::State& state) {    \
 BENCHMARK(BM_##func)
 
 BM_SQRT(isqrt_u64);
-#if !defined(CFX_NO_FP)
+#if !defined(CFX_NO_FLOAT)
 BM_SQRT(cfx_isqrt_fp);
 #endif
 BM_SQRT(cfx_isqrt_nr);

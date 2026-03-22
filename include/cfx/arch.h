@@ -231,7 +231,7 @@ CFX_INLINE uint64_t cfx_powmod64(uint64_t base, uint64_t exp, uint64_t m) {
     return result;
 }
 
-#if !defined(CFX_NO_FP)
+#if !defined(CFX_NO_FLOAT)
   #include <float.h>
   #if defined(__STDC_IEC_559__) && DBL_MANT_DIG == 53
     #define CFX_USE_FP_ISQRT 1

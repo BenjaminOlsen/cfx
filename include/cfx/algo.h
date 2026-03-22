@@ -118,7 +118,7 @@ cfx_limb_t cfx_isqrt_nr(cfx_limb_t n) {
     }
 }
 
-#if !defined(CFX_NO_FP)
+#if !defined(CFX_NO_FLOAT)
 #include <math.h>
 CFX_INLINE
 cfx_limb_t cfx_isqrt_fp(cfx_limb_t n) {
