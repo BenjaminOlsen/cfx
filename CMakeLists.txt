@@ -51,6 +51,7 @@ cfx_generate_primes("${CFX_PRIMES_TXT}"
                     ${CFX_PRIMES_COUNT})
 
 set(CFX_HEADERS
+    include/cfx/aead_chacha20_poly1271.h
     include/cfx/aead_chacha20_poly1305.h
     include/cfx/algo.h
     include/cfx/arch.h
@@ -58,6 +59,8 @@ set(CFX_HEADERS
     include/cfx/arith.h
     include/cfx/base64.h
     include/cfx/big.h
+    include/cfx/bits.h
+    include/cfx/blake2.h
     include/cfx/chacha20.h
     include/cfx/compat.h
     include/cfx/ecm.h
@@ -68,13 +71,23 @@ set(CFX_HEADERS
     include/cfx/sc25519.h
     include/cfx/macros.h
     include/cfx/memory.h
+    include/cfx/mlkem.h
     include/cfx/mont.h
     include/cfx/ntt.h
+    include/cfx/poly1271.h
     include/cfx/poly1305.h
     include/cfx/primes.h
     include/cfx/rand.h
+    include/cfx/rng_chacha20.h
+    include/cfx/rng_lcg.h
+    include/cfx/rng_pcg.h
+    include/cfx/rng_splitmix.h
+    include/cfx/rng_xoroshiro.h
+    include/cfx/rng_xorshift.h
     include/cfx/sha256.h
+    include/cfx/sha3.h
     include/cfx/sha512.h
+    include/cfx/siphash.h
     include/cfx/vec.h
     include/cfx/version.h
     include/cfx/sbig.h
@@ -88,7 +101,6 @@ add_subdirectory(src/crypto)
 add_subdirectory(src/rng)
 add_subdirectory(src/big)
 add_subdirectory(src/math)
-
 set(CFX_SOURCES
     ${CFX_CORE_SOURCES}
     ${CFX_CRYPTO_SOURCES}
