@@ -90,17 +90,6 @@ static void hash_long(uint8_t *out, size_t n, const uint8_t *in, size_t inlen) {
 } while (0)
 
 static void permute(uint64_t *v) {
-    /* round 1: columns then diagonals */
-    GB(v[0], v[4], v[8],  v[12]);
-    GB(v[1], v[5], v[9],  v[13]);
-    GB(v[2], v[6], v[10], v[14]);
-    GB(v[3], v[7], v[11], v[15]);
-    GB(v[0], v[5], v[10], v[15]);
-    GB(v[1], v[6], v[11], v[12]);
-    GB(v[2], v[7], v[8],  v[13]);
-    GB(v[3], v[4], v[9],  v[14]);
-
-    /* round 2 */
     GB(v[0], v[4], v[8],  v[12]);
     GB(v[1], v[5], v[9],  v[13]);
     GB(v[2], v[6], v[10], v[14]);
@@ -126,15 +115,17 @@ static void fill_block(const block_t *prev, const block_t *ref,
         permute(&tmp.v[i * 16]);
     }
 
-    /* column-wise permutation */
+    /* column-wise permutation: 8 pairs at stride 16 */
     for (int i = 0; i < 8; i++) {
         uint64_t col[16];
-        for (int j = 0; j < 16; j++) {
-            col[j] = tmp.v[j * 8 + i];
+        for (int j = 0; j < 8; j++) {
+            col[2 * j]     = tmp.v[16 * j + 2 * i];
+            col[2 * j + 1] = tmp.v[16 * j + 2 * i + 1];
         }
         permute(col);
-        for (int j = 0; j < 16; j++) {
-            tmp.v[j * 8 + i] = col[j];
+        for (int j = 0; j < 8; j++) {
+            tmp.v[16 * j + 2 * i]     = col[2 * j];
+            tmp.v[16 * j + 2 * i + 1] = col[2 * j + 1];
         }
     }
 
@@ -157,13 +148,20 @@ static uint32_t index_alpha(const ctx_t *c, uint32_t pass, uint32_t slice,
     uint32_t area, start;
 
     if (pass == 0) {
-        area = (slice == 0)
-            ? idx - 1
-            : slice * c->seg_len + idx - 1 + (same_lane ? c->seg_len : 0);
+        if (slice == 0) {
+            area = idx - 1;
+        } else if (same_lane) {
+            area = slice * c->seg_len + idx - 1;
+        } else {
+            area = slice * c->seg_len + (idx == 0 ? (uint32_t)-1 : idx - 1);
+        }
         start = 0;
     } else {
-        area = c->lane_len - c->seg_len + idx - 1
-             + (same_lane ? c->seg_len : 0);
+        if (same_lane) {
+            area = c->lane_len - c->seg_len + idx - 1;
+        } else {
+            area = c->lane_len - c->seg_len + (idx == 0 ? (uint32_t)-1 : idx - 1);
+        }
         start = (slice + 1) * c->seg_len;
         if (start >= c->lane_len) start = 0;
     }
@@ -200,7 +198,12 @@ static void fill_segment(ctx_t *c, uint32_t pass, uint32_t lane, uint32_t slice)
         input.v[5] = c->type;
     }
 
-    uint32_t ai = 0;
+    if (di) {
+        /* pre-generate first address block (counter starts at 1) */
+        input.v[6]++;
+        fill_block(&zero, &input, &addr, 0);
+        fill_block(&zero, &addr, &addr, 0);
+    }
 
     for (uint32_t i = si; i < c->seg_len; i++, cur++, prv++) {
         if (cur % c->lane_len == 1)
@@ -208,13 +211,12 @@ static void fill_segment(ctx_t *c, uint32_t pass, uint32_t lane, uint32_t slice)
 
         uint64_t rand;
         if (di) {
-            if (ai == 0) {
+            if (i != 0 && i % BLOCK_QW == 0) {
                 input.v[6]++;
                 fill_block(&zero, &input, &addr, 0);
                 fill_block(&zero, &addr, &addr, 0);
             }
-            rand = addr.v[ai];
-            ai = (ai + 1) % BLOCK_QW;
+            rand = addr.v[i % BLOCK_QW];
         } else {
             rand = c->mem[prv].v[0];
         }

@@ -2,9 +2,9 @@
  * Argon2 tests — KAT (known answer tests) and parameter validation.
  *
  * Note: RFC 9106 test vectors use secret + associated data, which
- * this implementation omits (hardcoded to zero).  The KAT values
- * below are generated from the cfx implementation with those fields
- * absent, so they differ from the RFC.  They still catch regressions.
+ * this implementation omits (hardcoded to zero).  KAT values below
+ * are verified against the reference C implementation (phc-winner-argon2)
+ * with empty secret and AD.
  */
 
 #include "cfx/argon2.h"
@@ -29,10 +29,10 @@ static void test_argon2id_basic(void) {
     const char *password = "password";
     const char *salt_str = "somesalt";
     const uint8_t expected[] = {
-        0xf4, 0x02, 0x70, 0xaa, 0x34, 0xfd, 0x8e, 0x8c,
-        0x73, 0x4c, 0xef, 0xa8, 0x5f, 0xa3, 0xbf, 0x52,
-        0xab, 0x7d, 0x4c, 0x3b, 0xad, 0x0f, 0x49, 0x9d,
-        0x69, 0x39, 0x2b, 0xba, 0xfd, 0xca, 0xd6, 0x20
+        0x4f, 0xe1, 0xf9, 0xd5, 0x46, 0x2f, 0x63, 0xd4,
+        0x3e, 0xb7, 0x98, 0xdc, 0x5e, 0xa0, 0x17, 0x14,
+        0x51, 0xc4, 0xc3, 0x12, 0x97, 0xc7, 0x29, 0xcd,
+        0x6d, 0x6a, 0x41, 0x4a, 0xcb, 0xa9, 0x14, 0x8a
     };
 
     uint8_t hash[32];
@@ -54,8 +54,8 @@ static void test_argon2d_kat(void) {
     memset(salt, 0x02, sizeof(salt));
 
     uint8_t expected[32];
-    hex_to_bytes("802327c66e61474206ff1e52319d9dd5"
-                 "e3b2013661cccd63adf5acb3098242af",
+    hex_to_bytes("9e34c31a47866ce0c30a90c69dd21022"
+                 "d5329a3b75f9c513722dd2541fe93a1a",
                  expected, 32);
 
     uint8_t hash[32];
@@ -77,8 +77,8 @@ static void test_argon2i_kat(void) {
     memset(salt, 0x02, sizeof(salt));
 
     uint8_t expected[32];
-    hex_to_bytes("f459c0a2321f4c468cda14594f614cda"
-                 "c3018c987dfd0000d4196573d4c40462",
+    hex_to_bytes("a9a7510e6db4d588ba3414cd0e094d48"
+                 "0d683f97b9ccb612a544fe8ef65ba8e0",
                  expected, 32);
 
     uint8_t hash[32];
@@ -100,8 +100,8 @@ static void test_argon2id_kat(void) {
     memset(salt, 0x02, sizeof(salt));
 
     uint8_t expected[32];
-    hex_to_bytes("5876ffa323150be782e707cec93aece6"
-                 "807dfb2b223f30495e98e5c30370738d",
+    hex_to_bytes("03aab965c12001c9d7d0d2de33192c04"
+                 "94b684bb148196d73c1df1acaf6d0c2e",
                  expected, 32);
 
     uint8_t hash[32];
@@ -122,10 +122,10 @@ static void test_argon2_encode_verify(void) {
     uint8_t salt[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
                         0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
     const uint8_t expected[] = {
-        0x52, 0xbb, 0xfa, 0xf3, 0xce, 0x18, 0xcc, 0x0f,
-        0x37, 0xc9, 0x15, 0xe8, 0x7a, 0x8a, 0xad, 0x20,
-        0xe1, 0xff, 0xb0, 0x3c, 0x15, 0x4b, 0x11, 0x7a,
-        0x4e, 0x1d, 0xd7, 0x8d, 0x77, 0xa7, 0xa2, 0xc0
+        0x42, 0x50, 0xc6, 0x03, 0x54, 0x7a, 0x56, 0x21,
+        0xbf, 0x40, 0xe7, 0x32, 0x15, 0xc4, 0x29, 0x41,
+        0x7d, 0x64, 0x96, 0x5f, 0x82, 0x23, 0x99, 0x6c,
+        0x72, 0xca, 0x4f, 0x95, 0x81, 0x28, 0x5a, 0x88
     };
 
     uint8_t hash[32];
