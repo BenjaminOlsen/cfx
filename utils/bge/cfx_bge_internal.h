@@ -56,6 +56,12 @@
 #define BGE_DEFAULT_T     3
 #define BGE_DEFAULT_P     4
 
+/* m=8 is RFC-minimum but produces collisions; 64 KB is the practical floor */
+#define BGE_MIN_M         64
+#define BGE_MAX_M         4194304
+#define BGE_MAX_T         100
+#define BGE_MAX_P         16
+
 #define BGE_READ_MAX      (128u * 1024u * 1024u)
 
 #define BGE_ARMOR_BEGIN   "-----BEGIN BGE MESSAGE-----\n"
@@ -150,6 +156,10 @@ int bge_decrypt_store(const bge_store *store, uint8_t **pt_out, size_t *pt_len);
 int bge_safe_write(const char *path, const bge_header *header,
                    const uint8_t verifier[BGE_VERIFIER_LEN],
                    const uint8_t *ct, size_t ct_len, const uint8_t *tag);
+int bge_encrypt_to_buf(uint8_t *out, size_t out_len,
+                       const uint8_t *pt, size_t pt_len,
+                       const char *pwd, size_t pwd_len,
+                       uint32_t m, uint32_t t, uint32_t p);
 int bge_encrypt_write(const char *path, const uint8_t *pt, size_t pt_len,
                       const char *pwd, size_t pwd_len,
                       uint32_t m, uint32_t t, uint32_t p);

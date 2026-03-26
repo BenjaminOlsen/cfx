@@ -8,6 +8,7 @@ set(UTIL_NAMES
     factorial
     fread
     hash
+    hmac
     keygen
     primegen
     mac

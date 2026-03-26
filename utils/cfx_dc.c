@@ -214,14 +214,15 @@ static token_vec_t tokenize_rpn(const char* s, base_t inb) {
     const char* p = s;
     while (*p) {
         while (isspace((unsigned char)*p)) ++p;
-        /* if (!*p) break; */
+        if (!*p) break;
         const char* start = p;
         while (*p && !isspace((unsigned char)*p)) ++p;
         size_t len = (size_t)(p - start);
-        if (len == 1 && to_bin_op(NULL, &start[0])) {
-            token_t tk = {.t = T_BIN_OP, .op = start[0], .num = NULL};
+        op_t binop;
+        if ((size_t)to_bin_op(&binop, start) == len) {
+            token_t tk = {.t = T_BIN_OP, .op = binop, .num = NULL};
             tv_push(&tv, tk);
-        } if (len == 1 && strchr("!", start[0])) {
+        } else if (len == 1 && strchr("!", start[0])) {
             token_t tk = {.t = T_UN_OP, .op = start[0], .num = NULL};
             tv_push(&tv, tk);
         } else {

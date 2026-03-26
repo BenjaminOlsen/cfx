@@ -262,9 +262,6 @@ int cfx_randart_run(int argc, char **argv) {
             free(data);
             return 1;
         }
-        /* cfx_parse_hex_auto right-aligns into buffer, shift to front */
-        size_t offset = max_bytes - (size_t)nb;
-        if (offset > 0) memmove(data, data + offset, (size_t)nb);
         data_len = (size_t)nb;
     } else if (b64_input) {
         data = decode_b64(b64_input, &data_len);
@@ -307,8 +304,6 @@ int cfx_randart_run(int argc, char **argv) {
             free(data);
             return 1;
         }
-        size_t offset = max_bytes - (size_t)nb;
-        if (offset > 0) memmove(data, data + offset, (size_t)nb);
         data_len = (size_t)nb;
     } else {
         /* stdin raw bytes */

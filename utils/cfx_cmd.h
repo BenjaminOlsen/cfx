@@ -12,6 +12,7 @@ int cfx_factor_run(int argc, char** argv);
 int cfx_factorial_run(int argc, char** argv);
 int cfx_fread_run(int argc, char** argv);
 int cfx_hash_run(int argc, char** argv);
+int cfx_hmac_run(int argc, char** argv);
 int cfx_primegen_run(int argc, char** argv);
 int cfx_keygen_run(int argc, char** argv);
 int cfx_mac_run(int argc, char** argv);

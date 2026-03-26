@@ -11,6 +11,7 @@ set(CRYPTO_COMMON_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/aead_chacha20_poly1305.c
     ${CMAKE_CURRENT_SOURCE_DIR}/aead_chacha20_poly1271.c
     ${CMAKE_CURRENT_SOURCE_DIR}/siphash.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/hmac.c
     ${CMAKE_CURRENT_SOURCE_DIR}/base64.c
 )
 

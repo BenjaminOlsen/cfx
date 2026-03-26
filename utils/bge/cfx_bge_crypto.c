@@ -79,8 +79,8 @@ int bge_authenticate_buf(const uint8_t *file_buf, size_t file_len,
     uint32_t t_cost = cfx_load32_le(&hdr.t_cost);
     uint32_t p      = cfx_load32_le(&hdr.p_cost);
 
-    if (m_cost < 8 || t_cost < 1 || p < 1 ||
-        m_cost > 4194304 || t_cost > 100 || p > 16) {
+    if (m_cost < BGE_MIN_M || t_cost < 1 || p < 1 ||
+        m_cost > BGE_MAX_M || t_cost > BGE_MAX_T || p > BGE_MAX_P) {
         fprintf(stderr, "error: unreasonable argon2 parameters\n");
         return -1;
     }
@@ -245,12 +245,15 @@ int bge_safe_write(const char *path,
     return ret;
 }
 
-int bge_encrypt_write(const char *path, const uint8_t *pt, size_t pt_len,
-                      const char *pwd, size_t pwd_len,
-                      uint32_t m, uint32_t t, uint32_t p) {
+int bge_encrypt_to_buf(uint8_t *out, size_t out_len,
+                       const uint8_t *pt, size_t pt_len,
+                       const char *pwd, size_t pwd_len,
+                       uint32_t m, uint32_t t, uint32_t p) {
+    size_t need = BGE_AAD_LEN + pt_len + BGE_TAG_LEN;
+    if (out_len < need) return -1;
+
     bge_header header;
     uint8_t kdf_out[48];
-    uint8_t verifier[BGE_VERIFIER_LEN];
     int ret = -1;
 
     memcpy(header.magic, BGE_MAGIC, 3);
@@ -270,39 +273,58 @@ int bge_encrypt_write(const char *path, const uint8_t *pt, size_t pt_len,
         fprintf(stderr, "error: argon2 key derivation failed\n");
         goto done;
     }
-    memcpy(verifier, kdf_out + 32, BGE_VERIFIER_LEN);
 
-    uint8_t aad[BGE_AAD_LEN];
-    memcpy(aad, &header, sizeof(header));
-    memcpy(aad + sizeof(header), verifier, BGE_VERIFIER_LEN);
+    /* layout: header(56) | verifier(16) | ciphertext(pt_len) | tag(16) */
+    uint8_t *w = out;
+    memcpy(w, &header, sizeof(header));                   w += sizeof(header);
+    memcpy(w, kdf_out + 32, BGE_VERIFIER_LEN);           w += BGE_VERIFIER_LEN;
 
-    uint8_t *ct = malloc(pt_len);
-    uint8_t tag[BGE_TAG_LEN];
-    if (pt_len > 0 && !ct) {
-        fprintf(stderr, "error: allocation failed\n");
-        goto done;
-    }
-
+    /* AAD = header || verifier (the first 72 bytes we just wrote) */
     rc = cfx_xchacha20_poly1305_encrypt(
-        ct, tag, pt, pt_len,
-        aad, BGE_AAD_LEN,
+        w, w + pt_len,    /* ct, tag */
+        pt, pt_len,
+        out, BGE_AAD_LEN, /* aad is the first 72 bytes of out */
         kdf_out, header.nonce);
     if (rc != 0) {
         fprintf(stderr, "error: encryption failed\n");
-        free(ct);
         goto done;
     }
-
-    ret = bge_safe_write(path, &header, verifier, ct, pt_len, tag);
-
-    cfx_memzero_s(ct, pt_len);
-    free(ct);
+    ret = 0;
 
 done:
     cfx_memzero_s(kdf_out, sizeof(kdf_out));
-    cfx_memzero_s(verifier, sizeof(verifier));
     cfx_memzero_s(&header, sizeof(header));
     return ret;
+}
+
+int bge_encrypt_write(const char *path, const uint8_t *pt, size_t pt_len,
+                      const char *pwd, size_t pwd_len,
+                      uint32_t m, uint32_t t, uint32_t p) {
+    size_t blob_len = BGE_AAD_LEN + pt_len + BGE_TAG_LEN;
+    uint8_t *blob = malloc(blob_len);
+    if (!blob) {
+        fprintf(stderr, "error: allocation failed\n");
+        return -1;
+    }
+
+    int rc = bge_encrypt_to_buf(blob, blob_len, pt, pt_len, pwd, pwd_len, m, t, p);
+    if (rc != 0) {
+        cfx_memzero_s(blob, blob_len);
+        free(blob);
+        return -1;
+    }
+
+    /* split blob back into components for bge_safe_write */
+    const bge_header *hdr = (const bge_header *)blob;
+    const uint8_t *verifier = blob + BGE_HEADER_LEN;
+    const uint8_t *ct       = blob + BGE_AAD_LEN;
+    const uint8_t *tag      = blob + BGE_AAD_LEN + pt_len;
+
+    rc = bge_safe_write(path, hdr, verifier, ct, pt_len, tag);
+
+    cfx_memzero_s(blob, blob_len);
+    free(blob);
+    return rc;
 }
 
 int bge_write_reusing_key(const char *path, const uint8_t *pt, size_t pt_len,

@@ -94,13 +94,11 @@ int cfx_parse_hex_auto(const char* s, uint8_t* out, size_t outlen) {
     if (slen % 2 != 0) return -1;
     size_t nbytes = slen / 2;
     if (nbytes > outlen) return -1;
-    /* right-align: write to end of buffer (big-endian numeric interpretation) */
-    size_t offset = outlen - nbytes;
     for (size_t i = 0; i < nbytes; ++i) {
         int hi = hexval(s[2*i]);
         int lo = hexval(s[2*i+1]);
         if (hi < 0 || lo < 0) return -1;
-        out[offset + i] = (uint8_t)((hi << 4) | lo);
+        out[i] = (uint8_t)((hi << 4) | lo);
     }
     return (int)nbytes;
 }

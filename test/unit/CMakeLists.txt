@@ -27,6 +27,7 @@ set(CFX_UNIT_TESTS
     test_sha3
     test_blake2
     test_siphash
+    test_hmac
     test_vec
     test_compat
     test_ntt

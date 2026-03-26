@@ -458,8 +458,8 @@ int bge_decrypt_file(int argc, char **argv) {
         uint32_t t_cost = cfx_load32_le(&hdr.t_cost);
         uint32_t p      = cfx_load32_le(&hdr.p_cost);
 
-        if (m_cost < 8 || t_cost < 1 || p < 1 ||
-            m_cost > 4194304 || t_cost > 100 || p > 16) {
+        if (m_cost < BGE_MIN_M || t_cost < 1 || p < 1 ||
+            m_cost > BGE_MAX_M || t_cost > BGE_MAX_T || p > BGE_MAX_P) {
             fprintf(stderr, "error: unreasonable argon2 parameters\n");
             if (input) fclose(inf);
             return 1;
@@ -587,8 +587,8 @@ int bge_decrypt_file(int argc, char **argv) {
     uint32_t t_cost = cfx_load32_le(&hdr.t_cost);
     uint32_t p      = cfx_load32_le(&hdr.p_cost);
 
-    if (m_cost < 8 || t_cost < 1 || p < 1 ||
-        m_cost > 4194304 || t_cost > 100 || p > 16) {
+    if (m_cost < BGE_MIN_M || t_cost < 1 || p < 1 ||
+        m_cost > BGE_MAX_M || t_cost > BGE_MAX_T || p > BGE_MAX_P) {
         fprintf(stderr, "error: unreasonable argon2 parameters\n");
         cfx_memzero_s(pwd, sizeof(pwd));
         goto fail;

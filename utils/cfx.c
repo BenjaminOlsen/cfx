@@ -15,6 +15,7 @@ const cfx_cmd_t cfx_commands[] = {
     {"factorial",       "Compute n! (factorial)",                           cfx_factorial_run},
     {"fread",           "Read big integer from file",                       cfx_fread_run},
     {"hash",            "Compute cryptographic hash (SHA256/SHA3/BLAKE2)",  cfx_hash_run},
+    {"hmac",            "Compute HMAC (SHA256/SHA512)",                     cfx_hmac_run},
     {"primegen",        "Generate random N-bit prime",                      cfx_primegen_run},
     {"keygen",          "Generate random key bytes",                        cfx_keygen_run},
     {"mac",             "Compute Poly1305 MAC",                             cfx_mac_run},
