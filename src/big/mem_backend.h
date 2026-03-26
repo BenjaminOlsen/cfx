@@ -39,9 +39,7 @@ extern "C" {
  * (dynamic or static) in src/big/mem/MODE/
  */
 
-/* ============================================================================
- * MEMORY MODE CONFIGURATION
- * ============================================================================ */
+/* MEMORY MODE CONFIGURATION */
 
 /*
  * Static mode configuration

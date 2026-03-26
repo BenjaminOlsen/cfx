@@ -58,7 +58,7 @@ int cfx_big_gen_nbit_prime(cfx_big_t* p, size_t bits,
 
 static const uint32_t* SMALL_PRIMES = cfx_primes;
 
-/* --- make a random n bit odd number ---------------------------------------------- */
+/* make a random n bit odd number */
 static int rand_nbit_odd(cfx_big_t* out, size_t bits, cfx_rng_fn rng, void* ctx, int flags) {
     if (bits < 2) return -1;
     size_t nbytes = (bits + 7) / 8;
@@ -105,7 +105,7 @@ static int rand_nbit_odd(cfx_big_t* out, size_t bits, cfx_rng_fn rng, void* ctx,
     return 0;
 }
 
-/* --- Update remainders after adding 2 or 4 for safe primes -------------------- */
+/* Update remainders after adding 2 or 4 for safe primes */
 static inline void remainders_add_step(uint32_t* rem, uint32_t step, const uint32_t* primes, const size_t prime_cnt) {
     for (size_t i = 0; i < prime_cnt; ++i) {
         uint32_t p = primes[i];
@@ -114,12 +114,12 @@ static inline void remainders_add_step(uint32_t* rem, uint32_t step, const uint3
     }
 }
 
-/* --- Initialize remainder table rem[i] = n % primes[i] ------------------------ */
+/* Initialize remainder table rem[i] = n % primes[i] */
 static void remainders_init(uint32_t* rem, const cfx_big_t* n, const uint32_t* primes, const size_t prime_cnt) {
     for (size_t i = 0; i < prime_cnt; ++i) rem[i] = (uint32_t)cfx_big_mod_sm(n, primes[i]);
 }
 
-/* --- Try small-prime rejection; return 0 if divisible by any ----------------- */
+/* Try small-prime rejection; return 0 if divisible by any */
 static int passes_small_trial(const uint32_t* rem, const uint32_t* primes, const size_t prime_cnt) {
     (void)primes;
     for (size_t i = 0; i < prime_cnt; ++i) {

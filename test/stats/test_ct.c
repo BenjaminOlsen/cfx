@@ -86,9 +86,7 @@ static double ttest_compute(ttest_ctx *a, ttest_ctx *b) {
 /* Prevent compiler from optimizing away results */
 static volatile uint8_t sink;
 
-/*============================================================================
- * Ed25519 tests
- *============================================================================*/
+/* Ed25519 tests */
 
 static int test_ed25519_sign(void) {
     printf("Testing cfx_ed25519_sign()...\n");
@@ -196,9 +194,7 @@ static int test_ed25519_verify(void) {
     return fabs(t) > THRESHOLD ? 1 : 0;
 }
 
-/*============================================================================
- * X25519 tests
- *============================================================================*/
+/* X25519 tests */
 
 static int test_x25519(void) {
     printf("Testing cfx_x25519()...\n");
@@ -254,9 +250,7 @@ static int test_x25519(void) {
     return fabs(t) > THRESHOLD ? 1 : 0;
 }
 
-/*============================================================================
- * Poly1305 tests
- *============================================================================*/
+/* Poly1305 tests */
 
 static int test_poly1305(void) {
     printf("Testing cfx_poly1305()...\n");
@@ -369,9 +363,7 @@ static int test_poly1305_verify(void) {
     return fabs(t) > THRESHOLD ? 1 : 0;
 }
 
-/*============================================================================
- * ChaCha20 tests
- *============================================================================*/
+/* ChaCha20 tests */
 
 static int test_chacha20(void) {
     printf("Testing cfx_chacha20_block()...\n");
@@ -430,9 +422,7 @@ static int test_chacha20(void) {
     return fabs(t) > THRESHOLD ? 1 : 0;
 }
 
-/*============================================================================
- * SHA-512 tests
- *============================================================================*/
+/* SHA-512 tests */
 
 static int test_sha512(void) {
     printf("Testing cfx_sha512()...\n");
@@ -484,9 +474,7 @@ static int test_sha512(void) {
     return fabs(t) > THRESHOLD ? 1 : 0;
 }
 
-/*============================================================================
- * Edge case tests
- *============================================================================*/
+/* Edge case tests */
 
 /* Ed25519 sign with edge-case seeds: leading zeros vs random
  * Seeds with leading zero bytes produce scalars with leading zeros,
@@ -725,9 +713,7 @@ static int test_poly1305_edge(void) {
     return fabs(t) > THRESHOLD ? 1 : 0;
 }
 
-/*============================================================================
- * Main
- *============================================================================*/
+/* Main */
 
 static void usage(const char *prog) {
     printf("Usage: %s [options] [test...]\n", prog);

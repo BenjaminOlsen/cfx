@@ -90,7 +90,7 @@ static int nearest_prime_near(const cfx_big_t *target,
     return found;
 }
 
-/* ---- Parallelization structs ------------------------------------- */
+/* Parallelization structs */
 
 struct prime_result {
     int ok;
@@ -210,7 +210,7 @@ int cfx_primes_near_pow2_run(int argc, char **argv) {
     char *endp = NULL;
     int argi = 1;
 
-    /* ---------------- positional args */
+    /* positional args */
 
     /* k_start */
     long k_start = strtol(argv[argi++], &endp, 10);
@@ -249,7 +249,7 @@ int cfx_primes_near_pow2_run(int argc, char **argv) {
         argi++;
     }
 
-    /* ---------------- options  */
+    /* options */
     int num_threads = 1;
     int print_in_order = 0;
     int print_hex = 0;

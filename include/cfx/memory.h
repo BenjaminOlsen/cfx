@@ -32,7 +32,6 @@ static inline int cfx_memeq_ct(const void *a, const void *b, size_t n) {
     return r;
 }
 
-/* ---------------------------------------------------------------------------------------------- */
 #define CFX_MEMZERO_S(ptr, size) cfx_memzero_s((ptr), (size))
 
 /* make it impossible to optimize away a memory clear to avoid dead-store elimination,
@@ -42,7 +41,6 @@ static inline void cfx_memzero_s(void *p, size_t n) {
     while (n--) *v++ = 0;
 }
 
-/* ---------------------------------------------------------------------------------------------- */
 #define CFX_STORE64_LE(dst, x) cfx_store64_le((dst), (x))
 
 static inline void cfx_store64_le(void *dst, uint64_t x) {
@@ -97,7 +95,6 @@ static inline void cfx_load32_le_to(uint32_t *dst, const void *src) {
 #endif
 }
 
-/* ---------------------------------------------------------------------------------------------- */
 #define CFX_LOAD32_LE(SRC) cfx_load32_le(SRC)
 
 static inline uint32_t cfx_load32_le(const void *src) {
@@ -115,7 +112,6 @@ static inline uint32_t cfx_load32_le(const void *src) {
 #endif
 }
 
-/* ---------------------------------------------------------------------------------------------- */
 #define CFX_STORE32_LE(DST, W) cfx_store32_le((DST), (W))
 
 static inline void cfx_store32_le(void *dst, uint32_t w) {

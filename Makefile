@@ -10,9 +10,7 @@ RUST_DIR = rust/cfx
 
 all: release
 
-# ============================================================================
 # C Library (CMake)
-# ============================================================================
 
 release:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~
@@ -54,9 +52,7 @@ benchmark:
 clean:
 	rm -rf $(BUILD_DIR) $(BUILD_DIR_COV)
 
-# ============================================================================
 # ARM Testing (Docker + QEMU)
-# ============================================================================
 
 arm-test: arm-m4-test arm-neon-test
 
@@ -84,9 +80,7 @@ arm-neon-shell:
 	docker build -t cfx-arm-neon docker/arm-neon/
 	docker run --rm -it -v $(CURDIR):/cfx cfx-arm-neon shell
 
-# ============================================================================
 # Rust Bindings (Cargo)
-# ============================================================================
 
 rust:
 	cd $(RUST_DIR) && cargo build
@@ -100,17 +94,13 @@ rust-test:
 rust-clean:
 	cd $(RUST_DIR) && cargo clean
 
-# ============================================================================
 # Combined
-# ============================================================================
 
 all-test: test rust-test
 
 all-clean: clean rust-clean
 
-# ============================================================================
 # Help
-# ============================================================================
 
 help:
 	@echo "C Library (CMake):"

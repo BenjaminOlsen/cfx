@@ -44,9 +44,7 @@
 extern "C" {
 #endif
 
-/* ============================================================
- * Threading
- * ============================================================ */
+/* Threading */
 
 #ifdef _WIN32
 
@@ -118,9 +116,7 @@ static inline int cfx_thread_join(cfx_thread_t thread, void **retval) {
 
 #endif
 
-/* ============================================================
- * Mutexes
- * ============================================================ */
+/* Mutexes */
 
 #ifdef _WIN32
 
@@ -185,9 +181,7 @@ static inline void cfx_mutex_destroy(cfx_mutex_t *mtx) {
 
 #endif
 
-/* ============================================================
- * Atomic Operations (for int/long)
- * ============================================================ */
+/* Atomic Operations (for int/long) */
 
 #ifdef _WIN32
 
@@ -250,9 +244,7 @@ static inline uint64_t cfx_time_ns(void) {
 #endif
 }
 
-/* ============================================================
- * String Utilities
- * ============================================================ */
+/* String Utilities */
 
 /* strndup: duplicate at most n characters of a string */
 static inline char * cfx_strndup(const char *s, size_t n) {
@@ -300,9 +292,7 @@ static inline int cfx_clz64(uint64_t x) {
 #endif
 }
 
-/* ============================================================
- * 128-bit Arithmetic (for platforms without __uint128_t)
- * ============================================================ */
+/* 128-bit Arithmetic (for platforms without __uint128_t) */
 
 #if !defined(__SIZEOF_INT128__)
 

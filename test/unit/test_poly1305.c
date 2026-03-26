@@ -350,7 +350,6 @@ static void poly1305_rfc8439_appendix_a3_kats(void) {
 
 }
 
-/* ----------------------------------------------------------- */
 /* borrowed from poly1305-donna's poly1305_power_on_self_test  */
 /* https://github.com/floodyberry/poly1305-donna/blob/master/poly1305-donna.c */
 /* example from nacl */

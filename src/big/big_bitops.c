@@ -2,7 +2,7 @@
 
 #include "big_internal.h"
 
-/* ---- Bitwise operations ---- */
+/* Bitwise operations */
 
 typedef enum { BITOP_AND, BITOP_OR, BITOP_XOR } bitop_t;
 
@@ -75,7 +75,6 @@ void cfx_big_or(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *b) {
 void cfx_big_xor(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *b) {
     big_bitop(out, a, b, BITOP_XOR);
 }
-
 
 
 /* In-place variants */
@@ -238,7 +237,6 @@ size_t cfx_big_popcount(const cfx_big_t *x) {
     return count;
 }
 
-/* ------------------------------------------------------------- */
 /* NOTE: Use cfx_clz() from algo.h for limb-aware leading-zero count */
 
 /* b <<= s (in-place, no temp allocation) */
@@ -359,7 +357,6 @@ void cfx_big_shl_bits(cfx_big_t *out, const cfx_big_t *a, unsigned s) {
     cfx_big_trim(out);
     cfx_big_free(&tmp);
 }
-
 
 
 /* out = a >> s (0..63)  */

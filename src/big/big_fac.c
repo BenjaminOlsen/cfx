@@ -15,7 +15,6 @@ void cfx_big_from_fac(cfx_big_t *b, const cfx_fac_t *f) {
     }
 }
 
-/* ******************************************************************************* */
 /* bucket-carry strategy for making bigs out of fac : */
 #define CFX_FAC_BUCKETS 128 /* plenty: log2(bitlen(n!)) */
 
@@ -58,7 +57,7 @@ static void bucket_insert(cfx_big_t buckets[CFX_FAC_BUCKETS], uint8_t used[CFX_F
         level++;
     }
 
-    /* ---------> todo: increase CFX_FAC_BUCKETS. */
+    /* > todo: increase CFX_FAC_BUCKETS. */
 }
 
 void cfx_big_from_fac_fast(cfx_big_t *out, const cfx_fac_t *f) {

@@ -25,7 +25,7 @@
 
 #endif
 
-/* -------- always_inline helper -------- */
+/* always_inline helper */
 #if defined(_MSC_VER)
   #define CFX_INLINE static __forceinline
 #elif defined(__GNUC__) || defined(__clang__)
@@ -46,7 +46,6 @@
 #  endif
 #endif
 
-/* -------------------------------------------------------- */
 /* Alignment -  every compiler does this differently in C99, so
   if you ever need to add some unlisted compiler, add it... */
 
@@ -76,8 +75,7 @@
 #endif
 
 
-/* -------------------------------------------------------- */
-/* --- Endianness --- */
+/* Endianness */
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define CFX_LITTLE_ENDIAN 1
 
@@ -107,7 +105,7 @@
 #endif
 
 
-/* --- x86 intrinsics include --- */
+/* x86 intrinsics include */
 #if defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)
 #  if defined(__has_include)
 #    if __has_include(<immintrin.h>)
@@ -131,7 +129,7 @@
 #  define CFX_USE_X86_INTRINSICS 0
 #endif
 
-/* -------- 128-bit arithmetic detection -------- */
+/* 128-bit arithmetic detection */
 
 /*
  * CFX_HAS_128BIT: Set if we have fast 128-bit multiply/mod capability
@@ -153,7 +151,7 @@
   #define CFX_HAS_128BIT 0
 #endif
 
-/* -------- 64-bit modular multiplication primitive -------- */
+/* 64-bit modular multiplication primitive */
 
 /*
  * cfx_mulmod64(a, b, m) - computes (a * b) % m without overflow
@@ -217,7 +215,7 @@ CFX_INLINE uint64_t cfx_mulmod64(uint64_t a, uint64_t b, uint64_t m) {
 
 #endif
 
-/* -------- 64-bit modular exponentiation primitive -------- */
+/* 64-bit modular exponentiation primitive */
 
 CFX_INLINE uint64_t cfx_powmod64(uint64_t base, uint64_t exp, uint64_t m) {
     if (m <= 1) return 0;

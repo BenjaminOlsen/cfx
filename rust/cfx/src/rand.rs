@@ -61,9 +61,7 @@ impl ChaChaRng {
     }
 }
 
-// ============================================================================
 // Global RNG functions (use internal global state)
-// ============================================================================
 
 /// Seeds the global RNG with a 32-bit value.
 ///
@@ -89,9 +87,7 @@ pub fn rand_bytes(dest: &mut [u8]) {
     unsafe { ffi::cfx_rand_bytes(dest.as_mut_ptr() as *mut c_void, dest.len()) };
 }
 
-// ============================================================================
 // OS RNG functions
-// ============================================================================
 
 /// Seeds the global RNG from the OS entropy source.
 ///

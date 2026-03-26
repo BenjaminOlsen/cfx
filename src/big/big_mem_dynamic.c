@@ -18,9 +18,7 @@
 #include <string.h>
 #include <stdint.h>
 
-/* ============================================================================
- * INITIALIZATION
- * ============================================================================ */
+/* INITIALIZATION */
 
 /*
  * Initialize big integer to empty state with no allocated memory.
@@ -29,9 +27,7 @@ void cfx_big_init(cfx_big_t *b){
     memset(b, 0, sizeof(*b));
 }
 
-/* ============================================================================
- * CAPACITY RESERVATION
- * ============================================================================ */
+/* CAPACITY RESERVATION */
 
 /*
  * Ensure capacity for at least 'need' limbs.
@@ -79,9 +75,7 @@ void cfx_big_reserve(cfx_big_t *b, size_t need){
     b->cap = new_cap;
 }
 
-/* ============================================================================
- * DEALLOCATION
- * ============================================================================ */
+/* DEALLOCATION */
 
 /*
  * Free the limb array and reset the structure.

@@ -44,10 +44,8 @@ static void ge25519_mul_cofactor(ge25519_t *r, const ge25519_t *p) {
  *   = 0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed
  * Returns 1 if s < L (valid), 0 otherwise.
  * Constant-time: computes s - L and checks for borrow.
- */
-
-/*************************************
-   simple example in base 10:
+ *
+ * simple example in base 10:
    ........................................
    ex 1:
    s = 100 L = 99

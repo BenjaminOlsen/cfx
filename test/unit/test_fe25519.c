@@ -29,9 +29,7 @@ static int fe_limbs_eq(const fe25519_t *a, const fe25519_t *b) {
            a->v[4] == b->v[4];
 }
 
-/* ============================================================ */
 /* Basic operations */
-/* ============================================================ */
 
 static void test_zero(void) {
     fe25519_t z;
@@ -70,9 +68,7 @@ static void test_constants(void) {
     CFX_ASSERT(cfx_fe25519_eq(&cfx_fe25519_zero, &cfx_fe25519_one) == 0);
 }
 
-/* ============================================================ */
 /* Addition and subtraction */
-/* ============================================================ */
 
 static void test_add_basic(void) {
     fe25519_t a, b, c;
@@ -125,9 +121,7 @@ static void test_neg_zero(void) {
     CFX_ASSERT(cfx_fe25519_iszero(&neg_z));
 }
 
-/* ============================================================ */
 /* Multiplication */
-/* ============================================================ */
 
 static void test_mul_by_zero(void) {
     fe25519_t a = {{ 0x123, 0x456, 0x789, 0xabc, 0xdef }};
@@ -195,9 +189,7 @@ static void test_mul_distributive(void) {
     CFX_ASSERT(cfx_fe25519_eq(&a_times_bc, &ab_plus_ac));
 }
 
-/* ============================================================ */
 /* Squaring */
-/* ============================================================ */
 
 static void test_sqr_zero(void) {
     fe25519_t z, z2;
@@ -235,9 +227,7 @@ static void test_sqr_n(void) {
     CFX_ASSERT(cfx_fe25519_eq(&sqr_n, &sqr_loop));
 }
 
-/* ============================================================ */
 /* mul121666 (used in X25519) */
-/* ============================================================ */
 
 static void test_mul121666_zero(void) {
     fe25519_t z, c;
@@ -265,9 +255,7 @@ static void test_mul121666_vs_mul(void) {
     CFX_ASSERT(cfx_fe25519_eq(&via_mul121666, &via_mul));
 }
 
-/* ============================================================ */
 /* Inversion */
-/* ============================================================ */
 
 static void test_inv_one(void) {
     fe25519_t one, inv_one;
@@ -297,9 +285,7 @@ static void test_inv_inv(void) {
     CFX_ASSERT(cfx_fe25519_eq(&a, &inv_inv_a));
 }
 
-/* ============================================================ */
 /* Serialization */
-/* ============================================================ */
 
 static void test_bytes_roundtrip(void) {
     uint8_t original[32] = {
@@ -357,9 +343,7 @@ static void test_bytes_clears_top_bit(void) {
     CFX_ASSERT((output[31] & 0x80) == 0);
 }
 
-/* ============================================================ */
 /* Constant-time operations */
-/* ============================================================ */
 
 static void test_cswap_zero(void) {
     fe25519_t a = {{ 1, 2, 3, 4, 5 }};
@@ -407,9 +391,7 @@ static void test_cmov_one(void) {
     CFX_ASSERT(fe_limbs_eq(&h, &f));
 }
 
-/* ============================================================ */
 /* Comparison and predicates */
-/* ============================================================ */
 
 static void test_eq_same(void) {
     fe25519_t a = {{ 0x123, 0x456, 0x789, 0xabc, 0xdef }};
@@ -452,9 +434,7 @@ static void test_isnegative(void) {
     CFX_ASSERT(cfx_fe25519_isnegative(&two) == 0);  /* 2 is "positive" (LSB = 0) */
 }
 
-/* ============================================================ */
 /* Reduction */
-/* ============================================================ */
 
 static void test_reduce_small(void) {
     fe25519_t a = {{ 100, 200, 300, 400, 500 }};
@@ -490,9 +470,7 @@ static void test_carry_propagation(void) {
     }
 }
 
-/* ============================================================ */
 /* RFC 7748 test vectors */
-/* ============================================================ */
 
 /*
  * From RFC 7748 Section 6.1:
@@ -539,9 +517,7 @@ static void test_mul_inv_identity(void) {
     CFX_ASSERT(cfx_fe25519_eq(&a, &result));
 }
 
-/* ============================================================ */
 /* Edge cases */
-/* ============================================================ */
 
 static void test_max_limb_values(void) {
     /* limbs at maximum 51-bit value */
@@ -594,9 +570,7 @@ static void test_2p_is_zero(void) {
     CFX_ASSERT(cfx_fe25519_iszero(&two_p) == 1);
 }
 
-/* ============================================================ */
 /* pow22523 (used for square roots) */
-/* ============================================================ */
 
 static void test_pow22523_basic(void) {
     fe25519_t a = {{ 0x12345, 0x67890, 0xabcde, 0, 0 }};
@@ -612,9 +586,7 @@ static void test_pow22523_basic(void) {
     }
 }
 
-/* ============================================================ */
 /* Aliasing tests (output == input) */
-/* ============================================================ */
 
 static void test_add_aliased(void) {
     fe25519_t a = {{ 0x1234, 0x5678, 0x9abc, 0xdef0, 0x1111 }};
@@ -683,9 +655,7 @@ static void test_inv_aliased(void) {
     CFX_ASSERT(cfx_fe25519_eq(&a, &expected));
 }
 
-/* ============================================================ */
 /* Fermat's little theorem tests */
-/* ============================================================ */
 
 static void test_fermat_little_theorem(void) {
     /* a^p = a (mod p), so a^(p-1) = 1 for a != 0 */
@@ -719,9 +689,7 @@ static void test_fermat_various_values(void) {
     }
 }
 
-/* ============================================================ */
 /* Near-prime edge cases */
-/* ============================================================ */
 
 static void test_p_minus_1(void) {
     /* p - 1 = -1 (mod p) */
@@ -758,9 +726,7 @@ static void test_p_minus_19(void) {
     CFX_ASSERT(cfx_fe25519_iszero(&sum));
 }
 
-/* ============================================================ */
 /* More serialization tests */
-/* ============================================================ */
 
 static void test_bytes_max_value(void) {
     /* max value before reduction: all 0xFF except top bit */
@@ -812,9 +778,7 @@ static void test_bytes_single_bits(void) {
     }
 }
 
-/* ============================================================ */
 /* Double negation and other identities */
-/* ============================================================ */
 
 static void test_double_neg(void) {
     fe25519_t a = {{ 0x123456, 0x789abc, 0xdef012, 0x345678, 0x9abcde }};
@@ -850,9 +814,7 @@ static void test_sub_neg_is_add(void) {
     CFX_ASSERT(cfx_fe25519_eq(&a_minus_negb, &a_plus_b));
 }
 
-/* ============================================================ */
 /* Power identities */
-/* ============================================================ */
 
 static void test_sqr_is_mul_self(void) {
     /* verify sqr(a) == mul(a, a) for several values */
@@ -884,9 +846,7 @@ static void test_sqr4_is_sqr2_sqr2(void) {
     CFX_ASSERT(cfx_fe25519_eq(&sqr4, &sqr2));
 }
 
-/* ============================================================ */
 /* cswap/cmov stress */
-/* ============================================================ */
 
 static void test_cswap_multiple(void) {
     fe25519_t a = {{ 1, 2, 3, 4, 5 }};
@@ -914,9 +874,7 @@ static void test_cmov_chain(void) {
     CFX_ASSERT(fe_limbs_eq(&h, &f2));
 }
 
-/* ============================================================ */
 /* mul121666 extensive tests */
-/* ============================================================ */
 
 static void test_mul121666_large(void) {
     fe25519_t a = {{ 0x7ffffffffffff, 0x7ffffffffffff, 0x7ffffffffffff, 0x7ffffffffffff, 0x7ffffffffffff }};
@@ -947,9 +905,7 @@ static void test_mul121666_chain(void) {
     CFX_ASSERT(cfx_fe25519_eq(&a, &expected));
 }
 
-/* ============================================================ */
 /* Stress tests */
-/* ============================================================ */
 
 static void test_many_operations(void) {
     fe25519_t a, b, c, d;

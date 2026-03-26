@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
 
 /*
- * sha512.c - SHA-512 hash function (portable implementation)
+ * sha512.c - SHA-512 hash function
  *
  * Implementation of SHA-512 as specified in FIPS 180-4.
  *

@@ -22,7 +22,6 @@
 #  include <errno.h>
 #endif
 
-/* ---------------------------------------------------------------------------------------------- */
 /* chacha20 based rng */
 
 #define CHACHA20_BLOCK_BYTES 64
@@ -183,7 +182,6 @@ uint32_t cfx_chacha20_gen32(void) {
 }
 
 
-/* ---------------------------------------------------------------------------------------------- */
 /* cfx's chosen rand */
 void cfx_srand(uint32_t seed) {
     cfx_chacha20_seed(seed);
@@ -205,7 +203,6 @@ int cfx_rng(void *ctx, uint8_t *out, size_t len) {
     return cfx_chacha20_rng(ctx, out, len);
 }
 
-/* ---------------------------------------------- */
 /* OS-specific cryptographic RNG */
 #if defined(_WIN32) || defined(_WIN64)
 /* Windows: BCryptGenRandom */

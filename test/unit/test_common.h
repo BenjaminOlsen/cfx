@@ -19,7 +19,7 @@
 #define strcasecmp _stricmp
 #endif
 
-/* ---- Assertion helpers -------------------------------------------------- */
+/* Assertion helpers */
 
 #define ASSERT_BIG_HEX(b, hex) \
         do { \
@@ -28,7 +28,7 @@
             free(s); \
         } while (0)
 
-/* ---- Big integer creation helpers --------------------------------------- */
+/* Big integer creation helpers */
 
 static inline cfx_big_t make_u64(uint64_t x) {
     cfx_big_t r;
@@ -56,7 +56,7 @@ static inline void big_init_from_limbs_base_1e9(cfx_big_t *b, const cfx_limb_t *
     }
 }
 
-/* ---- Comparison/assertion helpers --------------------------------------- */
+/* Comparison/assertion helpers */
 
 static inline void assert_hex_eq(const char *tag, const cfx_big_t *x, const char *hex_exp) {
     char *got = cfx_big_hex_alloc(x, NULL);
@@ -137,7 +137,7 @@ static inline void assert_n_eq_qd_plus_r(const cfx_big_t *n, const cfx_big_t *q,
     cfx_big_free(&tmp);
 }
 
-/* ---- String conversion test helper -------------------------------------- */
+/* String conversion test helper */
 
 static inline void check_str_conversion(const char *label, const cfx_limb_t *limbs, size_t n, const char *expect) {
     cfx_big_t b;
@@ -152,7 +152,7 @@ static inline void check_str_conversion(const char *label, const cfx_limb_t *lim
     cfx_big_free(&b);
 }
 
-/* ---- Shift test helpers ------------------------------------------------- */
+/* Shift test helpers */
 
 static inline void check_shl_case(const char *msg, const char *hex_in, unsigned s, const char *hex_exp) {
     /* out-of-place */
@@ -197,7 +197,7 @@ static inline void check_shr_case(const char *msg, const char *hex_in, unsigned 
 #define CHECK_SHL_CASE(hex_in, s, hex_out) check_shl_case(__func__, hex_in, s, hex_out)
 #define CHECK_SHR_CASE(hex_in, s, hex_out) check_shr_case(__func__, hex_in, s, hex_out)
 
-/* ---- Byte conversion helpers -------------------------------------------- */
+/* Byte conversion helpers */
 
 static inline void hex_to_bytes(uint8_t *out, size_t out_len, const char *hex) {
     /* hex length must be 2*out_len, no "0x", no spaces */
@@ -220,7 +220,7 @@ static inline void hex_to_bytes(uint8_t *out, size_t out_len, const char *hex) {
     }
 }
 
-/* ---- Debug printing helpers --------------------------------------------- */
+/* Debug printing helpers */
 
 static inline void print_limbs(const char *name, const cfx_big_t *b) {
     printf("%s: n=%zu, limbs = {", name, b->n);

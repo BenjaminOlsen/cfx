@@ -28,9 +28,7 @@
 extern "C" {
 #endif
 
-/* ============================================================================
- * MULTIPLICATION BACKENDS
- * ============================================================================ */
+/* MULTIPLICATION BACKENDS */
 
 /*
  * Core multiplication: out = a * b
@@ -62,9 +60,7 @@ void cfx_big_mul_limbs_impl(cfx_limb_t *out,
     const cfx_limb_t *a, size_t na,
     const cfx_limb_t *b, size_t nb);
 
-/* ============================================================================
- * ADDITION/SUBTRACTION BACKENDS
- * ============================================================================ */
+/* ADDITION/SUBTRACTION BACKENDS */
 
 /*
  * Limb-level addition: dst += src
@@ -99,9 +95,7 @@ cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t *dst,
     const cfx_limb_t *src,
     size_t n);
 
-/* ============================================================================
- * MONTGOMERY MULTIPLICATION BACKEND
- * ============================================================================ */
+/* MONTGOMERY MULTIPLICATION BACKEND */
 
 /*
  * Montgomery multiplication: T = a * b * R^{-1} mod n
@@ -136,9 +130,7 @@ void cfx_big_mont_mul_impl(cfx_limb_t *T,
     cfx_limb_t n0inv,
     size_t k);
 
-/* ============================================================================
- * BACKEND IDENTIFICATION
- * ============================================================================ */
+/* BACKEND IDENTIFICATION */
 
 /*
  * Backend name string for debugging/logging.

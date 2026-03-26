@@ -327,9 +327,7 @@ static int test_high_bit_scalar(void) {
     return nonzero != 0;
 }
 
-/* ============================================================ */
 /* Low-order point tests (RFC 7748 Appendix A) */
-/* ============================================================ */
 
 /* order-2 point: x = 1 */
 static int test_low_order_1(void) {
@@ -363,9 +361,7 @@ static int test_low_order_point_order4(void) {
     return 1;
 }
 
-/* ============================================================ */
 /* Wycheproof-style edge cases */
-/* ============================================================ */
 
 /* all-zeros private key (invalid but should not crash) */
 static int test_all_zero_scalar(void) {
@@ -414,9 +410,7 @@ static int test_point_high_bit_set(void) {
     return memcmp(result1, result2, 32) == 0;
 }
 
-/* ============================================================ */
 /* Consistency tests */
-/* ============================================================ */
 
 /* cfx_x25519(k, cfx_x25519(1, G)) == cfx_x25519(k, G) */
 static int test_base_consistency(void) {
@@ -459,9 +453,7 @@ static int test_scalar_mult_associative(void) {
     return memcmp(a_bG, b_aG, 32) == 0;
 }
 
-/* ============================================================ */
 /* Triple DH test */
-/* ============================================================ */
 
 static int test_triple_dh(void) {
     /* Three parties: Alice, Bob, Carol */
@@ -505,9 +497,7 @@ static int test_triple_dh(void) {
     return 1;
 }
 
-/* ============================================================ */
 /* Repeated scalar multiplication */
-/* ============================================================ */
 
 static int test_double_scalar(void) {
     uint8_t sk[32] = {0x08};
@@ -529,9 +519,7 @@ static int test_double_scalar(void) {
     return memcmp(sk_skG, sk_skG_2, 32) == 0;
 }
 
-/* ============================================================ */
 /* Various scalar values */
-/* ============================================================ */
 
 static int test_various_scalars(void) {
     uint8_t scalars[][32] = {
@@ -574,9 +562,7 @@ static int test_various_scalars(void) {
     return 1;
 }
 
-/* ============================================================ */
 /* Additional RFC 7748 test vectors */
-/* ============================================================ */
 
 static int test_rfc7748_alice_bob_full(void) {
     /* complete alice-bob exchange from RFC 7748 */
@@ -628,9 +614,7 @@ static int test_rfc7748_alice_bob_full(void) {
     return 1;
 }
 
-/* ============================================================ */
 /* Stress tests */
-/* ============================================================ */
 
 static int test_many_keypairs(void) {
     /* generate many keypairs and verify DH */
@@ -681,9 +665,7 @@ static int test_chain_mult(void) {
     return nonzero != 0;
 }
 
-/* ============================================================ */
 /* Canonical output test */
-/* ============================================================ */
 
 static int test_output_canonical(void) {
     /* verify output is in canonical form (< 2^255 - 19) */

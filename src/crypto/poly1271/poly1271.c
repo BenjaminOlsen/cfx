@@ -2,13 +2,6 @@
 /*
  * Poly1271: Polynomial MAC using the Mersenne prime 2^127 - 1
  *
- * This is the scalar (non-SIMD) implementation optimized for 64-bit CPUs.
- *
- * SECURITY PROPERTIES:
- * - Constant-time: No secret-dependent branches or memory access
- * - Key clamping: Ensures uniform carry propagation patterns
- * - Secure zeroing: Keys are wiped from memory after use
- *
  * Based on the reference implementation from github.com/poly1271/poly1271
  */
 
@@ -19,16 +12,12 @@
 #define load64_le cfx_load64_le
 #define store64_le cfx_store64_le
 
-/*============================================================================
- * CONSTANTS
- *============================================================================*/
+/* CONSTANTS */
 
 #define M127_HI 0x7FFFFFFFFFFFFFFFULL
 #define M127_LO 0xFFFFFFFFFFFFFFFFULL
 
-/*============================================================================
- * 64x64 -> 128 BIT MULTIPLICATION
- *============================================================================*/
+/* 64x64 -> 128 BIT MULTIPLICATION */
 
 #if defined(__SIZEOF_INT128__)
 typedef unsigned __int128 uint128_t;
@@ -56,9 +45,7 @@ static inline void mul64(uint64_t a, uint64_t b, uint64_t *lo, uint64_t *hi) {
 }
 #endif
 
-/*============================================================================
- * CONSTANT-TIME ADDITION WITH CARRY
- *============================================================================*/
+/* CONSTANT-TIME ADDITION WITH CARRY */
 
 static inline uint64_t adc(uint64_t *a, uint64_t b) {
     uint64_t old = *a;
@@ -66,9 +53,7 @@ static inline uint64_t adc(uint64_t *a, uint64_t b) {
     return (*a < old);
 }
 
-/*============================================================================
- * MODULAR REDUCTION
- *============================================================================*/
+/* MODULAR REDUCTION */
 
 static void mul_reduce(uint64_t out[3], const uint64_t a[3], const uint64_t r[2]) {
     uint64_t p0l, p0h, p1l, p1h, p2l, p2h, p3l, p3h, p4l, p4h, p5l, p5h;
@@ -200,9 +185,7 @@ static void square_mod(uint64_t out[2], const uint64_t r[2]) {
     out[0] += ov;
 }
 
-/*============================================================================
- * BLOCK PROCESSING
- *============================================================================*/
+/* BLOCK PROCESSING */
 
 static inline void load_block(uint64_t b[2], const uint8_t *m) {
     b[0] = load64_le(m);
@@ -223,9 +206,7 @@ static void add_block_partial(uint64_t acc[3], const uint8_t *m, size_t len) {
     add_to_acc(acc, b);
 }
 
-/*============================================================================
- * KEY CLAMPING
- *============================================================================*/
+/* KEY CLAMPING */
 
 static void clamp_r(uint8_t r[16]) {
     r[3]  &= 0x0F;
@@ -237,9 +218,7 @@ static void clamp_r(uint8_t r[16]) {
     r[12] &= 0xFC;
 }
 
-/*============================================================================
- * MULTI-BLOCK PROCESSING
- *============================================================================*/
+/* MULTI-BLOCK PROCESSING */
 
 static void process_2blocks(uint64_t acc[3], const uint8_t *m1, const uint8_t *m2,
     const uint64_t r[2], const uint64_t r2[2]) {
@@ -286,9 +265,7 @@ static void process_4blocks(uint64_t acc[3], const uint8_t *m1, const uint8_t *m
     acc[2] += p4[2] + c;
 }
 
-/*============================================================================
- * FINALIZATION
- *============================================================================*/
+/* FINALIZATION */
 
 static void finalize(uint64_t acc[3], const uint64_t s[2], uint8_t tag[16]) {
     reduce_full(acc);
@@ -323,9 +300,7 @@ static void finalize(uint64_t acc[3], const uint64_t s[2], uint8_t tag[16]) {
 
 #define LAZY_INTERVAL 8
 
-/*============================================================================
- * PUBLIC API
- *============================================================================*/
+/* PUBLIC API */
 
 void cfx_poly1271_init(cfx_poly1271_ctx_t *ctx, const uint8_t key[32]) {
     uint8_t rc[16];

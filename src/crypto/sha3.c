@@ -173,9 +173,7 @@ static void sha3_squeeze(sha3_state_t *S, uint8_t *out, size_t outlen) {
     S->buflen = offset;
 }
 
-/* ========================================================================== */
 /* SHA3-224 */
-/* ========================================================================== */
 
 void cfx_sha3_224_init(cfx_sha3_ctx_t *ctx) {
     sha3_state_t *S = (sha3_state_t *)ctx;
@@ -202,9 +200,7 @@ void cfx_sha3_224(uint8_t out[28], const void *data, size_t len) {
     cfx_sha3_224_final(&ctx, out);
 }
 
-/* ========================================================================== */
 /* SHA3-256 */
-/* ========================================================================== */
 
 void cfx_sha3_256_init(cfx_sha3_ctx_t *ctx) {
     sha3_state_t *S = (sha3_state_t *)ctx;
@@ -231,9 +227,7 @@ void cfx_sha3_256(uint8_t out[32], const void *data, size_t len) {
     cfx_sha3_256_final(&ctx, out);
 }
 
-/* ========================================================================== */
 /* SHA3-384 */
-/* ========================================================================== */
 
 void cfx_sha3_384_init(cfx_sha3_ctx_t *ctx) {
     sha3_state_t *S = (sha3_state_t *)ctx;
@@ -260,9 +254,7 @@ void cfx_sha3_384(uint8_t out[48], const void *data, size_t len) {
     cfx_sha3_384_final(&ctx, out);
 }
 
-/* ========================================================================== */
 /* SHA3-512 */
-/* ========================================================================== */
 
 void cfx_sha3_512_init(cfx_sha3_ctx_t *ctx) {
     sha3_state_t *S = (sha3_state_t *)ctx;
@@ -289,9 +281,7 @@ void cfx_sha3_512(uint8_t out[64], const void *data, size_t len) {
     cfx_sha3_512_final(&ctx, out);
 }
 
-/* ========================================================================== */
 /* SHAKE128 (XOF) */
-/* ========================================================================== */
 
 void cfx_shake128_init(cfx_sha3_ctx_t *ctx) {
     sha3_state_t *S = (sha3_state_t *)ctx;
@@ -320,9 +310,7 @@ void cfx_shake128(void *out, size_t outlen, const void *data, size_t len) {
     cfx_shake128_squeeze(&ctx, out, outlen);
 }
 
-/* ========================================================================== */
 /* SHAKE256 (XOF) */
-/* ========================================================================== */
 
 void cfx_shake256_init(cfx_sha3_ctx_t *ctx) {
     sha3_state_t *S = (sha3_state_t *)ctx;

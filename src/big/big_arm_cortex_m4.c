@@ -17,9 +17,7 @@
 
 #include "big_backend.h"
 
-/* ============================================================================
- * MULTIPLICATION
- * ============================================================================ */
+/* MULTIPLICATION */
 
 /*
  * Limb-level schoolbook multiplication with UMULL/UMLAL
@@ -106,9 +104,7 @@ void cfx_big_mul_impl(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *b){
     }
 }
 
-/* ============================================================================
- * ADDITION / SUBTRACTION
- * ============================================================================ */
+/* ADDITION / SUBTRACTION */
 
 /*
  * Limb-level addition: dst += src
@@ -195,9 +191,7 @@ cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t *dst,
     return borrow;
 }
 
-/* ============================================================================
- * MONTGOMERY MULTIPLICATION
- * ============================================================================ */
+/* MONTGOMERY MULTIPLICATION */
 
 /*
  * Montgomery multiplication core: T = a * b * R^{-1} mod n

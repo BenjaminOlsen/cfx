@@ -3,7 +3,6 @@
 
 #include <string.h>
 
-/* ---------------------------------------------------------------------------------------------- */
 uint32_t g_lcg_seed = 0x126;  /* NOT THREAD-SAFE */
 
 void cfx_lcg_seed(uint32_t seed) {
@@ -34,7 +33,6 @@ void cfx_lcg_bytes(uint32_t seed, uint8_t *data, size_t len) {
 }
 
 
-/* ---------------------------------------------------------------------------------------------- */
 static uint64_t g_drand_state = UINT64_C(0x123456789ABCDEF);  /* NOT THREAD-SAFE */
 
 void cfx_drand48_seed(uint32_t seed) {
@@ -50,7 +48,6 @@ uint32_t cfx_drand48(uint64_t *s) {
     return (uint32_t)(*s >> 16);
 }
 
-/* ---------------------------------------------------------------------------------------------- */
 static uint64_t g_minstd_state = 1;  /* NOT THREAD-SAFE */
 
 void cfx_minstd_seed(uint32_t seed) {

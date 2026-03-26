@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
-/* ---- LCG (Numerical Recipes) -------------------------------------------- */
+/* LCG (Numerical Recipes) */
 
 static void test_lcg_deterministic(void) {
     uint32_t s1 = 42, s2 = 42;
@@ -60,7 +60,7 @@ static void test_lcg_different_seeds(void) {
     CFX_ASSERT(cfx_lcg(&s1) != cfx_lcg(&s2));
 }
 
-/* ---- drand48 ------------------------------------------------------------ */
+/* drand48 */
 
 static void test_drand48_deterministic(void) {
     uint64_t s1 = 42, s2 = 42;
@@ -107,7 +107,7 @@ static void test_drand48_bytes(void) {
     CFX_ASSERT(memcmp(buf1, buf2, sizeof(buf1)) == 0);
 }
 
-/* ---- MINSTD (Park-Miller) ----------------------------------------------- */
+/* MINSTD (Park-Miller) */
 
 static void test_minstd_deterministic(void) {
     uint64_t s1 = 42, s2 = 42;
@@ -165,7 +165,7 @@ static void test_minstd_range(void) {
     }
 }
 
-/* ---- main --------------------------------------------------------------- */
+/* main */
 
 int main(void) {
     CFX_TEST(test_lcg_deterministic);

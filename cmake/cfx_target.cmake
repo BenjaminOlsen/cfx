@@ -224,9 +224,7 @@ endif()
 
 message(STATUS "cfx: Building for target: ${CFX_TARGET}")
 
-# ============================================================================
 # MEMORY MODE SELECTION
-# ============================================================================
 #
 # CFX_MEMORY_MODE controls the allocation strategy:
 #   - dynamic: uses malloc/realloc/free (default)

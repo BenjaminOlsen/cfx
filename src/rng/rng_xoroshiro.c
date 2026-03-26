@@ -3,7 +3,6 @@
 
 #include <string.h>
 
-/* ---------------------------------------------------------------------------------------------- */
 /* xoroshiro family */
 
 /* ................................. */
@@ -44,7 +43,7 @@ uint32_t cfx_xoroshiro64starstar(uint32_t s[2]) {
     const uint32_t s0 = s[0];
     uint32_t s1 = s[1];
 
-    /* output function: ** */
+    /* output function: */
     const uint32_t result = cfx_rotl32(s0 * 0x9E3779BBu, 5) * 5u;
 
     /* state transition */

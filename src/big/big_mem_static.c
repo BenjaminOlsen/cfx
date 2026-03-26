@@ -21,9 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ============================================================================
- * STATIC BUFFER POOL
- * ============================================================================ */
+/* STATIC BUFFER POOL */
 
 /*
  * The static buffer pool.
@@ -34,9 +32,7 @@
 static cfx_limb_t g_static_buffers[CFX_STATIC_POOL_SIZE][CFX_STATIC_LIMBS];
 static int g_static_in_use[CFX_STATIC_POOL_SIZE];
 
-/* ============================================================================
- * INITIALIZATION
- * ============================================================================ */
+/* INITIALIZATION */
 
 /*
  * Initialize big integer by allocating a buffer from the pool.
@@ -60,9 +56,7 @@ void cfx_big_init(cfx_big_t *b){
     abort();
 }
 
-/* ============================================================================
- * CAPACITY RESERVATION
- * ============================================================================ */
+/* CAPACITY RESERVATION */
 
 /*
  * Ensure capacity for at least 'need' limbs.
@@ -97,9 +91,7 @@ void cfx_big_reserve(cfx_big_t *b, size_t need){
     }
 }
 
-/* ============================================================================
- * DEALLOCATION
- * ============================================================================ */
+/* DEALLOCATION */
 
 /*
  * Return buffer to the pool for reuse.

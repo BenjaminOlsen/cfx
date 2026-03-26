@@ -3,7 +3,6 @@
 
 #include <string.h>
 
-/* ---------------------------------------------------------------------------------------------- */
 /** PCG "permuted congruential generator"
  *  ref: https://www.pcg-random.org/index.html
  **/

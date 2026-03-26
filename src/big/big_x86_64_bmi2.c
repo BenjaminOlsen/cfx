@@ -20,9 +20,7 @@
 
 #include <immintrin.h>
 
-/* ============================================================================
- * MULTIPLICATION
- * ============================================================================ */
+/* MULTIPLICATION */
 
 /*
  * Limb-level schoolbook multiplication with BMI2 intrinsics
@@ -104,12 +102,11 @@ void cfx_big_mul_impl(cfx_big_t *out, const cfx_big_t *a, const cfx_big_t *b){
     }
 }
 
-/* ============================================================================
- * ADDITION / SUBTRACTION
+/* ADDITION / SUBTRACTION
  *
  * Use portable implementation - BMI2 doesn't help much here.
  * The portable cfx_acc_t approach is already efficient for add/sub.
- * ============================================================================ */
+ */
 
 cfx_limb_t cfx_big_add_limbs_impl(cfx_limb_t *dst,
     const cfx_limb_t *src,
@@ -140,9 +137,7 @@ cfx_limb_t cfx_big_sub_limbs_impl(cfx_limb_t *dst,
     return borrow;
 }
 
-/* ============================================================================
- * MONTGOMERY MULTIPLICATION
- * ============================================================================ */
+/* MONTGOMERY MULTIPLICATION */
 
 /*
  * Montgomery multiplication core: T = a * b * R^{-1} mod n
@@ -159,7 +154,7 @@ void cfx_big_mont_mul_impl(cfx_limb_t *T,
         /* Get b[i], zero-pad if beyond actual length */
         const unsigned long long bi = (i < b_n) ? b[i] : 0;
 
-        /* === T += a * b[i] === */
+        /* T += a * b[i] */
         unsigned long long carry = 0;
         for (size_t j = 0; j < k; ++j) {
             const unsigned long long aj = (j < a_n) ? a[j] : 0;
@@ -183,10 +178,10 @@ void cfx_big_mont_mul_impl(cfx_limb_t *T,
             T[k + 1] += (cfx_limb_t)(sum >> CFX_LIMB_BITS);
         }
 
-        /* === m = (T[0] * n0inv) mod 2^64 === */
+        /* m = (T[0] * n0inv) mod 2^64 */
         const unsigned long long m = T[0] * n0inv;
 
-        /* === T += m * n === */
+        /* T += m * n */
         carry = 0;
         for (size_t j = 0; j < k; ++j) {
             unsigned long long hi;
@@ -203,7 +198,7 @@ void cfx_big_mont_mul_impl(cfx_limb_t *T,
             T[k + 1] += (cfx_limb_t)(sum >> CFX_LIMB_BITS);
         }
 
-        /* === T >>= 64: shift down by one limb (drop T[0]) === */
+        /* T >>= 64: shift down by one limb (drop T[0]) */
         memmove(&T[0], &T[1], (k + 1) * sizeof(cfx_limb_t));
         T[k + 1] = 0;  /* clear scratch for next iteration */
     }

@@ -24,9 +24,7 @@
 #include <immintrin.h>
 #include <string.h>
 
-/*============================================================================
- * CONSTANTS
- *============================================================================*/
+/* CONSTANTS */
 
 /*
  * Radix-2^26 representation:
@@ -41,9 +39,7 @@
 #define MASK26 ((1ULL << 26) - 1)  /* 26 bits: 0x03FFFFFF */
 #define MASK23 ((1ULL << 23) - 1)  /* 23 bits for top limb (127 - 4*26 = 23) */
 
-/*============================================================================
- * RADIX CONVERSION
- *============================================================================*/
+/* RADIX CONVERSION */
 
 /*
  * Decode a 15-byte message block into 5 radix-2^26 limbs.
@@ -146,9 +142,8 @@ static inline void convert_from_limbs(uint64_t v[2], const uint64_t limbs[5]) {
     v[1] = (limbs[2] >> 12) | (limbs[3] << 14) | (limbs[4] << 40);
 }
 
-/*============================================================================
- * SCALAR RADIX-2^26 ARITHMETIC
- *============================================================================
+/* SCALAR RADIX-2^26 ARITHMETIC
+ *
  * Used for single-block processing and key setup.
  */
 
@@ -243,9 +238,7 @@ static void square_limbs_scalar(uint64_t out[5], const uint64_t a[5]) {
     reduce_p_scalar(out);
 }
 
-/*============================================================================
- * UTILITY FUNCTIONS
- *============================================================================*/
+/* UTILITY FUNCTIONS */
 
 /*
  * Key clamping: same as scalar implementation.
@@ -255,9 +248,7 @@ static void clamp_r(uint8_t r[16]) {
     r[4] &= 0xFC; r[8] &= 0xFC; r[12] &= 0xFC;
 }
 
-/*============================================================================
- * AVX2 VECTORIZED ARITHMETIC
- *============================================================================
+/* AVX2 VECTORIZED ARITHMETIC
  *
  * Each __m256i register holds 4 x 64-bit values, one from each block.
  * We compute 4 independent products simultaneously.
@@ -403,9 +394,7 @@ static void combine_4lanes_avx2(uint64_t out[5], const __m256i acc[5], const __m
     reduce_p_scalar(out);
 }
 
-/*============================================================================
- * BLOCK PROCESSING
- *============================================================================*/
+/* BLOCK PROCESSING */
 
 /*
  * Process n rounds of 4 blocks each using SIMD.
@@ -455,9 +444,7 @@ static void process_1block_scalar(uint64_t acc[5], const uint8_t *m, const uint6
     mul_limbs_scalar(acc, acc, r);
 }
 
-/*============================================================================
- * FINALIZATION
- *============================================================================*/
+/* FINALIZATION */
 
 /*
  * Finalize: reduce, check for p, add s, output tag.
@@ -491,9 +478,7 @@ static void finalize_avx2(uint64_t acc[5], const uint64_t s[2], uint8_t tag[16])
     store64_le(tag + 8, t1);
 }
 
-/*============================================================================
- * PUBLIC API
- *============================================================================*/
+/* PUBLIC API */
 
 void cfx_poly1271_avx2_init(cfx_poly1271_avx2_ctx_t *ctx, const uint8_t key[32]) {
     uint8_t rc[16];

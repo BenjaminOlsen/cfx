@@ -243,7 +243,7 @@ int cfx_big_scan_b64_n(cfx_big_t *out, const uint8_t *s, size_t len, size_t *con
 int cfx_big_from_oct_n(cfx_big_t *out, const uint8_t *in, size_t in_len, size_t *consumed);
 
 
-/* ================== Montgomery ================== */
+/* Montgomery */
 /** cfx_big_mont_ctx_t
  * Montgomery arithmetic context for a fixed odd modulus n.
  *

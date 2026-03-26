@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* -------------------------------------------------------------------------- */
 
 static void test_base64_rfc4648_vectors(void) {
     struct {
@@ -270,7 +269,6 @@ static void test_base64_roundtrip_many_lengths(void) {
     }
 }
 
-/* -------------------------------------------------------------------------- */
 
 int main(void) {
     CFX_TEST(test_base64_rfc4648_vectors);

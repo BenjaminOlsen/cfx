@@ -48,7 +48,7 @@ pub use rand::ChaChaRng;
 mod tests {
     use super::*;
 
-    // ============ Big integer tests (moved from old lib.rs) ============
+    // Big integer tests (moved from old lib.rs)
 
     #[test]
     fn test_new_is_zero() {

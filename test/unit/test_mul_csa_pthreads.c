@@ -126,7 +126,7 @@ static void run_case(const char *name, const cfx_big_t *b0_in, const cfx_big_t *
     printf(">>>>>>>>>>> [OK] %s\n", name);
 }
 
-/* --- Individual tests (happy paths) --- */
+/* Individual tests (happy paths) */
 
 static void test_zero_cases(void) {
     cfx_big_t b, m;
@@ -259,7 +259,7 @@ static void test_medium_case_128x128(void) {
     cfx_big_free(&m);
 }
 
-/* --- main --- */
+/* main */
 int main(void) {
     CFX_TEST(test_zero_cases);
     CFX_TEST(test_one_cases);

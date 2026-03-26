@@ -11,7 +11,7 @@ static FILE *str_to_file(const char *s) {
     return f;
 }
 
-/* ---- cfx_big_from_file -------------------------------------------------- */
+/* cfx_big_from_file */
 
 static void test_from_file_decimal(void) {
     FILE *f = str_to_file("12345");
@@ -213,7 +213,7 @@ static void test_from_file_binary_large(void) {
     fclose(f);
 }
 
-/* ---- cfx_big_log -------------------------------------------------------- */
+/* cfx_big_log */
 
 static void test_big_log_base10(void) {
     cfx_big_t b = make_u64(1000);
@@ -252,7 +252,7 @@ static void test_big_log_one(void) {
     cfx_big_free(&b);
 }
 
-/* ---- cfx_big_to_sci ----------------------------------------------------- */
+/* cfx_big_to_sci */
 
 static void test_to_sci_zero(void) {
     cfx_big_t b = make_u64(0);
@@ -332,7 +332,7 @@ static void test_to_sci_sig_digits_1(void) {
     cfx_big_free(&b);
 }
 
-/* ---- main --------------------------------------------------------------- */
+/* main */
 
 int main(void) {
     CFX_TEST(test_from_file_decimal);

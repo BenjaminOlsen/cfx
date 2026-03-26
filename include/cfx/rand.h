@@ -37,8 +37,6 @@ cfx_limb_t  cfx_rand_limb(void);
  * ARE thread safe, as all state is passed in.
  **/
 
-/* ---------------------------------------------------------------------------------------------- */
-
 
 typedef struct {
     const char *name;

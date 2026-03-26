@@ -11,7 +11,7 @@
 #include "cfx/macros.h"
 
 
-/* ---- Tiny helpers ----------------------------------------------------------- */
+/* Tiny helpers */
 
 static void big_set_limbs(cfx_big_t *x, const cfx_limb_t *limbs, size_t n) {
     cfx_big_reserve(x, n);
@@ -81,7 +81,7 @@ static void big_rand(cfx_big_t *x, size_t n, uint64_t *seed) {
     }
 }
 
-/* ---- Tests ------------------------------------------------------------------ */
+/* Tests */
 
 static void test_mul_zero_zero(void) {
     cfx_big_t a, b;
@@ -245,7 +245,7 @@ static void test_thread_counts_agree(void) {
     cfx_big_free(&t32);
 }
 
-/* ---- Main ------------------------------------------------------------------- */
+/* Main */
 
 #define TEST_RAND(na, nb, threads, seed_init) \
         test_random_compare_ref(na, nb, threads, seed_init, \

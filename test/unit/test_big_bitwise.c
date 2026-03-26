@@ -3,7 +3,7 @@
 
 #include "test_common.h"
 
-/* ========== Binary String Tests ========== */
+/* Binary String Tests */
 
 static void test_binstring(void) {
     cfx_big_t b;
@@ -185,7 +185,7 @@ static void test_bit_ops_cross_limb(void) {
     cfx_big_free(&x);
 }
 
-/* ========== XOR Tests ========== */
+/* XOR Tests */
 
 static void test_xor_with_zero_is_identity(void) {
     cfx_big_t a = make_u64(0x12345678abcdef00ULL);
@@ -308,7 +308,7 @@ static void test_xor_out_aliases_b(void) {
     cfx_big_free(&a);
 }
 
-/* ========== AND Tests ========== */
+/* AND Tests */
 
 static void test_and_basic_u64(void){
     cfx_big_t a, b, out;
@@ -404,7 +404,7 @@ static void test_and_alias_out_is_smaller_operand(void) {
     cfx_big_free(&small);
 }
 
-/* ========== OR Tests ========== */
+/* OR Tests */
 
 static void test_or_basic_u64(void) {
     cfx_big_t a, b, out;
@@ -501,7 +501,7 @@ static void test_or_alias_out_is_larger_operand(void) {
     cfx_big_free(&small);
 }
 
-/* ========== Rotate Tests ========== */
+/* Rotate Tests */
 
 static void test_rot_zero_and_one(void) {
     cfx_big_t x, y;

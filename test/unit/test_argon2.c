@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 
-/* -- helpers ------------------------------------------------------- */
+/* helpers */
 
 static int hex_to_bytes(const char *hex, uint8_t *out, size_t outlen) {
     for (size_t i = 0; i < outlen; i++) {
@@ -23,7 +23,7 @@ static int hex_to_bytes(const char *hex, uint8_t *out, size_t outlen) {
     return 0;
 }
 
-/* -- KAT: argon2id "password" / "somesalt" / m=65536 t=3 p=4 ---- */
+/* KAT: argon2id "password" / "somesalt" / m=65536 t=3 p=4 */
 
 static void test_argon2id_basic(void) {
     const char *password = "password";
@@ -46,7 +46,7 @@ static void test_argon2id_basic(void) {
     CFX_ASSERT(memcmp(hash, expected, 32) == 0);
 }
 
-/* -- KAT: argon2d  0x01*32 / 0x02*16 / m=32 t=3 p=4 ------------ */
+/* KAT: argon2d  0x01*32 / 0x02*16 / m=32 t=3 p=4 */
 
 static void test_argon2d_kat(void) {
     uint8_t password[32], salt[16];
@@ -69,7 +69,7 @@ static void test_argon2d_kat(void) {
     CFX_ASSERT(memcmp(hash, expected, 32) == 0);
 }
 
-/* -- KAT: argon2i  0x01*32 / 0x02*16 / m=32 t=3 p=4 ------------ */
+/* KAT: argon2i  0x01*32 / 0x02*16 / m=32 t=3 p=4 */
 
 static void test_argon2i_kat(void) {
     uint8_t password[32], salt[16];
@@ -92,7 +92,7 @@ static void test_argon2i_kat(void) {
     CFX_ASSERT(memcmp(hash, expected, 32) == 0);
 }
 
-/* -- KAT: argon2id 0x01*32 / 0x02*16 / m=32 t=3 p=4 ------------ */
+/* KAT: argon2id 0x01*32 / 0x02*16 / m=32 t=3 p=4 */
 
 static void test_argon2id_kat(void) {
     uint8_t password[32], salt[16];
@@ -115,7 +115,7 @@ static void test_argon2id_kat(void) {
     CFX_ASSERT(memcmp(hash, expected, 32) == 0);
 }
 
-/* -- encode + verify round-trip ------------------------------------ */
+/* encode + verify round-trip */
 
 static void test_argon2_encode_verify(void) {
     const char *password = "correcthorsebatterystaple";
@@ -155,7 +155,7 @@ static void test_argon2_encode_verify(void) {
     CFX_ASSERT(rc != 0);
 }
 
-/* -- determinism: same inputs → same hash -------------------------- */
+/* determinism: same inputs → same hash */
 
 static void test_argon2id_deterministic(void) {
     const char *pwd = "determinism";
@@ -173,7 +173,7 @@ static void test_argon2id_deterministic(void) {
     CFX_ASSERT(memcmp(h1, h2, 32) == 0);
 }
 
-/* -- different passwords → different hashes ------------------------ */
+/* different passwords → different hashes */
 
 static void test_argon2id_different_passwords(void) {
     uint8_t salt[16] = {0};
@@ -188,7 +188,7 @@ static void test_argon2id_different_passwords(void) {
     CFX_ASSERT(memcmp(h1, h2, 32) != 0);
 }
 
-/* -- different salts → different hashes ---------------------------- */
+/* different salts → different hashes */
 
 static void test_argon2id_different_salts(void) {
     const char *pwd = "same_password";
@@ -202,7 +202,7 @@ static void test_argon2id_different_salts(void) {
     CFX_ASSERT(memcmp(h1, h2, 32) != 0);
 }
 
-/* -- empty password is valid --------------------------------------- */
+/* empty password is valid */
 
 static void test_argon2id_empty_password(void) {
     uint8_t salt[16] = {0x42};
@@ -212,7 +212,7 @@ static void test_argon2id_empty_password(void) {
     CFX_ASSERT(rc == 0);
 }
 
-/* -- minimum parameters (m=8, t=1, p=1) --------------------------- */
+/* minimum parameters (m=8, t=1, p=1) */
 
 static void test_argon2id_min_params(void) {
     const char *pwd = "test";
@@ -224,7 +224,7 @@ static void test_argon2id_min_params(void) {
     CFX_ASSERT(rc == 0);
 }
 
-/* -- parameter validation ------------------------------------------ */
+/* parameter validation */
 
 static void test_argon2_short_salt_rejected(void) {
     uint8_t hash[32];

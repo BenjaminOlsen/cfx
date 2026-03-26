@@ -4,8 +4,7 @@
 #if CFX_HAVE_AVX2
 #include <immintrin.h>
 
-/* ------------------------------------------------------
- * This are some tests of some tricky transpose logic that's
+/* This are some tests of some tricky transpose logic that's
  * used in the avx2 mm256 chacha20 implementation...
  */
 

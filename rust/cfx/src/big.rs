@@ -247,7 +247,7 @@ impl fmt::Display for Big {
     }
 }
 
-// ============ From implementations ============
+// From implementations
 
 impl From<u64> for Big {
     fn from(v: u64) -> Self {
@@ -271,7 +271,7 @@ impl From<usize> for Big {
     }
 }
 
-// ============ Comparison ============
+// Comparison
 
 impl PartialEq for Big {
     fn eq(&self, other: &Self) -> bool {
@@ -305,7 +305,7 @@ impl PartialEq<u64> for Big {
     }
 }
 
-// ============ Arithmetic (consuming) ============
+// Arithmetic (consuming)
 
 impl Add for Big {
     type Output = Big;
@@ -480,7 +480,7 @@ impl<'a> Rem<u64> for &'a Big {
     }
 }
 
-// ============ Assign variants ============
+// Assign variants
 
 impl AddAssign<&Big> for Big {
     fn add_assign(&mut self, rhs: &Big) {

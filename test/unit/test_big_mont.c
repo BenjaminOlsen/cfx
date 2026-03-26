@@ -181,7 +181,7 @@ static void test_mont_aliasing_safe(void) {
 }
 
 
-/*********************** Montgomery  *******************************/
+/* Montgomery */
 
 static void EXPECT_EQ_BIG(const cfx_big_t *A, const cfx_big_t *B) {
     int cmp = cfx_big_cmp(A, B);
@@ -246,7 +246,7 @@ static void big_shl_limbs_inplace(cfx_big_t *x, size_t L) {
     x->n = newn;
 }
 
-/* ---------- TESTS ---------- */
+/* TESTS */
 /* e==0 => 1 mod n; 0^0 treated as 1; a==1 stays 1; (-1) squared == 1 */
 static void test_modexp_binary_trivial(void) {
     cfx_srand(12345);

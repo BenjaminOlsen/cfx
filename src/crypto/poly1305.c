@@ -37,7 +37,6 @@ typedef struct {
     uint8_t done;           /* After cfx_poly1305_finish(state, tag), the Poly1305 key must never be reused */
 } cfx_poly1305_state_t;
 
-/* ---------------------------------------------------------------------------------------------------- */
 /* The amazing poly1305 message authenticator algorithm - shamelessly plagiarized from libsodium.
 
    the '1305' comes from  p = 2^130 - 5, so we can do some tricks:
@@ -217,7 +216,6 @@ CFX_INLINE void cfx_poly1305_block(
     *h3 = H3;
     *h4 = H4;
 }
-
 
 
 /* process 2 blocks at once: acc = ((acc + m1) * r^2 + m2 * r) */
