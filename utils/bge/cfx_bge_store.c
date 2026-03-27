@@ -182,6 +182,7 @@ uint8_t *store_rm(const uint8_t *pt, size_t pt_len, const char *name, size_t *ne
 /* swap two entries by 1-based index. returns new malloc'd buf, or NULL on error. */
 uint8_t *store_swap(const uint8_t *pt, size_t pt_len,
                     unsigned idx_a, unsigned idx_b, size_t *new_len) {
+
     if (idx_a == idx_b || idx_a == 0 || idx_b == 0) {
         fprintf(stderr, "error: swap requires two distinct positive indices\n");
         return NULL;

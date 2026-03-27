@@ -475,7 +475,8 @@ int bge_decrypt_file(int argc, char **argv) {
         }
 
         uint8_t kdf_out[48];
-        int rc = cfx_argon2id(kdf_out, 48,
+        /* v3 streaming files always used legacy argon2 */
+        int rc = bge_argon2_legacy(kdf_out, 48,
             (const uint8_t *)pwd, (size_t)pwd_len,
             hdr.salt, sizeof(hdr.salt), m_cost, t_cost, p);
         cfx_memzero_s(pwd, sizeof(pwd));
@@ -566,7 +567,7 @@ int bge_decrypt_file(int argc, char **argv) {
     }
 
     uint8_t version = file_buf[3];
-    if (version != BGE_VERSION && version != BGE_STREAM_VERSION) {
+    if (version != BGE_VERSION && version != BGE_VERSION_LEGACY && version != BGE_STREAM_VERSION) {
         fprintf(stderr, "error: unsupported BGE version %u\n", version);
         goto fail;
     }
@@ -595,9 +596,15 @@ int bge_decrypt_file(int argc, char **argv) {
     }
 
     uint8_t kdf_out[48];
-    rc = cfx_argon2id(kdf_out, 48,
-        (const uint8_t *)pwd, (size_t)pwd_len,
-        hdr.salt, sizeof(hdr.salt), m_cost, t_cost, p);
+    if (version == BGE_VERSION_LEGACY || version == BGE_STREAM_VERSION) {
+        rc = bge_argon2_legacy(kdf_out, 48,
+            (const uint8_t *)pwd, (size_t)pwd_len,
+            hdr.salt, sizeof(hdr.salt), m_cost, t_cost, p);
+    } else {
+        rc = cfx_argon2id(kdf_out, 48,
+            (const uint8_t *)pwd, (size_t)pwd_len,
+            hdr.salt, sizeof(hdr.salt), m_cost, t_cost, p);
+    }
     cfx_memzero_s(pwd, sizeof(pwd));
     if (rc != 0) {
         fprintf(stderr, "error: argon2 key derivation failed\n");

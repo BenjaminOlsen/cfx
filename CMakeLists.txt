@@ -71,7 +71,6 @@ set(CFX_HEADERS
     include/cfx/sc25519.h
     include/cfx/macros.h
     include/cfx/memory.h
-    include/cfx/mlkem.h
     include/cfx/mont.h
     include/cfx/ntt.h
     include/cfx/poly1271.h
