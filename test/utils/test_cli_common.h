@@ -9,7 +9,19 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+#ifdef _MSC_VER
+#  include <io.h>
+#  include <fcntl.h>
+#  define dup    _dup
+#  define dup2   _dup2
+#  define close  _close
+#  define fileno _fileno
+#  ifndef STDOUT_FILENO
+#    define STDOUT_FILENO 1
+#  endif
+#else
+#  include <unistd.h>
+#endif
 
 /* ---- stdout capture */
 
