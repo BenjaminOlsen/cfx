@@ -1330,7 +1330,7 @@ static int store_cmd_info(int argc, char **argv) {
                    (i == us.u.v4.matched_slot) ? " (authenticated)" : "");
         }
     } else {
-        printf("Version: 2\n");
+        printf("Version: %d\n", us.version);
         uint32_t m_cost = cfx_load32_le(&us.u.v2.hdr.m_cost);
         uint32_t t_cost = cfx_load32_le(&us.u.v2.hdr.t_cost);
         uint32_t p_cost = cfx_load32_le(&us.u.v2.hdr.p_cost);
