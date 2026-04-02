@@ -91,10 +91,10 @@ static int get_tty(char *buf, size_t bufsz) {
 #else
     const char *t = ttyname(STDIN_FILENO);
     if (!t) return -1;
-    size_t len = strlen(t);
-    if (len >= bufsz) return -1;
-    memcpy(buf, t, len);
-    /* rest is already zeroed by caller */
+    struct stat st;
+    if (stat(t, &st) != 0) return -1;
+    int n = snprintf(buf, bufsz, "%s:%llu", t, (unsigned long long)st.st_ino);
+    if (n < 0 || (size_t)n >= bufsz) return -1;
     return 0;
 #endif
 }
