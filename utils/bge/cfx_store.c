@@ -45,6 +45,7 @@ static void usage(const char *prog) {
     printf("  slot add [-s path]               Add a passphrase slot (migrates v2 to v4)\n");
     printf("  slot rm  [N] [-s path]           Remove slot N (1-based, default: matched)\n");
     printf("  rekey    [-s path]               Generate new DEK, re-wrap all slots\n");
+    printf("  merge    <from> [-s path]         Merge entries from another store\n");
     printf("\nCommon options:\n");
     printf("  -p, --passphrase <pw>  Supply passphrase on command line (default: prompt)\n");
     printf("  -s, --store <path>     Path to BGE store (default: ~/.cfx/secrets.bge)\n");
@@ -2004,6 +2005,163 @@ static int store_cmd_rekey(int argc, char **argv) {
     return rc != 0;
 }
 
+static int store_cmd_merge(int argc, char **argv) {
+    const char *src_path = NULL;
+    const char *dst_path = NULL;
+    char dst_buf[1024];
+    int skip_existing = 0;
+
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: %s merge <from_store> [-s target_store] [--skip-existing]\n", argv[0]);
+            printf("Merge entries from <from_store> into the target store.\n");
+            printf("Conflicting keys are overwritten unless --skip-existing is set.\n");
+            return 0;
+        } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--store") == 0) {
+            if (i + 1 >= argc) { fprintf(stderr, "error: -s requires a path\n"); return 1; }
+            dst_path = argv[++i];
+        } else if (strcmp(argv[i], "--skip-existing") == 0) {
+            skip_existing = 1;
+        } else if (!src_path) {
+            src_path = argv[i];
+        } else {
+            fprintf(stderr, "error: unknown argument: %s\n", argv[i]);
+            return 1;
+        }
+    }
+
+    if (!src_path) {
+        fprintf(stderr, "error: merge requires a source store path\n");
+        return 1;
+    }
+
+    if (!dst_path) {
+        if (bge_default_path(dst_buf, sizeof(dst_buf)) != 0) return 1;
+        dst_path = dst_buf;
+    }
+
+    /* open source store */
+    printf("Source: %s\n", src_path);
+    char src_pwd[256] = {0};
+    int src_pwd_len = bge_read_passphrase("Enter source passphrase: ", src_pwd, sizeof(src_pwd));
+    if (src_pwd_len <= 0) {
+        fprintf(stderr, "error: passphrase required\n");
+        cfx_memzero_s(src_pwd, sizeof(src_pwd));
+        return 1;
+    }
+
+    bge_ustore src_us = {0};
+    int rc = bge_uauthenticate(src_path, src_pwd, (size_t)src_pwd_len, &src_us);
+    cfx_memzero_s(src_pwd, sizeof(src_pwd));
+    if (rc != 0) return 1;
+
+    uint8_t *src_pt = NULL;
+    size_t src_pt_len = 0;
+    rc = bge_udecrypt(&src_us, &src_pt, &src_pt_len);
+    bge_ustore_wipe(&src_us);
+    if (rc != 0) return 1;
+
+    /* open target store */
+    printf("Target: %s\n", dst_path);
+    char dst_pwd[256] = {0};
+    int dst_pwd_len = bge_read_passphrase("Enter target passphrase: ", dst_pwd, sizeof(dst_pwd));
+    if (dst_pwd_len <= 0) {
+        fprintf(stderr, "error: passphrase required\n");
+        cfx_memzero_s(dst_pwd, sizeof(dst_pwd));
+        cfx_memzero_s(src_pt, src_pt_len);
+        free(src_pt);
+        return 1;
+    }
+
+    bge_ustore dst_us = {0};
+    rc = bge_uauthenticate(dst_path, dst_pwd, (size_t)dst_pwd_len, &dst_us);
+    cfx_memzero_s(dst_pwd, sizeof(dst_pwd));
+    if (rc != 0) {
+        cfx_memzero_s(src_pt, src_pt_len);
+        free(src_pt);
+        return 1;
+    }
+
+    uint8_t *dst_pt = NULL;
+    size_t dst_pt_len = 0;
+    rc = bge_udecrypt(&dst_us, &dst_pt, &dst_pt_len);
+    if (rc != 0) {
+        bge_ustore_wipe(&dst_us);
+        cfx_memzero_s(src_pt, src_pt_len);
+        free(src_pt);
+        return 1;
+    }
+
+    /* iterate source entries, merge into target */
+    unsigned added = 0, skipped = 0, overwritten = 0;
+    const uint8_t *p = src_pt;
+    const uint8_t *end = src_pt + src_pt_len;
+
+    while (p + 2 <= end) {
+        uint16_t klen = cfx_load16_le(p);
+        p += 2;
+        if (p + klen > end) break;
+        const uint8_t *key = p;
+        p += klen;
+        if (p + 4 > end) break;
+        uint32_t vlen = cfx_load32_le(p);
+        p += 4;
+        if (p + vlen > end) break;
+        const uint8_t *val = p;
+        p += vlen;
+
+        /* null-terminate key name for store_get/store_set */
+        char name[512];
+        if (klen >= sizeof(name)) continue;
+        memcpy(name, key, klen);
+        name[klen] = '\0';
+
+        int exists = (store_get(dst_pt, dst_pt_len, name, NULL) != NULL);
+
+        if (exists && skip_existing) {
+            printf("  skip: %s (exists)\n", name);
+            skipped++;
+            continue;
+        }
+
+        size_t new_len;
+        uint8_t *new_pt = store_set(dst_pt, dst_pt_len, name, val, vlen, &new_len);
+        if (!new_pt) {
+            fprintf(stderr, "error: failed to merge key '%s'\n", name);
+            continue;
+        }
+
+        cfx_memzero_s(dst_pt, dst_pt_len);
+        free(dst_pt);
+        dst_pt = new_pt;
+        dst_pt_len = new_len;
+
+        if (exists) {
+            printf("  overwrite: %s\n", name);
+            overwritten++;
+        } else {
+            printf("  add: %s\n", name);
+            added++;
+        }
+    }
+
+    /* write back */
+    rc = bge_uwrite(dst_path, dst_pt, dst_pt_len, &dst_us);
+
+    cfx_memzero_s(dst_pt, dst_pt_len);
+    free(dst_pt);
+    cfx_memzero_s(src_pt, src_pt_len);
+    free(src_pt);
+    bge_ustore_wipe(&dst_us);
+
+    if (rc == 0) {
+        grace_delete();
+        printf("Merged: %u added, %u overwritten, %u skipped\n",
+               added, overwritten, skipped);
+    }
+    return rc != 0;
+}
+
 int cfx_store_run(int argc, char **argv) {
     g_passphrase_arg = NULL;
 
@@ -2054,6 +2212,7 @@ int cfx_store_run(int argc, char **argv) {
     if (strcmp(cmd, "dump")   == 0) return store_cmd_dump(argc, argv);
     if (strcmp(cmd, "slot")   == 0) return store_slot(argc, argv);
     if (strcmp(cmd, "rekey")  == 0) return store_cmd_rekey(argc, argv);
+    if (strcmp(cmd, "merge")  == 0) return store_cmd_merge(argc, argv);
 
     fprintf(stderr, "Unknown command: %s\n", cmd);
     usage(argv[0]);

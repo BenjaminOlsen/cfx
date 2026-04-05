@@ -16,6 +16,7 @@ static void print_help(const char* prog) {
     printf("  -m <KB>      Memory cost in KB (default: 65536 = 64MB)\n");
     printf("  -t <N>       Time cost / iterations (default: 3)\n");
     printf("  -p <N>       Parallelism / lanes (default: 4)\n");
+    printf("  -s <hex>     Salt as hex string (default: 16 random bytes)\n");
     printf("  -v <encoded> Verify password against encoded hash\n");
     printf("  -h, --help   Show this help\n\n");
     printf("If password is omitted, reads from stdin (recommended).\n\n");
@@ -43,6 +44,7 @@ int cfx_argon2_run(int argc, char** argv) {
     uint32_t p_cost = 4;
     const char* verify_encoded = NULL;
     const char* password = NULL;
+    const char* salt_hex = NULL;
 
     /* parse arguments */
     for (int i = 1; i < argc; i++) {
@@ -79,6 +81,12 @@ int cfx_argon2_run(int argc, char** argv) {
                 fprintf(stderr, "Error: parallelism must be at least 1\n");
                 return 1;
             }
+        } else if (strcmp(argv[i], "-s") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: -s requires a hex salt argument\n");
+                return 1;
+            }
+            salt_hex = argv[++i];
         } else if (strcmp(argv[i], "-v") == 0) {
             if (i + 1 >= argc) {
                 fprintf(stderr, "Error: -v requires an encoded hash argument\n");
@@ -123,13 +131,24 @@ int cfx_argon2_run(int argc, char** argv) {
         }
     } else {
         /* hash mode */
-        uint8_t salt[16];
-        cfx_rand_bytes(salt, sizeof(salt));
+        uint8_t salt[64];
+        size_t salt_len = 16;
+        if (salt_hex) {
+            int n = cfx_parse_hex_auto(salt_hex, salt, sizeof(salt));
+            if (n < 8) {
+                fprintf(stderr, "Error: salt must be at least 8 bytes of hex\n");
+                result = 1;
+                goto cleanup;
+            }
+            salt_len = (size_t)n;
+        } else {
+            cfx_rand_bytes(salt, salt_len);
+        }
 
         uint8_t hash[32];
         int rc = cfx_argon2id(hash, sizeof(hash),
                               (const uint8_t*)password, strlen(password),
-                              salt, sizeof(salt),
+                              salt, salt_len,
                               m_cost, t_cost, p_cost);
 
         if (rc != 0) {
@@ -139,7 +158,7 @@ int cfx_argon2_run(int argc, char** argv) {
             char encoded[256];
             int len = cfx_argon2_encode(encoded, sizeof(encoded),
                                         hash, sizeof(hash),
-                                        salt, sizeof(salt),
+                                        salt, salt_len,
                                         m_cost, t_cost, p_cost,
                                         CFX_ARGON2ID);
             if (len < 0) {
@@ -156,6 +175,7 @@ int cfx_argon2_run(int argc, char** argv) {
         cfx_memzero_s(salt, sizeof(salt));
     }
 
+cleanup:
     if (stdin_password) {
         cfx_memzero_s(stdin_password, strlen(stdin_password));
         free(stdin_password);

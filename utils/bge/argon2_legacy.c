@@ -74,29 +74,35 @@ static void leg_fill_block(const leg_block_t *prev, const leg_block_t *ref,
     leg_block_t tmp;
     uint64_t r[BLOCK_QW];
 
-    for (int i = 0; i < BLOCK_QW; i++)
+    for (int i = 0; i < BLOCK_QW; i++) {
         r[i] = prev->v[i] ^ ref->v[i];
+    }
     memcpy(&tmp, r, sizeof(tmp));
 
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 8; i++) {
         leg_permute(&tmp.v[i * 16]);
+    }
 
     /* BUG 2: wrong column stride (j*8+i instead of stride-16 pairs) */
     for (int i = 0; i < 8; i++) {
         uint64_t col[16];
-        for (int j = 0; j < 16; j++)
+        for (int j = 0; j < 16; j++) {
             col[j] = tmp.v[j * 8 + i];
+        }
         leg_permute(col);
-        for (int j = 0; j < 16; j++)
+        for (int j = 0; j < 16; j++) {
             tmp.v[j * 8 + i] = col[j];
+        }
     }
 
     if (do_xor) {
-        for (int i = 0; i < BLOCK_QW; i++)
+        for (int i = 0; i < BLOCK_QW; i++) {
             next->v[i] ^= r[i] ^ tmp.v[i];
+        }
     } else {
-        for (int i = 0; i < BLOCK_QW; i++)
+        for (int i = 0; i < BLOCK_QW; i++) {
             next->v[i] = r[i] ^ tmp.v[i];
+        }
     }
 
     cfx_memzero_s(r, sizeof(r));
@@ -238,21 +244,33 @@ int bge_argon2_legacy(uint8_t *out, size_t outlen,
     /* H0 — identical to correct implementation */
     uint8_t h0[64];
     {
-        cfx_blake2b_ctx_t ctx;
+        cfx_blake2b_ctx_t ctx; 
         uint8_t buf[4];
         cfx_blake2b_init(&ctx, 64);
-        cfx_store32_le(buf, p);             cfx_blake2b_update(&ctx, buf, 4);
-        cfx_store32_le(buf, (uint32_t)outlen); cfx_blake2b_update(&ctx, buf, 4);
-        cfx_store32_le(buf, m);             cfx_blake2b_update(&ctx, buf, 4);
-        cfx_store32_le(buf, t);             cfx_blake2b_update(&ctx, buf, 4);
-        cfx_store32_le(buf, VERSION);       cfx_blake2b_update(&ctx, buf, 4);
-        cfx_store32_le(buf, 2);             cfx_blake2b_update(&ctx, buf, 4);
-        cfx_store32_le(buf, (uint32_t)pwdlen); cfx_blake2b_update(&ctx, buf, 4);
-        if (pwdlen > 0) cfx_blake2b_update(&ctx, pwd, pwdlen);
-        cfx_store32_le(buf, (uint32_t)saltlen); cfx_blake2b_update(&ctx, buf, 4);
+        cfx_store32_le(buf, p);
+        cfx_blake2b_update(&ctx, buf, 4);
+        cfx_store32_le(buf, (uint32_t)outlen);
+        cfx_blake2b_update(&ctx, buf, 4);
+        cfx_store32_le(buf, m);
+        cfx_blake2b_update(&ctx, buf, 4);
+        cfx_store32_le(buf, t);
+        cfx_blake2b_update(&ctx, buf, 4);
+        cfx_store32_le(buf, VERSION);
+        cfx_blake2b_update(&ctx, buf, 4);
+        cfx_store32_le(buf, 2);
+        cfx_blake2b_update(&ctx, buf, 4);
+        cfx_store32_le(buf, (uint32_t)pwdlen);
+        cfx_blake2b_update(&ctx, buf, 4);
+        if (pwdlen > 0) {
+            cfx_blake2b_update(&ctx, pwd, pwdlen);
+        }
+        cfx_store32_le(buf, (uint32_t)saltlen);
+        cfx_blake2b_update(&ctx, buf, 4);
         cfx_blake2b_update(&ctx, salt, saltlen);
-        cfx_store32_le(buf, 0); cfx_blake2b_update(&ctx, buf, 4);
-        cfx_store32_le(buf, 0); cfx_blake2b_update(&ctx, buf, 4);
+        cfx_store32_le(buf, 0);
+        cfx_blake2b_update(&ctx, buf, 4);
+        cfx_store32_le(buf, 0);
+        cfx_blake2b_update(&ctx, buf, 4);
         cfx_blake2b_final(&ctx, h0);
     }
 
@@ -278,8 +296,9 @@ int bge_argon2_legacy(uint8_t *out, size_t outlen,
     memcpy(&fin, &c.mem[c.lane_len - 1], sizeof(leg_block_t));
     for (uint32_t lane = 1; lane < p; lane++) {
         uint32_t last = lane * c.lane_len + c.lane_len - 1;
-        for (int i = 0; i < BLOCK_QW; i++)
+        for (int i = 0; i < BLOCK_QW; i++) {
             fin.v[i] ^= c.mem[last].v[i];
+        }
     }
 
     leg_hash_long(out, outlen, (uint8_t *)fin.v, BLOCK_SZ);

@@ -64,7 +64,7 @@ uint8_t *store_set(const uint8_t *pt, size_t pt_len, const char *name,
                    const uint8_t *val, size_t val_len, size_t *new_len) {
     size_t nlen = strlen(name);
 
-    /* size of new entry: 2 + nlen + 4 + val_len */
+    /* [uint16_le name_len] [name bytes] [uint32_le value_len] [value bytes] */
     size_t entry_len = 2 + nlen + 4 + val_len;
 
     /* scan for existing entry */

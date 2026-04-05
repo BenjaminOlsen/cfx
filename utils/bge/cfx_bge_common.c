@@ -78,7 +78,7 @@ int bge_read_all(FILE *f, uint8_t **out, size_t *out_len) {
             if (newcap > BGE_READ_MAX) newcap = BGE_READ_MAX;
             if (newcap <= cap) {
                 if (buf) { cfx_memzero_s(buf, cap); free(buf); }
-                fprintf(stderr, "error: input exceeds 16 MB limit\n");
+                fprintf(stderr, "error: input exceeds 128 MB limit\n");
                 return -1;
             }
             uint8_t *tmp = realloc(buf, newcap);
