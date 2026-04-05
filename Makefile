@@ -1,16 +1,12 @@
-# convenience Makefile - wraps CMake (C) and Cargo (Rust) and docker/QEMU (ARM) things
 
 BUILD_DIR = build
 BUILD_DIR_COV = build-cov
-RUST_DIR = rust/cfx
 
 .PHONY: all release debug test install utils coverage benchmark clean help
-.PHONY: rust rust-release rust-test rust-clean all-test all-clean
-.PHONY: arm-test arm-m4-test arm-m4-build arm-m4-shell arm-neon-test arm-neon-build arm-neon-shell
+.PHONY: arm-m4-test arm-m4-build arm-m4-shell
 
 all: release
 
-# C Library (CMake)
 
 release:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~
@@ -52,9 +48,7 @@ benchmark:
 clean:
 	rm -rf $(BUILD_DIR) $(BUILD_DIR_COV)
 
-# ARM Testing (Docker + QEMU)
-
-arm-test: arm-m4-test arm-neon-test
+# ARM
 
 arm-m4-build:
 	docker build -t cfx-cortex-m4 docker/cortex-m4/
@@ -68,39 +62,11 @@ arm-m4-shell:
 	docker build -t cfx-cortex-m4 docker/cortex-m4/
 	docker run --rm -it -v $(CURDIR):/cfx cfx-cortex-m4 shell
 
-arm-neon-build:
-	docker build -t cfx-arm-neon docker/arm-neon/
-	docker run --rm -v $(CURDIR):/cfx cfx-arm-neon build
-
-arm-neon-test:
-	docker build -t cfx-arm-neon docker/arm-neon/
-	docker run --rm -v $(CURDIR):/cfx cfx-arm-neon test
-
-arm-neon-shell:
-	docker build -t cfx-arm-neon docker/arm-neon/
-	docker run --rm -it -v $(CURDIR):/cfx cfx-arm-neon shell
-
-# Rust Bindings (Cargo)
-
-rust:
-	cd $(RUST_DIR) && cargo build
-
-rust-release:
-	cd $(RUST_DIR) && cargo build --release
-
-rust-test:
-	cd $(RUST_DIR) && cargo test
-
-rust-clean:
-	cd $(RUST_DIR) && cargo clean
-
-# Combined
-
-all-test: test rust-test
-
-all-clean: clean rust-clean
-
 # Help
+
+all-test: test arm-m4-test
+
+all-clean: clean
 
 help:
 	@echo "C Library (CMake):"
@@ -114,20 +80,10 @@ help:
 	@echo "  clean          Remove build directories"
 	@echo ""
 	@echo "ARM Testing (Docker + QEMU):"
-	@echo "  arm-test       Run all ARM tests (M4 + NEON)"
-	@echo "  arm-m4-test    Build and test Cortex-M4 (bare-metal)"
+	@echo "  arm-m4-test    Build and test Cortex-M4 (bare-metal, QEMU)"
 	@echo "  arm-m4-build   Build only for Cortex-M4"
 	@echo "  arm-m4-shell   Interactive Cortex-M4 shell"
-	@echo "  arm-neon-test  Build and test ARM NEON (ARMv7 + AArch64)"
-	@echo "  arm-neon-build Build only for ARM NEON"
-	@echo "  arm-neon-shell Interactive ARM NEON shell"
-	@echo ""
-	@echo "Rust Bindings (Cargo):"
-	@echo "  rust           Build debug"
-	@echo "  rust-release   Build release"
-	@echo "  rust-test      Run Rust tests"
-	@echo "  rust-clean     Clean Rust build"
 	@echo ""
 	@echo "Combined:"
-	@echo "  all-test       Run all tests (C + Rust)"
+	@echo "  all-test       Run all tests (C + ARM M4)"
 	@echo "  all-clean      Clean everything"
