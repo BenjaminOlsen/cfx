@@ -42,7 +42,7 @@ static void usage(const char *prog) {
     printf("  dump   [-s path]                 Print all secrets to stdout\n");
     printf("\nMulti-password (slot) commands:\n");
     printf("  slot ls  [-s path]               List slots and Argon2 params (no passphrase)\n");
-    printf("  slot add [-s path]               Add a passphrase slot (migrates v2 to v4)\n");
+    printf("  slot add [-s path]               Add a passphrase slot\n");
     printf("  slot rm  [N] [-s path]           Remove slot N (1-based, default: matched)\n");
     printf("  rekey    [-s path]               Generate new DEK, re-wrap all slots\n");
     printf("  merge    <from> [-s path]         Merge entries from another store\n");
@@ -104,8 +104,8 @@ static int store_init(int argc, char **argv) {
     int pwd_len = prompt_passphrase(pwd, sizeof(pwd));
     if (pwd_len < 0) return 1;
 
-    int rc = bge_encrypt_write(path, NULL, 0, pwd, (size_t)pwd_len,
-                               BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P);
+    int rc = bge_v4_init_write(path, NULL, 0, pwd, (size_t)pwd_len,
+                              BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P);
     cfx_memzero_s(pwd, sizeof(pwd));
 
     if (rc == 0) {
@@ -1321,22 +1321,13 @@ static int store_cmd_info(int argc, char **argv) {
 
     printf("Entries: %u\n", count);
 
-    if (us.version == BGE_V4_VERSION) {
-        printf("Version: 4 (multi-password)\n");
-        int sc = us.u.v4.hdr.slot_count;
-        printf("Slots:   %d\n", sc);
-        for (int i = 0; i < sc; i++) {
-            const bge_v4_slot *s = &us.u.v4.slots[i];
-            printf("  [%d] m=%u KB, t=%u, p=%u%s\n",
-                   i + 1, s->m_cost, s->t_cost, s->p_cost,
-                   (i == us.u.v4.matched_slot) ? " (authenticated)" : "");
-        }
-    } else {
-        printf("Version: %d\n", us.version);
-        uint32_t m_cost = cfx_load32_le(&us.u.v2.hdr.m_cost);
-        uint32_t t_cost = cfx_load32_le(&us.u.v2.hdr.t_cost);
-        uint32_t p_cost = cfx_load32_le(&us.u.v2.hdr.p_cost);
-        printf("Argon2:  m=%u KB, t=%u, p=%u\n", m_cost, t_cost, p_cost);
+    int sc = us.v4.hdr.slot_count;
+    printf("Slots:   %d\n", sc);
+    for (int i = 0; i < sc; i++) {
+        const bge_v4_slot *s = &us.v4.slots[i];
+        printf("  [%d] m=%u KB, t=%u, p=%u%s\n",
+               i + 1, s->m_cost, s->t_cost, s->p_cost,
+               (i == us.v4.matched_slot) ? " (authenticated)" : "");
     }
 
     bge_ustore_wipe(&us);
@@ -1396,30 +1387,23 @@ static int store_cmd_passwd(int argc, char **argv) {
         return 1;
     }
 
-    if (us.version == BGE_V4_VERSION) {
-        /* v4: re-wrap DEK for matched slot, keep other slots as-is */
-        bge_v4_store *s4 = &us.u.v4;
-        int mi = s4->matched_slot;
+    /* re-wrap DEK for matched slot, keep other slots as-is */
+    bge_v4_store *s4 = &us.v4;
+    int mi = s4->matched_slot;
 
-        rc = bge_v4_wrap_dek(new_pwd, (size_t)new_len,
-                             BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P,
-                             s4->dek, &s4->slots[mi]);
-        cfx_memzero_s(new_pwd, sizeof(new_pwd));
-        if (rc != 0) {
-            cfx_memzero_s(pt, pt_len);
-            free(pt);
-            bge_ustore_wipe(&us);
-            return 1;
-        }
-
-        rc = bge_v4_encrypt_write(path, pt, pt_len,
-                                  &s4->hdr, s4->slots, s4->hdr.slot_count, s4->dek);
-    } else {
-        /* v2: full re-encrypt with new password */
-        rc = bge_encrypt_write(path, pt, pt_len, new_pwd, (size_t)new_len,
-                               BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P);
-        cfx_memzero_s(new_pwd, sizeof(new_pwd));
+    rc = bge_v4_wrap_dek(new_pwd, (size_t)new_len,
+                         BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P,
+                         s4->dek, &s4->slots[mi]);
+    cfx_memzero_s(new_pwd, sizeof(new_pwd));
+    if (rc != 0) {
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        return 1;
     }
+
+    rc = bge_v4_encrypt_write(path, pt, pt_len,
+                              &s4->hdr, s4->slots, s4->hdr.slot_count, s4->dek);
 
     cfx_memzero_s(pt, pt_len);
     free(pt);
@@ -1535,51 +1519,34 @@ static int store_slot_ls(int argc, char **argv) {
         return 1;
     }
 
-    uint8_t version = file_buf[3];
+    if (file_buf[3] != BGE_STORE_VERSION || file_len < BGE_STORE_HDR_LEN) {
+        fprintf(stderr, "error: not a valid BGE store\n");
+        free(file_buf);
+        return 1;
+    }
 
-    if (version == BGE_V4_VERSION) {
-        if (file_len < BGE_V4_FIXED_HDR_LEN) {
-            fprintf(stderr, "error: truncated v4 header\n");
-            free(file_buf);
-            return 1;
-        }
-        bge_v4_fixed_header hdr;
-        memcpy(&hdr, file_buf, BGE_V4_FIXED_HDR_LEN);
-        int sc = hdr.slot_count;
-        if (sc < 1 || sc > BGE_V4_MAX_SLOTS) {
-            fprintf(stderr, "error: invalid slot count %d\n", sc);
-            free(file_buf);
-            return 1;
-        }
+    bge_v4_fixed_header hdr;
+    memcpy(&hdr, file_buf, BGE_STORE_HDR_LEN);
+    int sc = hdr.slot_count;
+    if (sc < 1 || sc > BGE_STORE_MAX_SLOTS) {
+        fprintf(stderr, "error: invalid slot count %d\n", sc);
+        free(file_buf);
+        return 1;
+    }
 
-        printf("Version: 4 (multi-password)\n");
-        printf("Slots:   %d\n", sc);
+    printf("Slots: %d\n", sc);
 
-        const uint8_t *sp = file_buf + BGE_V4_FIXED_HDR_LEN;
-        for (int i = 0; i < sc; i++) {
-            if ((size_t)(sp - file_buf) + BGE_V4_SLOT_LEN > file_len) {
-                fprintf(stderr, "error: truncated slot %d\n", i);
-                break;
-            }
-            bge_v4_slot slot;
-            bge_v4_slot_from_buf(&slot, sp);
-            printf("  [%d] m=%u KB, t=%u, p=%u\n",
-                   i + 1, slot.m_cost, slot.t_cost, slot.p_cost);
-            sp += BGE_V4_SLOT_LEN;
+    const uint8_t *sp = file_buf + BGE_STORE_HDR_LEN;
+    for (int i = 0; i < sc; i++) {
+        if ((size_t)(sp - file_buf) + BGE_STORE_SLOT_LEN > file_len) {
+            fprintf(stderr, "error: truncated slot %d\n", i);
+            break;
         }
-    } else if (version == BGE_VERSION) {
-        printf("Version: %u (single password)\n", version);
-        printf("Slots:   1\n");
-        if (file_len >= BGE_HEADER_LEN) {
-            bge_header hdr;
-            memcpy(&hdr, file_buf, sizeof(hdr));
-            uint32_t m = cfx_load32_le(&hdr.m_cost);
-            uint32_t t = cfx_load32_le(&hdr.t_cost);
-            uint32_t p = cfx_load32_le(&hdr.p_cost);
-            printf("  [1] m=%u KB, t=%u, p=%u\n", m, t, p);
-        }
-    } else {
-        printf("Version: %u (unknown)\n", version);
+        bge_v4_slot slot;
+        bge_v4_slot_from_buf(&slot, sp);
+        printf("  [%d] m=%u KB, t=%u, p=%u\n",
+               i + 1, slot.m_cost, slot.t_cost, slot.p_cost);
+        sp += BGE_STORE_SLOT_LEN;
     }
 
     free(file_buf);
@@ -1625,9 +1592,8 @@ static int store_slot_add(int argc, char **argv) {
     }
 
     /* check max slots before doing any more work */
-    if (us.version == BGE_V4_VERSION &&
-        us.u.v4.hdr.slot_count >= BGE_V4_MAX_SLOTS) {
-        fprintf(stderr, "error: maximum %d slots reached\n", BGE_V4_MAX_SLOTS);
+    if (us.v4.hdr.slot_count >= BGE_STORE_MAX_SLOTS) {
+        fprintf(stderr, "error: maximum %d slots reached\n", BGE_STORE_MAX_SLOTS);
         cfx_memzero_s(pwd, sizeof(pwd));
         bge_ustore_wipe(&us);
         return 1;
@@ -1655,86 +1621,32 @@ static int store_slot_add(int argc, char **argv) {
         return 1;
     }
 
-    if (us.version == BGE_V4_VERSION) {
-        /* already v4: append a slot */
-        bge_v4_store *s4 = &us.u.v4;
-        int sc = s4->hdr.slot_count;
+    bge_v4_store *s4 = &us.v4;
+    int sc = s4->hdr.slot_count;
 
-        /* wrap DEK with new password */
-        rc = bge_v4_wrap_dek(new_pwd, (size_t)new_len,
-                             BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P,
-                             s4->dek, &s4->slots[sc]);
-        cfx_memzero_s(new_pwd, sizeof(new_pwd));
-        cfx_memzero_s(pwd, sizeof(pwd));
-        if (rc != 0) {
-            cfx_memzero_s(pt, pt_len);
-            free(pt);
-            bge_ustore_wipe(&us);
-            return 1;
-        }
-
-        s4->hdr.slot_count = (uint8_t)(sc + 1);
-        rc = bge_v4_encrypt_write(path, pt, pt_len,
-                                  &s4->hdr, s4->slots, sc + 1, s4->dek);
-    } else {
-        /* v2 -> v4 migration */
-        bge_v4_fixed_header hdr;
-        memcpy(hdr.magic, BGE_MAGIC, 3);
-        hdr.version = BGE_V4_VERSION;
-        hdr.slot_count = 2;
-        memset(hdr.reserved, 0, sizeof(hdr.reserved));
-
-        /* generate random DEK */
-        uint8_t dek[BGE_V4_DEK_LEN];
-        cfx_srand_os();
-        cfx_rand_bytes(dek, sizeof(dek));
-
-        bge_v4_slot slots[2];
-        memset(slots, 0, sizeof(slots));
-
-        /* slot 0: wrap DEK under existing password */
-        rc = bge_v4_wrap_dek(pwd, (size_t)pwd_len,
-                             BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P,
-                             dek, &slots[0]);
-        cfx_memzero_s(pwd, sizeof(pwd));
-        if (rc != 0) {
-            cfx_memzero_s(new_pwd, sizeof(new_pwd));
-            cfx_memzero_s(dek, sizeof(dek));
-            cfx_memzero_s(pt, pt_len);
-            free(pt);
-            bge_ustore_wipe(&us);
-            return 1;
-        }
-
-        /* slot 1: wrap DEK under new password */
-        rc = bge_v4_wrap_dek(new_pwd, (size_t)new_len,
-                             BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P,
-                             dek, &slots[1]);
-        cfx_memzero_s(new_pwd, sizeof(new_pwd));
-        if (rc != 0) {
-            cfx_memzero_s(dek, sizeof(dek));
-            cfx_memzero_s(pt, pt_len);
-            free(pt);
-            bge_ustore_wipe(&us);
-            return 1;
-        }
-
-        rc = bge_v4_encrypt_write(path, pt, pt_len, &hdr, slots, 2, dek);
-        cfx_memzero_s(dek, sizeof(dek));
-        cfx_memzero_s(slots, sizeof(slots));
+    /* wrap DEK with new password */
+    rc = bge_v4_wrap_dek(new_pwd, (size_t)new_len,
+                         BGE_DEFAULT_M, BGE_DEFAULT_T, BGE_DEFAULT_P,
+                         s4->dek, &s4->slots[sc]);
+    cfx_memzero_s(new_pwd, sizeof(new_pwd));
+    cfx_memzero_s(pwd, sizeof(pwd));
+    if (rc != 0) {
+        cfx_memzero_s(pt, pt_len);
+        free(pt);
+        bge_ustore_wipe(&us);
+        return 1;
     }
 
-    int was_v4 = (us.version == BGE_V4_VERSION);
+    s4->hdr.slot_count = (uint8_t)(sc + 1);
+    rc = bge_v4_encrypt_write(path, pt, pt_len,
+                              &s4->hdr, s4->slots, sc + 1, s4->dek);
 
     cfx_memzero_s(pt, pt_len);
     free(pt);
     bge_ustore_wipe(&us);
 
-    if (rc == 0) {
+    if (rc == 0)
         printf("Slot added.\n");
-        if (!was_v4)
-            printf("Store migrated from v2 to v4.\n");
-    }
     return rc != 0;
 }
 
@@ -1777,13 +1689,7 @@ static int store_slot_rm(int argc, char **argv) {
     cfx_memzero_s(pwd, sizeof(pwd));
     if (rc != 0) return 1;
 
-    if (us.version != BGE_V4_VERSION) {
-        fprintf(stderr, "error: slot rm requires a v4 store (use 'slot add' first)\n");
-        bge_ustore_wipe(&us);
-        return 1;
-    }
-
-    bge_v4_store *s4 = &us.u.v4;
+    bge_v4_store *s4 = &us.v4;
     int sc = s4->hdr.slot_count;
 
     if (sc <= 1) {
@@ -1868,7 +1774,7 @@ static int store_cmd_rekey(int argc, char **argv) {
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             printf("Usage: %s rekey [-s path]\n", argv[0]);
-            printf("Generate a new DEK and re-wrap all slots. V4 only.\n");
+            printf("Generate a new DEK and re-wrap all slots.\n");
             printf("You will be prompted for each slot's passphrase.\n");
             return 0;
         } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--store") == 0) {
@@ -1899,12 +1805,6 @@ static int store_cmd_rekey(int argc, char **argv) {
     cfx_memzero_s(pwd, sizeof(pwd));
     if (rc != 0) return 1;
 
-    if (us.version != BGE_V4_VERSION) {
-        fprintf(stderr, "error: rekey requires a v4 store (use 'slot add' first)\n");
-        bge_ustore_wipe(&us);
-        return 1;
-    }
-
     uint8_t *pt = NULL;
     size_t pt_len = 0;
     rc = bge_udecrypt(&us, &pt, &pt_len);
@@ -1913,16 +1813,16 @@ static int store_cmd_rekey(int argc, char **argv) {
         return 1;
     }
 
-    bge_v4_store *s4 = &us.u.v4;
+    bge_v4_store *s4 = &us.v4;
     int sc = s4->hdr.slot_count;
 
     /* generate new DEK */
-    uint8_t new_dek[BGE_V4_DEK_LEN];
+    uint8_t new_dek[BGE_STORE_DEK_LEN];
     cfx_srand_os();
     cfx_rand_bytes(new_dek, sizeof(new_dek));
 
     /* for each slot, prompt for that slot's passphrase, verify, re-wrap */
-    bge_v4_slot new_slots[BGE_V4_MAX_SLOTS];
+    bge_v4_slot new_slots[BGE_STORE_MAX_SLOTS];
     memset(new_slots, 0, sizeof(new_slots));
 
     for (int i = 0; i < sc; i++) {

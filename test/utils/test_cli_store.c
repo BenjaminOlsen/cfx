@@ -13,29 +13,31 @@
 
 /* encrypt empty store, decrypt, verify zero-length plaintext */
 static void test_empty_store_roundtrip(void) {
-    size_t blob_len = BGE_AAD_LEN + 0 + BGE_TAG_LEN;
-    uint8_t blob[BGE_AAD_LEN + BGE_TAG_LEN];
+    uint8_t *blob = NULL;
+    size_t blob_len = 0;
 
-    int rc = bge_encrypt_to_buf(blob, blob_len, NULL, 0, PWD, PWD_LEN, T_M, T_T, T_P);
+    int rc = bge_v4_init_to_buf(&blob, &blob_len, NULL, 0, PWD, PWD_LEN, T_M, T_T, T_P);
     CFX_ASSERT(rc == 0);
+    CFX_ASSERT(blob != NULL);
 
     /* verify magic and version */
     CFX_ASSERT(memcmp(blob, BGE_MAGIC, 3) == 0);
-    CFX_ASSERT(blob[3] == BGE_VERSION);
+    CFX_ASSERT(blob[3] == BGE_STORE_VERSION);
 
     /* authenticate and decrypt */
-    bge_store store;
-    rc = bge_authenticate_buf(blob, blob_len, PWD, PWD_LEN, &store);
+    bge_v4_store store;
+    rc = bge_v4_authenticate_buf(blob, blob_len, PWD, PWD_LEN, &store);
     CFX_ASSERT(rc == 0);
 
     uint8_t *pt = NULL;
     size_t pt_len = 0;
-    rc = bge_decrypt_store(&store, &pt, &pt_len);
+    rc = bge_v4_decrypt_store(&store, &pt, &pt_len);
     CFX_ASSERT(rc == 0);
     CFX_ASSERT(pt_len == 0);
 
     free(pt);
-    bge_store_wipe(&store);
+    free(blob);
+    bge_v4_store_wipe(&store);
     printf("[OK] test_empty_store_roundtrip\n");
 }
 
@@ -50,20 +52,19 @@ static void test_kv_roundtrip(void) {
     memcpy(w, "abc123", 6);   w += 6;
     size_t pt_len = (size_t)(w - pt_buf);
 
-    size_t blob_len = BGE_AAD_LEN + pt_len + BGE_TAG_LEN;
-    uint8_t blob[512];
-    CFX_ASSERT(blob_len <= sizeof(blob));
+    uint8_t *blob = NULL;
+    size_t blob_len = 0;
 
-    int rc = bge_encrypt_to_buf(blob, blob_len, pt_buf, pt_len, PWD, PWD_LEN, T_M, T_T, T_P);
+    int rc = bge_v4_init_to_buf(&blob, &blob_len, pt_buf, pt_len, PWD, PWD_LEN, T_M, T_T, T_P);
     CFX_ASSERT(rc == 0);
 
-    bge_store store;
-    rc = bge_authenticate_buf(blob, blob_len, PWD, PWD_LEN, &store);
+    bge_v4_store store;
+    rc = bge_v4_authenticate_buf(blob, blob_len, PWD, PWD_LEN, &store);
     CFX_ASSERT(rc == 0);
 
     uint8_t *pt_out = NULL;
     size_t pt_out_len = 0;
-    rc = bge_decrypt_store(&store, &pt_out, &pt_out_len);
+    rc = bge_v4_decrypt_store(&store, &pt_out, &pt_out_len);
     CFX_ASSERT(rc == 0);
     CFX_ASSERT(pt_out_len == pt_len);
     CFX_ASSERT(memcmp(pt_out, pt_buf, pt_len) == 0);
@@ -76,7 +77,8 @@ static void test_kv_roundtrip(void) {
     CFX_ASSERT(memcmp(val, "abc123", 6) == 0);
 
     free(pt_out);
-    bge_store_wipe(&store);
+    free(blob);
+    bge_v4_store_wipe(&store);
     printf("[OK] test_kv_roundtrip\n");
 }
 
@@ -84,16 +86,18 @@ static void test_kv_roundtrip(void) {
 static void test_wrong_password(void) {
     uint8_t pt[] = "secret";
     size_t pt_len = 6;
-    size_t blob_len = BGE_AAD_LEN + pt_len + BGE_TAG_LEN;
-    uint8_t blob[256];
 
-    int rc = bge_encrypt_to_buf(blob, blob_len, pt, pt_len, PWD, PWD_LEN, T_M, T_T, T_P);
+    uint8_t *blob = NULL;
+    size_t blob_len = 0;
+
+    int rc = bge_v4_init_to_buf(&blob, &blob_len, pt, pt_len, PWD, PWD_LEN, T_M, T_T, T_P);
     CFX_ASSERT(rc == 0);
 
-    bge_store store;
-    rc = bge_authenticate_buf(blob, blob_len, "wrongpwd", 8, &store);
+    bge_v4_store store;
+    rc = bge_v4_authenticate_buf(blob, blob_len, "wrongpwd", 8, &store);
     CFX_ASSERT(rc != 0);
 
+    free(blob);
     printf("[OK] test_wrong_password\n");
 }
 
@@ -101,25 +105,28 @@ static void test_wrong_password(void) {
 static void test_tampered_ciphertext(void) {
     uint8_t pt[] = "secret";
     size_t pt_len = 6;
-    size_t blob_len = BGE_AAD_LEN + pt_len + BGE_TAG_LEN;
-    uint8_t blob[256];
 
-    int rc = bge_encrypt_to_buf(blob, blob_len, pt, pt_len, PWD, PWD_LEN, T_M, T_T, T_P);
+    uint8_t *blob = NULL;
+    size_t blob_len = 0;
+
+    int rc = bge_v4_init_to_buf(&blob, &blob_len, pt, pt_len, PWD, PWD_LEN, T_M, T_T, T_P);
     CFX_ASSERT(rc == 0);
 
-    /* flip a byte in the ciphertext region */
-    blob[BGE_AAD_LEN] ^= 0xff;
+    /* flip a byte in the ciphertext region (after header + slot + nonce) */
+    size_t ct_offset = BGE_STORE_HDR_LEN + BGE_STORE_SLOT_LEN + 24;
+    blob[ct_offset] ^= 0xff;
 
-    bge_store store;
-    rc = bge_authenticate_buf(blob, blob_len, PWD, PWD_LEN, &store);
+    bge_v4_store store;
+    rc = bge_v4_authenticate_buf(blob, blob_len, PWD, PWD_LEN, &store);
     CFX_ASSERT(rc == 0);  /* auth passes (verifier is fine) */
 
     uint8_t *pt_out = NULL;
     size_t pt_out_len = 0;
-    rc = bge_decrypt_store(&store, &pt_out, &pt_out_len);
+    rc = bge_v4_decrypt_store(&store, &pt_out, &pt_out_len);
     CFX_ASSERT(rc != 0);  /* decryption must fail (AEAD tag mismatch) */
 
-    bge_store_wipe(&store);
+    free(blob);
+    bge_v4_store_wipe(&store);
     printf("[OK] test_tampered_ciphertext\n");
 }
 
@@ -154,19 +161,18 @@ static void test_store_set_get_rm(void) {
     CFX_ASSERT(v && vlen == 7 && memcmp(v, "hunter2", 7) == 0);
 
     /* encrypt roundtrip the whole store */
-    size_t blob_len = BGE_AAD_LEN + pt_len + BGE_TAG_LEN;
-    uint8_t *blob = malloc(blob_len);
-    CFX_ASSERT(blob);
-    int rc = bge_encrypt_to_buf(blob, blob_len, pt, pt_len, PWD, PWD_LEN, T_M, T_T, T_P);
+    uint8_t *blob = NULL;
+    size_t blob_len = 0;
+    int rc = bge_v4_init_to_buf(&blob, &blob_len, pt, pt_len, PWD, PWD_LEN, T_M, T_T, T_P);
     CFX_ASSERT(rc == 0);
 
-    bge_store store;
-    rc = bge_authenticate_buf(blob, blob_len, PWD, PWD_LEN, &store);
+    bge_v4_store store;
+    rc = bge_v4_authenticate_buf(blob, blob_len, PWD, PWD_LEN, &store);
     CFX_ASSERT(rc == 0);
 
     uint8_t *dec = NULL;
     size_t dec_len = 0;
-    rc = bge_decrypt_store(&store, &dec, &dec_len);
+    rc = bge_v4_decrypt_store(&store, &dec, &dec_len);
     CFX_ASSERT(rc == 0);
     CFX_ASSERT(dec_len == pt_len);
     CFX_ASSERT(memcmp(dec, pt, pt_len) == 0);
@@ -182,7 +188,7 @@ static void test_store_set_get_rm(void) {
     free(dec);
     free(blob);
     free(pt);
-    bge_store_wipe(&store);
+    bge_v4_store_wipe(&store);
     printf("[OK] test_store_set_get_rm\n");
 }
 

@@ -3,9 +3,11 @@
 #include "cfx_bge_internal.h"
 
 /*  armor helpers  */
+#define BGE_ARMOR_HEADER "-----BEGIN BGE MESSAGE-----"
+#define BGE_ARMOR_FOOTER "-----END BGE MESSAGE-----"
 
 int bge_is_armored(const uint8_t *buf, size_t len) {
-    return len >= 28 && memcmp(buf, "-----BEGIN BGE MESSAGE-----", 27) == 0;
+    return len >= 28 && memcmp(buf, BGE_ARMOR_HEADER, 27) == 0;
 }
 
 /* wrap binary blob in PEM-style armor with 76-char lines. caller frees *out. */
@@ -54,7 +56,7 @@ int bge_armor_decode(const uint8_t *text, size_t text_len,
     body++;
 
     /* find footer */
-    const char *footer = strstr(body, "-----END BGE MESSAGE-----");
+    const char *footer = strstr(body, BGE_ARMOR_FOOTER);
     if (!footer) return -1;
 
     size_t b64_len = (size_t)(footer - body);
@@ -567,7 +569,7 @@ int bge_decrypt_file(int argc, char **argv) {
     }
 
     uint8_t version = file_buf[3];
-    if (version != BGE_VERSION && version != BGE_STREAM_VERSION) {
+    if (version != BGE_FILE_VERSION && version != BGE_STREAM_VERSION) {
         fprintf(stderr, "error: unsupported BGE version %u\n", version);
         goto fail;
     }
@@ -630,7 +632,7 @@ int bge_decrypt_file(int argc, char **argv) {
 
     /* dispatch by version */
     int ret;
-    if (version == BGE_VERSION) {
+    if (version == BGE_FILE_VERSION) {
         ret = bge_decrypt_v2(file_buf, file_len, kdf_out, hdr.nonce, outf);
     } else {
         ret = bge_decrypt_v3(file_buf, file_len, kdf_out, hdr.nonce, outf);

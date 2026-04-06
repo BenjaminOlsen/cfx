@@ -41,17 +41,11 @@
 #include "cfx_keyfile.h"
 #include "common.h"
 
-/*  v2 constants  */
+/*  common constants  */
 
 #define BGE_MAGIC         "BGE"
-#define BGE_VERSION       5       /* KV store format version (correct argon2) */
-#define BGE_STREAM_VERSION 3      /* streaming file encryption */
-#define BGE_VERSION_STR   "2.6.0"
-#define BGE_HEADER_LEN    56
-#define BGE_VERIFIER_LEN  16
-#define BGE_AAD_LEN       (BGE_HEADER_LEN + BGE_VERIFIER_LEN)  /* 72 */
+#define BGE_VERSION_STR   "3.0.0"
 #define BGE_TAG_LEN       16
-#define BGE_MIN_FILE      (BGE_AAD_LEN + BGE_TAG_LEN)          /* 88: empty store */
 
 #define BGE_DEFAULT_M     0x10000  /* 64 MB (in KB) */
 #define BGE_DEFAULT_T     3
@@ -68,16 +62,14 @@
 #define BGE_ARMOR_BEGIN   "-----BEGIN BGE MESSAGE-----\n"
 #define BGE_ARMOR_END     "\n-----END BGE MESSAGE-----\n"
 
-/*  v4 multi-password constants  */
+/*  file encryption constants (used by cfx_bge_file.c)  */
 
-#define BGE_V4_VERSION        4
-#define BGE_V4_FIXED_HDR_LEN  8
-#define BGE_V4_SLOT_LEN       116
-#define BGE_V4_MAX_SLOTS      8
-#define BGE_V4_DEK_LEN        32
-#define BGE_V4_MIN_FILE       (BGE_V4_FIXED_HDR_LEN + BGE_V4_SLOT_LEN + 24 + BGE_TAG_LEN)  /* 164 */
-
-/*  v2 structs  */
+#define BGE_FILE_VERSION  5       /* single-shot file encryption format */
+#define BGE_STREAM_VERSION 3      /* streaming file encryption */
+#define BGE_HEADER_LEN    56
+#define BGE_VERIFIER_LEN  16
+#define BGE_AAD_LEN       (BGE_HEADER_LEN + BGE_VERIFIER_LEN)  /* 72 */
+#define BGE_MIN_FILE      (BGE_AAD_LEN + BGE_TAG_LEN)          /* 88 */
 
 typedef struct {
     uint8_t  magic[3];
@@ -90,15 +82,16 @@ typedef struct {
 } bge_header;
 CFX_STATIC_ASSERT(sizeof(bge_header) == BGE_HEADER_LEN, bge_header_packing);
 
-typedef struct {
-    bge_header hdr;
-    uint8_t    key[32];
-    uint8_t    verifier[BGE_VERIFIER_LEN];
-    uint8_t   *file_buf;
-    size_t     file_len;
-} bge_store;
+/*  store constants  */
 
-/*  v4 structs  */
+#define BGE_STORE_VERSION     4
+#define BGE_STORE_HDR_LEN    8
+#define BGE_STORE_SLOT_LEN   116
+#define BGE_STORE_MAX_SLOTS  8
+#define BGE_STORE_DEK_LEN    32
+#define BGE_STORE_MIN_FILE   (BGE_STORE_HDR_LEN + BGE_STORE_SLOT_LEN + 24 + BGE_TAG_LEN)
+
+/*  store structs  */
 
 typedef struct {
     uint8_t magic[3];
@@ -106,7 +99,7 @@ typedef struct {
     uint8_t slot_count;
     uint8_t reserved[3];
 } bge_v4_fixed_header;
-CFX_STATIC_ASSERT(sizeof(bge_v4_fixed_header) == BGE_V4_FIXED_HDR_LEN, bge_v4_hdr_packing);
+CFX_STATIC_ASSERT(sizeof(bge_v4_fixed_header) == BGE_STORE_HDR_LEN, bge_v4_hdr_packing);
 
 typedef struct {
     uint32_t m_cost;
@@ -118,26 +111,22 @@ typedef struct {
     uint8_t  wrapped_dek[32];
     uint8_t  wrap_tag[16];
 } bge_v4_slot;
-CFX_STATIC_ASSERT(sizeof(bge_v4_slot) == BGE_V4_SLOT_LEN, bge_v4_slot_packing);
+CFX_STATIC_ASSERT(sizeof(bge_v4_slot) == BGE_STORE_SLOT_LEN, bge_v4_slot_packing);
 
 typedef struct {
     bge_v4_fixed_header hdr;
-    bge_v4_slot         slots[BGE_V4_MAX_SLOTS];
+    bge_v4_slot         slots[BGE_STORE_MAX_SLOTS];
     uint8_t             data_nonce[24];
-    uint8_t             dek[BGE_V4_DEK_LEN];
+    uint8_t             dek[BGE_STORE_DEK_LEN];
     int                 matched_slot;
     uint8_t            *file_buf;
     size_t              file_len;
 } bge_v4_store;
 
-/*  unified store  */
+/*  unified store — all stores are now v4 multi-slot  */
 
 typedef struct {
-    int version;  /* 2 or 4 */
-    union {
-        bge_store    v2;
-        bge_v4_store v4;
-    } u;
+    bge_v4_store v4;
 } bge_ustore;
 
 /*  global  */
@@ -146,35 +135,17 @@ extern const char *g_passphrase_arg;
 
 /*  cfx_bge_crypto.c  */
 
-void bge_store_wipe(bge_store *s);
 void bge_v4_store_wipe(bge_v4_store *s);
 void bge_ustore_wipe(bge_ustore *us);
 
-/* v2 crypto */
-int bge_authenticate_buf(const uint8_t *file_buf, size_t file_len,
-                         const char *pwd, size_t pwd_len, bge_store *store);
-int bge_decrypt_store(const bge_store *store, uint8_t **pt_out, size_t *pt_len);
-int bge_safe_write(const char *path, const bge_header *header,
-                   const uint8_t verifier[BGE_VERIFIER_LEN],
-                   const uint8_t *ct, size_t ct_len, const uint8_t *tag);
-int bge_encrypt_to_buf(uint8_t *out, size_t out_len,
-                       const uint8_t *pt, size_t pt_len,
-                       const char *pwd, size_t pwd_len,
-                       uint32_t m, uint32_t t, uint32_t p);
-int bge_encrypt_write(const char *path, const uint8_t *pt, size_t pt_len,
-                      const char *pwd, size_t pwd_len,
-                      uint32_t m, uint32_t t, uint32_t p);
-int bge_write_reusing_key(const char *path, const uint8_t *pt, size_t pt_len,
-                          const bge_store *store);
-
-/* v4 slot serialization */
-void bge_v4_slot_from_buf(bge_v4_slot *slot, const uint8_t buf[BGE_V4_SLOT_LEN]);
-void bge_v4_slot_to_buf(uint8_t buf[BGE_V4_SLOT_LEN], const bge_v4_slot *slot);
+/* slot serialization */
+void bge_v4_slot_from_buf(bge_v4_slot *slot, const uint8_t buf[BGE_STORE_SLOT_LEN]);
+void bge_v4_slot_to_buf(uint8_t buf[BGE_STORE_SLOT_LEN], const bge_v4_slot *slot);
 
 /* v4 crypto */
 int bge_v4_wrap_dek(const char *pwd, size_t pwd_len,
                     uint32_t m, uint32_t t, uint32_t p,
-                    const uint8_t dek[BGE_V4_DEK_LEN], bge_v4_slot *slot);
+                    const uint8_t dek[BGE_STORE_DEK_LEN], bge_v4_slot *slot);
 int bge_v4_safe_write(const char *path,
                       const bge_v4_fixed_header *hdr,
                       const bge_v4_slot *slots, int slot_count,
@@ -185,7 +156,14 @@ int bge_v4_encrypt_write(const char *path,
                          const uint8_t *pt, size_t pt_len,
                          const bge_v4_fixed_header *hdr,
                          const bge_v4_slot *slots, int slot_count,
-                         const uint8_t dek[BGE_V4_DEK_LEN]);
+                         const uint8_t dek[BGE_STORE_DEK_LEN]);
+int bge_v4_init_write(const char *path, const uint8_t *pt, size_t pt_len,
+                      const char *pwd, size_t pwd_len,
+                      uint32_t m, uint32_t t, uint32_t p);
+int bge_v4_init_to_buf(uint8_t **out, size_t *out_len,
+                       const uint8_t *pt, size_t pt_len,
+                       const char *pwd, size_t pwd_len,
+                       uint32_t m, uint32_t t, uint32_t p);
 int bge_v4_authenticate_buf(const uint8_t *file_buf, size_t file_len,
                             const char *pwd, size_t pwd_len,
                             bge_v4_store *store);
