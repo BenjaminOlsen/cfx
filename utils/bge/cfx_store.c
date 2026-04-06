@@ -46,6 +46,7 @@ static void usage(const char *prog) {
     printf("  slot rm  [N] [-s path]           Remove slot N (1-based, default: matched)\n");
     printf("  rekey    [-s path]               Generate new DEK, re-wrap all slots\n");
     printf("  merge    <from> [-s path]         Merge entries from another store\n");
+    printf("  backup   [dest] [-s path]         Copy store to a backup file\n");
     printf("\nCommon options:\n");
     printf("  -p, --passphrase <pw>  Supply passphrase on command line (default: prompt)\n");
     printf("  -s, --store <path>     Path to BGE store (default: ~/.cfx/secrets.bge)\n");
@@ -2005,6 +2006,99 @@ static int store_cmd_rekey(int argc, char **argv) {
     return rc != 0;
 }
 
+static int store_cmd_backup(int argc, char **argv) {
+    const char *store_path = NULL;
+    const char *out_path = NULL;
+    char store_buf[1024];
+
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: %s backup [dest] [-s store]\n", argv[0]);
+            printf("Copy the store file to a backup location.\n");
+            printf("If no dest is given, backs up to <store>.<timestamp>.bak\n");
+            return 0;
+        } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--store") == 0) {
+            if (i + 1 >= argc) { fprintf(stderr, "error: -s requires a path\n"); return 1; }
+            store_path = argv[++i];
+        } else if (!out_path) {
+            out_path = argv[i];
+        } else {
+            fprintf(stderr, "error: unknown argument: %s\n", argv[i]);
+            return 1;
+        }
+    }
+
+    if (!store_path) {
+        if (bge_default_path(store_buf, sizeof(store_buf)) != 0) return 1;
+        store_path = store_buf;
+    }
+
+    struct stat st;
+    if (stat(store_path, &st) != 0) {
+        fprintf(stderr, "error: store not found: %s\n", store_path);
+        return 1;
+    }
+
+    /* build default backup path if none given */
+    char auto_path[1280];
+    if (!out_path) {
+        time_t now = time(NULL);
+        struct tm *tm = localtime(&now);
+        char ts[32];
+        strftime(ts, sizeof(ts), "%Y%m%d-%H%M%S", tm);
+        snprintf(auto_path, sizeof(auto_path), "%s.%s.bak", store_path, ts);
+        out_path = auto_path;
+
+        printf("Backup to: %s\n", out_path);
+        printf("Continue? [y/N] ");
+        fflush(stdout);
+        int ch = getchar();
+        if (ch != 'y' && ch != 'Y') {
+            printf("Aborted.\n");
+            return 1;
+        }
+    }
+
+    if (stat(out_path, &st) == 0) {
+        fprintf(stderr, "error: destination already exists: %s\n", out_path);
+        return 1;
+    }
+
+    /* copy file */
+    FILE *in = fopen(store_path, "rb");
+    if (!in) {
+        fprintf(stderr, "error: cannot open %s: %s\n", store_path, strerror(errno));
+        return 1;
+    }
+
+    FILE *out = fopen(out_path, "wb");
+    if (!out) {
+        fprintf(stderr, "error: cannot create %s: %s\n", out_path, strerror(errno));
+        fclose(in);
+        return 1;
+    }
+
+    uint8_t buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) {
+            fprintf(stderr, "error: write failed: %s\n", strerror(errno));
+            fclose(in);
+            fclose(out);
+            return 1;
+        }
+    }
+
+    fclose(in);
+    if (fclose(out) != 0) {
+        fprintf(stderr, "error: write failed: %s\n", strerror(errno));
+        return 1;
+    }
+
+    printf("Backed up to %s\n", out_path);
+    return 0;
+}
+
 static int store_cmd_merge(int argc, char **argv) {
     const char *src_path = NULL;
     const char *dst_path = NULL;
@@ -2038,6 +2132,11 @@ static int store_cmd_merge(int argc, char **argv) {
     if (!dst_path) {
         if (bge_default_path(dst_buf, sizeof(dst_buf)) != 0) return 1;
         dst_path = dst_buf;
+    }
+
+    if (strcmp(src_path, dst_path) == 0) {
+        fprintf(stderr, "error: source and target are the same file\n");
+        return 1;
     }
 
     /* open source store */
@@ -2112,7 +2211,11 @@ static int store_cmd_merge(int argc, char **argv) {
 
         /* null-terminate key name for store_get/store_set */
         char name[512];
-        if (klen >= sizeof(name)) continue;
+        if (klen >= sizeof(name)) {
+            fprintf(stderr, "warning: skipping entry with key length %u (max %zu)\n",
+                    klen, sizeof(name) - 1);
+            continue;
+        }
         memcpy(name, key, klen);
         name[klen] = '\0';
 
@@ -2127,8 +2230,13 @@ static int store_cmd_merge(int argc, char **argv) {
         size_t new_len;
         uint8_t *new_pt = store_set(dst_pt, dst_pt_len, name, val, vlen, &new_len);
         if (!new_pt) {
-            fprintf(stderr, "error: failed to merge key '%s'\n", name);
-            continue;
+            fprintf(stderr, "error: out of memory merging key '%s', aborting\n", name);
+            cfx_memzero_s(dst_pt, dst_pt_len);
+            free(dst_pt);
+            cfx_memzero_s(src_pt, src_pt_len);
+            free(src_pt);
+            bge_ustore_wipe(&dst_us);
+            return 1;
         }
 
         cfx_memzero_s(dst_pt, dst_pt_len);
@@ -2213,6 +2321,7 @@ int cfx_store_run(int argc, char **argv) {
     if (strcmp(cmd, "slot")   == 0) return store_slot(argc, argv);
     if (strcmp(cmd, "rekey")  == 0) return store_cmd_rekey(argc, argv);
     if (strcmp(cmd, "merge")  == 0) return store_cmd_merge(argc, argv);
+    if (strcmp(cmd, "backup") == 0) return store_cmd_backup(argc, argv);
 
     fprintf(stderr, "Unknown command: %s\n", cmd);
     usage(argv[0]);

@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/stat.h>
 
 #ifdef _WIN32
