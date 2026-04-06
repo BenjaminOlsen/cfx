@@ -1568,7 +1568,7 @@ static int store_slot_ls(int argc, char **argv) {
             sp += BGE_V4_SLOT_LEN;
         }
     } else if (version == BGE_VERSION) {
-        printf("Version: 2 (single password)\n");
+        printf("Version: %u (single password)\n", version);
         printf("Slots:   1\n");
         if (file_len >= BGE_HEADER_LEN) {
             bge_header hdr;
@@ -1942,8 +1942,8 @@ static int store_cmd_rekey(int argc, char **argv) {
 
         /* verify against slot's existing verifier */
         uint8_t kdf_out[48];
-        /* v4 rekey: verify existing slots with legacy argon2 */
-        rc = bge_argon2_legacy(kdf_out, 48,
+
+        rc = cfx_argon2id(kdf_out, 48,
             (const uint8_t *)slot_pwd, (size_t)slot_pwd_len,
             s4->slots[i].salt, sizeof(s4->slots[i].salt),
             s4->slots[i].m_cost, s4->slots[i].t_cost, s4->slots[i].p_cost);

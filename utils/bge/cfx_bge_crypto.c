@@ -68,8 +68,8 @@ int bge_authenticate_buf(const uint8_t *file_buf, size_t file_len,
                          const char *pwd, size_t pwd_len, bge_store *store) {
     if (file_len < BGE_MIN_FILE ||
         memcmp(file_buf, BGE_MAGIC, 3) != 0 ||
-        (file_buf[3] != BGE_VERSION && file_buf[3] != BGE_VERSION_LEGACY)) {
-        fprintf(stderr, "error: not a valid BGE v2/v5 store\n");
+        file_buf[3] != BGE_VERSION) {
+        fprintf(stderr, "error: not a valid BGE v5 store\n");
         return -1;
     }
 
@@ -87,16 +87,9 @@ int bge_authenticate_buf(const uint8_t *file_buf, size_t file_len,
     }
 
     uint8_t kdf_out[48];
-    int rc;
-    if (file_buf[3] == BGE_VERSION_LEGACY) {
-        rc = bge_argon2_legacy(kdf_out, 48,
-            (const uint8_t *)pwd, pwd_len, hdr.salt, sizeof(hdr.salt),
-            m_cost, t_cost, p);
-    } else {
-        rc = cfx_argon2id(kdf_out, 48,
-            (const uint8_t *)pwd, pwd_len, hdr.salt, sizeof(hdr.salt),
-            m_cost, t_cost, p);
-    }
+    int rc = cfx_argon2id(kdf_out, 48,
+        (const uint8_t *)pwd, pwd_len, hdr.salt, sizeof(hdr.salt),
+        m_cost, t_cost, p);
     if (rc != 0) {
         fprintf(stderr, "error: argon2 key derivation failed\n");
         cfx_memzero_s(kdf_out, sizeof(kdf_out));
@@ -390,8 +383,8 @@ int bge_v4_wrap_dek(const char *pwd, size_t pwd_len,
     slot->t_cost = t;
     slot->p_cost = p;
 
-    /* v4 stores always used legacy argon2 */
-    int rc = bge_argon2_legacy(kdf_out, 48,
+
+    int rc = cfx_argon2id(kdf_out, 48,
         (const uint8_t *)pwd, pwd_len,
         slot->salt, sizeof(slot->salt), m, t, p);
     if (rc != 0) {
@@ -644,8 +637,8 @@ int bge_v4_authenticate_buf(const uint8_t *file_buf, size_t file_len,
         }
 
         uint8_t kdf_out[48];
-        /* v4 stores always used legacy argon2 */
-        int rc = bge_argon2_legacy(kdf_out, 48,
+    
+        int rc = cfx_argon2id(kdf_out, 48,
             (const uint8_t *)pwd, pwd_len,
             slots[i].salt, sizeof(slots[i].salt), m, t, p);
         if (rc != 0) {
@@ -782,8 +775,8 @@ int bge_uauthenticate(const char *path, const char *pwd, size_t pwd_len,
     if (version == BGE_V4_VERSION) {
         us->version = BGE_V4_VERSION;
         rc = bge_v4_authenticate_buf(file_buf, file_len, pwd, pwd_len, &us->u.v4);
-    } else if (version == BGE_VERSION || version == BGE_VERSION_LEGACY) {
-        us->version = version;
+    } else if (version == BGE_VERSION) {
+        us->version = BGE_VERSION;
         rc = bge_authenticate_buf(file_buf, file_len, pwd, pwd_len, &us->u.v2);
     } else {
         fprintf(stderr, "error: unsupported BGE version %u\n", version);

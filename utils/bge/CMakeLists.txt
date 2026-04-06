@@ -11,7 +11,6 @@ add_library(cfx_bge_lib STATIC
     cfx_bge_file.c
     cfx_bge_common.c
     cfx_bge_grace.c
-    argon2_legacy.c
 )
 
 target_link_libraries(cfx_bge_lib PUBLIC cfx::cfx cfx_misc)

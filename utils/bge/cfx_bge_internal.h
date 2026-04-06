@@ -45,7 +45,6 @@
 
 #define BGE_MAGIC         "BGE"
 #define BGE_VERSION       5       /* KV store format version (correct argon2) */
-#define BGE_VERSION_LEGACY 2      /* v2: original (buggy argon2) */
 #define BGE_STREAM_VERSION 3      /* streaming file encryption */
 #define BGE_VERSION_STR   "2.6.0"
 #define BGE_HEADER_LEN    56
@@ -144,13 +143,6 @@ typedef struct {
 /*  global  */
 
 extern const char *g_passphrase_arg;
-
-/*  argon2_legacy.c — buggy argon2 preserved for v2/v4 store compat  */
-
-int bge_argon2_legacy(uint8_t *out, size_t outlen,
-                       const uint8_t *pwd, size_t pwdlen,
-                       const uint8_t *salt, size_t saltlen,
-                       uint32_t m, uint32_t t, uint32_t p);
 
 /*  cfx_bge_crypto.c  */
 
