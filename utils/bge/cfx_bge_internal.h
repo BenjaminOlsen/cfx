@@ -59,8 +59,8 @@
 
 #define BGE_READ_MAX      (128u * 1024u * 1024u)
 
-#define BGE_ARMOR_BEGIN   "-----BEGIN BGE MESSAGE-----\n"
-#define BGE_ARMOR_END     "\n-----END BGE MESSAGE-----\n"
+#define BGE_ARMOR_HEADER  "-----BEGIN BGE MESSAGE-----"
+#define BGE_ARMOR_FOOTER  "-----END BGE MESSAGE-----"
 
 /*  file encryption constants (used by cfx_bge_file.c)  */
 

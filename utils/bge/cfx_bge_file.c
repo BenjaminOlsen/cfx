@@ -3,11 +3,9 @@
 #include "cfx_bge_internal.h"
 
 /*  armor helpers  */
-#define BGE_ARMOR_HEADER "-----BEGIN BGE MESSAGE-----"
-#define BGE_ARMOR_FOOTER "-----END BGE MESSAGE-----"
 
 int bge_is_armored(const uint8_t *buf, size_t len) {
-    return len >= 28 && memcmp(buf, BGE_ARMOR_HEADER, 27) == 0;
+    return len >= 27 && memcmp(buf, BGE_ARMOR_HEADER, 27) == 0;
 }
 
 /* wrap binary blob in PEM-style armor with 76-char lines. caller frees *out. */
@@ -20,15 +18,17 @@ int bge_armor_encode(const uint8_t *bin, size_t bin_len,
     if (!b64) return -1;
     cfx_base64_encode(b64, &b64_len, bin, bin_len);
 
-    /* header + base64 + newlines every 76 chars + footer */
+    /* header\n + base64 lines + footer\n */
+    size_t hlen = strlen(BGE_ARMOR_HEADER);
+    size_t flen = strlen(BGE_ARMOR_FOOTER);
     size_t nlines = (b64_len + 75) / 76;
-    size_t total = strlen(BGE_ARMOR_BEGIN) + b64_len + nlines + strlen(BGE_ARMOR_END);
+    size_t total = hlen + 1 + b64_len + nlines + flen + 1;
     uint8_t *buf = malloc(total + 1);
     if (!buf) { free(b64); return -1; }
 
     uint8_t *w = buf;
-    size_t hlen = strlen(BGE_ARMOR_BEGIN);
-    memcpy(w, BGE_ARMOR_BEGIN, hlen); w += hlen;
+    memcpy(w, BGE_ARMOR_HEADER, hlen); w += hlen;
+    *w++ = '\n';
 
     for (size_t i = 0; i < b64_len; i += 76) {
         size_t chunk = b64_len - i;
@@ -37,8 +37,8 @@ int bge_armor_encode(const uint8_t *bin, size_t bin_len,
         *w++ = '\n';
     }
 
-    size_t flen = strlen(BGE_ARMOR_END);
-    memcpy(w, BGE_ARMOR_END, flen); w += flen;
+    memcpy(w, BGE_ARMOR_FOOTER, flen); w += flen;
+    *w++ = '\n';
 
     free(b64);
     *out = buf;
