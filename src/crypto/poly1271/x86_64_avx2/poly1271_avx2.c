@@ -113,6 +113,7 @@ static inline void decode_partial_to_limbs(uint64_t limbs[5], const uint8_t *blo
                   ((uint64_t)pad[2] << 16) | ((uint64_t)pad[3] << 24) |
                   ((uint64_t)pad[4] << 32) | ((uint64_t)pad[5] << 40) |
                   ((uint64_t)pad[6] << 48) | ((uint64_t)pad[7] << 56);
+
     uint64_t hi = (uint64_t)pad[8] | ((uint64_t)pad[9] << 8) |
                   ((uint64_t)pad[10] << 16) | ((uint64_t)pad[11] << 24) |
                   ((uint64_t)pad[12] << 32) | ((uint64_t)pad[13] << 40) |

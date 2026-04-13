@@ -26,7 +26,7 @@ if(NOT CFX_TARGET MATCHES "arm_cortex_m4|arm_neon")
         ${CMAKE_CURRENT_SOURCE_DIR}/ed25519.c
         ${CMAKE_CURRENT_SOURCE_DIR}/argon2.c
         ${CMAKE_CURRENT_SOURCE_DIR}/poly1271/poly1271.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/poly1271/poly1271_avx2.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/poly1271/x86_64_avx2/poly1271_avx2.c
     )
 else()
     message(STATUS "cfx/crypto: Excluding curve25519/ed25519 (requires 64-bit)")
