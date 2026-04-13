@@ -378,16 +378,17 @@ int cfx_argon2_encode(char *out, size_t outlen,
 
     size_t sb64 = cfx_base64_enc_len(saltlen);
     size_t hb64 = cfx_base64_enc_len(hashlen);
-    /* worst-case length of "$argon2id$v=19$m=NNN,t=NNN,p=NNN$salt$hash" */
-    size_t need = 1                          /* "$"                       */
-                + strlen(type_str(type))      /* "argon2id"               */
-                + 1 + 5 + 3                  /* "$" "v=19" "$"           */
-                + 2 + 10                      /* "m=" uint32_max          */
-                + 1 + 2 + 10                 /* "," "t=" uint32_max      */
-                + 1 + 2 + 10                 /* "," "p=" uint32_max      */
-                + 1 + sb64                   /* "$" base64(salt)          */
-                + 1 + hb64                   /* "$" base64(hash)          */
-                + 1;                          /* NUL                      */
+
+    /* worst-case length of "$argon2id$v=19$m=NNN,t=NNN,p=NNN$salt$hash"   */
+    size_t need = 1                          /* "$"                        */
+                + strlen(type_str(type))      /* "argon2id"                */
+                + 1 + 4 + 1                  /* "$" + "v=19" + "$"         */
+                + 2 + 10                      /* "m=" + uint32_max (<= 10 decimal digits) */
+                + 1 + 2 + 10                 /* "," "t=" + uint32_max      */
+                + 1 + 2 + 10                 /* "," "p=" + uint32_max      */
+                + 1 + sb64                   /* "$" + base64(salt)         */
+                + 1 + hb64                   /* "$" + base64(hash)         */
+                + 1;                         /*  NUL                       */
 
     if (outlen < need) return -1;
 

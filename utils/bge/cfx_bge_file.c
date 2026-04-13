@@ -8,7 +8,10 @@ int bge_is_armored(const uint8_t *buf, size_t len) {
     return len >= 27 && memcmp(buf, BGE_ARMOR_HEADER, 27) == 0;
 }
 
-/* wrap binary blob in PEM-style armor with 76-char lines. caller frees *out. */
+/*
+  wrap binary blob in PEM-style armor with 76-char lines (PEM standard RFC 7468 / RFC 2045)
+  - caller frees *out.
+*/
 int bge_armor_encode(const uint8_t *bin, size_t bin_len,
                      uint8_t **out, size_t *out_len) {
     size_t b64_len = 0;

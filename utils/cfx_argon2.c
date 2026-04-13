@@ -46,7 +46,6 @@ int cfx_argon2_run(int argc, char** argv) {
     const char* password = NULL;
     const char* salt_hex = NULL;
 
-    /* parse arguments */
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_help(argv[0]);
