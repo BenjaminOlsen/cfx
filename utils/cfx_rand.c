@@ -21,11 +21,12 @@ static void usage(const char* prog) {
         "Usage: %s [options] <num_bytes>\n"
         "  Generate random bytes.\n\n"
         "Options:\n"
-        "  --seed=N       Use integer N to derive key/nonce (default: random)\n"
-        "  --rng=name     Select RNG (default: %s)\n"
+        "  -n <num>       Number of bytes (also accepted as positional)\n"
+        "  --seed, -s <N> Use integer N as seed (default: random)\n"
+        "  --rng <name>   Select RNG (default: %s)\n"
         "  -x             Output as hex (default)\n"
         "  -b64           Output as base64\n"
-        "  -bin           Output as raw binary\n"
+        "  -b, --bin      Output as raw binary\n"
         "  -v, --verbose  Verbose output\n"
         "  -h, --help     Show this help\n\n"
         "Available RNGs:\n",
@@ -78,19 +79,31 @@ int cfx_rand_run(int argc, char** argv) {
     const char* prog = argv[0];
 
     const cfx_rand_desc_t* rand_gen = &g_rand_gens[0]; /* default */
-    for (int i = 1; i < argc; i++) {
-        const char* arg = argv[i];
 
-        if (strncmp(arg, "--seed=", 7) == 0) {
+    #define CHECK_NEXT_ARG(i, arg) do { \
+        if (i + 1 >= argc) { \
+            fprintf(stderr, "%s requires an argument\n\n", arg); \
+            usage(prog); \
+            return EXIT_FAILURE; \
+        } \
+    } while (0)
+
+    for (int i = 1; i < argc; i++) {
+        const char *arg = argv[i];
+
+        if ((strcmp(arg, "--seed") == 0) || (strcmp(arg, "-s") == 0)) {
+            CHECK_NEXT_ARG(i, "--seed");
+            arg = argv[++i];
             char* end = NULL;
-            seed = strtoull(arg + 7, &end, 0);
-            if (end == arg + 7) {
-                fprintf(stderr, "Invalid seed: %s\n\n", arg + 7);
+            seed = strtoull(arg, &end, 0);
+            if (end == arg) {
+                fprintf(stderr, "Invalid seed: %s\n\n", arg);
                 usage(prog);
                 return EXIT_FAILURE;
             }
-        } else if (strncmp(arg, "--rng=", 6) == 0) {
-            const char *name = arg + 6;
+        } else if (strcmp(arg, "--rng") == 0) {
+            CHECK_NEXT_ARG(i, "--rng");
+            const char *name = argv[++i];
             int found = 0;
             for (size_t j = 0; j < g_rand_gen_cnt; ++j) {
                 if (strcmp(name, g_rand_gens[j].name) == 0) {
@@ -113,12 +126,29 @@ int cfx_rand_run(int argc, char** argv) {
             fmt = CFX_STR_FMT_HEX;
         } else if (strcmp(arg, "-b64") == 0) {
             fmt = CFX_STR_FMT_BASE64;
-        } else if (strcmp(arg, "-bin") == 0) {
+        } else if ((strcmp(arg, "-b") == 0) || (strcmp(arg, "--bin") == 0) || (strcmp(arg, "-bin") == 0)) {
             fmt = CFX_STR_FMT_BINARY;
+        } else if (strcmp(arg, "-n") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "-n requires an argument\n\n");
+                usage(prog);
+                return EXIT_FAILURE;
+            }
+            char* end = NULL;
+            errno = 0;
+            n = strtoull(argv[++i], &end, 0);
+            if (errno || end == argv[i] || *end != '\0') {
+                fprintf(stderr, "Invalid num bytes: %s\n\n", argv[i]);
+                usage(prog);
+                return EXIT_FAILURE;
+            }
         } else {
-            n = strtoull(arg, NULL, 0);
-            if (errno) {
-                perror("num bytes");
+            char* end = NULL;
+            errno = 0;
+            n = strtoull(arg, &end, 0);
+            if (errno || end == arg || *end != '\0') {
+                fprintf(stderr, "Invalid num bytes: %s\n\n", arg);
+                usage(prog);
                 return EXIT_FAILURE;
             }
         }
