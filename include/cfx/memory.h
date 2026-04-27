@@ -6,7 +6,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <memory.h>
+#include <string.h>
 
 
 #ifdef __cplusplus
@@ -22,8 +22,8 @@ extern "C" {
 
 /* returns 0 if the data pointed to by a equals that pointed to by b*/
 static inline int cfx_memeq_ct(const void *a, const void *b, size_t n) {
-    const volatile uint8_t *pa = a;
-    const volatile uint8_t *pb = b;
+    const volatile uint8_t *pa = (const volatile uint8_t *)a;
+    const volatile uint8_t *pb = (const volatile uint8_t *)b;
     uint8_t r = 0;
     size_t i;
     for (i = 0; i < n; i++) {
@@ -131,8 +131,9 @@ static inline void cfx_store16_le(void *dst, uint16_t v) {
 #if CFX_LITTLE_ENDIAN
     memcpy(dst, &v, sizeof v);
 #else
-    dst[0] = (uint8_t)(v);
-    dst[1] = (uint8_t)(v >> 8);
+    uint8_t *p = (uint8_t *)dst;
+    p[0] = (uint8_t)(v);
+    p[1] = (uint8_t)(v >> 8);
 #endif
 }
 
