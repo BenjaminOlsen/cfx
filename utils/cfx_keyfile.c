@@ -19,8 +19,8 @@
 #endif
 
 
-#ifdef _WIN32
 int cfx_key_read_secret_console(const char *prompt, char *buf, size_t bufsz) {
+#ifdef _WIN32
     HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
     DWORD mode;
     BOOL have_console = GetConsoleMode(h, &mode);
@@ -29,38 +29,68 @@ int cfx_key_read_secret_console(const char *prompt, char *buf, size_t bufsz) {
     }
 
     fprintf(stderr, "%s", prompt);
-    if (!fgets(buf, (int)bufsz, stdin)) buf[0] = '\0';
+
+    if (!fgets(buf, (int)bufsz, stdin)) {
+        buf[0] = '\0';
+    }
+
     if (have_console) {
         SetConsoleMode(h, mode);
     }
     fprintf(stderr, "\n");
 
     size_t len = strlen(buf);
-    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r')) {
         buf[--len] = '\0';
-    return (int)len;
-}
-#else
-int cfx_key_read_secret_console(const char *prompt, char *buf, size_t bufsz) {
-    struct termios old, new;
-    tcgetattr(fileno(stdin), &old);
-    new = old;
-    new.c_lflag &= ~ECHO;
-    tcsetattr(fileno(stdin), TCSAFLUSH, &new);
+    }
 
-    fprintf(stderr, "%s", prompt);
-    if (!fgets(buf, (int)bufsz, stdin)) buf[0] = '\0';
-    tcsetattr(fileno(stdin), TCSAFLUSH, &old);
-    fprintf(stderr, "\n");
+    return (int)len;
+#else
+    /* open the controlling terminal directly, so we still prompt the user even
+       when stdin/stdout are pipes or files */
+    FILE *tty = fopen("/dev/tty", "r+");
+    if (!tty) return -1;
+
+    fprintf(tty, "%s", prompt);
+    fflush(tty);
+
+    int tty_fd = fileno(tty);
+
+    /* old = saved attrs to restore; noecho = working copy with ECHO cleared */
+    struct termios old, noecho;
+
+    /* if this fails we're not on a real tty, so we just skip echo suppression */
+    int have_termios = (tcgetattr(tty_fd, &old) == 0);
+    if (have_termios) {
+        noecho = old;
+        noecho.c_lflag &= ~(tcflag_t)ECHO; /* clear the ECHO bit so we dont see the characters */
+        tcsetattr(tty_fd, TCSANOW, &noecho); /* TCSANOW: apply immediately, don't wait for the input queue to drain */
+    }
+
+    char *r = fgets(buf, (int)bufsz, tty);
+
+    /* restore the original termios and emit a newline since their Enter keystroke was'nt echoed */
+    if (have_termios) {
+        tcsetattr(tty_fd, TCSANOW, &old);
+        fprintf(tty, "\n");
+    }
+
+    fclose(tty);
+
+    if (!r) {
+        cfx_memzero_s(buf, bufsz);
+        return 0;
+    }
 
     size_t len = strlen(buf);
     while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r')) {
         buf[--len] = '\0';
     }
-    return (int)len;
-}
-#endif
 
+    return (int)len;
+
+#endif
+}
 
 int cfx_key_decrypt(const uint8_t *file_buf, uint8_t *seed_out) {
     if (memcmp(file_buf, CFX_KEY_MAGIC, 4) != 0) {
