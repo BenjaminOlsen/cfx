@@ -142,22 +142,10 @@ After installation, run tools directly: `cfx_dc`, `cfx_factor 12345`, `cfx_prime
 
 To update after making changes, just re-run the build and install commands.
 
-## Rust Bindings
-
-cfx includes Rust bindings in `rust/cfx/`. The bindings provide a wrapper around the C library.
-
-### Build and Test
-
-```bash
-cd rust/cfx
-cargo test
-```
-
-The build script (`build.rs`) compiles the C library  using the `cc` crate.
 
 ## Cross-Platform / Embedded Targets
 
-cfx includes backends for ARM microcontrollers with Docker-based testing.
+cfx includes backends for ARM microcontrollers, with Docker & QEMU for testing.
 
 ### ARM Cortex-M4
 
@@ -190,7 +178,7 @@ The cfx library is dual-licensed.
 
 You may choose to use it under either of the following licenses:
 
-**LGPL v3 (or later) — the GNU Lesser General Public License.**
+**LGPL v3 (or later), the GNU Lesser General Public License.**
 
 You can use cfx in proprietary or open-source projects.
 
@@ -198,7 +186,7 @@ If you modify cfx itself and distribute it, you must publish your changes under 
 
 Dynamic linking is always fine; static linking is permitted if you provide a way for users to relink with a modified cfx.
 
-**GPL v2 (or later) — the GNU General Public License.**
+**GPL v2 (or later), the GNU General Public License.**
 
 You can use cfx in GPL-licensed software, including GPLv2-only projects.
 
@@ -209,3 +197,5 @@ In short:
 - If you’re writing closed source, pick LGPL v3+.
 
 See the LICENSE* texts for the full legal text
+
+Thank you
