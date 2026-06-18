@@ -9,36 +9,28 @@
  * CFX_TARGET_NAME is a string literal set at compile time by CMake,
  * identifying which optimized backend was selected.
  *
- * Example values: "base", "x86_64_bmi2", "x86_64_avx2", "arm_cortex_m4"
+ * Example values: "portable", "x86_64_bmi2", "x86_64_avx2", "arm_cortex_m4"
  *
  * Usage:
  *   printf("cfx built for: %s\n", CFX_TARGET_NAME);
  */
 
 #ifndef CFX_TARGET_NAME
-#define CFX_TARGET_NAME "base"
+#define CFX_TARGET_NAME "portable"
 #endif
 
 /*
  * Capability macros (defined by CMake when the target supports them):
  *
- *   CFX_CAP_BMI2      - x86 BMI2 intrinsics (_mulx_u64, _addcarry_u64)
  *   CFX_CAP_AVX2      - x86 AVX2 SIMD
- *   CFX_CAP_AVX512    - x86 AVX-512 SIMD
- *   CFX_CAP_NEON      - ARM NEON SIMD
- *   CFX_CAP_DSP       - ARM DSP instructions (Cortex-M4 UMULL/UMLAL)
  */
 
 /* Target hierarchy (compile-time only, for reference):
  *
- * portable                         <- root: implements EVERYTHING
- * ├── x86_64                       <- inherits from portable
- * │   └── x86_64_bmi2              <- inherits from x86_64
- * │       └── x86_64_avx2          <- inherits from x86_64_bmi2
- * │           └── x86_64_avx512    <- inherits from x86_64_avx2
- * ├── arm_cortex_m4                <- inherits from portable (no NEON)
- * ├── arm_neon                     <- inherits from portable
- * │   └── aarch64_neon             <- inherits from arm_neon
+ * portable                 <- root: implements EVERYTHING
+ * ├── x86_64_bmi2          <- inherits from portable
+ * │   └── x86_64_avx2      <- inherits from x86_64_bmi2
+ * ├── arm_cortex_m4        <- inherits from portable
  */
 
 #ifdef __cplusplus

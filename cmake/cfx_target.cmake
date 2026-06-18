@@ -9,44 +9,29 @@
 
 include_guard(GLOBAL)
 
-# Available targets (hierarchical)
+# Available targets 
 set(CFX_TARGETS
-    portable            # Portable C99, no intrinsics (root of inheritance tree)
-    x86_64          # x86-64 portableline
+    portable        # Portable C99, no intrinsics (root of inheritance tree)
     x86_64_bmi2     # x86-64 + BMI2 (mulx, adcx, adox)
     x86_64_avx2     # x86-64 + AVX2 + BMI2
-    x86_64_avx512   # x86-64 + AVX-512
     arm_cortex_m4   # ARM Cortex-M4 (32-bit, DSP, no NEON)
-    arm_neon        # ARMv7 + NEON
-    aarch64_neon    # AArch64 (NEON is portableline)
 )
 
 # Target option with auto-detection default
-set(CFX_TARGET "auto" CACHE STRING "Target architecture for optimized implementations")
+set(CFX_TARGET "auto" CACHE STRING "Target architecture")
 set_property(CACHE CFX_TARGET PROPERTY STRINGS auto ${CFX_TARGETS})
-
-# Target capability flags (populated by target selection)
-set(CFX_CAP_BMI2 OFF CACHE INTERNAL "")
-set(CFX_CAP_AVX2 OFF CACHE INTERNAL "")
-set(CFX_CAP_AVX512 OFF CACHE INTERNAL "")
-set(CFX_CAP_NEON OFF CACHE INTERNAL "")
-set(CFX_CAP_DSP OFF CACHE INTERNAL "")
 
 # Target parent relationships (for inheritance / fallback resolution)
 # portable has no parent (it's the root)
-set(CFX_TARGET_PARENT_x86_64 "portable")
-set(CFX_TARGET_PARENT_x86_64_bmi2 "x86_64")
+set(CFX_TARGET_PARENT_x86_64_bmi2 "portable")
 set(CFX_TARGET_PARENT_x86_64_avx2 "x86_64_bmi2")
-set(CFX_TARGET_PARENT_x86_64_avx512 "x86_64_avx2")
 set(CFX_TARGET_PARENT_arm_cortex_m4 "portable")
-set(CFX_TARGET_PARENT_arm_neon "portable")
-set(CFX_TARGET_PARENT_aarch64_neon "arm_neon")
 
 #
 # Auto-detection function
 #
 function(cfx_detect_target OUT_VAR)
-    # Auto-detect portabled on compiler and platform
+    # Auto-detect based on compiler and platform
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
         # Check for AVX2/BMI2 support
         include(CheckCCompilerFlag)
@@ -71,29 +56,13 @@ function(cfx_detect_target OUT_VAR)
                 return()
             endif()
         endif()
-
-        set(${OUT_VAR} "x86_64" PARENT_SCOPE)
-
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
-        set(${OUT_VAR} "aarch64_neon" PARENT_SCOPE)
-
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
-        # Check for NEON
-        include(CheckCCompilerFlag)
-        check_c_compiler_flag("-mfpu=neon" HAS_NEON_FLAG)
-        if(HAS_NEON_FLAG)
-            set(${OUT_VAR} "arm_neon" PARENT_SCOPE)
-        else()
-            set(${OUT_VAR} "portable" PARENT_SCOPE)
-        endif()
-
-    else()
-        set(${OUT_VAR} "portable" PARENT_SCOPE)
     endif()
+
+    set(${OUT_VAR} "portable" PARENT_SCOPE)
 endfunction()
 
 #
-# Backend source resolution with tree-portabled fallback
+# Backend source resolution with tree-based fallback
 #
 # Walks up the target hierarchy to find an implementation file.
 # Example: cfx_find_backend_source("big" "mul" BIG_MUL_SOURCE)
@@ -151,17 +120,13 @@ function(cfx_apply_target target_name)
         CFX_TARGET_NAME="${CFX_TARGET}"
     )
 
-    # Apply capability flags and compiler options based on target
-    if(CFX_TARGET MATCHES "x86_64_bmi2|x86_64_avx2|x86_64_avx512")
-        set(CFX_CAP_BMI2 ON CACHE INTERNAL "" FORCE)
-        target_compile_definitions(${target_name} PRIVATE CFX_CAP_BMI2=1)
+    if(CFX_TARGET MATCHES "x86_64_bmi2|x86_64_avx2")
         if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
             target_compile_options(${target_name} PRIVATE -mbmi2)
         endif()
     endif()
 
-    if(CFX_TARGET MATCHES "x86_64_avx2|x86_64_avx512")
-        set(CFX_CAP_AVX2 ON CACHE INTERNAL "" FORCE)
+    if(CFX_TARGET STREQUAL "x86_64_avx2")
         # PUBLIC so dependents (tests, users) see the same ctx sizes in headers
         target_compile_definitions(${target_name} PUBLIC CFX_CAP_AVX2=1)
         if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -171,29 +136,7 @@ function(cfx_apply_target target_name)
         endif()
     endif()
 
-    if(CFX_TARGET STREQUAL "x86_64_avx512")
-        set(CFX_CAP_AVX512 ON CACHE INTERNAL "" FORCE)
-        target_compile_definitions(${target_name} PRIVATE CFX_CAP_AVX512=1)
-        if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-            target_compile_options(${target_name} PRIVATE -mavx512f -mavx512vl)
-        elseif(MSVC)
-            target_compile_options(${target_name} PRIVATE /arch:AVX512)
-        endif()
-    endif()
-
-    if(CFX_TARGET MATCHES "arm_neon|aarch64_neon")
-        set(CFX_CAP_NEON ON CACHE INTERNAL "" FORCE)
-        target_compile_definitions(${target_name} PRIVATE CFX_CAP_NEON=1)
-        if(CFX_TARGET STREQUAL "arm_neon")
-            if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-                target_compile_options(${target_name} PRIVATE -mfpu=neon)
-            endif()
-        endif()
-    endif()
-
     if(CFX_TARGET STREQUAL "arm_cortex_m4")
-        set(CFX_CAP_DSP ON CACHE INTERNAL "" FORCE)
-        target_compile_definitions(${target_name} PRIVATE CFX_CAP_DSP=1)
         # Force 32-bit limbs for Cortex-M4
         target_compile_definitions(${target_name} PRIVATE CFX_FORCE_LIMB_32=1)
         if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -213,7 +156,7 @@ if(CFX_TARGET STREQUAL "auto")
     cfx_detect_target(CFX_TARGET)
     message(STATUS "cfx: Auto-detected target: ${CFX_TARGET}")
     # Update the cache with the detected value
-    set(CFX_TARGET ${CFX_TARGET} CACHE STRING "Target architecture for optimized implementations" FORCE)
+    set(CFX_TARGET ${CFX_TARGET} CACHE STRING "Target architecture" FORCE)
 endif()
 
 # Validate target
@@ -245,30 +188,17 @@ endif()
 message(STATUS "cfx: Memory mode: ${CFX_MEMORY_MODE}")
 
 #
-# Memory source resolution
-#
-# Finds memory backend source files in src/<algorithm>/mem/<mode>/
-# Example: cfx_find_mem_source("big" "init" BIG_MEM_INIT_SOURCE)
-#
-function(cfx_find_mem_source ALGORITHM FUNCTION OUT_SOURCE)
-    set(_path "${CMAKE_SOURCE_DIR}/src/${ALGORITHM}/mem/${CFX_MEMORY_MODE}/${FUNCTION}.c")
-
-    if(EXISTS ${_path})
-        set(${OUT_SOURCE} ${_path} PARENT_SCOPE)
-        message(STATUS "  cfx/${ALGORITHM}/mem/${FUNCTION}: using ${CFX_MEMORY_MODE}")
-    else()
-        message(FATAL_ERROR
-            "cfx: No memory implementation of '${FUNCTION}' found.\n"
-            "Expected file: ${_path}")
-    endif()
-endfunction()
-
-#
 # Apply memory mode compile definitions
 #
 function(cfx_apply_memory_mode target_name)
     if(CFX_MEMORY_MODE STREQUAL "static")
         # PUBLIC so tests and dependents see this definition
         target_compile_definitions(${target_name} PUBLIC CFX_MEMORY_STATIC=1)
+        if(DEFINED CFX_STATIC_LIMBS)
+            target_compile_definitions(${target_name} PUBLIC CFX_STATIC_LIMBS=${CFX_STATIC_LIMBS})
+        endif()
+        if(DEFINED CFX_STATIC_POOL_SIZE)
+            target_compile_definitions(${target_name} PUBLIC CFX_STATIC_POOL_SIZE=${CFX_STATIC_POOL_SIZE})
+        endif()
     endif()
 endfunction()

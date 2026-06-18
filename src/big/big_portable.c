@@ -13,7 +13,6 @@
 
 #if !defined(CFX_TARGET_X86_64_BMI2) && \
     !defined(CFX_TARGET_X86_64_AVX2) && \
-    !defined(CFX_TARGET_X86_64_AVX512) && \
     !defined(CFX_TARGET_ARM_CORTEX_M4)
 
 #include "big_backend.h"

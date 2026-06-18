@@ -11,12 +11,9 @@
  * functions for all memory operations.
  *
  * Memory mode is orthogonal to CPU target:
- *   - CFX_TARGET selects compute backends (x86_64_bmi2, arm_neon, etc.)
+ *   - CFX_TARGET selects compute backends (x86_64_bmi2, arm_cortex_m4, etc.)
  *   - CFX_MEMORY_MODE selects memory backends (dynamic, static)
  *
- * Implementations are in:
- *   - src/big/mem/dynamic/  (uses malloc/realloc/free)
- *   - src/big/mem/static/   (uses fixed-size buffers, no heap)
  */
 
 #include "cfx/big.h"
@@ -36,7 +33,6 @@ extern "C" {
  *   - cfx_big_free()    : Release resources
  *
  * Implementations are provided by the selected memory backend
- * (dynamic or static) in src/big/mem/MODE/
  */
 
 /* MEMORY MODE CONFIGURATION */
@@ -50,7 +46,7 @@ extern "C" {
  *
  * These defaults are sized for running the test suite. For embedded use,
  * configure with smaller values via CMake:
- *   cmake -DCFX_STATIC_LIMBS=64 -DCFX_STATIC_POOL_SIZE=32 ..
+ *   cmake -DCFX_MEMORY_MODE=static -DCFX_STATIC_LIMBS=64 -DCFX_STATIC_POOL_SIZE=32 ..
  *
  * Defaults:
  *   - 256 limbs = 16384 bits (64-bit limbs) or 8192 bits (32-bit limbs)

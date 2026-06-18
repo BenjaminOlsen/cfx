@@ -4,13 +4,12 @@
  * Static memory backend for big integers.
  *
  * Uses a fixed pool of static buffers instead of heap allocation.
- * Suitable for embedded systems and environments without malloc.
  *
  * Configuration (via CMake or compile flags):
  *   CFX_STATIC_LIMBS     - limbs per buffer (default: 256)
  *   CFX_STATIC_POOL_SIZE - number of buffers in pool (default: 1024)
  *
- * Self-guarding: only compiles when CFX_MEMORY_STATIC is defined.
+ * Only compiles when CFX_MEMORY_STATIC is defined.
  */
 
 #ifdef CFX_MEMORY_STATIC

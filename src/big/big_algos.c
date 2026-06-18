@@ -31,7 +31,9 @@ void cfx_big_exp(cfx_big_t *out, const cfx_big_t *n, const cfx_big_t *p) {
             cfx_big_mul_auto(&np, &acc);
         }
         cfx_big_shr_bits(&pp, &pp, 1);
-        if (!cfx_big_is_zero(&pp)) cfx_big_mul_auto(&acc, &acc);
+        if (!cfx_big_is_zero(&pp)) {
+            cfx_big_mul_auto(&acc, &acc);
+        }
     }
     cfx_big_move(out, &np);
     cfx_big_free(&np);

@@ -9,12 +9,11 @@
  *
  * Requires: -mbmi2 compiler flag
  *
- * Self-guarding: only compiles when CFX_TARGET_X86_64_BMI2 (or AVX2/AVX512) is defined.
+ * Self-guarding: only compiles when CFX_TARGET_X86_64_BMI2 (or AVX2) is defined.
  */
 
 #if defined(CFX_TARGET_X86_64_BMI2) || \
-    defined(CFX_TARGET_X86_64_AVX2) || \
-    defined(CFX_TARGET_X86_64_AVX512)
+    defined(CFX_TARGET_X86_64_AVX2)
 
 #include "big_backend.h"
 
@@ -204,4 +203,4 @@ void cfx_big_mont_mul_impl(cfx_limb_t *T,
     }
 }
 
-#endif /* CFX_TARGET_X86_64_BMI2 || CFX_TARGET_X86_64_AVX2 || CFX_TARGET_X86_64_AVX512 */
+#endif /* CFX_TARGET_X86_64_BMI2 || CFX_TARGET_X86_64_AVX2 */

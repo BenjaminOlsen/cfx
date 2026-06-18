@@ -3,10 +3,8 @@
 /*
  * Dynamic memory backend for big integers.
  *
- * Uses malloc/realloc/free for memory management. This is the default
- * mode for desktop and server applications where heap allocation is fine.
- *
- * Self-guarding: only compiles when CFX_MEMORY_STATIC is NOT defined.
+ * Uses malloc/realloc/free for memory management.
+ * Only compiles when CFX_MEMORY_STATIC is NOT defined.
  */
 
 #ifndef CFX_MEMORY_STATIC

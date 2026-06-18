@@ -1,6 +1,6 @@
 # Constant-time test (no external dependencies)
 # test_ct uses ed25519/x25519 which require 128-bit types (64-bit only)
-if(NOT CFX_TARGET MATCHES "arm_cortex_m4|arm_neon" AND NOT CFX_LIMB_BITS STREQUAL "32")
+if(NOT CFX_TARGET STREQUAL "arm_cortex_m4" AND NOT CFX_LIMB_BITS STREQUAL "32")
     add_executable(test_ct test_ct.c)
     target_link_libraries(test_ct PRIVATE cfx::cfx)
     target_compile_options(test_ct PRIVATE ${CFX_CFLAGS})

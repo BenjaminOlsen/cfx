@@ -136,14 +136,12 @@ void cfx_big_mont_mul_impl(cfx_limb_t *T,
  * Backend name string for debugging/logging.
  * Defined in each backend's source file.
  */
-#if defined(CFX_TARGET_X86_64_BMI2) || defined(CFX_TARGET_X86_64_AVX2) || defined(CFX_TARGET_X86_64_AVX512)
+#if defined(CFX_TARGET_X86_64_BMI2) || defined(CFX_TARGET_X86_64_AVX2)
     #define CFX_BIG_BACKEND_NAME "x86_64_bmi2"
 #elif defined(CFX_TARGET_ARM_CORTEX_M4)
     #define CFX_BIG_BACKEND_NAME "arm_cortex_m4"
-#elif defined(CFX_TARGET_AARCH64_NEON)
-    #define CFX_BIG_BACKEND_NAME "aarch64_neon"
 #else
-    #define CFX_BIG_BACKEND_NAME "base"
+    #define CFX_BIG_BACKEND_NAME "portable"
 #endif
 
 #ifdef __cplusplus
