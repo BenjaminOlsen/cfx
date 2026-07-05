@@ -121,10 +121,12 @@ cmake --build build -j --target install
 ```  
 
 **Windows:**
-```powershell
+```cmd
 # Build and install to %USERPROFILE%\bin
 cmake --build build --config Release
 cmake --install build --config Release --prefix %USERPROFILE%
+
+PS: > cmake --install build --config Release --prefix "$env:USERPROFILE"
 
 # Add to PATH via System Properties > Environment Variables > User variables > Path
 # Add: %USERPROFILE%\bin
