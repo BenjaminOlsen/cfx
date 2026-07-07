@@ -12,7 +12,7 @@
 #include <stdlib.h>
 
 #include "cfx_cmd.h"
-#include "common.h"
+#include "cfx_utils_common.h"
 
 
 #define SMALL_PRIME_CNT 1024u

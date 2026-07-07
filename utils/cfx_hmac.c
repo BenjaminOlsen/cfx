@@ -2,7 +2,7 @@
 
 #include "cfx/hmac.h"
 #include "cfx/base64.h"
-#include "common.h"
+#include "cfx_utils_common.h"
 
 #include <stdio.h>
 #include <stdlib.h>

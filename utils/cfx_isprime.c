@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "cfx_cmd.h"
-#include "common.h"
+#include "cfx_utils_common.h"
 
 static void usage(const char* prog) {
     fprintf(stderr, "Usage: %s [options] [n]\n", prog);

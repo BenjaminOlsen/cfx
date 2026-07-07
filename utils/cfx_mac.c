@@ -1,7 +1,7 @@
 #include "cfx/rand.h"
 #include "cfx/poly1305.h"
 #include "cfx/base64.h"
-#include "common.h"
+#include "cfx_utils_common.h"
 #include "cfx_cmd.h"
 
 #include <stdio.h>

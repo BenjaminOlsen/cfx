@@ -21,7 +21,7 @@ const cfx_cmd_t cfx_commands[] = {
     {"mac",             "Compute Poly1305 MAC",                             cfx_mac_run},
     {"modexp",          "Modular exponentiation (base^exp mod m)",          cfx_modexp_run},
     {"pow",             "Compute n^p",                                      cfx_pow_run},
-    {"isprime",      "Miller-Rabin primality test",                      cfx_isprime_run},
+    {"isprime",         "Miller-Rabin primality test",                      cfx_isprime_run},
     {"primes",          "List primes up to n (sieve)",                      cfx_primes_run},
     {"primes_near_pow2","Find primes near powers of 2",                     cfx_primes_near_pow2_run},
     {"rand",            "Generate random bytes",                            cfx_rand_run},

@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 
 #include "cfx_cmd.h"
-#include "common.h"
+#include "cfx_utils_common.h"
 
 #ifdef _WIN32
 #include <io.h>

@@ -39,7 +39,7 @@
 
 #include "cfx_cmd.h"
 #include "cfx_keyfile.h"
-#include "common.h"
+#include "cfx_utils_common.h"
 
 /*  common constants  */
 

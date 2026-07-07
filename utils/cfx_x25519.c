@@ -10,13 +10,14 @@
 #include <string.h>
 
 #include "cfx_cmd.h"
-#include "common.h"
+#include "cfx_utils_common.h"
 
 /* Read a key from file (auto-detects hex/base64/raw binary) */
 static int read_key_file(const char* path, uint8_t* out, size_t len) {
     enum cfx_str_format fmt = cfx_detect_file_format(path, NULL);
-    if (fmt == CFX_STR_FMT_BINARY)
+    if (fmt == CFX_STR_FMT_BINARY) {
         return cfx_read_file_bin(path, out, len);
+    }
     int n = cfx_read_file_text(path, out, len, fmt);
     if (n < 0 || (size_t)n != len) {
         fprintf(stderr, "error: could not read %zu-byte key from %s\n", len, path);

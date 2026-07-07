@@ -10,7 +10,7 @@
 #include <string.h>
 
 #include "cfx_cmd.h"
-#include "common.h"
+#include "cfx_utils_common.h"
 
 /* Read a key from file (auto-detects hex/base64/raw binary) */
 static int read_key_file(const char* path, uint8_t* out, size_t len) {
