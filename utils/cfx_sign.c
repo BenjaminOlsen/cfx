@@ -12,7 +12,7 @@
 
 #include "cfx_cmd.h"
 #include "cfx_keyfile.h"
-#include "common.h"
+#include "cfx_utils_common.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -105,7 +105,7 @@ static int read_key_auto(const char* path, uint8_t* out) {
     /* Hex: 64 chars, optionally with trailing newline */
     if (n >= 64 && n <= 66) {
         /* Strip trailing whitespace */
-        while (n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r' || buf[n-1] == ' ')) {
+        while (n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r' || buf[n-1] == ' ' || buf[n-1] == '\t')) {
             n--;
         }
         if (n == 64) {

@@ -19,9 +19,9 @@ int hexval(int c);
 int cfx_parse_hex(const char* s, uint8_t* out, size_t outlen);
 
 /* parse string into exactly outlen bytes with prefix-based format detection:
- *   b64:<data>  →  base64
- *   0x<data>    →  hex
- *   <hex chars> →  hex (no prefix)
+ *   b64:<data>  ->  base64
+ *   0x<data>    ->  hex
+ *   <hex chars> ->  hex (no prefix)
  * returns 0 on success, -1 on error. */
 int cfx_parse_str_exact(const char* s, uint8_t* out, size_t outlen);
 
@@ -54,7 +54,7 @@ int cfx_read_file_bin(const char* path, uint8_t* out, size_t outlen);
 enum cfx_str_format cfx_detect_file_format(const char* path, size_t* out_len);
 
 /*
- * read the entire contents of an open FILE* into a newly-allocated buffer.
+ * read the entire contents of an open FILE* into a newly allocated buffer.
  * works for both seekable files and non-seekable streams (e.g. stdin/pipes)
  *
  * on success, *out points to the buffer (caller must free), and *out_len is its size.
