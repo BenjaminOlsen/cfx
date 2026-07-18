@@ -1,9 +1,19 @@
 #include "cfx_utils_common.h"
 #include "cfx/base64.h"
 #include "cfx/memory.h"
+#include "cfx_keyfile.h"
 
 #include <stdlib.h>
 #include <ctype.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <termios.h>
+#include <unistd.h>
+#endif
+
+const char *g_passphrase_arg;
 
 int hexval(int c) {
     if ('0' <= c && c <= '9') return c - '0';
@@ -331,5 +341,122 @@ int cfx_read_all_file(FILE* f, uint8_t** out, size_t* out_len) {
     *out = buf;
     *out_len = len;
     return 0;
+}
+
+int bge_read_all(FILE *f, uint8_t **out, size_t *out_len) {
+    return cfx_read_all_file(f, out, out_len);
+}
+
+int bge_read_secret(const char *prompt, char *buf, size_t bufsz) {
+#ifndef _WIN32
+    FILE *tty = fopen("/dev/tty", "r+");
+    if (tty) {
+        fprintf(tty, "%s", prompt);
+        fflush(tty);
+
+        int tty_fd = fileno(tty);
+        struct termios old, noecho;
+        int have_termios = (tcgetattr(tty_fd, &old) == 0);
+        if (have_termios) {
+            noecho = old;
+            noecho.c_lflag &= ~(tcflag_t)ECHO;
+            tcsetattr(tty_fd, TCSANOW, &noecho);
+        }
+
+        char *r = fgets(buf, (int)bufsz, tty);
+        if (have_termios) {
+            tcsetattr(tty_fd, TCSANOW, &old);
+            fprintf(tty, "\n");
+        }
+        fclose(tty);
+        if (!r) return 0;
+
+        int len = (int)strlen(buf);
+        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
+            buf[--len] = '\0';
+        return len;
+    }
+#endif
+    return cfx_key_read_secret_console(prompt, buf, bufsz);
+}
+
+int bge_read_passphrase(const char *prompt, char *buf, size_t bufsz) {
+    if (g_passphrase_arg) {
+        size_t len = strlen(g_passphrase_arg);
+        if (len >= bufsz) len = bufsz - 1;
+        memcpy(buf, g_passphrase_arg, len);
+        buf[len] = '\0';
+        return (int)len;
+    }
+    return bge_read_secret(prompt, buf, bufsz);
+}
+
+int bge_read_visible(const char *prompt, char *buf, size_t bufsz) {
+#ifdef _WIN32
+    HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode;
+    if (GetConsoleMode(h, &mode))
+        SetConsoleMode(h, mode | ENABLE_ECHO_INPUT);
+#else
+    FILE *tty = fopen("/dev/tty", "r+");
+    if (tty) {
+        fprintf(tty, "%s", prompt);
+        fflush(tty);
+        char *r = fgets(buf, (int)bufsz, tty);
+        fclose(tty);
+        if (!r) return 0;
+
+        int len = (int)strlen(buf);
+        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
+            buf[--len] = '\0';
+        return len;
+    }
+#endif
+    fprintf(stderr, "%s", prompt);
+    fflush(stderr);
+    char *r = fgets(buf, (int)bufsz, stdin);
+    if (!r) return 0;
+
+    int len = (int)strlen(buf);
+    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
+        buf[--len] = '\0';
+    return len;
+}
+
+int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
+                 const char *pw2, int pw2_len, size_t pw2_bufsz) {
+    size_t n = pw1_bufsz < pw2_bufsz ? pw1_bufsz : pw2_bufsz;
+    int diff = pw1_len ^ pw2_len;
+    for (size_t i = 0; i < n; ++i)
+        diff |= pw1[i] ^ pw2[i];
+    return diff == 0;
+}
+
+int prompt_passphrase(char *pwd, size_t pwdsz) {
+    if (g_passphrase_arg) {
+        size_t len = strlen(g_passphrase_arg);
+        if (len >= pwdsz) len = pwdsz - 1;
+        memcpy(pwd, g_passphrase_arg, len);
+        pwd[len] = '\0';
+        return (int)len;
+    }
+
+    char pwd2[256] = {0};
+    int len = bge_read_secret("Enter passphrase: ", pwd, pwdsz);
+    if (len <= 0) {
+        fprintf(stderr, "error: passphrase required\n");
+        cfx_memzero_s(pwd, pwdsz);
+        return -1;
+    }
+
+    int len2 = bge_read_secret("Enter same passphrase again: ", pwd2, sizeof(pwd2));
+    if (!ct_pwd_match(pwd, len, pwdsz, pwd2, len2, sizeof(pwd2))) {
+        fprintf(stderr, "Passphrases do not match.\n");
+        cfx_memzero_s(pwd, pwdsz);
+        cfx_memzero_s(pwd2, sizeof(pwd2));
+        return -1;
+    }
+    cfx_memzero_s(pwd2, sizeof(pwd2));
+    return len;
 }
 

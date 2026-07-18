@@ -1,31 +1,23 @@
-# BGE / Store — encrypted secrets store and file encryption
-#
-# Multi-file utility: crypto core, store manipulation, file encryption,
-# auth grace period, and two entry points (cfx_bge, cfx_store).
+# BGE file encryption component.
 
-add_library(cfx_bge_lib STATIC
+add_library(cfx_bge STATIC
     cfx_bge.c
-    cfx_store.c
-    cfx_bge_crypto.c
-    cfx_bge_store.c
     cfx_bge_file.c
-    cfx_bge_common.c
-    cfx_bge_grace.c
+)
+add_library(cfx::bge ALIAS cfx_bge)
+
+target_link_libraries(cfx_bge PUBLIC cfx::cfx cfx_misc)
+target_include_directories(cfx_bge PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 
-target_link_libraries(cfx_bge_lib PUBLIC cfx::cfx cfx_misc)
-target_include_directories(cfx_bge_lib PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}       # cfx_bge_internal.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/..    # misc.h, cfx_cmd.h, cfx_keyfile.h
-)
+if(CFX_BUILD_BGE_TOOL)
+    add_executable(cfx_bge_tool cfx_bge_main.c)
+    target_link_libraries(cfx_bge_tool PRIVATE cfx_bge)
+    set_target_properties(cfx_bge_tool PROPERTIES OUTPUT_NAME cfx_bge)
 
-# Standalone binaries
-add_executable(cfx_bge cfx_bge_main.c)
-target_link_libraries(cfx_bge PRIVATE cfx_bge_lib)
-
-add_executable(cfx_store cfx_store_main.c)
-target_link_libraries(cfx_store PRIVATE cfx_bge_lib)
-
-install(TARGETS cfx_bge cfx_store
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+    install(TARGETS cfx_bge_tool
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()

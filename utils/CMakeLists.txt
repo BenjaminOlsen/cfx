@@ -33,10 +33,16 @@ set(UTIL_NAMES
 add_library(cfx_misc cfx_utils_common.h cfx_utils_common.c cfx_keyfile.h cfx_keyfile.c cfx_randomart.h cfx_randomart.c)
 target_link_libraries(cfx_misc PUBLIC cfx::cfx)
 
-# Multi-file utilities in subdirectories
-add_subdirectory(bge)
+if(CFX_BUILD_BGE)
+    add_subdirectory(bge)
+endif()
+
+if(CFX_BUILD_STORE)
+    add_subdirectory(store)
+endif()
 
 # Library containing all utility logic (without main functions)
+if(CFX_BUILD_UTILS)
 set(UTIL_SOURCES)
 foreach(util_name IN LISTS UTIL_NAMES)
     list(APPEND UTIL_SOURCES ${util_name}.c)
@@ -44,7 +50,15 @@ foreach(util_name IN LISTS UTIL_NAMES)
 endforeach()
 
 add_library(cfx_util_lib STATIC ${UTIL_SOURCES})
-target_link_libraries(cfx_util_lib PUBLIC cfx::cfx cfx_misc cfx_bge_lib)
+target_link_libraries(cfx_util_lib PUBLIC cfx::cfx cfx_misc)
+if(CFX_BUILD_BGE)
+    target_link_libraries(cfx_util_lib PUBLIC cfx_bge)
+    target_compile_definitions(cfx_util_lib PUBLIC CFX_HAVE_BGE)
+endif()
+if(CFX_BUILD_STORE)
+    target_link_libraries(cfx_util_lib PUBLIC cfx_store)
+    target_compile_definitions(cfx_util_lib PUBLIC CFX_HAVE_STORE)
+endif()
 target_include_directories(cfx_util_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Build individual standalone binaries (cfx_factor, cfx_dc, etc.)
@@ -69,3 +83,4 @@ endforeach()
 install(TARGETS ${UTIL_BINARIES}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+endif()

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later OR GPL-2.0-or-later */
 /* test_cli_store.c - buffer-level regression tests for BGE store encrypt/decrypt */
 
-#include "cfx_bge_internal.h"
+#include "cfx_store_internal.h"
 
 #define PWD      "testpass"
 #define PWD_LEN  8

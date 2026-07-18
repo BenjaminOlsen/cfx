@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(cfx LANGUAGES C VERSION 0.0.0)
+include(GNUInstallDirs)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -9,6 +10,10 @@ endif()
 option(CFX_BUILD_SHARED "Build shared library" ON)
 option(CFX_BUILD_TESTS  "Build tests" ON)
 option(CFX_BUILD_UTILS "Build utility programs" ON)
+option(CFX_BUILD_BGE "Build the BGE file-encryption component" ON)
+option(CFX_BUILD_STORE "Build the encrypted secret-store component" ON)
+option(CFX_BUILD_BGE_TOOL "Build the standalone cfx_bge utility" ${CFX_BUILD_UTILS})
+option(CFX_BUILD_STORE_TOOL "Build the standalone cfx_store utility" ${CFX_BUILD_UTILS})
 option(CFX_NO_FLOAT "No floating point math" OFF)
 option(CFX_COVERAGE "Enable code coverage (GCC/Clang only)" OFF)
 option(CFX_ED25519_PARANOID "Enable paranoid Ed25519 checks (small-subgroup rejection, cofactored verification)" OFF)
@@ -177,8 +182,8 @@ if (ASAN)
 endif()
 
 # ---------------- Utilities
-if(CFX_BUILD_UTILS)
-    message(STATUS "Building utilities...")
+if(CFX_BUILD_UTILS OR CFX_BUILD_BGE OR CFX_BUILD_STORE)
+    message(STATUS "Building utility components...")
     add_subdirectory(utils)
 endif()
 
@@ -222,8 +227,6 @@ else()
 endif()
 
 # ---------------- Install
-include(GNUInstallDirs)
-
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX
       "${CMAKE_BINARY_DIR}/install"

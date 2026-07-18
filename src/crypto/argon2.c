@@ -298,7 +298,6 @@ int cfx_argon2(uint8_t *out, size_t outlen,
     c.seg_len  = seg_len;
     c.type     = type;
 
-    /* H0 */
     uint8_t h0[64];
     initial_hash(h0, pwd, pwdlen, salt, saltlen, m, t, p, outlen, type);
 
