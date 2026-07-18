@@ -73,7 +73,7 @@ function(cfx_find_backend_source ALGORITHM FUNCTION OUT_SOURCE)
 
     # Walk up the tree until we find an implementation
     while(TRUE)
-        set(_path "${CMAKE_SOURCE_DIR}/src/${ALGORITHM}/${_target}/${FUNCTION}.c")
+        set(_path "${PROJECT_SOURCE_DIR}/src/${ALGORITHM}/${_target}/${FUNCTION}.c")
         list(APPEND _checked "${_target}")
 
         if(EXISTS ${_path})
