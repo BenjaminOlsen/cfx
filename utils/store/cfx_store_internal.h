@@ -44,7 +44,7 @@
 /*  common constants  */
 
 #define BGE_MAGIC         "BGE"
-#define BGE_VERSION_STR   "3.0.0"
+#define BGE_VERSION_STR   "3.1.0"
 #define BGE_TAG_LEN       16
 
 #define BGE_DEFAULT_M     0x10000  /* 64 MB (in KB) */

@@ -1,6 +1,174 @@
-/* cfx_bge.c -- file encryption dispatch (XChaCha20-Poly1305) */
-
+    
+#include "bge.h"
 #include "cfx_bge_internal.h"
+
+static int read_input(const char *path, uint8_t **data, size_t *len) {
+    FILE *file = stdin;
+    if (path) {
+        file = fopen(path, "rb");
+    }
+    if (!file) {
+        fprintf(stderr, "error: cannot open %s: %s\n", path, strerror(errno));
+        return -1;
+    }
+
+    int rc = cfx_read_all_file(file, data, len);
+    if (path) fclose(file);
+    if (rc != 0) {
+        fprintf(stderr, "error: cannot read input\n");
+        return -1;
+    }
+    return 0;
+}
+
+static int write_output(const char *path, const uint8_t *data, size_t len) {
+    FILE *file = stdout;
+    if (path) {
+        file = fopen(path, "wb");
+        if (!file) {
+            fprintf(stderr, "error: cannot open %s: %s\n", path, strerror(errno));
+            return -1;
+        }
+    }
+
+    int rc = len == 0 || fwrite(data, 1, len, file) == len ? 0 : -1;
+    if (path && fclose(file) != 0) rc = -1;
+    if (rc != 0) fprintf(stderr, "error: cannot write output\n");
+    return rc;
+}
+
+static int parse_file_args(int argc, char **argv, int allow_armor,
+                           const char **input, const char **output,
+                           int *armor) {
+    *input = NULL;
+    *output = NULL;
+    *armor = 0;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0 ||
+            strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--decrypt") == 0) {
+            continue;
+        }
+        if (allow_armor &&
+            (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--armor") == 0)) {
+            *armor = 1;
+        } else if (strcmp(argv[i], "-o") == 0 ||
+                   strcmp(argv[i], "--output") == 0) {
+            if (++i >= argc) {
+                fprintf(stderr, "error: -o requires a path\n");
+                return -1;
+            }
+            *output = argv[i];
+        } else if (strcmp(argv[i], "-i") == 0 ||
+                   strcmp(argv[i], "--input") == 0) {
+            if (++i >= argc) {
+                fprintf(stderr, "error: -i requires a path\n");
+                return -1;
+            }
+            *input = argv[i];
+        } else if (argv[i][0] == '-') {
+            fprintf(stderr, "error: unknown option: %s\n", argv[i]);
+            return -1;
+        } else if (!*input) {
+            *input = argv[i];
+        } else {
+            fprintf(stderr, "error: unexpected argument: %s\n", argv[i]);
+            return -1;
+        }
+    }
+    return 0;
+}
+
+int bge_encrypt_file(int argc, char **argv) {
+    const char *input_path;
+    const char *output_path;
+    int armor;
+    if (parse_file_args(argc, argv, 1, &input_path, &output_path, &armor) != 0)
+        return 1;
+
+    uint8_t *input = NULL;
+    size_t input_len = 0;
+    if (read_input(input_path, &input, &input_len) != 0) return 1;
+
+    char passphrase[256] = {0};
+    int passphrase_len = prompt_passphrase(passphrase, sizeof(passphrase));
+    if (passphrase_len < 0) {
+        cfx_bge_free(input, input_len);
+        return 1;
+    }
+
+    uint8_t *encrypted = NULL;
+    size_t encrypted_len = 0;
+    int rc = cfx_bge_encrypt(input, input_len,
+                             (const uint8_t *)passphrase,
+                             (size_t)passphrase_len,
+                             &encrypted, &encrypted_len);
+    cfx_memzero_s(passphrase, sizeof(passphrase));
+    cfx_bge_free(input, input_len);
+    if (rc != 0) {
+        fprintf(stderr, "error: encryption failed\n");
+        return 1;
+    }
+
+    uint8_t *result = encrypted;
+    size_t result_len = encrypted_len;
+    if (armor) {
+        if (bge_armor_encode(encrypted, encrypted_len, &result, &result_len) != 0) {
+            fprintf(stderr, "error: armor encoding failed\n");
+            cfx_bge_free(encrypted, encrypted_len);
+            return 1;
+        }
+    }
+
+    rc = write_output(output_path, result, result_len);
+    if (armor) {
+        cfx_bge_free(result, result_len);
+        cfx_bge_free(encrypted, encrypted_len);
+    } else {
+        cfx_bge_free(encrypted, encrypted_len);
+    }
+    return rc == 0 ? 0 : 1;
+}
+
+int bge_decrypt_file(int argc, char **argv) {
+    const char *input_path;
+    const char *output_path;
+    int unused_armor;
+    if (parse_file_args(argc, argv, 0, &input_path, &output_path,
+                        &unused_armor) != 0)
+        return 1;
+
+    uint8_t *input = NULL;
+    size_t input_len = 0;
+    if (read_input(input_path, &input, &input_len) != 0) return 1;
+
+    char passphrase[256] = {0};
+    int passphrase_len = bge_read_passphrase(
+        "Enter passphrase: ", passphrase, sizeof(passphrase));
+    if (passphrase_len <= 0) {
+        cfx_bge_free(input, input_len);
+        return 1;
+    }
+
+    uint8_t *plaintext = NULL;
+    size_t plaintext_len = 0;
+    int rc = cfx_bge_decrypt(input, input_len,
+                             (const uint8_t *)passphrase,
+                             (size_t)passphrase_len,
+                             &plaintext, &plaintext_len);
+    cfx_memzero_s(passphrase, sizeof(passphrase));
+    cfx_bge_free(input, input_len);
+    if (rc != 0) {
+        fprintf(stderr, rc == -3
+            ? "error: authentication failed\n"
+            : "error: invalid BGE input\n");
+        return 1;
+    }
+
+    rc = write_output(output_path, plaintext, plaintext_len);
+    cfx_bge_free(plaintext, plaintext_len);
+    return rc == 0 ? 0 : 1;
+}
 
 static void usage(const char *prog) {
     printf("Usage:\n");

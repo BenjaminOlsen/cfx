@@ -135,7 +135,7 @@ PS: > cmake --install build --config Release --prefix "$env:USERPROFILE"
 or to compile and install in one step:
 
 ```powershell
-cmake -S . -B build -DCMAKE_INSTALL_PREFIX=%USERPROFILE%
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$HOME"
 cmake --build build --config Release -j --target install
 ```
 
