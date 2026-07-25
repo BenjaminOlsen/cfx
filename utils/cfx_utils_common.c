@@ -423,16 +423,17 @@ int bge_read_visible(const char *prompt, char *buf, size_t bufsz) {
     return len;
 }
 
-int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
+int cfx_ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
                  const char *pw2, int pw2_len, size_t pw2_bufsz) {
     size_t n = pw1_bufsz < pw2_bufsz ? pw1_bufsz : pw2_bufsz;
     int diff = pw1_len ^ pw2_len;
-    for (size_t i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i) {
         diff |= pw1[i] ^ pw2[i];
+    }
     return diff == 0;
 }
 
-int prompt_passphrase(char *pwd, size_t pwdsz) {
+int cfx_prompt_passphrase(char *pwd, size_t pwdsz) {
     if (g_passphrase_arg) {
         size_t len = strlen(g_passphrase_arg);
         if (len >= pwdsz) len = pwdsz - 1;
@@ -450,7 +451,7 @@ int prompt_passphrase(char *pwd, size_t pwdsz) {
     }
 
     int len2 = bge_read_secret("Enter same passphrase again: ", pwd2, sizeof(pwd2));
-    if (!ct_pwd_match(pwd, len, pwdsz, pwd2, len2, sizeof(pwd2))) {
+    if (!cfx_ct_pwd_match(pwd, len, pwdsz, pwd2, len2, sizeof(pwd2))) {
         fprintf(stderr, "Passphrases do not match.\n");
         cfx_memzero_s(pwd, pwdsz);
         cfx_memzero_s(pwd2, sizeof(pwd2));

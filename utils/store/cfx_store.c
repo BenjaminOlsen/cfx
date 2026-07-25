@@ -101,7 +101,7 @@ static int store_init(int argc, char **argv) {
     }
 
     char pwd[256] = {0};
-    int pwd_len = prompt_passphrase(pwd, sizeof(pwd));
+    int pwd_len = cfx_prompt_passphrase(pwd, sizeof(pwd));
     if (pwd_len < 0) return 1;
 
     int rc = bge_v4_init_write(path, NULL, 0, pwd, (size_t)pwd_len,
@@ -1379,7 +1379,7 @@ static int store_cmd_passwd(int argc, char **argv) {
 
     printf("Enter new passphrase.\n");
     char new_pwd[256] = {0};
-    int new_len = prompt_passphrase(new_pwd, sizeof(new_pwd));
+    int new_len = cfx_prompt_passphrase(new_pwd, sizeof(new_pwd));
     if (new_len < 0) {
         cfx_memzero_s(pt, pt_len);
         free(pt);
@@ -1612,7 +1612,7 @@ static int store_slot_add(int argc, char **argv) {
     /* prompt for new passphrase */
     printf("Enter new passphrase for additional slot.\n");
     char new_pwd[256] = {0};
-    int new_len = prompt_passphrase(new_pwd, sizeof(new_pwd));
+    int new_len = cfx_prompt_passphrase(new_pwd, sizeof(new_pwd));
     if (new_len < 0) {
         cfx_memzero_s(pwd, sizeof(pwd));
         cfx_memzero_s(pt, pt_len);

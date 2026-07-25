@@ -152,33 +152,6 @@ static int prompt_path(const char *prompt, const char *default_path, char *out, 
     return 0;
 }
 
-static int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
-                        const char *pw2, int pw2_len, size_t pw2_bufsz) {
-    size_t n = pw1_bufsz < pw2_bufsz ? pw1_bufsz : pw2_bufsz;
-    int diff = pw1_len ^ pw2_len;
-    for (size_t i = 0; i < n; ++i) {
-        diff |= pw1[i] ^ pw2[i];
-    }
-    return diff == 0;
-}
-
-/* prompt for passphrase (twice), return length. 0 = no passphrase. */
-static int prompt_passphrase(char *pwd, size_t pwdsz) {
-    char pwd2[256] = {0};
-    int len = cfx_key_read_secret_console("Enter passphrase (empty for no passphrase): ", pwd, pwdsz);
-    if (len == 0) return 0;
-
-    int len2 = cfx_key_read_secret_console("Enter same passphrase again: ", pwd2, sizeof(pwd2));
-    if (!ct_pwd_match(pwd, len, pwdsz, pwd2, len2, sizeof(pwd2))) {
-        fprintf(stderr, "Passphrases do not match.\n");
-        cfx_memzero_s(pwd, pwdsz);
-        cfx_memzero_s(pwd2, sizeof(pwd2));
-        return -1;
-    }
-    cfx_memzero_s(pwd2, sizeof(pwd2));
-    return len;
-}
-
 static int keygen_ed25519(const char *basename, int interactive) {
     char priv_path[1024], pub_path[1024], default_priv[1024], cfx_dir[1024];
     char pwd[256] = {0};
@@ -203,7 +176,7 @@ static int keygen_ed25519(const char *basename, int interactive) {
 
     /* prompt for passphrase if on a tty */
     if (interactive) {
-        pwd_len = prompt_passphrase(pwd, sizeof(pwd));
+        pwd_len = cfx_prompt_passphrase(pwd, sizeof(pwd));
         if (pwd_len < 0) goto cleanup;
     }
 
@@ -290,7 +263,7 @@ static int keygen_x25519(const char *basename, int interactive) {
 
     /* prompt for passphrase if on a tty */
     if (interactive) {
-        pwd_len = prompt_passphrase(pwd, sizeof(pwd));
+        pwd_len = cfx_prompt_passphrase(pwd, sizeof(pwd));
         if (pwd_len < 0) goto cleanup;
     }
 

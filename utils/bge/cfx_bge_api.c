@@ -7,45 +7,6 @@ int bge_is_armored(const uint8_t *buf, size_t len) {
     return len >= 27 && memcmp(buf, BGE_ARMOR_HEADER, 27) == 0;
 }
 
-int bge_armor_encode(const uint8_t *bin, size_t bin_len,
-                     uint8_t **out, size_t *out_len) {
-    size_t b64_len = 0;
-    cfx_base64_encode(NULL, &b64_len, bin, bin_len);
-    char *b64 = malloc(b64_len ? b64_len : 1);
-    if (!b64) return -1;
-    cfx_base64_encode(b64, &b64_len, bin, bin_len);
-
-    size_t hlen = strlen(BGE_ARMOR_HEADER);
-    size_t flen = strlen(BGE_ARMOR_FOOTER);
-    size_t nlines = (b64_len + 75) / 76;
-    size_t total = hlen + 1 + b64_len + nlines + flen + 1;
-    uint8_t *buf = malloc(total + 1);
-    if (!buf) {
-        free(b64);
-        return -1;
-    }
-
-    uint8_t *w = buf;
-    memcpy(w, BGE_ARMOR_HEADER, hlen);
-    w += hlen;
-    *w++ = '\n';
-    for (size_t i = 0; i < b64_len; i += 76) {
-        size_t chunk = b64_len - i;
-        if (chunk > 76) chunk = 76;
-        memcpy(w, b64 + i, chunk);
-        w += chunk;
-        *w++ = '\n';
-    }
-    memcpy(w, BGE_ARMOR_FOOTER, flen);
-    w += flen;
-    *w++ = '\n';
-    free(b64);
-
-    *out = buf;
-    *out_len = (size_t)(w - buf);
-    return 0;
-}
-
 int bge_armor_decode(const uint8_t *text, size_t text_len,
                      uint8_t **out, size_t *out_len) {
     const char *start = (const char *)text;

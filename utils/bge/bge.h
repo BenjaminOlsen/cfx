@@ -6,6 +6,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if defined(_WIN32) && defined(CFX_BGE_SHARED)
+#  if defined(CFX_BGE_BUILDING)
+#    define CFX_BGE_API __declspec(dllexport)
+#  else
+#    define CFX_BGE_API __declspec(dllimport)
+#  endif
+#else
+#  define CFX_BGE_API
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -18,9 +28,10 @@ extern "C" {
  * Empty plaintext and embedded '\0' bytes are ok.
  * The passphrase is treated as an arbitrary byte sequence.
  */
-int cfx_bge_encrypt(const uint8_t *plaintext, size_t plaintext_len,
-                    const uint8_t *passphrase, size_t passphrase_len,
-                    uint8_t **output, size_t *output_len);
+CFX_BGE_API int cfx_bge_encrypt(
+    const uint8_t *plaintext, size_t plaintext_len,
+    const uint8_t *passphrase, size_t passphrase_len,
+    uint8_t **output, size_t *output_len);
 
 /*
  * Decrypt binary or armored BGE data.
@@ -30,12 +41,13 @@ int cfx_bge_encrypt(const uint8_t *plaintext, size_t plaintext_len,
  * Returns -1 for invalid arguments/allocation failures, -2 for malformed
  * input, and -3 when authentication fails.
  */
-int cfx_bge_decrypt(const uint8_t *input, size_t input_len,
-                    const uint8_t *passphrase, size_t passphrase_len,
-                    uint8_t **plaintext, size_t *plaintext_len);
+CFX_BGE_API int cfx_bge_decrypt(
+    const uint8_t *input, size_t input_len,
+    const uint8_t *passphrase, size_t passphrase_len,
+    uint8_t **plaintext, size_t *plaintext_len);
 
 /* Clear and release a buffer returned by this API. */
-void cfx_bge_free(void *buffer, size_t buffer_len);
+CFX_BGE_API void cfx_bge_free(void *buffer, size_t buffer_len);
 
 #ifdef __cplusplus
 }

@@ -32,6 +32,35 @@ cmake --build build --config Release
 
 Or for Debug builds: `cmake --build build --config Debug`
 
+### BGE library
+
+BGE is built as a static library by default and is available to CMake targets
+as `cfx::bge`. Enable `CFX_BGE_SHARED` to build it as a shared library instead:
+
+```bash
+cmake -S . -B build-bge-shared \
+  -DCFX_BUILD_BGE=ON \
+  -DCFX_BGE_SHARED=ON
+cmake --build build-bge-shared --config Release
+```
+
+On Windows this produces `cfx_bge.dll` and its `cfx_bge.lib` import library.
+Programs consume static and shared builds in the same way:
+
+```cmake
+target_link_libraries(my_program PRIVATE cfx::bge)
+```
+
+```c
+#include <bge.h>
+```
+
+When shared, the target propagates `CFX_BGE_SHARED` to consumers so `bge.h`
+uses `__declspec(dllimport)` on Windows. 
+
+(`CFX_BGE_BUILDING` is private to the
+BGE target and selects `__declspec(dllexport)` while compiling the DLL.)
+
 ## Tests
 
 The tests are divided into two categories, unit test and statistical tests:

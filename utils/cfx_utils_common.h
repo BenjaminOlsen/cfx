@@ -68,8 +68,8 @@ int bge_read_all(FILE *f, uint8_t **out, size_t *out_len);
 int bge_read_secret(const char *prompt, char *buf, size_t bufsz);
 int bge_read_passphrase(const char *prompt, char *buf, size_t bufsz);
 int bge_read_visible(const char *prompt, char *buf, size_t bufsz);
-int prompt_passphrase(char *pwd, size_t pwdsz);
-int ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
+int cfx_prompt_passphrase(char *pwd, size_t pwdsz);
+int cfx_ct_pwd_match(const char *pw1, int pw1_len, size_t pw1_bufsz,
                  const char *pw2, int pw2_len, size_t pw2_bufsz);
 
 #endif  /* CFX_UTILS_COMMON_H */

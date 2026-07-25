@@ -2,6 +2,45 @@
 #include "bge.h"
 #include "cfx_bge_internal.h"
 
+static int armor_encode(const uint8_t *bin, size_t bin_len,
+                        uint8_t **out, size_t *out_len) {
+    size_t b64_len = 0;
+    cfx_base64_encode(NULL, &b64_len, bin, bin_len);
+    char *b64 = malloc(b64_len ? b64_len : 1);
+    if (!b64) return -1;
+    cfx_base64_encode(b64, &b64_len, bin, bin_len);
+
+    size_t hlen = strlen(BGE_ARMOR_HEADER);
+    size_t flen = strlen(BGE_ARMOR_FOOTER);
+    size_t nlines = (b64_len + 75) / 76;
+    size_t total = hlen + 1 + b64_len + nlines + flen + 1;
+    uint8_t *buf = malloc(total + 1);
+    if (!buf) {
+        free(b64);
+        return -1;
+    }
+
+    uint8_t *w = buf;
+    memcpy(w, BGE_ARMOR_HEADER, hlen);
+    w += hlen;
+    *w++ = '\n';
+    for (size_t i = 0; i < b64_len; i += 76) {
+        size_t chunk = b64_len - i;
+        if (chunk > 76) chunk = 76;
+        memcpy(w, b64 + i, chunk);
+        w += chunk;
+        *w++ = '\n';
+    }
+    memcpy(w, BGE_ARMOR_FOOTER, flen);
+    w += flen;
+    *w++ = '\n';
+    free(b64);
+
+    *out = buf;
+    *out_len = (size_t)(w - buf);
+    return 0;
+}
+
 static int read_input(const char *path, uint8_t **data, size_t *len) {
     FILE *file = stdin;
     if (path) {
@@ -91,7 +130,7 @@ int bge_encrypt_file(int argc, char **argv) {
     if (read_input(input_path, &input, &input_len) != 0) return 1;
 
     char passphrase[256] = {0};
-    int passphrase_len = prompt_passphrase(passphrase, sizeof(passphrase));
+    int passphrase_len = cfx_prompt_passphrase(passphrase, sizeof(passphrase));
     if (passphrase_len < 0) {
         cfx_bge_free(input, input_len);
         return 1;
@@ -113,7 +152,7 @@ int bge_encrypt_file(int argc, char **argv) {
     uint8_t *result = encrypted;
     size_t result_len = encrypted_len;
     if (armor) {
-        if (bge_armor_encode(encrypted, encrypted_len, &result, &result_len) != 0) {
+        if (armor_encode(encrypted, encrypted_len, &result, &result_len) != 0) {
             fprintf(stderr, "error: armor encoding failed\n");
             cfx_bge_free(encrypted, encrypted_len);
             return 1;
@@ -122,7 +161,8 @@ int bge_encrypt_file(int argc, char **argv) {
 
     rc = write_output(output_path, result, result_len);
     if (armor) {
-        cfx_bge_free(result, result_len);
+        cfx_memzero_s(result, result_len);
+        free(result);
         cfx_bge_free(encrypted, encrypted_len);
     } else {
         cfx_bge_free(encrypted, encrypted_len);

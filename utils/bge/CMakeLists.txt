@@ -1,8 +1,23 @@
 
-add_library(cfx_bge STATIC
+if(CFX_BGE_SHARED)
+    set(CFX_BGE_LIBRARY_TYPE SHARED)
+    # A shared BGE library may link the core CFX target statically.
+    set_property(TARGET cfx PROPERTY POSITION_INDEPENDENT_CODE ON)
+else()
+    set(CFX_BGE_LIBRARY_TYPE STATIC)
+endif()
+
+add_library(cfx_bge ${CFX_BGE_LIBRARY_TYPE}
     cfx_bge_api.c
 )
 add_library(cfx::bge ALIAS cfx_bge)
+
+if(CFX_BGE_SHARED)
+    target_compile_definitions(cfx_bge
+        PUBLIC CFX_BGE_SHARED
+        PRIVATE CFX_BGE_BUILDING
+    )
+endif()
 
 target_link_libraries(cfx_bge PUBLIC cfx::cfx)
 target_include_directories(cfx_bge
