@@ -19,6 +19,15 @@ if(CFX_BGE_SHARED)
     )
 endif()
 
+if (MSVC AND CFX_BGE_SHARED)
+    install(
+        FILES $<TARGET_PDB_FILE:cfx_bge>
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+          CONFIGURATIONS Debug RelWithDebInfo
+          OPTIONAL
+    )
+endif()
+
 target_link_libraries(cfx_bge PUBLIC cfx::cfx)
 target_include_directories(cfx_bge
     PUBLIC
