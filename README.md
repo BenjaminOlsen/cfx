@@ -8,11 +8,38 @@ cfx used to mean one thing, something around 'Factorization into prime eXponents
 [cmake](https://cmake.org/download/), a c compiler, (optionally) [TestU01](https://simul.iro.umontreal.ca/testu01/tu01.html), (optionally, for benchmarks) [Google Benchmark](https://github.com/google/benchmark), (optionally, for benchmark comparisons) [OpenSSL](https://openssl-library.org/source/).
 
 ## Configure
+
+Options (`-DNAME=VALUE`; default first):
+
+```text
+CFX_BUILD_SHARED=ON|OFF            main library shared support
+CFX_BUILD_TESTS=ON|OFF             tests
+CFX_BUILD_UTILS=ON|OFF             utilities
+CFX_BUILD_BGE=ON|OFF               BGE component
+CFX_BGE_SHARED=OFF|ON              shared BGE library
+CFX_BUILD_STORE=ON|OFF             secret-store component
+CFX_BUILD_BGE_TOOL=ON|OFF          cfx_bge (default: CFX_BUILD_UTILS)
+CFX_BUILD_STORE_TOOL=ON|OFF        cfx_store (default: CFX_BUILD_UTILS)
+CFX_BUILD_BENCHMARKS=OFF|ON        benchmarks; needs Google Benchmark
+CFX_ENABLE_TESTU01=OFF|ON          statistical tests; needs TestU01
+CFX_NO_FLOAT=OFF|ON                no floating-point math
+CFX_COVERAGE=OFF|ON                coverage; GCC/Clang only
+CFX_ED25519_PARANOID=OFF|ON        extra Ed25519 checks
+ASAN=OFF|ON                        AddressSanitizer
+CFX_TARGET=auto|portable|x86_64_bmi2|x86_64_avx2|arm_cortex_m4
+CFX_ARCH=native|x86_64|armv7m|aarch64
+CFX_LIMB_BITS=auto|32|64
+CFX_MEMORY_MODE=dynamic|static
+CFX_STATIC_LIMBS=N                 limbs per bigint (default: 256)
+CFX_STATIC_POOL_SIZE=N             static buffers (default: 1024)
+CFX_PRIMES_COUNT=N                 primes (54..664579; default: 664579)
+```
+
 Simplest default example : `cmake -S . -B build` 
 
 example: choose your compiler, enable testu01, build benchmarks, release build, with 4096 primes in the static list: `CC=/usr/local/bin/clang cmake -B build -S . -DCFX_ENABLE_TESTU01=ON -DCFX_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release -DCFX_PRIMES_COUNT=4096`
 
-example: force 32 bit limbs: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCFX_BUILD_UTILS=ON -DCFX_BUILD_TESTS=ON -DCFX_FORCE_LIMB_32=ON`
+example: force 32 bit limbs: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCFX_BUILD_UTILS=ON -DCFX_BUILD_TESTS=ON -DCFX_LIMB_BITS=32`
 
 example: build for ARM Cortex-M4: `cmake -B build-m4 -DCFX_TARGET=arm_cortex_m4 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm-none-eabi-gcc.cmake -DCFX_MEMORY_MODE=dynamic`
 
