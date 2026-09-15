@@ -24,6 +24,7 @@ const cfx_cmd_t cfx_commands[] = {
     {"keygen",          "Generate random key bytes",                        cfx_keygen_run},
     {"mac",             "Compute Poly1305 MAC",                             cfx_mac_run},
     {"modexp",          "Modular exponentiation (base^exp mod m)",          cfx_modexp_run},
+    {"passwd",          "Password generator",                               cfx_passwd_run},
     {"pow",             "Compute n^p",                                      cfx_pow_run},
     {"isprime",         "Miller-Rabin primality test",                      cfx_isprime_run},
     {"primes",          "List primes up to n (sieve)",                      cfx_primes_run},

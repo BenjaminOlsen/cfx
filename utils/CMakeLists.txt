@@ -27,6 +27,7 @@ set(UTIL_NAMES
     cfx_aead
     cfx_argon2
     cfx_xgcd
+    cfx_passwd
 )
 
 # Helper library with misc utilities (hex parsing, etc.)

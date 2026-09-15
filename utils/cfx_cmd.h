@@ -33,6 +33,7 @@ int cfx_xgcd_run(int argc, char** argv);
 int cfx_bge_run(int argc, char** argv);
 int cfx_store_run(int argc, char** argv);
 int cfx_randart_run(int argc, char** argv);
+int cfx_passwd_run(int argc, char** argv);
 
 typedef struct {
     const char* name;

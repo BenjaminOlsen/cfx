@@ -209,10 +209,10 @@ void grace_delete(void);
 
 /*  cfx_bge_common.c (I/O, path, and utility helpers)  */
 
-int bge_read_all(FILE *f, uint8_t **out, size_t *out_len);
-int bge_read_secret(const char *prompt, char *buf, size_t bufsz);
+int cfx_read_all(FILE *f, uint8_t **out, size_t *out_len);
+int cfx_read_secret(const char *prompt, char *buf, size_t bufsz);
 int bge_read_passphrase(const char *prompt, char *buf, size_t bufsz);
-int bge_read_visible(const char *prompt, char *buf, size_t bufsz);
+int cfx_read_visible(const char *prompt, char *buf, size_t bufsz);
 int prompt_passphrase(char *pwd, size_t pwdsz);
 
 int get_cfx_dir(char *buf, size_t bufsz);

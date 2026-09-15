@@ -179,7 +179,7 @@ static int store_cmd_get(int argc, char **argv) {
     char name_buf[256] = {0};
     if (!name) {
         store_print_names(pt, pt_len);
-        int r = bge_read_visible("Name: ", name_buf, sizeof(name_buf));
+        int r = cfx_read_visible("Name: ", name_buf, sizeof(name_buf));
         if (r <= 0) {
             fprintf(stderr, "error: name required\n");
             cfx_memzero_s(pt, pt_len);
@@ -287,7 +287,7 @@ static int store_cmd_set(int argc, char **argv) {
             fprintf(stderr, "error: cannot open %s: %s\n", file_arg, strerror(errno));
             return 1;
         }
-        if (bge_read_all(vf, &val_buf, &val_len) != 0) {
+        if (cfx_read_all(vf, &val_buf, &val_len) != 0) {
             fclose(vf);
             fprintf(stderr, "error: cannot read %s\n", file_arg);
             return 1;
@@ -340,7 +340,7 @@ static int store_cmd_set(int argc, char **argv) {
     /* interactive name prompt if not on cmdline */
     char name_buf[256] = {0};
     if (!name) {
-        int r = bge_read_visible("Name: ", name_buf, sizeof(name_buf));
+        int r = cfx_read_visible("Name: ", name_buf, sizeof(name_buf));
         if (r <= 0) {
             fprintf(stderr, "error: name required\n");
             cfx_memzero_s(pt, pt_len);
@@ -371,7 +371,7 @@ static int store_cmd_set(int argc, char **argv) {
     if (!force) {
         if (store_get(pt, pt_len, name, NULL) != NULL) {
             char ans[8] = {0};
-            int r = bge_read_visible("Overwrite existing entry? [y/N] ", ans, sizeof(ans));
+            int r = cfx_read_visible("Overwrite existing entry? [y/N] ", ans, sizeof(ans));
             if (r <= 0 || (ans[0] != 'y' && ans[0] != 'Y')) {
                 fprintf(stderr, "Aborted.\n");
                 cfx_memzero_s(pt, pt_len);
@@ -400,7 +400,7 @@ static int store_cmd_set(int argc, char **argv) {
 #endif
             if (stdin_is_tty) {
                 char secret_buf[4096] = {0};
-                int slen = bge_read_secret("Value: ", secret_buf, sizeof(secret_buf));
+                int slen = cfx_read_secret("Value: ", secret_buf, sizeof(secret_buf));
                 if (slen <= 0) {
                     fprintf(stderr, "error: empty value\n");
                     cfx_memzero_s(secret_buf, sizeof(secret_buf));
@@ -422,7 +422,7 @@ static int store_cmd_set(int argc, char **argv) {
                 cfx_memzero_s(secret_buf, sizeof(secret_buf));
                 val_needs_free = 1;
             } else {
-                if (bge_read_all(stdin, &val_buf, &val_len) != 0) {
+                if (cfx_read_all(stdin, &val_buf, &val_len) != 0) {
                     fprintf(stderr, "error: cannot read from stdin\n");
                     cfx_memzero_s(pt, pt_len);
                     free(pt);
@@ -566,7 +566,7 @@ static int store_cmd_edit(int argc, char **argv) {
     char name_buf[256] = {0};
     if (!name) {
         store_print_names(pt, pt_len);
-        int r = bge_read_visible("Name: ", name_buf, sizeof(name_buf));
+        int r = cfx_read_visible("Name: ", name_buf, sizeof(name_buf));
         if (r <= 0) {
             fprintf(stderr, "error: name required\n");
             cfx_memzero_s(pt, pt_len);
@@ -633,7 +633,7 @@ static int store_cmd_edit(int argc, char **argv) {
     size_t new_vlen = 0;
     FILE *rf = fopen(tmppath, "rb");
     if (rf) {
-        bge_read_all(rf, &new_val, &new_vlen);
+        cfx_read_all(rf, &new_val, &new_vlen);
         fclose(rf);
     }
 
@@ -735,7 +735,7 @@ static int store_cmd_rm(int argc, char **argv) {
     char name_buf[256] = {0};
     if (!name) {
         store_print_names(pt, pt_len);
-        int r = bge_read_visible("Name: ", name_buf, sizeof(name_buf));
+        int r = cfx_read_visible("Name: ", name_buf, sizeof(name_buf));
         if (r <= 0) {
             fprintf(stderr, "error: name required\n");
             cfx_memzero_s(pt, pt_len);
@@ -758,7 +758,7 @@ static int store_cmd_rm(int argc, char **argv) {
         char prompt[300];
         snprintf(prompt, sizeof(prompt), "Remove '%s' - are you sure? [y/N] ", name);
         char ans[8] = {0};
-        int r = bge_read_visible(prompt, ans, sizeof(ans));
+        int r = cfx_read_visible(prompt, ans, sizeof(ans));
         if (r <= 0 || (ans[0] != 'y' && ans[0] != 'Y')) {
             fprintf(stderr, "Aborted.\n");
             cfx_memzero_s(pt, pt_len);
@@ -846,7 +846,7 @@ static int store_cmd_rename(int argc, char **argv) {
     char old_buf[256] = {0}, new_buf[256] = {0};
     if (!old_name) {
         store_print_names(pt, pt_len);
-        int r = bge_read_visible("Old name: ", old_buf, sizeof(old_buf));
+        int r = cfx_read_visible("Old name: ", old_buf, sizeof(old_buf));
         if (r <= 0) {
             fprintf(stderr, "error: name required\n");
             cfx_memzero_s(pt, pt_len); free(pt);
@@ -856,7 +856,7 @@ static int store_cmd_rename(int argc, char **argv) {
         old_name = old_buf;
     }
     if (!new_name) {
-        int r = bge_read_visible("New name: ", new_buf, sizeof(new_buf));
+        int r = cfx_read_visible("New name: ", new_buf, sizeof(new_buf));
         if (r <= 0) {
             fprintf(stderr, "error: name required\n");
             cfx_memzero_s(pt, pt_len); free(pt);
@@ -1019,7 +1019,7 @@ static int store_cmd_swap(int argc, char **argv) {
     if (!arg_a || !arg_b) {
         store_print_names(pt, pt_len);
         if (!arg_a) {
-            int r = bge_read_visible("First entry (name or index): ", buf_a, sizeof(buf_a));
+            int r = cfx_read_visible("First entry (name or index): ", buf_a, sizeof(buf_a));
             if (r <= 0) {
                 fprintf(stderr, "error: entry required\n");
                 cfx_memzero_s(pt, pt_len);
@@ -1030,7 +1030,7 @@ static int store_cmd_swap(int argc, char **argv) {
             arg_a = buf_a;
         }
         if (!arg_b) {
-            int r = bge_read_visible("Second entry (name or index): ", buf_b, sizeof(buf_b));
+            int r = cfx_read_visible("Second entry (name or index): ", buf_b, sizeof(buf_b));
             if (r <= 0) {
                 fprintf(stderr, "error: entry required\n");
                 cfx_memzero_s(pt, pt_len);
@@ -1506,7 +1506,7 @@ static int store_slot_ls(int argc, char **argv) {
 
     uint8_t *file_buf = NULL;
     size_t file_len = 0;
-    if (bge_read_all(f, &file_buf, &file_len) != 0) {
+    if (cfx_read_all(f, &file_buf, &file_len) != 0) {
         fclose(f);
         fprintf(stderr, "error: cannot read %s\n", path);
         return 1;
@@ -1716,7 +1716,7 @@ static int store_slot_rm(int argc, char **argv) {
     char prompt[128];
     snprintf(prompt, sizeof(prompt), "Remove slot %d? [y/N] ", rm_idx + 1);
     char ans[8] = {0};
-    int r = bge_read_visible(prompt, ans, sizeof(ans));
+    int r = cfx_read_visible(prompt, ans, sizeof(ans));
     if (r <= 0 || (ans[0] != 'y' && ans[0] != 'Y')) {
         fprintf(stderr, "Aborted.\n");
         bge_ustore_wipe(&us);
@@ -1829,7 +1829,7 @@ static int store_cmd_rekey(int argc, char **argv) {
         char prompt[128];
         snprintf(prompt, sizeof(prompt), "Enter passphrase for slot %d: ", i + 1);
         char slot_pwd[256] = {0};
-        int slot_pwd_len = bge_read_secret(prompt, slot_pwd, sizeof(slot_pwd));
+        int slot_pwd_len = cfx_read_secret(prompt, slot_pwd, sizeof(slot_pwd));
         if (slot_pwd_len <= 0) {
             fprintf(stderr, "error: passphrase required for slot %d\n", i + 1);
             cfx_memzero_s(slot_pwd, sizeof(slot_pwd));

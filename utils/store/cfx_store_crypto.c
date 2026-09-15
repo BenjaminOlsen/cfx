@@ -541,7 +541,7 @@ int bge_uauthenticate(const char *path, const char *pwd, size_t pwd_len,
 
     uint8_t *file_buf = NULL;
     size_t file_len = 0;
-    if (bge_read_all(f, &file_buf, &file_len) != 0) {
+    if (cfx_read_all(f, &file_buf, &file_len) != 0) {
         fclose(f);
         fprintf(stderr, "error: cannot read %s\n", path);
         return -1;

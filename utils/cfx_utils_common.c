@@ -343,11 +343,11 @@ int cfx_read_all_file(FILE* f, uint8_t** out, size_t* out_len) {
     return 0;
 }
 
-int bge_read_all(FILE *f, uint8_t **out, size_t *out_len) {
+int cfx_read_all(FILE *f, uint8_t **out, size_t *out_len) {
     return cfx_read_all_file(f, out, out_len);
 }
 
-int bge_read_secret(const char *prompt, char *buf, size_t bufsz) {
+int cfx_read_secret(const char *prompt, char *buf, size_t bufsz) {
 #ifndef _WIN32
     FILE *tty = fopen("/dev/tty", "r+");
     if (tty) {
@@ -388,10 +388,10 @@ int bge_read_passphrase(const char *prompt, char *buf, size_t bufsz) {
         buf[len] = '\0';
         return (int)len;
     }
-    return bge_read_secret(prompt, buf, bufsz);
+    return cfx_read_secret(prompt, buf, bufsz);
 }
 
-int bge_read_visible(const char *prompt, char *buf, size_t bufsz) {
+int cfx_read_visible(const char *prompt, char *buf, size_t bufsz) {
 #ifdef _WIN32
     HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
     DWORD mode;
@@ -443,14 +443,14 @@ int cfx_prompt_passphrase(char *pwd, size_t pwdsz) {
     }
 
     char pwd2[256] = {0};
-    int len = bge_read_secret("Enter passphrase: ", pwd, pwdsz);
+    int len = cfx_read_secret("Enter passphrase: ", pwd, pwdsz);
     if (len <= 0) {
         fprintf(stderr, "error: passphrase required\n");
         cfx_memzero_s(pwd, pwdsz);
         return -1;
     }
 
-    int len2 = bge_read_secret("Enter same passphrase again: ", pwd2, sizeof(pwd2));
+    int len2 = cfx_read_secret("Enter same passphrase again: ", pwd2, sizeof(pwd2));
     if (!cfx_ct_pwd_match(pwd, len, pwdsz, pwd2, len2, sizeof(pwd2))) {
         fprintf(stderr, "Passphrases do not match.\n");
         cfx_memzero_s(pwd, pwdsz);

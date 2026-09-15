@@ -37,7 +37,6 @@ int cfx_key_read_secret_console(const char *prompt, char *buf, size_t bufsz) {
     if (have_console) {
         SetConsoleMode(h, mode);
     }
-    fprintf(stderr, "\n");
 
     size_t len = strlen(buf);
     while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r')) {
