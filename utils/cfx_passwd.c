@@ -14,7 +14,7 @@ int cfx_passwd_run(int argc, char** argv) {
     char info[128];
     int result = 0;
     size_t outlen = 12;
-    uint8_t user_salt[] = {0xC0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEE};  /* todo: generate per user*/
+    uint8_t user_salt[] = {0xC0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEE};  /* todo: generate per user */
 
     uint8_t master_key[32];
     const uint32_t m_cost = 65536;  /* 64 MB */
@@ -69,12 +69,7 @@ int cfx_passwd_run(int argc, char** argv) {
     /* this is to prevent the output to be the same for different outlens: */
     cfx_hmac_sha256_final(&extract_ctx, prk);
 
-    const char* alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#)(*?:!!";
-    const size_t alen = strlen(alphabet);
-    size_t upper_bound = alen;
-
     // expand
-    const int hashlen = 32;  // sha256
     size_t written = 0;
     indices = (uint8_t*)malloc(outlen);
     if (!indices) {
@@ -83,8 +78,10 @@ int cfx_passwd_run(int argc, char** argv) {
     }
     uint8_t cnt = 0;
     size_t tlen = 0;
-    uint8_t t[32];
+    uint8_t t[32];   /* rfc5869 T(n)*/
     cfx_hmac_sha256_ctx expand_ctx;
+    const char* alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#*?:.";
+    const size_t upper_bound = strlen(alphabet);
     do {
         cfx_hmac_sha256_init(&expand_ctx, prk, sizeof(prk));
         cfx_hmac_sha256_update(&expand_ctx, t, tlen);
@@ -107,7 +104,6 @@ int cfx_passwd_run(int argc, char** argv) {
             }
         }
     } while (written < outlen);
-    printf("rounds: %d\n", (int)cnt);
 
     outbuf = (char*)malloc(outlen+1);
     if (!outbuf) {
