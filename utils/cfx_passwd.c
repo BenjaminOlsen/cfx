@@ -13,7 +13,7 @@ int cfx_passwd_run(int argc, char** argv) {
     char pw[128];
     char info[128];
     int result = 0;
-    size_t outlen = 12;
+    size_t outlen = 20;
     uint8_t user_salt[] = {0xC0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEE};  /* todo: generate per user */
 
     uint8_t master_key[32];
@@ -34,14 +34,14 @@ int cfx_passwd_run(int argc, char** argv) {
                 fprintf(stderr, "need a length argument with -l\n");
                 return 1;
             }
-            /* fixme: sanitize */
-            outlen = (size_t)strtoul(argv[i+1], NULL, 10);
 
-            if ( (outlen == 0) || (outlen > MAX_OUTLEN) ) {
-                fprintf(stderr, "outlen invalid\n");
-                outlen = 12;
+            char *end;
+            unsigned long value = strtoul(argv[i+1], &end, 10);
+            if (value == 0 || value > MAX_OUTLEN || *end != '\0' ) {
+                fprintf(stderr, "outlen should be between 1 and %d\n", MAX_OUTLEN);
+                return 1;
             }
-
+            outlen = (size_t)value;
         }
     }
     
