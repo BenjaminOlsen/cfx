@@ -407,8 +407,9 @@ int cfx_read_visible(const char *prompt, char *buf, size_t bufsz) {
         if (!r) return 0;
 
         int len = (int)strlen(buf);
-        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
+        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
             buf[--len] = '\0';
+        }
         return len;
     }
 #endif
@@ -418,8 +419,9 @@ int cfx_read_visible(const char *prompt, char *buf, size_t bufsz) {
     if (!r) return 0;
 
     int len = (int)strlen(buf);
-    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
+    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
         buf[--len] = '\0';
+    }
     return len;
 }
 
