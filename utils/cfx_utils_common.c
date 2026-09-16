@@ -136,14 +136,11 @@ int cfx_parse_str(const char* s, uint8_t* out, size_t outlen, enum cfx_str_forma
             mode = CFX_STR_FMT_HEX;
         } else if (strncmp(s, "b64:", 4) == 0) {
             mode = CFX_STR_FMT_BASE64;
+            s += 4;
         }
     }
 
-    
     if (mode == CFX_STR_FMT_BASE64) {
-        if (strncmp(s, "b64:", 4) == 0) {
-            s += 4;
-        }
         size_t decoded_len = outlen;
         if (cfx_base64_decode(out, &decoded_len, s, strlen(s)) != 0) {
             return -1;
@@ -157,8 +154,7 @@ int cfx_parse_str(const char* s, uint8_t* out, size_t outlen, enum cfx_str_forma
     int use_hex = (mode == CFX_STR_FMT_HEX) || looks_like_hex;
     int use_b64 = (mode == CFX_STR_FMT_BASE64) || looks_like_b64;
     int use_ascii = (mode == CFX_STR_FMT_ASCII) || (use_hex && use_b64) || (!use_hex && !use_b64);
-    printf("looks like hex: %d, looks like b64: %d, use_hex: %d, use_b64: %d, use_ascii: %d\n",
-        looks_like_hex, looks_like_b64, use_hex, use_b64, use_ascii);
+
     if (use_ascii) {
         size_t kl = strlen(s);
         if (kl > outlen) kl = outlen;
@@ -166,15 +162,11 @@ int cfx_parse_str(const char* s, uint8_t* out, size_t outlen, enum cfx_str_forma
         return (int)kl;
     }
     if (use_b64) {
-        if (strncmp(s, "b64:", 4) == 0) {
-            s += 4;
-        }
         int rc = cfx_base64_decode(out, &outlen, s, strlen(s));   
-        if(!rc) {
+        if (!rc) {
             printf("read %zu bytes from b64\n", outlen);
             return (int)outlen;
         }
-        printf("boo, rc: %d\n", rc);
         return -1;
     }
 
