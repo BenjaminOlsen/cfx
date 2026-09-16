@@ -33,6 +33,8 @@ char* cfx_read_line_stdin(void);
 /* check if string looks like hex (all hex chars, even length, optionally with 0x prefix) */
 int cfx_looks_like_hex(const char* s);
 
+int cfx_looks_like_base64(const char* s);
+
 /* parse hex string (with or without 0x prefix) into out buffer. returns bytes written, or -1 on error */
 int cfx_parse_hex_auto(const char* s, uint8_t* out, size_t outlen);
 

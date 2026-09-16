@@ -88,13 +88,27 @@ char* cfx_read_line_stdin(void) {
 
 int cfx_looks_like_hex(const char* s) {
     if (!s || !*s) return 0;
-    if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) s += 2;
     size_t len = strlen(s);
+    if (len > 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) s += 2;
+    len = strlen(s);
     if (len == 0 || len % 2 != 0) return 0;
     for (size_t i = 0; i < len; ++i) {
         if (hexval(s[i]) < 0) return 0;
     }
     return 1;
+}
+
+int cfx_looks_like_base64(const char* s) {
+    if (!s || !*s) return 0;
+    size_t len = strlen(s);
+    if (len > 4 && strncmp(s, "b64:", 4) == 0) {
+        s += 4;
+        len -= 4;
+    }
+    size_t outlen = 0;
+    int rc = cfx_base64_decode(NULL, &outlen , s, len);
+    if (!rc && outlen > 0) return 1;
+    return 0;
 }
 
 int cfx_parse_hex_auto(const char* s, uint8_t* out, size_t outlen) {
@@ -117,20 +131,51 @@ int cfx_parse_str(const char* s, uint8_t* out, size_t outlen, enum cfx_str_forma
     if (!s) return -1;
     memset(out, 0, outlen);
 
-    if (mode == CFX_STR_FMT_BASE64) {
-        size_t out_len = outlen;
-        if (cfx_base64_decode(out, &out_len, s, strlen(s)) != 0) {
-            return -1;
+    if (mode == CFX_STR_FMT_AUTO) {
+        if (strncmp(s, "0x", 2) == 0 || strncmp(s, "0X", 2) == 0) {
+            mode = CFX_STR_FMT_HEX;
+        } else if (strncmp(s, "b64:", 4) == 0) {
+            mode = CFX_STR_FMT_BASE64;
         }
-        return (int)out_len;
     }
 
-    int use_hex = (mode == CFX_STR_FMT_HEX) || (mode == CFX_STR_FMT_AUTO && cfx_looks_like_hex(s));
-    if (mode == CFX_STR_FMT_ASCII || !use_hex) {
+    
+    if (mode == CFX_STR_FMT_BASE64) {
+        if (strncmp(s, "b64:", 4) == 0) {
+            s += 4;
+        }
+        size_t decoded_len = outlen;
+        if (cfx_base64_decode(out, &decoded_len, s, strlen(s)) != 0) {
+            return -1;
+        }
+        return (int)decoded_len;
+    }
+
+    int looks_like_hex = (mode == CFX_STR_FMT_AUTO) && cfx_looks_like_hex(s);
+    int looks_like_b64 = (mode == CFX_STR_FMT_AUTO) && cfx_looks_like_base64(s);
+
+    int use_hex = (mode == CFX_STR_FMT_HEX) || looks_like_hex;
+    int use_b64 = (mode == CFX_STR_FMT_BASE64) || looks_like_b64;
+    int use_ascii = (mode == CFX_STR_FMT_ASCII) || (use_hex && use_b64) || (!use_hex && !use_b64);
+    printf("looks like hex: %d, looks like b64: %d, use_hex: %d, use_b64: %d, use_ascii: %d\n",
+        looks_like_hex, looks_like_b64, use_hex, use_b64, use_ascii);
+    if (use_ascii) {
         size_t kl = strlen(s);
         if (kl > outlen) kl = outlen;
         memcpy(out, s, kl);
         return (int)kl;
+    }
+    if (use_b64) {
+        if (strncmp(s, "b64:", 4) == 0) {
+            s += 4;
+        }
+        int rc = cfx_base64_decode(out, &outlen, s, strlen(s));   
+        if(!rc) {
+            printf("read %zu bytes from b64\n", outlen);
+            return (int)outlen;
+        }
+        printf("boo, rc: %d\n", rc);
+        return -1;
     }
 
     return cfx_parse_hex_auto(s, out, outlen);

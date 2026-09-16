@@ -14,11 +14,11 @@ int cfx_passwd_run(int argc, char** argv) {
     char info[128];
     int result = 0;
     size_t outlen = 20;
-    uint8_t user_salt[] = {0xC0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEE};  /* todo: generate per user */
+    uint8_t user_salt[32] = {0xC0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEE};
 
     uint8_t master_key[32];
     const uint32_t m_cost = 65536;  /* 64 MB */
-    const uint32_t t_cost = 3;
+    const uint32_t t_cost = 5;
     const uint32_t p_cost = 4;
 
     static const uint8_t hkdf_salt[] = "cfx_passwd hkdf v1";
@@ -28,7 +28,8 @@ int cfx_passwd_run(int argc, char** argv) {
     uint8_t *outbuf = NULL;
 
     for (int i = 1; i < argc; ++i) {
-        if (strcmp("-l", argv[i]) == 0) {
+        char *arg = argv[i];
+        if ((strcmp("-l", arg) == 0) || (strcmp("--length", arg) == 0)) {
             
             if (i + 1 >= argc) {
                 fprintf(stderr, "need a length argument with -l\n");
@@ -42,6 +43,22 @@ int cfx_passwd_run(int argc, char** argv) {
                 return 1;
             }
             outlen = (size_t)value;
+        } else if (strcmp("-s", arg) == 0 || strcmp("--salt", arg) == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "need a value for salt!\n");
+                return 1;
+            }
+            int chars_read = cfx_parse_str(argv[i+1], user_salt, sizeof(user_salt), CFX_STR_FMT_AUTO);
+            if (chars_read < 0) {
+                fprintf(stderr, "problem reading a value for salt!\n");
+                return 1;
+            }
+            printf("read salt: ");
+            for (int k = 0; k < chars_read; ++k) {
+                printf("%02x ", user_salt[k]);
+            }
+            printf("\n");
+
         }
     }
     
