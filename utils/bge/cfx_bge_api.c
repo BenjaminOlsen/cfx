@@ -42,16 +42,19 @@ int bge_armor_decode(const uint8_t *text, size_t text_len,
 static int bge_derive_key(const bge_header *header,
                           const uint8_t *passphrase, size_t passphrase_len,
                           uint8_t key[48]) {
+    
     uint32_t m = cfx_load32_le(&header->m_cost);
     uint32_t t = cfx_load32_le(&header->t_cost);
     uint32_t p = cfx_load32_le(&header->p_cost);
-    if (m < BGE_MIN_M || m > BGE_MAX_M ||
-        t < 1 || t > BGE_MAX_T || p < 1 || p > BGE_MAX_P)
-        return -2;
 
-    return cfx_argon2id(key, 48, passphrase, passphrase_len,
-                        header->salt, sizeof(header->salt), m, t, p) == 0
-        ? 0 : -1;
+    if (m < BGE_MIN_M || m > BGE_MAX_M ||
+        t < 1 || t > BGE_MAX_T || p < 1 || p > BGE_MAX_P) {
+        return -2;
+    }
+
+    
+    int rc = cfx_argon2id(key, 48, passphrase, passphrase_len, header->salt, sizeof(header->salt), m, t, p) == 0;
+    return rc ? 0 : -1;
 }
 
 void cfx_bge_free(void *buffer, size_t buffer_len) {
@@ -60,13 +63,110 @@ void cfx_bge_free(void *buffer, size_t buffer_len) {
     free(buffer);
 }
 
+int cfx_bge_encrypt_stream(FILE *input, FILE *output, const uint8_t *passphrase, size_t passphrase_len) {
+
+    if (!input || !output || !passphrase || passphrase_len == 0) {
+        return -1;
+    }
+
+    int ret = 0;
+    uint8_t *current    = (uint8_t*)malloc(CFX_STREAM_CHUNK_SIZE);
+    uint8_t *next       = (uint8_t*)malloc(CFX_STREAM_CHUNK_SIZE);
+    uint8_t *cipher     = (uint8_t*)malloc(CFX_STREAM_CHUNK_SIZE + CFX_STREAM_TAG_SIZE);
+    if (!current || !next || !cipher) {
+        ret = -1;
+        goto cleanup;
+    }
+
+
+    bge_header header;
+    memcpy(header.magic, BGE_MAGIC, 3);
+    header.version = BGE_STREAM_VERSION;
+    cfx_store32_le(&header.m_cost, BGE_DEFAULT_M);
+    cfx_store32_le(&header.t_cost, BGE_DEFAULT_T);
+    cfx_store32_le(&header.p_cost, BGE_DEFAULT_P);
+    cfx_rand_bytes_os(header.salt, sizeof(header.salt));
+    cfx_rand_bytes_os(header.nonce, sizeof(header.nonce));
+
+    uint8_t key[48] = {0};
+    int rc = bge_derive_key(&header, passphrase, passphrase_len, key);
+    if (rc != 0) {
+        ret = rc;
+        goto cleanup;
+    }
+
+    if (fwrite(&header, 1, sizeof(header), output) != sizeof(header)) {
+        ret = -1;
+        goto cleanup;
+    }
+    if (fwrite(key + 32, 1, BGE_VERIFIER_LEN, output) != BGE_VERIFIER_LEN) {
+        ret = -1;
+        goto cleanup;
+    }
+
+
+    uint64_t chunk_cnt = 0;
+    size_t current_len = fread(current, 1, CFX_STREAM_CHUNK_SIZE, input);
+    if (ferror(input)) {
+        ret = -1;
+        goto cleanup;
+    }
+
+    while (1) {
+        uint8_t *src = current;
+        uint8_t *dst = cipher;
+        uint8_t *tag = dst + current_len;
+        size_t next_len = fread(next, 1, CFX_STREAM_CHUNK_SIZE, input);
+        if (ferror(input)) {
+            ret = -1;
+            goto cleanup;
+        }
+        int final = (next_len == 0 && feof(input));
+        if (chunk_cnt >= (UINT64_C(1) << 32)) {
+            ret = -1;
+            goto cleanup;
+        }
+        rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
+                dst, tag, src, current_len, chunk_cnt, final, key, header.nonce);
+        if (rc != 0) {
+            ret = -1;
+            goto cleanup;
+        }
+
+        size_t output_len = current_len + CFX_STREAM_TAG_SIZE;
+        if (fwrite(cipher, 1, output_len, output) != output_len) {
+            ret = -1;
+            goto cleanup;
+        }
+        uint8_t *tmp = current;
+        current = next;
+        next = tmp;
+        current_len = next_len;
+        if (final) break;
+        ++chunk_cnt;
+    }
+    if (fflush(output) == EOF) {
+        ret = -1;
+        goto cleanup;
+    }
+
+cleanup:
+    cfx_memzero_s(&header, sizeof(header));
+    cfx_memzero_s(key, sizeof(key));
+    cfx_bge_free(current, CFX_STREAM_CHUNK_SIZE);
+    cfx_bge_free(next, CFX_STREAM_CHUNK_SIZE);
+    cfx_bge_free(cipher, CFX_STREAM_CHUNK_SIZE + CFX_STREAM_TAG_SIZE);
+    return ret;
+}
+
 int cfx_bge_encrypt(const uint8_t *plaintext, size_t plaintext_len,
                     const uint8_t *passphrase, size_t passphrase_len,
                     uint8_t **output, size_t *output_len) {
     if (!output || !output_len ||
         (!plaintext && plaintext_len != 0) ||
-        (!passphrase && passphrase_len != 0))
+        (!passphrase && passphrase_len != 0)) {
         return -1;
+    }
     *output = NULL;
     *output_len = 0;
 
