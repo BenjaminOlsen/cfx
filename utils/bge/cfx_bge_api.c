@@ -70,6 +70,8 @@ int cfx_bge_encrypt_stream(FILE *input, FILE *output, const uint8_t *passphrase,
     }
 
     int ret = 0;
+    bge_header header;
+    uint8_t key[48] = {0};
     uint8_t *current    = (uint8_t*)malloc(CFX_STREAM_CHUNK_SIZE);
     uint8_t *next       = (uint8_t*)malloc(CFX_STREAM_CHUNK_SIZE);
     uint8_t *cipher     = (uint8_t*)malloc(CFX_STREAM_CHUNK_SIZE + CFX_STREAM_TAG_SIZE);
@@ -79,7 +81,6 @@ int cfx_bge_encrypt_stream(FILE *input, FILE *output, const uint8_t *passphrase,
     }
 
 
-    bge_header header;
     memcpy(header.magic, BGE_MAGIC, 3);
     header.version = BGE_STREAM_VERSION;
     cfx_store32_le(&header.m_cost, BGE_DEFAULT_M);
@@ -88,7 +89,6 @@ int cfx_bge_encrypt_stream(FILE *input, FILE *output, const uint8_t *passphrase,
     cfx_rand_bytes_os(header.salt, sizeof(header.salt));
     cfx_rand_bytes_os(header.nonce, sizeof(header.nonce));
 
-    uint8_t key[48] = {0};
     int rc = bge_derive_key(&header, passphrase, passphrase_len, key);
     if (rc != 0) {
         ret = rc;
@@ -122,7 +122,7 @@ int cfx_bge_encrypt_stream(FILE *input, FILE *output, const uint8_t *passphrase,
             goto cleanup;
         }
         int final = (next_len == 0 && feof(input));
-        if (chunk_cnt >= (UINT64_C(1) << 32)) {
+        if (chunk_cnt >= (UINT64_C(1) << 31)) {
             ret = -1;
             goto cleanup;
         }

@@ -118,12 +118,64 @@ static int parse_file_args(int argc, char **argv, int allow_armor,
     return 0;
 }
 
+static int encrypt_binary_file(const char *input_path, const char *output_path) {
+    FILE *input = input_path ? fopen(input_path, "rb") : stdin;
+    if (!input) {
+        fprintf(stderr, "error: cannot open %s: %s\n", input_path, strerror(errno));
+        return 1;
+    }
+
+    FILE *output = NULL;
+    char passphrase[256] = {0};
+    int ret = 1;
+    int passphrase_len = cfx_prompt_passphrase(passphrase, sizeof(passphrase));
+    if (passphrase_len < 0) goto cleanup;
+
+    /* Exclusive creation also rejects input aliases without truncating them. */
+    output = output_path ? fopen(output_path, "wbx") : stdout;
+    if (!output) {
+        fprintf(stderr, "error: cannot create %s: %s\n", output_path, strerror(errno));
+        goto cleanup;
+    }
+
+    int rc = cfx_bge_encrypt_stream(input, output,
+        (const uint8_t *)passphrase, (size_t)passphrase_len);
+    if (rc != 0) {
+        if (ferror(input))
+            fprintf(stderr, "error: cannot read input\n");
+        else if (ferror(output))
+            fprintf(stderr, "error: cannot write output\n");
+        else
+            fprintf(stderr, "error: encryption failed\n");
+    }
+    ret = rc == 0 ? 0 : 1;
+
+cleanup:
+    cfx_memzero_s(passphrase, sizeof(passphrase));
+    if (input_path && fclose(input) != 0) {
+        fprintf(stderr, "error: cannot close input: %s\n", strerror(errno));
+        ret = 1;
+    }
+    if (output_path && output) {
+        if (fclose(output) != 0) {
+            fprintf(stderr, "error: cannot close output: %s\n", strerror(errno));
+            ret = 1;
+        }
+        if (ret != 0 && remove(output_path) != 0)
+            fprintf(stderr, "error: cannot remove partial output %s: %s\n",
+                output_path, strerror(errno));
+    }
+    return ret;
+}
+
 int bge_encrypt_file(int argc, char **argv) {
     const char *input_path;
     const char *output_path;
     int armor;
     if (parse_file_args(argc, argv, 1, &input_path, &output_path, &armor) != 0)
         return 1;
+
+    if (!armor) return encrypt_binary_file(input_path, output_path);
 
     uint8_t *input = NULL;
     size_t input_len = 0;
@@ -221,6 +273,7 @@ static void usage(const char *prog) {
     printf("  -d, --decrypt    Decrypt input to output\n");
     printf("  -i, --input      Read from file (default: stdin)\n");
     printf("  -o, --output     Write to file (default: stdout)\n");
+    printf("                  Binary encryption requires a new output file\n");
     printf("  -a, --armor      PEM-encoded base64 (encrypt only; decrypt auto-detects)\n");
     printf("  -p, --passphrase <pw>  Supply passphrase on command line (default: prompt)\n");
     printf("\nExamples:\n");

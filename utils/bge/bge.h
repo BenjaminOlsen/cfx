@@ -5,6 +5,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #if defined(_WIN32) && defined(CFX_BGE_SHARED)
 #  if defined(CFX_BGE_BUILDING)
@@ -33,6 +34,11 @@ CFX_BGE_API int cfx_bge_encrypt(
     const uint8_t *passphrase, size_t passphrase_len,
     uint8_t **output, size_t *output_len);
 
+/* Flushes output on success;
+ * leaves both streams open. Caller must supply distinct input/output files
+ * and discard partial output on failure. Returns 0 on success. */
+CFX_BGE_API int cfx_bge_encrypt_stream(
+        FILE *input, FILE *output, const uint8_t *passphrase, size_t passphrase_len);
 /*
  * Decrypt binary or armored BGE data.
  *
