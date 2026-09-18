@@ -52,6 +52,9 @@ CFX_BGE_API int cfx_bge_decrypt(
     const uint8_t *passphrase, size_t passphrase_len,
     uint8_t **plaintext, size_t *plaintext_len);
 
+CFX_BGE_API int cfx_bge_decrypt_stream(FILE *input, FILE *output, 
+        const uint8_t *passphrase, size_t passphrase_len);
+
 /* Clear and release a buffer returned by this API. */
 CFX_BGE_API void cfx_bge_free(void *buffer, size_t buffer_len);
 

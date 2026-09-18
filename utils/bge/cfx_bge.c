@@ -225,41 +225,56 @@ int bge_encrypt_file(int argc, char **argv) {
 int bge_decrypt_file(int argc, char **argv) {
     const char *input_path;
     const char *output_path;
+    int ret = 0;
     int unused_armor;
-    if (parse_file_args(argc, argv, 0, &input_path, &output_path,
-                        &unused_armor) != 0)
-        return 1;
-
-    uint8_t *input = NULL;
-    size_t input_len = 0;
-    if (read_input(input_path, &input, &input_len) != 0) return 1;
-
+    uint8_t *plaintext = NULL;
+    size_t plaintext_len = 0;
     char passphrase[256] = {0};
-    int passphrase_len = bge_read_passphrase(
-        "Enter passphrase: ", passphrase, sizeof(passphrase));
-    if (passphrase_len <= 0) {
-        cfx_bge_free(input, input_len);
+    
+    if (parse_file_args(argc, argv, 0, &input_path, &output_path,
+                        &unused_armor) != 0) {
         return 1;
     }
 
-    uint8_t *plaintext = NULL;
-    size_t plaintext_len = 0;
-    int rc = cfx_bge_decrypt(input, input_len,
+    FILE *input = fopen(input_path, "rb");
+    if (!input) {
+        fprintf(stderr, "problem opening input file %s\n", input_path);
+        ret = 1;
+        goto cleanup;
+    }
+    FILE *output = fopen(output_path, "wb");
+    if (!output) {
+        fprintf(stderr, "problem opening output file %s\n", output_path);
+        ret = 1;
+        goto cleanup;
+    }
+    int passphrase_len = bge_read_passphrase(
+        "Enter passphrase: ", passphrase, sizeof(passphrase));
+    if (passphrase_len <= 0) {
+        ret = 1;
+        goto cleanup;
+    }
+
+    int rc = cfx_bge_decrypt_stream(input, output, 
                              (const uint8_t *)passphrase,
-                             (size_t)passphrase_len,
-                             &plaintext, &plaintext_len);
+                             (size_t)passphrase_len);
     cfx_memzero_s(passphrase, sizeof(passphrase));
-    cfx_bge_free(input, input_len);
     if (rc != 0) {
         fprintf(stderr, rc == -3
             ? "error: authentication failed\n"
             : "error: invalid BGE input\n");
-        return 1;
+        ret = 1;
+    } else {
+        ret = 0;
     }
 
     rc = write_output(output_path, plaintext, plaintext_len);
+
+cleanup:
     cfx_bge_free(plaintext, plaintext_len);
-    return rc == 0 ? 0 : 1;
+    if (input) fclose(input);
+    if (output) fclose(output);
+    return ret; 
 }
 
 static void usage(const char *prog) {
