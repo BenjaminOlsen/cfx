@@ -63,6 +63,59 @@ void cfx_bge_free(void *buffer, size_t buffer_len) {
     free(buffer);
 }
 
+
+int cfx_bge_decrypt_stream(FILE* input, FILE* output, const uint8_t *passphrase, size_t passphrase_len) {
+
+    if (!input || !output || !passphrase || passphrase_len == 0) {
+        return -1;
+    }
+
+    int ret = 0;
+    bge_header header;
+    uint8_t key[48] = {0};
+    uint8_t *plaintext  = (uint8_t*)malloc(CFX_STREAM_CHUNK_SIZE);
+    uint8_t *current    = (uint8_t*)malloc(CFX_STREAM_CHUNK_SIZE + CFX_STREAM_TAG_SIZE);
+    uint8_t *next       = (uint8_t*)malloc(CFX_STREAM_CHUNK_SIZE + CFX_STREAM_TAG_SIZE);
+
+    if (fread(&header, 1, sizeof(header), input) != sizeof(header)) {
+        ret = -1;
+        goto cleanup;
+    }
+    if (header.version != BGE_STREAM_VERSION) {
+        ret = -1;
+        goto cleanup;
+    }
+    
+    if (bge_derive_key(&header, passphrase, passphrase_len, key) != 0) {
+        ret = -1;
+        goto cleanup;
+    }
+
+
+    uint8_t verifier_in[BGE_VERIFIER_LEN] = {0};
+    if (fread(verifier_in, 1, sizeof(verifier_in), input) != 0) {
+        ret = -1;
+        goto cleanup;
+    }
+    unsigned int diff = 0;
+    for (size_t i = 0; i < BGE_VERIFIER_LEN; ++i) {
+        diff |= header. 
+
+
+
+cleanup:
+    cfx_memzero_s(&header, sizeof(header));
+    cfx_memzero_s(key, sizeof(key));
+    cfx_bge_free(current, CFX_STREAM_CHUNK_SIZE);
+    cfx_bge_free(next, CFX_STREAM_CHUNK_SIZE);
+    cfx_bge_free(cipher, CFX_STREAM_CHUNK_SIZE + CFX_STREAM_TAG_SIZE);
+    return ret;
+}
+
+
+        
+
+
 int cfx_bge_encrypt_stream(FILE *input, FILE *output, const uint8_t *passphrase, size_t passphrase_len) {
 
     if (!input || !output || !passphrase || passphrase_len == 0) {
@@ -345,3 +398,5 @@ int cfx_bge_decrypt(const uint8_t *input, size_t input_len,
     if (decoded) cfx_bge_free(decoded, decoded_len);
     return rc;
 }
+
+
