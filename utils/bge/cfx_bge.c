@@ -227,22 +227,22 @@ int bge_decrypt_file(int argc, char **argv) {
     const char *output_path;
     int ret = 0;
     int unused_armor;
-    uint8_t *plaintext = NULL;
-    size_t plaintext_len = 0;
     char passphrase[256] = {0};
-    
+    FILE *input = NULL;
+    FILE *output = NULL;
+
     if (parse_file_args(argc, argv, 0, &input_path, &output_path,
                         &unused_armor) != 0) {
         return 1;
     }
 
-    FILE *input = fopen(input_path, "rb");
+    input = fopen(input_path, "rb");
     if (!input) {
         fprintf(stderr, "problem opening input file %s\n", input_path);
         ret = 1;
         goto cleanup;
     }
-    FILE *output = fopen(output_path, "wb");
+    output = fopen(output_path, "wb");
     if (!output) {
         fprintf(stderr, "problem opening output file %s\n", output_path);
         ret = 1;
@@ -268,10 +268,7 @@ int bge_decrypt_file(int argc, char **argv) {
         ret = 0;
     }
 
-    rc = write_output(output_path, plaintext, plaintext_len);
-
 cleanup:
-    cfx_bge_free(plaintext, plaintext_len);
     if (input) fclose(input);
     if (output) fclose(output);
     return ret; 
