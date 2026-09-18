@@ -12,6 +12,9 @@
 
 #define PR printf
 
+/* Test fixture size; the crypto API does not prescribe a chunk size. */
+#define TEST_STREAM_CHUNK_SIZE 65536u
+
 static void print_hex(const char *label, const uint8_t *buf, size_t len) {
     printf("%s (len=%zu):\n", label, len);
     for (size_t i = 0; i < len; ++i) {
@@ -402,7 +405,7 @@ static void test_stream_single_chunk(void) {
 #ifndef CFX_BAREMETAL  /* 192KB+ RAM needed — skip on bare-metal */
 static void test_stream_multi_chunk(void) {
     /* 3 chunks: 64KB + 64KB + 30 bytes */
-    #define MC_CHUNK CFX_STREAM_CHUNK_SIZE
+    #define MC_CHUNK TEST_STREAM_CHUNK_SIZE
     #define MC_TAIL  30
     #define MC_TOTAL (MC_CHUNK * 2 + MC_TAIL)
 
@@ -553,11 +556,11 @@ static void test_stream_tamper(void) {
 
 #ifndef CFX_BAREMETAL  /* 3 × 64KB malloc — skip on bare-metal */
 static void test_stream_exact_chunk(void) {
-    /* single chunk that is exactly CFX_STREAM_CHUNK_SIZE (64KB) */
+    /* single chunk that is exactly TEST_STREAM_CHUNK_SIZE (64KB) */
     uint8_t key[32], nonce[24];
-    uint8_t *pt  = (uint8_t *)malloc(CFX_STREAM_CHUNK_SIZE);
-    uint8_t *ct  = (uint8_t *)malloc(CFX_STREAM_CHUNK_SIZE);
-    uint8_t *dec = (uint8_t *)malloc(CFX_STREAM_CHUNK_SIZE);
+    uint8_t *pt  = (uint8_t *)malloc(TEST_STREAM_CHUNK_SIZE);
+    uint8_t *ct  = (uint8_t *)malloc(TEST_STREAM_CHUNK_SIZE);
+    uint8_t *dec = (uint8_t *)malloc(TEST_STREAM_CHUNK_SIZE);
     uint8_t tag[16];
 
     printf("== test_stream_exact_chunk ==\n");
@@ -567,16 +570,16 @@ static void test_stream_exact_chunk(void) {
     cfx_srand(0xA1B2C3D4);
     fuzz_fill(key, 32);
     fuzz_fill(nonce, 24);
-    fuzz_fill(pt, CFX_STREAM_CHUNK_SIZE);
+    fuzz_fill(pt, TEST_STREAM_CHUNK_SIZE);
 
     int rc = cfx_stream_xchacha20_poly1305_encrypt_chunk(
-        ct, tag, pt, CFX_STREAM_CHUNK_SIZE, 0, 1, key, nonce);
+        ct, tag, pt, TEST_STREAM_CHUNK_SIZE, 0, 1, key, nonce);
     CFX_ASSERT(rc == 0);
 
     rc = cfx_stream_xchacha20_poly1305_decrypt_chunk(
-        dec, ct, CFX_STREAM_CHUNK_SIZE, tag, 0, 1, key, nonce);
+        dec, ct, TEST_STREAM_CHUNK_SIZE, tag, 0, 1, key, nonce);
     CFX_ASSERT(rc == 0);
-    CFX_ASSERT(memcmp(dec, pt, CFX_STREAM_CHUNK_SIZE) == 0);
+    CFX_ASSERT(memcmp(dec, pt, TEST_STREAM_CHUNK_SIZE) == 0);
 
     free(pt); free(ct); free(dec);
 }
@@ -585,7 +588,7 @@ static void test_stream_exact_chunk(void) {
 #ifndef CFX_BAREMETAL  /* 4 × 64KB malloc — skip on bare-metal */
 static void test_stream_exact_two_chunks(void) {
     /* two full 64KB chunks, no tail — both at exact chunk boundary */
-    #define E2C CFX_STREAM_CHUNK_SIZE
+    #define E2C TEST_STREAM_CHUNK_SIZE
     uint8_t key[32], nonce[24];
     uint8_t *pt  = (uint8_t *)malloc(E2C * 2);
     uint8_t *ct0 = (uint8_t *)malloc(E2C);
@@ -649,7 +652,7 @@ static void test_stream_one_byte(void) {
 #ifndef CFX_BAREMETAL  /* 2 × 64KB malloc — skip on bare-metal */
 static void test_stream_boundary_plus_one(void) {
     /* 64KB + 1 byte: splits into full chunk + 1-byte final chunk */
-    #define BP1 CFX_STREAM_CHUNK_SIZE
+    #define BP1 TEST_STREAM_CHUNK_SIZE
     uint8_t key[32], nonce[24];
     uint8_t *pt  = (uint8_t *)malloc(BP1 + 1);
     uint8_t *ct0 = (uint8_t *)malloc(BP1);

@@ -29,6 +29,8 @@
 #define BGE_ARMOR_FOOTER   "-----END BGE MESSAGE-----"
 #define BGE_FILE_VERSION   5
 #define BGE_STREAM_VERSION 3
+/* Fixed by the version 3 stream format; changing this requires a new format. */
+#define BGE_CHUNK_SIZE     65536u
 #define BGE_HEADER_LEN     56
 #define BGE_VERIFIER_LEN   16
 #define BGE_AAD_LEN        (BGE_HEADER_LEN + BGE_VERIFIER_LEN)

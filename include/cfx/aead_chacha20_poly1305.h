@@ -64,9 +64,9 @@ int cfx_xchacha20_poly1305_decrypt(
  * own Poly1305 tag. Per-chunk nonces are derived from a base nonce XOR'd with
  * the chunk counter and a final-chunk flag, preventing reordering and truncation.
  *
- * Max stream: 2^31 chunks * 64KB = 128 TB (top bit of byte 23 is the final flag).
+ * Max stream: 2^31 chunks (top bit of byte 23 is the final flag).
+ * Chunk sizes are chosen by the caller's protocol.
  */
-#define CFX_STREAM_CHUNK_SIZE  65536u
 #define CFX_STREAM_TAG_SIZE    16u
 
 /* Encrypt one chunk. ct must have room for pt_len bytes, tag for 16 bytes.
