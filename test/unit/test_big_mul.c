@@ -181,6 +181,36 @@ static void test_rsa_260(void) {
     PRINT_TEST(1);
 }
 
+/* ref: https://saweis.net/posts/rsa-896.html */
+static void test_rsa_896(void) {
+    cfx_big_t p, q, rsa896;
+    cfx_big_init(&p);
+    cfx_big_init(&q);
+    cfx_big_init(&rsa896);
+
+    cfx_big_from_dec(&p,
+        "636606729769440499166579950236036751749912014371509557713570027"
+        "508971809534551913252252094954941974952859310861988904737359709"
+        "200557919"
+    );
+    cfx_big_from_dec(&q,
+        "647218161102195448058768698177623951380616936266986989243011933"
+        "572862870905830904361851542450154852431416136790787107595965374"
+        "752513489"
+    );
+    cfx_big_from_dec(&rsa896,
+        "4120234369866595438555313653325759481798116998443279828454556264"
+        "3387644556524842619809887042316184187926142024718886949256093177"
+        "6375033421130982397485150944909106910269861031862704114880866970"
+        "5649029036536588674337317208131041051908642547932826013912576240"
+        "33946373269391"
+    );
+
+    cfx_big_mul_eq(&p, &q);
+    CFX_ASSERT(cfx_big_eq(&p, &rsa896));
+    PRINT_TEST(1);
+}
+
 static void test_known_squares(void) {
     cfx_big_t b;
     cfx_big_init(&b);
@@ -349,6 +379,7 @@ int main(void) {
     CFX_TEST(test_self_multiply_square);
     CFX_TEST(test_self_multiply_big);
     CFX_TEST(test_rsa_260);
+    CFX_TEST(test_rsa_896);
     CFX_TEST(test_known_squares);
     CFX_TEST(test_known_squares_2);
     CFX_TEST(test_sq_zero);
