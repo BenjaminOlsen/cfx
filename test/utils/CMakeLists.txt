@@ -1,5 +1,6 @@
 # CLI regression tests — call cfx_<name>_run() and verify stdout output
 set(CFX_CLI_TESTS
+    test_utils_common
     test_cli_randart
     test_cli_hash
     test_cli_hmac

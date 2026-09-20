@@ -15,6 +15,14 @@ enum cfx_str_format {
 
 int hexval(int c);
 
+/* Parse a uint32_t: decimal, 0x/0X hex, or leading-0 octal.
+ * Leading whitespace and an optional '+' or '-' are accepted. The magnitude
+ * must be <= UINT32_MAX; negative values are negated modulo 2^32 (-1 -> UINT32_MAX).
+ * Trailing characters (including whitespace) are rejected.
+ * returns 0 on success, -1 on invalid input, overflow, or NULL arguments;
+ * leaves *counter unchanged on error. */
+int cfx_parse_u32(const char *text, uint32_t *counter);
+
 /* parse hex string into exactly outlen bytes. returns 0 on success, -1 on error */
 int cfx_parse_hex(const char* s, uint8_t* out, size_t outlen);
 

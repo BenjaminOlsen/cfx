@@ -22,6 +22,32 @@ int hexval(int c) {
     return -1;
 }
 
+int cfx_parse_u32(const char *text, uint32_t *counter) {
+    if (!text || !counter) return -1;
+    while (isspace((unsigned char)*text)) ++text;
+    int negative = *text == '-';
+    if (*text == '+' || *text == '-') ++text;
+
+    unsigned base = 10;
+    if (text[0] == '0') {
+        base = 8;
+        if (text[1] == 'x' || text[1] == 'X') {
+            base = 16;
+            text += 2;
+        }
+    }
+    if (!*text) return -1;
+    uint32_t value = 0;
+    for (; *text; ++text) {
+        int digit = hexval((unsigned char)*text);
+        if (digit < 0 || (unsigned)digit >= base) return -1;
+        if (value > (UINT32_MAX - (unsigned)digit) / base) return -1;  /* if next mult will overflow */
+        value = value * base + (unsigned)digit;
+    }
+    *counter = negative ? UINT32_C(0) - value : value;
+    return 0;
+}
+
 /* parse hex string into exactly outlen bytes. returns 0 on success, -1 on error */
 int cfx_parse_hex(const char* s, uint8_t* out, size_t outlen) {
     if (s[0]=='0' && (s[1]=='x' || s[1]=='X')) s += 2;
@@ -164,7 +190,6 @@ int cfx_parse_str(const char* s, uint8_t* out, size_t outlen, enum cfx_str_forma
     if (use_b64) {
         int rc = cfx_base64_decode(out, &outlen, s, strlen(s));   
         if (!rc) {
-            printf("read %zu bytes from b64\n", outlen);
             return (int)outlen;
         }
         return -1;
@@ -499,4 +524,3 @@ int cfx_prompt_passphrase(char *pwd, size_t pwdsz) {
     cfx_memzero_s(pwd2, sizeof(pwd2));
     return len;
 }
-

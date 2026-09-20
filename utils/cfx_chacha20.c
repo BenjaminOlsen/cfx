@@ -1,5 +1,6 @@
 #include "cfx/chacha20.h"
 #include "cfx/base64.h"
+#include "cfx/memory.h"
 #include "cfx_utils_common.h"
 #include "cfx_cmd.h"
 
@@ -19,15 +20,21 @@
 static void usage(const char* name) {
     fprintf(stderr,
         "Usage: %s [options] [text]\n"
-        "  Encrypt text with ChaCha20 (RFC8439 layout).\n"
+        "  Encrypt text with ChaCha20 (RFC8439 layout - 12 byte nonce, 4 byte counter).\n"
         "  If text is omitted, reads from stdin.\n\n"
         "Options:\n"
         "  -k <key>    Key (auto-detects hex vs ASCII, or '-' for stdin)\n"
         "  -kx         Force key as hex\n"
         "  -ka         Force key as ASCII\n"
         "  -kb         Force key as base64\n"
-        "  -c <ctr>    Initial 32-bit counter (default 0)\n"
-        "  -n <nonce>  Nonce as 0x24_hex_chars (96-bit, default zeros)\n"
+        "  -c <ctr>    Numeric counter (decimal/0x hex/0 octal; default 0)\n"
+        "              Magnitude <= 4294967295; negatives wrap modulo 2^32\n"
+        "  -n <nonce>  Nonce (auto-detect hex/base64/ASCII; default zeros)\n"
+        "              Right-zero-padded or truncated to 12 bytes\n"
+        "              Use 0x or b64: to force encoding\n"
+        "  -iv         Specify IV directly: [4 byte counter || 12 byte nonce]\n"
+        "              as little endian hex string\n"
+        "              (Incompatible with -n and -c)\n" 
         "  -ix         Input as hex (with or without 0x prefix)\n"
         "  -ib64       Input as base64\n"
         "  -x          Output as hex (default)\n"
@@ -39,8 +46,11 @@ static void usage(const char* name) {
         "  %s -k mykey \"hello world\"\n"
         "  %s -ka deadbeef \"msg\"       Use 'deadbeef' as ASCII\n"
         "  %s -ix -k mykey 68656c6c6f  Decrypt hex input\n"
+        "  %s -k mykey -c 0x12345678 -n 0x0102030405060708090a0b0c \"msg\"\n"
+        "  %s -k mykey -iv 785634120102030405060708090a0b0c \"msg\"\n"
+        "      Equivalent: counter 0x12345678 encoded as 78563412, followed by the nonce\n"
         "  cfx keygen 32 -q | %s -k - \"secret\"\n",
-        name, name, name, name, name);
+        name, name, name, name, name, name, name);
 }
 
 int cfx_chacha20_run(int argc, char** argv) {
@@ -53,7 +63,10 @@ int cfx_chacha20_run(int argc, char** argv) {
     const char* nonce_in = NULL;
     const char* pt       = NULL;
     uint32_t counter     = 0;
+    uint8_t nonce[12]    = {0};
     int verbose = 0;
+    int use_iv = 0;
+    int use_cnt_nonce = 0;
     enum cfx_str_format fmt = CFX_STR_FMT_HEX;
     enum cfx_str_format key_mode = CFX_STR_FMT_AUTO;
     enum cfx_str_format input_mode = CFX_STR_FMT_ASCII;
@@ -83,14 +96,51 @@ int cfx_chacha20_run(int argc, char** argv) {
         } else if (strcmp(argv[i], "-c") == 0) {
             ++i;
             CHECK_ARG(i);
-            errno = 0;
-            unsigned long v = strtoul(argv[i], NULL, 0);
-            if (errno) { perror("counter"); return EXIT_FAILURE; }
-            counter = (uint32_t)v;
+            if (use_iv) {
+                fprintf(stderr, "error: can't use -c with -iv\n");
+                return EXIT_FAILURE;
+            }
+            if (cfx_parse_u32(argv[i], &counter) != 0) {
+                fprintf(stderr, "error: invalid counter\n");
+                return EXIT_FAILURE;
+            }
+            use_cnt_nonce = 1;
         } else if (strcmp(argv[i], "-n") == 0) {
+            if (use_iv) {
+                fprintf(stderr, "error: can't use -n with -iv\n");
+                return EXIT_FAILURE;
+            }
             ++i;
             CHECK_ARG(i);
             nonce_in = argv[i];
+            use_cnt_nonce = 1;
+        } else if (strcmp(argv[i], "-iv")== 0) {
+            ++i;
+            CHECK_ARG(i);
+            if (use_cnt_nonce) {
+                fprintf(stderr, "error: can't use -iv with -c or -n\n");
+                return EXIT_FAILURE;
+            }
+            uint8_t iv_raw[64] = {0};
+            int bytes_read = cfx_parse_hex_auto(argv[i], iv_raw, sizeof(iv_raw));
+            if (bytes_read < 0) {
+                fprintf(stderr, "error: invalid iv\n");
+                return EXIT_FAILURE;
+            }
+            use_iv = 1;
+            if (bytes_read > 16) {
+                fprintf(stderr, "warning, truncating iv to: ");
+                for (int k = 0; k < 16; ++k) {
+                    fprintf(stderr, "%02x", iv_raw[k]);
+                }
+                fprintf(stderr, "\n");
+            }
+
+            uint8_t iv[16] = {0};
+            memcpy(iv, iv_raw, sizeof(iv));
+            CFX_LOAD32_LE_2(&counter, iv);
+            memcpy(nonce, iv + 4, 12);
+            nonce_in = NULL; 
         } else if (strcmp(argv[i], "-v") == 0) {
             verbose = 1;
         } else if (strcmp(argv[i], "-ix") == 0) {
@@ -114,6 +164,7 @@ int cfx_chacha20_run(int argc, char** argv) {
             pt = argv[i];
         }
     }
+
 
     uint8_t* pt_buf = NULL;
     size_t len = 0;
@@ -221,9 +272,7 @@ int cfx_chacha20_run(int argc, char** argv) {
         }
         free(key_str);
     } else if (!key_in) {
-        const char default_key[] = "1234567890";
-        if (verbose) fprintf(stderr, "using default key\n");
-        memcpy(key, default_key, strlen(default_key));
+        fprintf(stderr, "warning: using default zero key\n");
     } else {
         if (cfx_parse_str(key_in, key, sizeof(key), key_mode) < 0) {
             fprintf(stderr, "error: invalid key\n");
@@ -240,18 +289,40 @@ int cfx_chacha20_run(int argc, char** argv) {
         fprintf(stderr, "\n");
     }
 
-    uint8_t nonce[12] = {0};
     if (nonce_in) {
-        if (strncmp(nonce_in, "0x", 2) != 0 ||
-            cfx_parse_hex(nonce_in + 2, nonce, sizeof(nonce)) != 0) {
-            fprintf(stderr, "error: -n expects hex: with exactly 24 hex chars, using default\n");
+        /* Decode fully so hex and base64 can be truncated just like ASCII. */
+        size_t capacity = strlen(nonce_in);
+        uint8_t *parsed_nonce = malloc(capacity ? capacity : 1);
+        if (!parsed_nonce) {
+            free(pt_buf);
+            perror("malloc");
+            return EXIT_FAILURE;
         }
+        int parsed_len = cfx_parse_str(nonce_in, parsed_nonce,
+                                      capacity, CFX_STR_FMT_AUTO);
+        if (parsed_len < 0) {
+            fprintf(stderr, "error: invalid nonce (hex/base64/ASCII)\n");
+            free(parsed_nonce);
+            free(pt_buf);
+            return EXIT_FAILURE;
+        }
+        size_t nonce_len = (size_t)parsed_len;
+        if (nonce_len > sizeof(nonce)) nonce_len = sizeof(nonce);
+        memcpy(nonce, parsed_nonce, nonce_len);
+        free(parsed_nonce);
     }
 
     uint8_t* ct = (uint8_t*)malloc(len ? len : 1);
-    if (!ct) { free(pt_buf); perror("malloc"); return EXIT_FAILURE; }
+    if (!ct) {
+        free(pt_buf);
+        perror("malloc");
+        return EXIT_FAILURE;
+    }
 
-    cfx_chacha20_encrypt(key, counter, nonce, pt_buf, len, ct);
+    if (cfx_chacha20_encrypt(key, counter, nonce, pt_buf, len, ct) == -1) {
+        fprintf(stderr, "error encrypting...\n");
+        return EXIT_FAILURE;
+    }
     free(pt_buf);
 
     if (verbose) printf("ciphertext (%zu bytes):\n", len);
