@@ -47,7 +47,6 @@ typedef struct {
 } bge_header;
 CFX_STATIC_ASSERT(sizeof(bge_header) == BGE_HEADER_LEN, bge_header_packing);
 
-int bge_is_armored(const uint8_t *buf, size_t len);
 int bge_armor_decode(const uint8_t *text, size_t text_len,
                      uint8_t **out, size_t *out_len);
 int bge_encrypt_file(int argc, char **argv);

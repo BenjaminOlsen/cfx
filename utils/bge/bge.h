@@ -40,7 +40,8 @@ CFX_BGE_API int cfx_bge_encrypt(
 CFX_BGE_API int cfx_bge_encrypt_stream(
         FILE *input, FILE *output, const uint8_t *passphrase, size_t passphrase_len);
 /*
- * Decrypt binary or armored BGE data.
+ * Decrypt binary or armored BGE data. Leading and trailing ASCII whitespace
+ * surrounding armored data is ignored.
  *
  * Returns 0 on success and transfers ownership of *plaintext to the caller.
  * Free the buffer with cfx_bge_free.

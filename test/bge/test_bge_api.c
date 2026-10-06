@@ -1,9 +1,60 @@
 #include "bge.h"
+#include "cfx/base64.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static int test_armored_whitespace(const uint8_t *encrypted, size_t encrypted_len,
+                                  const uint8_t *expected, size_t expected_len,
+                                  const uint8_t *password, size_t password_len) {
+    static const char *prefixes[] = {
+        "", " \t\r\n\f\v", "\n\n", "   "
+    };
+    static const char header[] = "-----BEGIN BGE MESSAGE-----\r\n";
+    static const char footer[] = "\r\n-----END BGE MESSAGE-----";
+    static const char suffix[] = " \t\r\n\f\v";
+    size_t encoded_len = cfx_base64_enc_len(encrypted_len);
+
+    for (size_t i = 0; i < sizeof(prefixes) / sizeof(prefixes[0]); ++i) {
+        size_t prefix_len = strlen(prefixes[i]);
+        size_t total = prefix_len + sizeof(header) - 1 + encoded_len +
+                       sizeof(footer) - 1 + sizeof(suffix) - 1;
+        char *armored = malloc(total);
+        if (!armored) return 1;
+        char *body = armored + prefix_len + sizeof(header) - 1;
+        memcpy(armored, prefixes[i], prefix_len);
+        memcpy(armored + prefix_len, header, sizeof(header) - 1);
+        size_t written = encoded_len;
+        if (cfx_base64_encode(body, &written, encrypted, encrypted_len) != 0) {
+            free(armored);
+            return 1;
+        }
+        memcpy(body + encoded_len, footer, sizeof(footer) - 1);
+        memcpy(body + encoded_len + sizeof(footer) - 1, suffix, sizeof(suffix) - 1);
+        uint8_t *decoded = NULL;
+        size_t decoded_len = 0;
+        int rc = cfx_bge_decrypt((const uint8_t *)armored, total,
+                               password, password_len, &decoded, &decoded_len);
+        free(armored);
+        int failed = rc != 0 || decoded_len != expected_len ||
+                     memcmp(decoded, expected, expected_len) != 0;
+        cfx_bge_free(decoded, decoded_len);
+        if (failed) {
+            fprintf(stderr, "armored whitespace test %zu failed\n", i);
+            return 1;
+        }
+    }
+
+    static const uint8_t whitespace[] = " \t\r\n\f\v";
+    uint8_t *decoded = NULL;
+    size_t decoded_len = 0;
+    int rc = cfx_bge_decrypt(whitespace, sizeof(whitespace) - 1,
+                           password, password_len, &decoded, &decoded_len);
+    cfx_bge_free(decoded, decoded_len);
+    return rc == -2 ? 0 : 1;
+}
 
 static int test_stream_roundtrip(size_t len) {
     static const uint8_t password[] = "test-password";
@@ -95,8 +146,12 @@ int main(void) {
         return 4;
     }
 
+    int armor_failed = test_armored_whitespace(
+        encrypted, encrypted_len, message, sizeof(message),
+        password, sizeof(password) - 1);
     cfx_bge_free(decrypted, decrypted_len);
     cfx_bge_free(encrypted, encrypted_len);
+    if (armor_failed) return 6;
 
     static const size_t lengths[] = {
         0, 1, 65535, 65536, 65537, 131072, 131073

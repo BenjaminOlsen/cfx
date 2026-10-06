@@ -3,12 +3,28 @@
 
 #include <limits.h>
 
-int bge_is_armored(const uint8_t *buf, size_t len) {
-    return len >= 27 && memcmp(buf, BGE_ARMOR_HEADER, 27) == 0;
+static int is_space(uint8_t c) {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n' ||
+           c == '\f' || c == '\v';
+}
+
+static int bge_is_armored(const uint8_t *buf, size_t len) {
+    while (len && is_space(*buf)) {
+        buf++;
+        len--;
+    }
+    size_t header_len = sizeof(BGE_ARMOR_HEADER) - 1;
+    return len >= header_len && memcmp(buf, BGE_ARMOR_HEADER, header_len) == 0;
 }
 
 int bge_armor_decode(const uint8_t *text, size_t text_len,
                      uint8_t **out, size_t *out_len) {
+    while (text_len && is_space(*text)) {
+        text++;
+        text_len--;
+    }
+    while (text_len && is_space(text[text_len - 1]))
+        text_len--;
     const char *start = (const char *)text;
     const char *body = memchr(start, '\n', text_len);
     if (!body) return -1;
@@ -454,4 +470,3 @@ int cfx_bge_decrypt(const uint8_t *input, size_t input_len,
     if (decoded) cfx_bge_free(decoded, decoded_len);
     return rc;
 }
-

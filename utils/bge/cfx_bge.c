@@ -222,6 +222,51 @@ int bge_encrypt_file(int argc, char **argv) {
     return rc == 0 ? 0 : 1;
 }
 
+/* Inspect a seekable file without consuming any input. */
+static int file_is_armored(FILE *input) {
+    fpos_t position;
+    if (fgetpos(input, &position) != 0) return -1;
+
+    int c;
+    do {
+        c = fgetc(input);
+    } while (c == ' ' || c == '\t' || c == '\r' || c == '\n' ||
+             c == '\f' || c == '\v');
+
+    uint8_t prefix[sizeof(BGE_ARMOR_HEADER) - 1];
+    size_t len = 0;
+    if (c != EOF) {
+        prefix[len++] = (uint8_t)c;
+        len += fread(prefix + len, 1, sizeof(prefix) - len, input);
+    }
+
+    int read_error = ferror(input);
+    if (fsetpos(input, &position) != 0 || read_error) return -1;
+    return len == sizeof(prefix) &&
+           memcmp(prefix, BGE_ARMOR_HEADER, sizeof(prefix)) == 0;
+}
+
+static int decrypt_buffered_file(FILE *input, FILE *output,
+                                 const uint8_t *passphrase, size_t passphrase_len) {
+    uint8_t *encoded = NULL;
+    uint8_t *plaintext = NULL;
+    size_t encoded_len = 0;
+    size_t plaintext_len = 0;
+    int rc = -1;
+
+    if (cfx_read_all_file(input, &encoded, &encoded_len) == 0) {
+        rc = cfx_bge_decrypt(encoded, encoded_len, passphrase, passphrase_len,
+                             &plaintext, &plaintext_len);
+        if (rc == 0 &&
+            (fwrite(plaintext, 1, plaintext_len, output) != plaintext_len ||
+             fflush(output) == EOF))
+            rc = -1;
+    }
+    cfx_bge_free(encoded, encoded_len);
+    cfx_bge_free(plaintext, plaintext_len);
+    return rc;
+}
+
 int bge_decrypt_file(int argc, char **argv) {
     const char *input_path;
     const char *output_path;
@@ -236,13 +281,13 @@ int bge_decrypt_file(int argc, char **argv) {
         return 1;
     }
 
-    input = fopen(input_path, "rb");
+    input = input_path ? fopen(input_path, "rb") : stdin;
     if (!input) {
         fprintf(stderr, "problem opening input file %s\n", input_path);
         ret = 1;
         goto cleanup;
     }
-    output = fopen(output_path, "wb");
+    output = output_path ? fopen(output_path, "wb") : stdout;
     if (!output) {
         fprintf(stderr, "problem opening output file %s\n", output_path);
         ret = 1;
@@ -255,10 +300,18 @@ int bge_decrypt_file(int argc, char **argv) {
         goto cleanup;
     }
 
-    int rc = cfx_bge_decrypt_stream(input, output, 
-                             (const uint8_t *)passphrase,
-                             (size_t)passphrase_len);
-    cfx_memzero_s(passphrase, sizeof(passphrase));
+    /* stdin may be a pipe, so use the buffer API without seeking it. */
+    int armored = input_path ? file_is_armored(input) : 1;
+    int rc = -1;
+    if (armored == 0) {
+        rc = cfx_bge_decrypt_stream(input, output,
+                                    (const uint8_t *)passphrase,
+                                    (size_t)passphrase_len);
+    } else if (armored == 1) {
+        rc = decrypt_buffered_file(input, output,
+                                   (const uint8_t *)passphrase,
+                                   (size_t)passphrase_len);
+    }
     if (rc != 0) {
         fprintf(stderr, rc == -3
             ? "error: authentication failed\n"
@@ -269,8 +322,9 @@ int bge_decrypt_file(int argc, char **argv) {
     }
 
 cleanup:
-    if (input) fclose(input);
-    if (output) fclose(output);
+    cfx_memzero_s(passphrase, sizeof(passphrase));
+    if (input && input_path) fclose(input);
+    if (output && output_path && fclose(output) != 0) ret = 1;
     return ret; 
 }
 
