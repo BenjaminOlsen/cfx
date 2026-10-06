@@ -1,6 +1,7 @@
 /* cfx_hash.c - SHA256/SHA3/BLAKE2/SipHash hashing utility */
 
 #include "cfx/sha256.h"
+#include "cfx/sha512.h"
 #include "cfx/sha3.h"
 #include "cfx/blake2.h"
 #include "cfx/siphash.h"
@@ -20,6 +21,7 @@
 
 typedef enum {
     HASH_SHA256,
+    HASH_SHA512,
     HASH_SHA3_224,
     HASH_SHA3_256,
     HASH_SHA3_384,
@@ -36,6 +38,7 @@ static void usage(const char* prog) {
     printf("  Compute cryptographic hash of files or stdin.\n\n");
     printf("Algorithms:\n");
     printf("  (default)       SHA-256 (32 bytes)\n");
+    printf("  --sha512        SHA-512\n");
     printf("  --sha3-224      SHA3-224 (28 bytes)\n");
     printf("  --sha3-256      SHA3-256 (32 bytes)\n");
     printf("  --sha3-384      SHA3-384 (48 bytes)\n");
@@ -83,8 +86,19 @@ static void print_hash(const uint8_t* hash, size_t hash_len, const char* name, e
     printf("\n");
 }
 
+static int hash_string_sha512(const char* str, enum cfx_str_format fmt) {
+    cfx_sha512_ctx_t ctx;
+    uint8_t hash[64];
+
+    cfx_sha512_init(&ctx);
+    cfx_sha512_update(&ctx, (const uint8_t*)str, strlen(str));
+    cfx_sha512_final(&ctx, hash);
+
+    print_hash(hash, 64, NULL, fmt);
+    return 0;
+}
 static int hash_string_sha256(const char* str, enum cfx_str_format fmt) {
-    cfx_sha256_ctx ctx;
+    cfx_sha256_ctx_t ctx;
     uint8_t hash[32];
 
     cfx_sha256_init(&ctx);
@@ -165,8 +179,29 @@ static int hash_string_sha3(hash_algo_t algo, const char* str, size_t outlen,
     return 0;
 }
 
+static int hash_file_sha512(FILE *f, const char *filename, enum cfx_str_format fmt) {
+    cfx_sha512_ctx_t ctx;
+    uint8_t hash[64];
+    uint8_t buf[8192];
+    size_t n;
+
+    cfx_sha512_init(&ctx);
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+        cfx_sha512_update(&ctx, buf, n);
+    }
+    
+    if (ferror(f)) {
+        fprintf(stderr, "Error reading %s\n", filename ? filename : "stdin");
+        return 1;
+    }
+
+    cfx_sha512_final(&ctx, hash);
+    print_hash(hash, 64, filename, fmt);
+    return 0;
+}
+
 static int hash_file_sha256(FILE* f, const char* filename, enum cfx_str_format fmt) {
-    cfx_sha256_ctx ctx;
+    cfx_sha256_ctx_t ctx;
     uint8_t hash[32];
     uint8_t buf[8192];
     size_t n;
@@ -354,6 +389,8 @@ static int hash_string(hash_algo_t algo, const char* str, size_t outlen,
     switch (algo) {
         case HASH_SHA256:
             return hash_string_sha256(str, fmt);
+        case HASH_SHA512:
+            return hash_string_sha512(str, fmt);
         case HASH_SHA3_224:
         case HASH_SHA3_256:
         case HASH_SHA3_384:
@@ -377,6 +414,8 @@ static int hash_file(hash_algo_t algo, FILE* f, const char* filename, size_t out
     switch (algo) {
         case HASH_SHA256:
             return hash_file_sha256(f, filename, fmt);
+        case HASH_SHA512:
+            return hash_file_sha512(f, filename, fmt);
         case HASH_SHA3_224:
         case HASH_SHA3_256:
         case HASH_SHA3_384:
@@ -431,6 +470,10 @@ int cfx_hash_run(int argc, char** argv) {
             fmt = CFX_STR_FMT_BASE64;
         } else if (strcmp(argv[argi], "-f") == 0) {
             show_filename = 1;
+        } else if (strcmp(argv[argi], "--sha256") == 0) {
+            algo = HASH_SHA256;
+        } else if (strcmp(argv[argi], "--sha512") == 0) {
+            algo = HASH_SHA512;
         } else if (strcmp(argv[argi], "--blake2b") == 0) {
             algo = HASH_BLAKE2B;
         } else if (strcmp(argv[argi], "--blake2s") == 0) {

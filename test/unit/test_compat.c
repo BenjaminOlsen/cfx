@@ -214,7 +214,7 @@ static void test_mutex_contention(void) {
 
 static void test_ctx_alignment_stack(void) {
     /* stack-allocated contexts should be properly aligned for uint64_t */
-    cfx_sha256_ctx sha256_ctx;
+    cfx_sha256_ctx_t sha256_ctx;
     cfx_sha512_ctx_t sha512_ctx;
     cfx_siphash_ctx_t siphash_ctx;
     cfx_poly1305_ctx_t poly1305_ctx;
@@ -231,7 +231,7 @@ static void test_ctx_alignment_stack(void) {
 
 static void test_ctx_alignment_heap(void) {
     /* heap-allocated contexts should also be properly aligned */
-    cfx_sha256_ctx *sha256_ctx = malloc(sizeof(cfx_sha256_ctx));
+    cfx_sha256_ctx_t *sha256_ctx = malloc(sizeof(cfx_sha256_ctx_t));
     cfx_siphash_ctx_t *siphash_ctx = malloc(sizeof(cfx_siphash_ctx_t));
     cfx_poly1305_ctx_t *poly1305_ctx = malloc(sizeof(cfx_poly1305_ctx_t));
     cfx_chacha20_ctx_t *chacha20_ctx = malloc(sizeof(cfx_chacha20_ctx_t));
@@ -257,7 +257,7 @@ static void test_ctx_operations_work(void) {
     const uint8_t test_data[] = "test alignment";
     uint8_t hash_out[64];
 
-    cfx_sha256_ctx sha256_ctx;
+    cfx_sha256_ctx_t sha256_ctx;
     cfx_sha256_init(&sha256_ctx);
     cfx_sha256_update(&sha256_ctx, test_data, sizeof(test_data) - 1);
     cfx_sha256_final(&sha256_ctx, hash_out);

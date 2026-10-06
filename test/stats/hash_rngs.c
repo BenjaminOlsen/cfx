@@ -23,7 +23,7 @@ void cfx_sha256_ctr_seed(uint32_t seed) {
 }
 
 static void sha256_ctr_fill(void) {
-    cfx_sha256_ctx ctx;
+    cfx_sha256_ctx_t ctx;
     uint8_t input[8];
 
     cfx_store64_le(input, sha256_ctr_state.counter);

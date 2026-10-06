@@ -41,7 +41,7 @@ static void print_hex(const uint8_t *buf, size_t len) {
 }
 
 static void cfx_sha256_once(const uint8_t *msg, size_t len, uint8_t out[32]) {
-    cfx_sha256_ctx ctx;
+    cfx_sha256_ctx_t ctx;
     cfx_sha256_init(&ctx);
     cfx_sha256_update(&ctx, msg, len);
     cfx_sha256_final(&ctx, out);
@@ -81,7 +81,7 @@ static void check_incremental(const char *name,
 
     cfx_sha256_once(msg, msg_len, dig_one);
 
-    cfx_sha256_ctx ctx;
+    cfx_sha256_ctx_t ctx;
     cfx_sha256_init(&ctx);
 
     size_t remaining = msg_len;

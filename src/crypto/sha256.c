@@ -124,7 +124,7 @@ static void cfx_sha256_compress(cfx_sha256_state_t *st, const uint8_t block[64])
 
 
 
-void cfx_sha256_init(cfx_sha256_ctx *ctx) {
+void cfx_sha256_init(cfx_sha256_ctx_t *ctx) {
     cfx_sha256_state_t *st = (cfx_sha256_state_t *)ctx->opaque;
 
     st->state[0] = 0x6a09e667u;
@@ -140,7 +140,7 @@ void cfx_sha256_init(cfx_sha256_ctx *ctx) {
     st->buffer_len = 0;
 }
 
-void cfx_sha256_update(cfx_sha256_ctx *ctx, const uint8_t *data, size_t len) {
+void cfx_sha256_update(cfx_sha256_ctx_t *ctx, const uint8_t *data, size_t len) {
     cfx_sha256_state_t *st = (cfx_sha256_state_t *)ctx->opaque;
 
     if (len == 0) {
@@ -182,7 +182,7 @@ void cfx_sha256_update(cfx_sha256_ctx *ctx, const uint8_t *data, size_t len) {
 }
 
 /* add padding, length, and output hash */
-void cfx_sha256_final(cfx_sha256_ctx *ctx, uint8_t out[32]) {
+void cfx_sha256_final(cfx_sha256_ctx_t *ctx, uint8_t out[32]) {
     cfx_sha256_state_t *st = (cfx_sha256_state_t *)ctx->opaque;
     uint8_t *buf = st->buffer;
     size_t i   = st->buffer_len;
@@ -226,7 +226,7 @@ void cfx_sha256_final(cfx_sha256_ctx *ctx, uint8_t out[32]) {
 }
 
 void cfx_sha256(uint8_t out[32], const uint8_t *data, size_t len) {
-    cfx_sha256_ctx ctx;
+    cfx_sha256_ctx_t ctx;
     cfx_sha256_init(&ctx);
     cfx_sha256_update(&ctx, data, len);
     cfx_sha256_final(&ctx, out);

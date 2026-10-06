@@ -119,7 +119,7 @@ static uint64_t mono_now(void) {
  *
  * Returns 0 on success, -1 if boot ID is unavailable. */
 static int grace_derive_key(uint8_t key_out[32]) {
-    cfx_sha256_ctx ctx;
+    cfx_sha256_ctx_t ctx;
     cfx_sha256_init(&ctx);
 
 #ifdef __APPLE__

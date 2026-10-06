@@ -13,7 +13,7 @@
 #define SHA256_DIGEST 32
 
 typedef struct {
-    cfx_sha256_ctx inner;
+    cfx_sha256_ctx_t inner;
     uint8_t        opad[SHA256_BLOCK];
 } hmac_sha256_state;
 
@@ -64,7 +64,7 @@ void cfx_hmac_sha256_final(cfx_hmac_sha256_ctx *ctx, uint8_t out[32]) {
     cfx_sha256_final(&st->inner, inner_digest);
 
     /* outer = H(opad || inner_digest) */
-    cfx_sha256_ctx outer;
+    cfx_sha256_ctx_t outer;
     cfx_sha256_init(&outer);
     cfx_sha256_update(&outer, st->opad, SHA256_BLOCK);
     cfx_sha256_update(&outer, inner_digest, SHA256_DIGEST);

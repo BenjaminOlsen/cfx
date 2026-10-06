@@ -410,7 +410,7 @@ static void test_sha256_length_extension_attack(void) {
     const char *extension = "&admin=true";
 
     /* Step 1: Server computes MAC = SHA256(secret || message) */
-    cfx_sha256_ctx ctx;
+    cfx_sha256_ctx_t ctx;
     uint8_t original_mac[32];
     cfx_sha256_init(&ctx);
     cfx_sha256_update(&ctx, (const uint8_t *)secret, strlen(secret));
@@ -442,7 +442,7 @@ static void test_sha256_length_extension_attack(void) {
      * Step 3: Attacker reconstructs SHA-256 state from MAC
      * and continues hashing with the extension
      */
-    cfx_sha256_ctx attacker_ctx;
+    cfx_sha256_ctx_t attacker_ctx;
     cfx_sha256_init(&attacker_ctx);
     sha256_internal_state_t *internal = (sha256_internal_state_t *)&attacker_ctx;
 
