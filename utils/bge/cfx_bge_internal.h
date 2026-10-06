@@ -16,7 +16,7 @@
 #include <string.h>
 
 #define BGE_MAGIC          "BGE"
-#define BGE_VERSION_STR    "3.1.1"
+#define BGE_VERSION_STR    "3.2.0"
 #define BGE_TAG_LEN        16
 #define BGE_DEFAULT_M      0x10000
 #define BGE_DEFAULT_T      3
@@ -53,3 +53,4 @@ int bge_encrypt_file(int argc, char **argv);
 int bge_decrypt_file(int argc, char **argv);
 
 #endif
+
