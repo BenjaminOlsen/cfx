@@ -8,7 +8,7 @@ else()
 endif()
 
 add_library(cfx_bge ${CFX_BGE_LIBRARY_TYPE}
-    cfx_bge_api.c
+    cfx_bge.c
 )
 add_library(cfx::bge ALIAS cfx_bge)
 
@@ -39,7 +39,7 @@ target_include_directories(cfx_bge
 )
 
 add_library(cfx_bge_command STATIC
-    cfx_bge.c
+    cfx_bge_cli.c
 )
 
 target_link_libraries(cfx_bge_command PUBLIC cfx_bge PRIVATE cfx_misc)
