@@ -20,7 +20,7 @@ static void BM_SHA256(benchmark::State& state) {
     uint8_t hash[32];
 
     for (auto _ : state) {
-        cfx_sha256_ctx ctx;
+        cfx_sha256_ctx_t ctx;
         cfx_sha256_init(&ctx);
         cfx_sha256_update(&ctx, data.data(), data.size());
         cfx_sha256_final(&ctx, hash);

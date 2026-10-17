@@ -153,7 +153,9 @@ int cfx_chacha20_encrypt_ctx(cfx_chacha20_ctx_t *ctx, uint32_t *counter, const u
         cfx_chacha20_block(ctx, *counter, ks);
         ++*counter;
         size_t take = pt_len < 64 ? pt_len : 64;
-        for (size_t i = 0; i < take; ++i) ct[i] = pt[i] ^ ks[i];
+        for (size_t i = 0; i < take; ++i) {
+            ct[i] = pt[i] ^ ks[i];
+        }
         pt += take;
         ct += take;
         pt_len -= take;

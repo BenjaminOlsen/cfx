@@ -6,7 +6,10 @@
 #include <immintrin.h>
 
 static inline __m256i rotl32(__m256i x, int n) {
-    return _mm256_or_si256(_mm256_slli_epi32(x, n), _mm256_srli_epi32(x, 32 - n));
+    return _mm256_or_si256(
+            _mm256_slli_epi32(x, n),        /* shift left by n */
+            _mm256_srli_epi32(x, 32 - n)    /* shift right by 32-n */
+            );
 }
 
 #define QR(a, b, c, d) do { \
@@ -16,7 +19,25 @@ static inline __m256i rotl32(__m256i x, int n) {
             c = _mm256_add_epi32(c, d); b = _mm256_xor_si256(b, c); b = rotl32(b,  7); \
 } while (0)
 
-#define LANE32(v, idx) ((uint32_t)_mm_extract_epi32(v, idx))
+
+/*
+Each AVX2 vector holds the same word from all eight blocks:
+
+x[0] = [block0.word0, block1.word0, ... , block7.word0]
+x[1] = [block0.word1, block1.word1, ... , block7.word1]
+
+This lets one vector addition, XOR, or rotation operate on eight independent blocks simultaneously.
+
+The caller needs each blocks words together:
+
+out[0] = [block0.word0, block0.word1, ... , block0.word15]
+out[1] = [block1.word0, blcck1.word1, ...., block1.word15]
+... etc.
+
+transpose() effectively does(
+
+out[block][word] = x[word].lane[block];
+*/
 
 static inline void transpose(const __m256i x[16], uint32_t out[8][16]) {
     __m128i lo[16], hi[16];
@@ -24,6 +45,9 @@ static inline void transpose(const __m256i x[16], uint32_t out[8][16]) {
         lo[w] = _mm256_extracti128_si256(x[w], 0);
         hi[w] = _mm256_extracti128_si256(x[w], 1);
     }
+
+#define LANE32(v, idx) ((uint32_t)_mm_extract_epi32(v, idx))
+
     for (int w = 0; w < 16; ++w) {
         out[0][w] = LANE32(lo[w], 0);
         out[1][w] = LANE32(lo[w], 1);
@@ -40,9 +64,10 @@ void cfx_chacha20_block8_impl(const cfx_chacha20_state_t *ctx, uint32_t counter,
     const __m256i lane = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
     __m256i x[16], s[16];
 
-    /* Load pre-broadcast state from SoA layout - no per-call broadcast overhead */
-    for (int i = 0; i < 16; ++i)
+    /* Load pre-broadcast state from SoA layout */
+    for (int i = 0; i < 16; ++i) {
         s[i] = _mm256_loadu_si256((const __m256i *)ctx->s[i]);
+    }
 
     /* Set counters: counter+0, counter+1, ..., counter+7 */
     s[12] = _mm256_add_epi32(_mm256_set1_epi32((int32_t)counter), lane);
@@ -60,8 +85,9 @@ void cfx_chacha20_block8_impl(const cfx_chacha20_state_t *ctx, uint32_t counter,
         QR(x[3], x[4], x[ 9], x[14]);
     }
 
-    for (int i = 0; i < 16; ++i)
+    for (int i = 0; i < 16; ++i) {
         x[i] = _mm256_add_epi32(x[i], s[i]);
+    }
 
     transpose(x, (uint32_t (*)[16]) out);
 
