@@ -9,11 +9,20 @@
 #include "hash_rngs.h"
 
 /* TestU01 includes */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmacro-redefined"
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmacro-redefined"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4005) /* macro redefinition */
+#endif
 #include "unif01.h"
 #include "bbattery.h"
-#pragma GCC diagnostic pop
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #if CFX_HAVE_OPENSSL
 

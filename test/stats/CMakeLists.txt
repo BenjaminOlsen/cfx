@@ -29,7 +29,12 @@ if(CFX_ENABLE_TESTU01)
         endif()
     endif()
 
-    include_directories(${TESTU01_ROOT}/include)
+    find_path(TESTU01_INCLUDE_DIR NAMES unif01.h
+        PATHS "${TESTU01_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
+    foreach(_lib testu01 probdist mylib)
+        find_library(TESTU01_${_lib}_LIBRARY NAMES ${_lib}
+            PATHS "${TESTU01_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
+    endforeach()
     message(STATUS "TestU01 enabled: ${TESTU01_ROOT}")
 
     set(CFX_STATS_TESTS
@@ -38,14 +43,17 @@ if(CFX_ENABLE_TESTU01)
 
     foreach(test_name IN LISTS CFX_STATS_TESTS)
         add_executable(${test_name} ${test_name}.c hash_rngs.c)
+        target_include_directories(${test_name} PRIVATE "${TESTU01_INCLUDE_DIR}")
 
         target_link_libraries(${test_name} PRIVATE
             cfx::cfx
-            ${TESTU01_ROOT}/lib/libtestu01.a
-            ${TESTU01_ROOT}/lib/libprobdist.a
-            ${TESTU01_ROOT}/lib/libmylib.a
-            m
+            ${TESTU01_testu01_LIBRARY}
+            ${TESTU01_probdist_LIBRARY}
+            ${TESTU01_mylib_LIBRARY}
         )
+        if(NOT MSVC)
+            target_link_libraries(${test_name} PRIVATE m)
+        endif()
 
         message(STATUS "added stats test '${test_name}'")
     endforeach()
